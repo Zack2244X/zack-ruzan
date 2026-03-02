@@ -7,6 +7,7 @@
     <!-- تضمين Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://accounts.google.com/gsi/client" onload="initGoogleSignIn()" async defer></script>
     <style>
         /* === أكواد تسريع الأداء وجعل الواجهة سلسة === */
         body::before {
@@ -240,12 +241,11 @@
                 <i class="fas fa-lock"></i>
             </div>
             <h2 class="text-2xl font-extrabold text-gray-800 mb-2">منطقة الإدارة</h2>
-            <p class="text-sm text-gray-500 mb-6">أدخل كلمة المرور لفتح لوحة التحكم</p>
-            <input type="password" id="admin-pass-input" placeholder="كلمة المرور (اكتب 1234)" class="w-full p-4 border-2 border-gray-200 rounded-xl mb-4 text-center text-lg focus:border-red-400 outline-none">
-            <div class="flex gap-2">
-                <button onclick="verifyAdmin()" class="flex-1 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-black transition">دخول</button>
-                <button onclick="closeAdminAuth()" class="py-3 px-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إلغاء</button>
-            </div>
+            <p class="text-sm text-gray-500 mb-6">سجل دخولك بحساب Google المعتمد لفتح لوحة التحكم</p>
+            <div id="admin-google-btn" class="flex justify-center mb-4"></div>
+            <p id="admin-auth-error" class="text-red-500 text-sm font-bold hidden mb-4"></p>
+            <p id="admin-auth-loading" class="text-blue-500 text-sm font-bold hidden mb-4"><i class="fas fa-spinner fa-spin ml-2"></i> جاري التحقق...</p>
+            <button onclick="closeAdminAuth()" class="py-3 px-6 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إلغاء</button>
         </div>
     </div>
 <div id="add-note-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 sm:p-8">
@@ -683,6 +683,8 @@
         let quizStarted = false;
         let isEditMode = false;
         let isAdmin = false;
+        let adminToken = null;
+        const GOOGLE_CLIENT_ID = '124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com';
         const quizContainer = document.getElementById('quiz-container');
         
         // جلب عناصر DOM
@@ -932,6 +934,7 @@
                 document.getElementById('admin-content').classList.add('active');
             } else {
                 document.getElementById('admin-auth-modal').classList.remove('hidden');
+                renderAdminGoogleButton();
             }
         }
 
@@ -974,25 +977,80 @@
         function logoutUser() {
             // مسح بيانات المستخدم من الذاكرة
             localStorage.removeItem('currentUser');
-            // localStorage.removeItem('allUserScores'); // اختياري: لو عايز تمسح الدرجات برضو
-            location.reload(); // تحديث الصفحة
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUser');
+            isAdmin = false;
+            adminToken = null;
+            location.reload();
         }
 
-        // تعديل دالة تأكيد الباسورد لفتح اللوحة السفلية بعد النجاح
-        function verifyAdmin() {
-            const pass = document.getElementById('admin-pass-input').value;
-            if (pass === "1234") { 
-                isAdmin = true;
-                closeAdminAuth();
-                openAdminAuthOrPanel(); // تفتح النافذة السفلية للأدمن
-            } else {
-                alert("❌ كلمة المرور غير صحيحة!");
+        // === Google Sign-In: تهيئة وتسجيل الدخول ===
+        function initGoogleSignIn() {
+            if (typeof google !== 'undefined' && google.accounts) {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleGoogleAdminResponse
+                });
             }
-            renderSubjectFilters();
         }
+
+        function renderAdminGoogleButton() {
+            const container = document.getElementById('admin-google-btn');
+            if (container && typeof google !== 'undefined' && google.accounts) {
+                container.innerHTML = '';
+                google.accounts.id.renderButton(container, {
+                    theme: 'filled_blue',
+                    size: 'large',
+                    shape: 'pill',
+                    text: 'signin_with',
+                    locale: 'ar',
+                    width: 280
+                });
+            }
+        }
+
+        async function handleGoogleAdminResponse(response) {
+            const errorEl = document.getElementById('admin-auth-error');
+            const loadingEl = document.getElementById('admin-auth-loading');
+            errorEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/auth/google', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: response.credential })
+                });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error || 'فشل التحقق');
+
+                if (data.user.role === 'admin') {
+                    adminToken = data.token;
+                    isAdmin = true;
+                    localStorage.setItem('adminToken', data.token);
+                    localStorage.setItem('adminUser', JSON.stringify(data.user));
+                    loadingEl.classList.add('hidden');
+                    closeAdminAuth();
+                    openAdminAuthOrPanel();
+                } else {
+                    loadingEl.classList.add('hidden');
+                    errorEl.textContent = '❌ هذا الحساب ليس لديه صلاحيات إدارة. تواصل مع المعلم.';
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                loadingEl.classList.add('hidden');
+                errorEl.textContent = '❌ ' + (err.message || 'حدث خطأ أثناء التحقق');
+                errorEl.classList.remove('hidden');
+            }
+        }
+
         function closeAdminAuth() {
             document.getElementById('admin-auth-modal').classList.add('hidden');
-            document.getElementById('admin-pass-input').value = "";
+            const errorEl = document.getElementById('admin-auth-error');
+            const loadingEl = document.getElementById('admin-auth-loading');
+            if (errorEl) errorEl.classList.add('hidden');
+            if (loadingEl) loadingEl.classList.add('hidden');
             updateDockUI('home');
         }
 
@@ -1672,6 +1730,26 @@ function loadApp() {
                     document.getElementById('login-screen').classList.remove('hidden');
                     document.getElementById('dashboard-view').classList.add('hidden');
                     document.getElementById('ios-bottom-nav').classList.add('hidden');
+                }
+            // استعادة حالة الأدمن من التوكن المحفوظ
+                const savedToken = localStorage.getItem('adminToken');
+                if (savedToken) {
+                    adminToken = savedToken;
+                    fetch('/api/auth/verify-admin', {
+                        headers: { 'Authorization': 'Bearer ' + savedToken }
+                    }).then(res => res.json()).then(data => {
+                        if (data.isAdmin) {
+                            isAdmin = true;
+                        } else {
+                            localStorage.removeItem('adminToken');
+                            localStorage.removeItem('adminUser');
+                            adminToken = null;
+                        }
+                    }).catch(() => {
+                        localStorage.removeItem('adminToken');
+                        localStorage.removeItem('adminUser');
+                        adminToken = null;
+                    });
                 }
             } catch (e) {
                 console.warn("تعذر الوصول للذاكرة المحلية:", e);
