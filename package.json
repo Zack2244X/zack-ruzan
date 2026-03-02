@@ -1,0 +1,11 @@
+{
+  "name": "quiz-platform",
+  "version": "1.0.0",
+  "description": "Interactive Quiz Platform",
+  "private": true,
+  "scripts": {
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev",
+    "install-all": "npm install && cd server && npm install"
+  }
+}
