@@ -1,7 +1,7 @@
 {
   "name": "quiz-platform-server",
   "version": "1.0.0",
-  "description": "سيرفر منصة الاختبارات التفاعلية - د. حسام",
+  "description": "سيرفر منصة الاختبارات التفاعلية - zack",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

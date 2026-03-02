@@ -47,7 +47,7 @@ app.use(helmet({
 
 // 2. CORS — تحديد المصادر المسموحة
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
     : ['http://localhost:3000'];
 
 app.use(cors({
