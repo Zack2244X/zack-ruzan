@@ -3,6 +3,16 @@
 // ============================================
 const { Sequelize } = require('sequelize');
 
+// --- Debug: طباعة إعدادات الاتصال ---
+console.log('🔍 DB Config:', {
+    host: process.env.DB_HOST || '⚠️ NOT SET - using localhost',
+    port: process.env.DB_PORT || '⚠️ NOT SET - using 4000',
+    user: process.env.DB_USER ? '✅ SET' : '⚠️ NOT SET',
+    password: process.env.DB_PASSWORD ? '✅ SET' : '⚠️ NOT SET',
+    name: process.env.DB_NAME || '⚠️ NOT SET',
+    ssl: process.env.DB_SSL || '⚠️ NOT SET'
+});
+
 const sequelize = new Sequelize(
     process.env.DB_NAME || 'quiz_platform',
     process.env.DB_USER || 'root',
