@@ -1,0 +1,16 @@
+# Dependencies
+**/node_modules/
+
+# Environment secrets
+**/.env
+
+# TLS certs / local secrets
+**/*.pem
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS/editor
+.DS_Store
+.vscode/
