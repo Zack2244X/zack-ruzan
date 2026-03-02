@@ -388,29 +388,18 @@
             </div>
         </div>
     </div>
-        <!-- ========== شاشة تسجيل الدخول الجديدة ========== -->
+        <!-- ========== شاشة تسجيل الدخول بالجيميل ========== -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl text-center border border-white/50">
             <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-white text-4xl shadow-lg">
-                <i class="fas fa-user-plus"></i>
+                <i class="fab fa-google"></i>
             </div>
             <h1 class="text-3xl font-extrabold text-gray-800 mb-2">مرحباً بك في المنصة</h1>
-            <p class="text-gray-500 mb-8">سجل دخولك لبدء الاختبارات</p>
+            <p class="text-gray-500 mb-6">سجل دخولك بحساب Google لبدء الاختبارات</p>
             
-            <div class="space-y-4 text-right">
-                <div>
-                    <label class="block text-sm font-bold text-gray-600 mb-1">الاسم الأول</label>
-                    <input type="text" id="login-fname" placeholder="مثال: أحمد" class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none transition">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-600 mb-1">الاسم الثاني</label>
-                    <input type="text" id="login-lname" placeholder="مثال: محمد" class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none transition">
-                </div>
-            </div>
-            
-            <button onclick="handleLogin()" class="w-full mt-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-xl shadow-lg hover:bg-blue-700 transition">
-                <i class="fas fa-sign-in-alt ml-2"></i> دخول
-            </button>
+            <div id="student-google-btn" class="flex justify-center mb-4"></div>
+            <p id="login-error" class="text-red-500 text-sm font-bold hidden mb-2"></p>
+            <p id="login-loading" class="text-blue-500 text-sm font-bold hidden mb-2"><i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...</p>
         </div>
     </div>
     <div id="dashboard-view" class="hidden container mx-auto px-4 py-6 sm:py-10 pb-24">
@@ -985,16 +974,44 @@
         }
 
         // === Google Sign-In: تهيئة وتسجيل الدخول ===
+        let googleLoginMode = 'student'; // 'student' أو 'admin'
+
         function initGoogleSignIn() {
             if (typeof google !== 'undefined' && google.accounts) {
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
-                    callback: handleGoogleAdminResponse
+                    callback: handleGoogleCallback
+                });
+                // عرض زر الطالب على شاشة الدخول
+                renderStudentGoogleButton();
+            }
+        }
+
+        function handleGoogleCallback(response) {
+            if (googleLoginMode === 'admin') {
+                handleGoogleAdminResponse(response);
+            } else {
+                handleStudentGoogleLogin(response);
+            }
+        }
+
+        function renderStudentGoogleButton() {
+            const container = document.getElementById('student-google-btn');
+            if (container && typeof google !== 'undefined' && google.accounts) {
+                container.innerHTML = '';
+                google.accounts.id.renderButton(container, {
+                    theme: 'filled_blue',
+                    size: 'large',
+                    shape: 'pill',
+                    text: 'signin_with',
+                    locale: 'ar',
+                    width: 300
                 });
             }
         }
 
         function renderAdminGoogleButton() {
+            googleLoginMode = 'admin';
             const container = document.getElementById('admin-google-btn');
             if (container && typeof google !== 'undefined' && google.accounts) {
                 container.innerHTML = '';
@@ -1051,6 +1068,7 @@
             const loadingEl = document.getElementById('admin-auth-loading');
             if (errorEl) errorEl.classList.add('hidden');
             if (loadingEl) loadingEl.classList.add('hidden');
+            googleLoginMode = 'student';
             updateDockUI('home');
         }
 
@@ -1446,36 +1464,87 @@
             alert("سيتم برمجة نافذة إضافة اختبار جديد في الخطوة القادمة!");
         }
 
-        function handleLogin() {
-            const fname = document.getElementById('login-fname').value.trim();
-            const lname = document.getElementById('login-lname').value.trim();
-            
-            if (!fname || !lname) {
-                alert("يرجى كتابة الاسم الأول والثاني!");
-                return;
-            }
+        async function handleStudentGoogleLogin(response) {
+            const errorEl = document.getElementById('login-error');
+            const loadingEl = document.getElementById('login-loading');
+            errorEl.classList.add('hidden');
+            loadingEl.classList.remove('hidden');
 
-            // حفظ بيانات المستخدم
-            currentUser = { fname, lname, fullName: fname + ' ' + lname };
-            localStorage.setItem('currentUser', JSON.stringify(currentUser)); // لحفظ الجلسة
-            
-            // رسالة ترحيب
-            const greetings = [
-                `أهلاً بك يا ${currentUser.fname}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
-                `نورت المنصة يا ${currentUser.fname}، أسأل الله أن ينفعك بما تعلمت.`
-            ];
-            document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
-            
-            // إخفاء شاشة الدخول وإظهار الرئيسية
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('dashboard-view').classList.remove('hidden');
-            
-            // إظهار الشريط السفلي (iOS Nav)
-            document.getElementById('ios-bottom-nav').classList.remove('hidden');
-            
-            // تحديث الواجهة
-            navToHome();
-            renderDashboard();
+            try {
+                const res = await fetch('/api/auth/google', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: response.credential })
+                });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error || 'فشل تسجيل الدخول');
+
+                // استخراج الاسم من حساب Google
+                let fname = data.user.fname || '';
+                let lname = data.user.lname || '';
+
+                // لو الاسم فاضي (مستخدم جديد)، نستخرجه من التوكن
+                if (!fname) {
+                    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+                    const fullName = payload.name || payload.email.split('@')[0];
+                    const parts = fullName.trim().split(/\s+/);
+                    fname = parts[0] || '';
+                    lname = parts.slice(1).join(' ') || '';
+
+                    // إكمال البروفايل على السيرفر
+                    if (fname && lname) {
+                        await fetch('/api/auth/complete-profile', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + data.token
+                            },
+                            body: JSON.stringify({ fname, lname })
+                        }).catch(() => {});
+                    }
+                }
+
+                // حفظ بيانات المستخدم
+                currentUser = {
+                    fname: fname || data.user.fname,
+                    lname: lname || data.user.lname,
+                    fullName: (fname + ' ' + lname).trim() || data.user.fullName,
+                    avatar: data.user.avatar || '',
+                    token: data.token,
+                    role: data.user.role
+                };
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+                // لو أدمن → نحفظ التوكن
+                if (data.user.role === 'admin') {
+                    adminToken = data.token;
+                    isAdmin = true;
+                    localStorage.setItem('adminToken', data.token);
+                    localStorage.setItem('adminUser', JSON.stringify(data.user));
+                }
+
+                loadingEl.classList.add('hidden');
+
+                // رسالة ترحيب
+                const greetings = [
+                    `أهلاً بك يا ${currentUser.fname}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
+                    `نورت المنصة يا ${currentUser.fname}، أسأل الله أن ينفعك بما تعلمت.`
+                ];
+                document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
+
+                // إخفاء شاشة الدخول وإظهار الرئيسية
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.getElementById('ios-bottom-nav').classList.remove('hidden');
+
+                navToHome();
+                renderDashboard();
+            } catch (err) {
+                loadingEl.classList.add('hidden');
+                errorEl.textContent = '❌ ' + (err.message || 'حدث خطأ أثناء تسجيل الدخول');
+                errorEl.classList.remove('hidden');
+            }
         }
         // تهيئة الاختبار
         function initializeQuiz() {
