@@ -152,7 +152,7 @@ async function startServer() {
             console.log(`📁 الواجهة متاحة على: http://localhost:${PORT}/`);
         });
     } catch (err) {
-        console.error('❌ فشل الاتصال بقاعدة البيانات:', err.message);
+        console.error('❌ فشل الاتصال بقاعدة البيانات:', err.message, err.stack);
         process.exit(1);
     }
 }

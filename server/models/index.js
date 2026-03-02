@@ -13,7 +13,7 @@ const sequelize = new Sequelize(
         dialect: 'mysql',
         dialectOptions: {
             ssl: process.env.DB_SSL === 'true'
-                ? { minVersion: 'TLSv1.2', rejectUnauthorized: true }
+                ? { minVersion: 'TLSv1.2', rejectUnauthorized: false }
                 : undefined
         },
         logging: process.env.NODE_ENV === 'development' ? console.log : false,
