@@ -7,7 +7,7 @@
     <!-- تضمين Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://accounts.google.com/gsi/client" onload="initGoogleSignIn()" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         /* === أكواد تسريع الأداء وجعل الواجهة سلسة === */
         body::before {
@@ -975,6 +975,7 @@
 
         // === Google Sign-In: تهيئة وتسجيل الدخول ===
         let googleLoginMode = 'student'; // 'student' أو 'admin'
+        let gsiRetries = 0;
 
         function initGoogleSignIn() {
             if (typeof google !== 'undefined' && google.accounts) {
@@ -984,6 +985,9 @@
                 });
                 // عرض زر الطالب على شاشة الدخول
                 renderStudentGoogleButton();
+            } else if (gsiRetries < 20) {
+                gsiRetries++;
+                setTimeout(initGoogleSignIn, 500);
             }
         }
 
@@ -1070,6 +1074,27 @@
             if (loadingEl) loadingEl.classList.add('hidden');
             googleLoginMode = 'student';
             updateDockUI('home');
+        }
+
+        // === رسالة ترحيب المعلم (Toast) ===
+        function showAdminToast() {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-green-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-extrabold text-lg flex items-center gap-3 transition-all duration-500';
+            toast.innerHTML = '<i class="fas fa-crown text-yellow-300 text-xl"></i> مرحباً بك، حساب معلم <i class="fas fa-check-circle"></i>';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -20px)';
+            document.body.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, 0)';
+            });
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -20px)';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
         }
 
         // ========== 2. محرك بناء الامتحانات (Quiz Builder) ==========
@@ -1538,6 +1563,11 @@
                 document.getElementById('dashboard-view').classList.remove('hidden');
                 document.getElementById('ios-bottom-nav').classList.remove('hidden');
 
+                // رسالة ترحيب خاصة للمعلم (حساب أدمن)
+                if (data.user.role === 'admin') {
+                    showAdminToast();
+                }
+
                 navToHome();
                 renderDashboard();
             } catch (err) {
@@ -1782,49 +1812,73 @@ function loadApp() {
                 }
 
                 if (savedUser) {
-                    currentUser = JSON.parse(savedUser);
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('dashboard-view').classList.remove('hidden');
-                    document.getElementById('ios-bottom-nav').classList.remove('hidden');
+                    const parsed = JSON.parse(savedUser);
                     
-                    const greetings = [
-                        `أهلاً بك مجدداً يا ${currentUser.fname}، واصل تقدمك!`,
-                        `نورت المنصة يا ${currentUser.fname}.`
-                    ];
-                    document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
+                    // لو مفيش توكن (جلسة قديمة بدون Google) → امسحها واطلب تسجيل دخول جديد
+                    if (!parsed.token) {
+                        localStorage.removeItem('currentUser');
+                        showLoginScreen();
+                        return;
+                    }
                     
-                    navToHome();
-                    renderDashboard();
-                } else {
-                    document.getElementById('login-screen').classList.remove('hidden');
-                    document.getElementById('dashboard-view').classList.add('hidden');
-                    document.getElementById('ios-bottom-nav').classList.add('hidden');
-                }
-            // استعادة حالة الأدمن من التوكن المحفوظ
-                const savedToken = localStorage.getItem('adminToken');
-                if (savedToken) {
-                    adminToken = savedToken;
-                    fetch('/api/auth/verify-admin', {
-                        headers: { 'Authorization': 'Bearer ' + savedToken }
-                    }).then(res => res.json()).then(data => {
-                        if (data.isAdmin) {
+                    // تحقق من التوكن مع السيرفر
+                    fetch('/api/auth/me', {
+                        headers: { 'Authorization': 'Bearer ' + parsed.token }
+                    }).then(res => {
+                        if (!res.ok) throw new Error('invalid');
+                        return res.json();
+                    }).then(data => {
+                        currentUser = {
+                            fname: data.user.fname || parsed.fname,
+                            lname: data.user.lname || parsed.lname,
+                            fullName: data.user.fullName || parsed.fullName,
+                            avatar: data.user.avatar || parsed.avatar || '',
+                            token: parsed.token,
+                            role: data.user.role
+                        };
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        
+                        document.getElementById('login-screen').classList.add('hidden');
+                        document.getElementById('dashboard-view').classList.remove('hidden');
+                        document.getElementById('ios-bottom-nav').classList.remove('hidden');
+                        
+                        const greetings = [
+                            `أهلاً بك مجدداً يا ${currentUser.fname}، واصل تقدمك!`,
+                            `نورت المنصة يا ${currentUser.fname}.`
+                        ];
+                        document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
+                        
+                        // استعادة حالة الأدمن
+                        if (data.user.role === 'admin') {
                             isAdmin = true;
-                        } else {
-                            localStorage.removeItem('adminToken');
-                            localStorage.removeItem('adminUser');
-                            adminToken = null;
+                            adminToken = parsed.token;
+                            localStorage.setItem('adminToken', parsed.token);
                         }
+                        
+                        navToHome();
+                        renderDashboard();
                     }).catch(() => {
+                        // التوكن منتهي أو غلط → امسحه واطلب تسجيل جديد
+                        localStorage.removeItem('currentUser');
                         localStorage.removeItem('adminToken');
                         localStorage.removeItem('adminUser');
-                        adminToken = null;
+                        showLoginScreen();
                     });
+                } else {
+                    showLoginScreen();
                 }
             } catch (e) {
                 console.warn("تعذر الوصول للذاكرة المحلية:", e);
-                // تفعيل وضع الزائر العادي في حالة فشل الذاكرة
-                document.getElementById('login-screen').classList.remove('hidden');
+                showLoginScreen();
             }
+        }
+
+        function showLoginScreen() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('ios-bottom-nav').classList.add('hidden');
+            // عرض زر Google لما الشاشة تظهر
+            setTimeout(() => renderStudentGoogleButton(), 300);
         }
                       function renderDashboard() {
             // --- 1. عرض آخر 4 امتحانات بتصميم احترافي (أزرق) ---
@@ -2501,7 +2555,10 @@ function updateExistingQuiz(index) {
             saveBtn.innerText = "حفظ الامتحان في السجل";
             saveBtn.onclick = saveBuiltQuiz;
         }
-        window.onload = loadApp;
+        window.onload = function() {
+            initGoogleSignIn();
+            loadApp();
+        };
     </script>
 </body>
 </html>
