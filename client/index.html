@@ -691,6 +691,65 @@
         const nextButton = document.getElementById('next-btn');
         const previousButton = document.getElementById('previous-btn');
         const submitButton = document.getElementById('submit-btn');
+
+        // ============================================
+        //        دوال الاتصال بالسيرفر (API)
+        // ============================================
+        function getAuthHeaders() {
+            const token = currentUser && currentUser.token ? currentUser.token : localStorage.getItem('adminToken');
+            return {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            };
+        }
+
+        async function apiCall(method, url, body) {
+            const opts = { method, headers: getAuthHeaders() };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(url, opts);
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'خطأ في الاتصال بالسيرفر');
+            }
+            return res.json();
+        }
+
+        async function loadDataFromServer() {
+            if (!currentUser || !currentUser.token) return;
+            try {
+                const [quizzes, notes] = await Promise.all([
+                    apiCall('GET', '/api/quizzes').catch(() => []),
+                    apiCall('GET', '/api/notes').catch(() => [])
+                ]);
+                // تحويل بيانات السيرفر لصيغة الفرونت
+                allQuizzes = (quizzes || []).map(q => ({
+                    id: q.id,
+                    config: {
+                        id: q.id,
+                        title: q.title,
+                        subject: q.subject,
+                        description: q.description || '',
+                        timeLimit: q.timeLimit || 1500,
+                        closingMessage: q.closingMessage || 'شكراً لمشاركتك!'
+                    },
+                    questions: q.questions || []
+                }));
+                allNotes = (notes || []).map(n => ({
+                    id: n.id,
+                    config: {
+                        id: n.id,
+                        title: n.title,
+                        subject: n.subject,
+                        link: n.link || '',
+                        type: n.fileType || 'pdf',
+                        description: n.description || ''
+                    }
+                }));
+            } catch (e) {
+                console.warn('تعذر تحميل البيانات:', e.message);
+            }
+        }
+
         // ============================================
         // استخراج كل المواد (الأساسية + أي مادة جديدة يكتبها المستخدم)
         function getDynamicSubjects() {
@@ -981,7 +1040,9 @@
             if (typeof google !== 'undefined' && google.accounts) {
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
-                    callback: handleGoogleCallback
+                    callback: handleGoogleCallback,
+                    ux_mode: 'popup',
+                    itp_support: true
                 });
                 // عرض زر الطالب على شاشة الدخول
                 renderStudentGoogleButton();
@@ -1280,19 +1341,29 @@
         function submitQuiz() {
             clearInterval(timerInterval);
             
-            // === (جديد) حفظ النتيجة في لوحة الشرف ===
-            // التأكد من أن المستخدم مسجل الدخول
+            // === حفظ النتيجة على السيرفر + محلياً ===
             if (currentUser) {
                 const resultEntry = {
-                    userName: currentUser.fullName, // الاسم الكامل
+                    userName: currentUser.fullName,
                     quizTitle: currentQuizData.config.title,
                     score: score,
                     total: totalQuestions,
                     date: new Date().toLocaleDateString('ar-EG')
                 };
                 allUserScores.push(resultEntry);
-                // حفظ البيانات في المتصفح لكي تظل موجودة بعد التحديث
                 localStorage.setItem('allUserScores', JSON.stringify(allUserScores));
+                
+                // إرسال النتيجة للسيرفر
+                if (currentQuizData.id) {
+                    apiCall('POST', '/api/scores', {
+                        quizId: currentQuizData.id,
+                        answers: userAnswers.map((a, i) => ({
+                            questionId: currentQuizData.questions[i]?.id || i,
+                            selectedIndex: a ? a.selectedIndex : -1
+                        })),
+                        timeTaken: currentQuizData.config.timeLimit - timeRemaining
+                    }).catch(e => console.warn('تعذر حفظ النتيجة:', e.message));
+                }
             }
             // ========================================
 
@@ -1401,7 +1472,7 @@
 
         // ========== 3. حفظ مسودة الامتحان في السجل (الشجرة) ==========
         // ========== 3. حفظ مسودة الامتحان في السجل (الشجرة) ==========
-        function saveBuiltQuiz() {
+        async function saveBuiltQuiz() {
             updateBuilderData(); // حفظ آخر تعديل في الشاشة
 
             // فحص سريع للتأكد أن الأسئلة غير فارغة
@@ -1412,14 +1483,32 @@
                 }
             }
 
-            // 1. إضافة الامتحان لمصفوفة الامتحانات الفعلية
-            allQuizzes.push(quizDraft);
+            try {
+                // حفظ على السيرفر
+                const saved = await apiCall('POST', '/api/quizzes', {
+                    title: quizDraft.config.title,
+                    subject: quizDraft.config.subject,
+                    description: quizDraft.config.description || '',
+                    timeLimit: quizDraft.config.timeLimit,
+                    closingMessage: quizDraft.config.closingMessage || '',
+                    questions: quizDraft.questions
+                });
+                
+                // إضافة للمصفوفة المحلية بالـ id من السيرفر
+                quizDraft.id = saved.id || saved.quiz?.id;
+                quizDraft.config.id = quizDraft.id;
+                allQuizzes.push(quizDraft);
 
-            alert("✅ تم بناء الاختبار وحفظه في السجل بنجاح!");
+                alert("✅ تم بناء الاختبار وحفظه بنجاح!");
+            } catch(e) {
+                // حفظ محلي كـ fallback
+                allQuizzes.push(quizDraft);
+                alert("✅ تم حفظ الاختبار محلياً (تعذر الحفظ على السيرفر: " + e.message + ")");
+            }
             
             closeCreateSection();
-            renderHistoryTree(); // تحديث الشجرة بالفلاتر الجديدة
-            renderDashboard();   // تحديث الصفحة الرئيسية
+            renderHistoryTree();
+            renderDashboard();
         }
         function playQuiz(index) {
             // 1. استدعاء بيانات الاختبار
@@ -1473,9 +1562,14 @@
             }
         }
 
-        // 3. دوال وهمية مؤقتة لمنع الأخطاء حتى نربط السيرفر
+        // 3. جلب البيانات من السيرفر
         async function fetchQuizzesFromServer() {
-            return []; // يعيد مصفوفة فارغة حالياً
+            try {
+                return await apiCall('GET', '/api/quizzes');
+            } catch(e) {
+                console.warn('تعذر جلب الامتحانات:', e.message);
+                return [];
+            }
         }
 
         function loadQuizList() {
@@ -1568,6 +1662,8 @@
                     showAdminToast();
                 }
 
+                // تحميل البيانات من السيرفر
+                await loadDataFromServer();
                 navToHome();
                 renderDashboard();
             } catch (err) {
@@ -1855,8 +1951,11 @@ function loadApp() {
                             localStorage.setItem('adminToken', parsed.token);
                         }
                         
-                        navToHome();
-                        renderDashboard();
+                        // تحميل البيانات من السيرفر
+                        loadDataFromServer().then(() => {
+                            navToHome();
+                            renderDashboard();
+                        });
                     }).catch(() => {
                         // التوكن منتهي أو غلط → امسحه واطلب تسجيل جديد
                         localStorage.removeItem('currentUser');
@@ -2415,7 +2514,7 @@ function loadApp() {
             editingNoteIndex = -1;
         }
 
-        function saveNote() {
+        async function saveNote() {
             const title = document.getElementById('new-n-title').value.trim();
             const subject = document.getElementById('new-n-subject').value.trim();
             const link = document.getElementById('new-n-link').value.trim();
@@ -2425,20 +2524,43 @@ function loadApp() {
                 return;
             }
 
-            const newNote = {
-                // وحدنا شكل البيانات لتشبه الامتحانات لتعمل الشجرة بكفاءة
-                config: {
-                    id: 'note-' + Date.now(),
-                    title: title,
-                    subject: subject,
-                    link: link,
-                    type: document.getElementById('new-n-type').value,
-                    description: document.getElementById('new-n-desc').value.trim()
-                }
+            const noteData = {
+                title: title,
+                subject: subject,
+                link: link,
+                fileType: document.getElementById('new-n-type').value,
+                description: document.getElementById('new-n-desc').value.trim()
             };
 
-            allNotes.push(newNote);
-            alert("✅ تم إضافة الملف بنجاح!");
+            try {
+                const saved = await apiCall('POST', '/api/notes', noteData);
+                const newNote = {
+                    id: saved.id || saved.note?.id,
+                    config: {
+                        id: saved.id || saved.note?.id || 'note-' + Date.now(),
+                        title: title,
+                        subject: subject,
+                        link: link,
+                        type: noteData.fileType,
+                        description: noteData.description
+                    }
+                };
+                allNotes.push(newNote);
+                alert("✅ تم إضافة الملف بنجاح!");
+            } catch(e) {
+                const newNote = {
+                    config: {
+                        id: 'note-' + Date.now(),
+                        title: title,
+                        subject: subject,
+                        link: link,
+                        type: noteData.fileType,
+                        description: noteData.description
+                    }
+                };
+                allNotes.push(newNote);
+                alert("✅ تم إضافة الملف محلياً (" + e.message + ")");
+            }
             closeAddNoteModal();
             
             // التأكد من فتح قسم المذكرات حتى يرى الأدمن ما أضافه
