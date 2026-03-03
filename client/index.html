@@ -359,14 +359,15 @@
         #theme-toggle i { font-size: 18px; }
         @media (max-width: 640px) {
             #theme-toggle {
-                top: 12px;
-                bottom: auto;
-                left: 12px;
-                right: auto;
+                position: fixed !important;
+                top: calc(env(safe-area-inset-top) + 8px) !important;
+                bottom: auto !important;
+                left: 12px !important;
+                right: auto !important;
                 width: 42px;
                 height: 42px;
-                z-index: 95;
-                position: fixed;
+                z-index: 130;
+                transform: translateZ(0);
             }
             #theme-toggle i { font-size: 16px; }
         }
@@ -1246,7 +1247,6 @@
         function openAdminAuthOrPanel() {
             closeAllOverlays(); // إغلاق كل شيء أولاً
             updateDockUI('settings');
-            _showThemeToggle(false);
             if (isAdmin) {
                 document.getElementById('admin-overlay').classList.add('active');
                 document.getElementById('admin-content').classList.add('active');
@@ -1254,6 +1254,8 @@
                 googleLoginMode = 'admin';
                 document.getElementById('admin-auth-modal').classList.remove('hidden');
             }
+            _showThemeToggle(false);
+            _syncMainInteractionState();
         }
 
         // دوال فتح وإغلاق النوافذ السفلية (Bottom Sheets) بنعومة
@@ -1280,13 +1282,14 @@
         function _showThemeToggle(show) {
             const t = document.getElementById('theme-toggle');
             if (!t) return;
-            if (!show) { t.style.display = 'none'; _syncMainInteractionState(); return; }
+            if (!show) { t.style.display = 'none'; return; }
             _syncMainInteractionState();
         }
         function openBottomSheet() {
             document.getElementById('tree-overlay').classList.add('active');
             document.getElementById('tree-content').classList.add('active');
             _showThemeToggle(false);
+            _syncMainInteractionState();
         }
         function closeBottomSheet() {
             document.getElementById('tree-overlay').classList.remove('active');
