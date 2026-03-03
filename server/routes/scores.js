@@ -141,8 +141,9 @@ router.get('/my', authenticate, async (req, res) => {
 
         res.json(scores);
     } catch (error) {
-        logger.error('خطأ في جلب الدرجات:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+        const dbMsg = error.original?.message || error.parent?.message || error.message;
+        logger.error('خطأ في جلب الدرجات:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({ error: 'حدث خطأ.', debug: dbMsg });
     }
 });
 
@@ -160,34 +161,26 @@ router.get('/my', authenticate, async (req, res) => {
  */
 router.get('/leaderboard', authenticate, async (req, res) => {
     try {
-        // تجميع النتائج حسب المستخدم
-        const leaderboard = await Score.findAll({
-            attributes: [
-                'userId',
-                [sequelize.fn('SUM', sequelize.col('score')), 'totalScore'],
-                [sequelize.fn('SUM', sequelize.col('total')), 'totalMax'],
-                [sequelize.fn('COUNT', sequelize.col('Score.id')), 'examsCount'],
-                [sequelize.fn('AVG', sequelize.col('percentage')), 'avgPercentage'],
-                [sequelize.fn('SUM',
-                    sequelize.literal('CASE WHEN `Score`.`score` = `Score`.`total` THEN 1 ELSE 0 END')
-                ), 'fullMarksCount']
-            ],
-            include: [{
-                model: User,
-                as: 'user',
-                attributes: ['fname', 'lname']
-            }],
-            group: ['userId', 'user.id', 'user.fname', 'user.lname'],
-            order: [[sequelize.fn('AVG', sequelize.col('percentage')), 'DESC']],
-            limit: 50,
-            raw: true,
-            nest: true
-        });
+        const [rows] = await sequelize.query(`
+            SELECT
+                s.userId,
+                u.fname,
+                u.lname,
+                SUM(s.score)      AS totalScore,
+                SUM(s.total)      AS totalMax,
+                COUNT(s.id)       AS examsCount,
+                AVG(s.percentage) AS avgPercentage,
+                SUM(CASE WHEN s.score = s.total THEN 1 ELSE 0 END) AS fullMarksCount
+            FROM scores s
+            INNER JOIN users u ON s.userId = u.id
+            WHERE s.deletedAt IS NULL
+            GROUP BY s.userId, u.fname, u.lname
+            ORDER BY avgPercentage DESC
+            LIMIT 50
+        `);
 
-        const result = leaderboard.map(entry => ({
-            userName: entry.user && entry.user.fname
-                ? `${entry.user.fname} ${entry.user.lname}`
-                : 'مستخدم محذوف',
+        const result = rows.map(entry => ({
+            userName: entry.fname ? `${entry.fname} ${entry.lname || ''}`.trim() : 'مستخدم محذوف',
             totalScore: parseInt(entry.totalScore) || 0,
             totalMax: parseInt(entry.totalMax) || 0,
             examsCount: parseInt(entry.examsCount) || 0,
@@ -197,8 +190,9 @@ router.get('/leaderboard', authenticate, async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        logger.error('خطأ في جلب لوحة الشرف:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+        const dbMsg = error.original?.message || error.parent?.message || error.message;
+        logger.error('خطأ في جلب لوحة الشرف:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({ error: 'حدث خطأ.', debug: dbMsg });
     }
 });
 
