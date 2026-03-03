@@ -1064,6 +1064,7 @@
                 console.log('✅ تم جلب الدرجات من السيرفر:', data.length, 'مسار', endpoint);
                 return data.map(item => ({
                     userName: item.userName || (item.user ? `${item.user.fname || ''} ${item.user.lname || ''}`.trim() : 'طالب'),
+                    quizId: item.quizId || (item.quiz ? item.quiz.id : item.quiz?.quizId) || null,
                     quizTitle: item.quizTitle || (item.quiz ? item.quiz.title : 'امتحان'),
                     quizSubject: item.quizSubject || (item.quiz ? item.quiz.subject : ''),
                     score: Number(item.score) || 0,
@@ -2097,6 +2098,15 @@
         function playQuiz(index) {
             // 1. استدعاء بيانات الاختبار
             currentQuizData = allQuizzes[index];
+            const quizId = currentQuizData.id || currentQuizData.config?.id;
+
+            // منع إعادة الامتحان لنفس الحساب (حتى لو أدمن)
+            const takenServer = serverScores.find(s => s.quizId && quizId && String(s.quizId) === String(quizId));
+            const takenLocal = (!takenServer && currentUser) ? allUserScores.find(s => s.quizTitle === currentQuizData.config.title && s.userName === currentUser.fullName) : null;
+            if (takenServer || takenLocal) {
+                alert('⚠️ لقد أجبت على هذا الامتحان من قبل. لا يمكن إعادته بنفس الحساب.');
+                return;
+            }
             totalQuestions = currentQuizData.questions.length;
             
             // 2. تصفير العدادات
@@ -2740,14 +2750,27 @@ function loadApp() {
                 if (scoresWithPercent.length === 0) {
                     leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج مسجلة بعد.</div>`;
                 } else {
+                    let rank = 0;
+                    let prevPercent = null;
+                    let repeatIndex = 0;
+
                     scoresWithPercent.slice(0,3).forEach((entry, idx) => {
+                        if (prevPercent === null || entry.percent !== prevPercent) {
+                            rank += 1;
+                            repeatIndex = 0;
+                            prevPercent = entry.percent;
+                        } else {
+                            repeatIndex += 1;
+                        }
+
                         const colors = [
                             'bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700',
                             'bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600',
                             'bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700'
                         ];
                         const medals = ['🥇', '🥈', '🥉'];
-                        const rankText = [`المركز الأول`, `المركز الثاني`, `المركز الثالث`][idx] || 'متقدم';
+                        const baseRankText = [`المركز الأول`, `المركز الثاني`, `المركز الثالث`][rank - 1] || 'متقدم';
+                        const rankText = repeatIndex > 0 ? `${baseRankText} (${repeatIndex === 1 ? 'أول' : repeatIndex === 2 ? 'ثاني' : 'مكرر'} مكرر)` : baseRankText;
 
                         leaderboardList.innerHTML += `
                             <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[idx] || 'bg-gray-50'} shadow-sm">
@@ -2778,12 +2801,14 @@ function loadApp() {
 
                 let rank = 0;
                 let prevCount = null;
+                let prevBest = null;
                 let repeatIndex = 0;
 
                 rankedFullMarks.forEach((entry) => {
-                    if (entry.fullMarksCount !== prevCount) {
+                    if (entry.fullMarksCount !== prevCount || entry.bestPercent !== prevBest) {
                         rank += 1;
                         prevCount = entry.fullMarksCount;
+                        prevBest = entry.bestPercent;
                         repeatIndex = 0;
                     } else {
                         repeatIndex += 1;
