@@ -93,7 +93,7 @@ export function renderDashboard() {
         latestNotesGrid.innerHTML = notesHtml;
     }
 
-    // --- 3. لوحة الشرف: أعلى 3 حسب عدد الامتحانات المقفولة ---
+    // --- 3. لوحة الشرف: أعلى 3 بمجموع الدرجات في كل الامتحانات ---
     const leaderboardList = document.getElementById('leaderboard-list');
     leaderboardList.innerHTML = '';
 
@@ -101,108 +101,43 @@ export function renderDashboard() {
     if (state.serverLeaderboard && state.serverLeaderboard.length > 0) {
         sourceLeaderboard = state.serverLeaderboard.map(item => ({
             userName: item.userName || 'طالب',
-            fullMarksCount: Number(item.fullMarksCount) || 0,
-            bestPercent: Number(item.avgPercentage) || 0
+            totalScore: Number(item.totalScore) || 0,
+            totalMax: Number(item.totalMax) || 0,
+            examsCount: Number(item.examsCount) || 0,
+            avgPercentage: Number(item.avgPercentage) || 0
         }));
     } else {
-        const fullMarksByUser = {};
+        const scoresByUser = {};
         state.allUserScores.forEach(entry => {
             const userName = entry.userName || 'طالب';
             const total = Number(entry.total) || 0;
             const score = Number(entry.score) || 0;
             if (total <= 0) return;
-
-            if (!fullMarksByUser[userName]) {
-                fullMarksByUser[userName] = { userName, fullMarksCount: 0, bestPercent: 0 };
+            if (!scoresByUser[userName]) {
+                scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0 };
             }
-
-            const percent = Math.round((score / total) * 100);
-            if (percent > fullMarksByUser[userName].bestPercent) {
-                fullMarksByUser[userName].bestPercent = percent;
-            }
-            if (score === total) {
-                fullMarksByUser[userName].fullMarksCount += 1;
-            }
+            scoresByUser[userName].totalScore += score;
+            scoresByUser[userName].totalMax += total;
+            scoresByUser[userName].examsCount += 1;
         });
-        sourceLeaderboard = Object.values(fullMarksByUser);
+        sourceLeaderboard = Object.values(scoresByUser).map(u => ({
+            ...u,
+            avgPercentage: u.totalMax > 0 ? Math.round((u.totalScore / u.totalMax) * 100) : 0
+        }));
     }
 
-    const rankedFullMarks = sourceLeaderboard
-        .filter(item => item.fullMarksCount > 0)
+    const ranked = sourceLeaderboard
+        .filter(item => item.totalScore > 0)
         .sort((a, b) => {
-            if (b.fullMarksCount !== a.fullMarksCount) return b.fullMarksCount - a.fullMarksCount;
-            if (b.bestPercent !== a.bestPercent) return b.bestPercent - a.bestPercent;
+            if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+            if (b.avgPercentage !== a.avgPercentage) return b.avgPercentage - a.avgPercentage;
             return String(a.userName).localeCompare(String(b.userName), 'ar');
         });
 
-    if (rankedFullMarks.length === 0) {
-        // بديل: اعرض أعلى 3 نسب مئوية من بيانات السيرفر الكاملة
-        const sourceForPercent = state.serverLeaderboard.length > 0
-            ? state.serverLeaderboard.map(e => ({
-                userName: e.userName || 'طالب',
-                percent: Number(e.avgPercentage) || 0
-            }))
-            : state.allUserScores
-                .filter(e => Number(e.total) > 0)
-                .map(e => ({
-                    userName: e.userName || 'طالب',
-                    percent: Math.round((Number(e.score) / Number(e.total)) * 100)
-                }));
-
-        const scoresWithPercent = sourceForPercent
-            .filter(e => e.percent > 0)
-            .sort((a, b) => b.percent - a.percent);
-
-        if (scoresWithPercent.length === 0) {
-            leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج مسجلة بعد.</div>`;
-        } else {
-            let rank = 0;
-            let prevPercent = null;
-            let repeatIndex = 0;
-            let lbHtml = '';
-
-            scoresWithPercent.slice(0, 3).forEach((entry) => {
-                if (prevPercent === null || entry.percent !== prevPercent) {
-                    rank += 1;
-                    repeatIndex = 0;
-                    prevPercent = entry.percent;
-                } else {
-                    repeatIndex += 1;
-                }
-
-                const colors = [
-                    'bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700',
-                    'bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600',
-                    'bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700'
-                ];
-                const medals = ['🥇', '🥈', '🥉'];
-                const colorIdx = Math.min(rank - 1, colors.length - 1);
-                const medal = medals[Math.min(rank - 1, medals.length - 1)] || '⭐';
-                const baseRankText = ['المركز الأول', 'المركز الثاني', 'المركز الثالث'][rank - 1] || 'متقدم';
-                const rankText = repeatIndex > 0 ? `${baseRankText} (${repeatIndex === 1 ? 'أول' : repeatIndex === 2 ? 'ثاني' : 'مكرر'} مكرر)` : baseRankText;
-                const safeName = escapeHtml(entry.userName);
-
-                lbHtml += `
-                    <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[colorIdx] || 'bg-gray-50'} shadow-sm">
-                        <div class="flex items-center gap-4">
-                            <span class="text-3xl drop-shadow-sm">${medal}</span>
-                            <div>
-                                <p class="font-black text-gray-800 text-lg">${safeName}</p>
-                                <p class="text-xs font-bold opacity-80 mt-0.5">${rankText}</p>
-                            </div>
-                        </div>
-                        <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
-                            <span class="font-black text-base">${entry.percent}%</span>
-                            <p class="text-[11px] text-gray-500 font-bold mt-0.5">أعلى نسبة</p>
-                        </div>
-                    </div>
-                `;
-            });
-            leaderboardList.innerHTML = lbHtml;
-        }
+    if (ranked.length === 0) {
+        leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج مسجلة بعد.</div>`;
     } else {
         const rankNames = ['المركز الأول', 'المركز الثاني', 'المركز الثالث'];
-        const repeatNames = ['أول', 'ثاني', 'ثالث', 'رابع', 'خامس'];
         const colors = [
             'bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700',
             'bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600',
@@ -210,51 +145,26 @@ export function renderDashboard() {
         ];
         const medals = ['🥇', '🥈', '🥉'];
 
-        let rank = 0;
-        let prevCount = null;
-        let prevBest = null;
-        let repeatIndex = 0;
-        let lbHtml2 = '';
-
-        rankedFullMarks.forEach((entry) => {
-            if (entry.fullMarksCount !== prevCount || entry.bestPercent !== prevBest) {
-                rank += 1;
-                prevCount = entry.fullMarksCount;
-                prevBest = entry.bestPercent;
-                repeatIndex = 0;
-            } else {
-                repeatIndex += 1;
-            }
-
-            if (rank > 3) return;
-
-            const repeatText = repeatIndex > 0
-                ? ` (${(repeatNames[repeatIndex - 1] || repeatIndex)} مكرر)`
-                : '';
-            const rankText = `${rankNames[rank - 1]}${repeatText}`;
+        let lbHtml = '';
+        ranked.slice(0, 3).forEach((entry, i) => {
             const safeName = escapeHtml(entry.userName);
-
-            lbHtml2 += `
-                <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[rank - 1] || 'bg-gray-50'} shadow-sm">
+            lbHtml += `
+                <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[i] || 'bg-gray-50'} shadow-sm">
                     <div class="flex items-center gap-4">
-                        <span class="text-3xl drop-shadow-sm">${medals[rank - 1]}</span>
+                        <span class="text-3xl drop-shadow-sm">${medals[i]}</span>
                         <div>
                             <p class="font-black text-gray-800 text-lg">${safeName}</p>
-                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankText}</p>
+                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankNames[i]}</p>
                         </div>
                     </div>
                     <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
-                        <span class="font-black text-base">${entry.fullMarksCount} امتحان</span>
-                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">درجة كاملة</p>
+                        <span class="font-black text-base">${entry.totalScore}/${entry.totalMax}</span>
+                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">${entry.examsCount} امتحان — ${entry.avgPercentage}%</p>
                     </div>
                 </div>
             `;
         });
-        leaderboardList.innerHTML = lbHtml2;
-
-        if (!leaderboardList.innerHTML.trim()) {
-            leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج ضمن أول 3 مراكز بعد.</div>`;
-        }
+        leaderboardList.innerHTML = lbHtml;
     }
     console.log(`[dashboard] ✓ تم رسم لوحة التحكم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${sourceLeaderboard.length} في الشرف`);
 }
