@@ -216,12 +216,17 @@ export async function saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDas
             questions: state.quizDraft.questions
         });
 
-        const serverId = saved.quiz?.id || saved.id;
+        const serverQuiz = saved.quiz || saved;
+        const serverId = serverQuiz.id;
         state.quizDraft.id = serverId;
         state.quizDraft.config.id = serverId;
+        // تحديث الأسئلة بالـ UUIDs اللي السيرفر أضافها — ضروري لحساب الدرجة صح
+        if (serverQuiz.questions) {
+            state.quizDraft.questions = serverQuiz.questions;
+        }
         state.allQuizzes.push(state.quizDraft);
 
-        console.log(`[saveQuiz] ✓ تم الحفظ على السيرفر — ID: ${serverId}, العنوان: "${state.quizDraft.config.title}"`);
+        console.log(`[saveQuiz] ✓ تم الحفظ على السيرفر — ID: ${serverId}, العنوان: "${state.quizDraft.config.title}", أسئلة بـ UUID: ${!!serverQuiz.questions}`);
         showAlert('✅ تم بناء الاختبار وحفظه بنجاح!');
     } catch (e) {
         console.error(`[saveQuiz] ✗ فشل الحفظ على السيرفر:`, e.message);
@@ -282,7 +287,7 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
     const quizId = state.allQuizzes[index].id || state.allQuizzes[index].config?.id;
     console.log(`[updateQuiz] بدء تحديث الامتحان — ID: ${quizId}, العنوان: "${state.quizDraft.config.title}"`);
     try {
-        await apiCall('PUT', '/api/quizzes/' + quizId, {
+        const saved = await apiCall('PUT', '/api/quizzes/' + quizId, {
             title: state.quizDraft.config.title,
             subject: state.quizDraft.config.subject,
             description: state.quizDraft.config.description || '',
@@ -291,7 +296,12 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
             questions: state.quizDraft.questions,
             isActive: true
         });
-        console.log(`[updateQuiz] ✓ تم التحديث على السيرفر — ID: ${quizId}`);
+        // تحديث الأسئلة بالـ UUIDs اللي السيرفر أضافها
+        const serverQuiz = saved.quiz || saved;
+        if (serverQuiz.questions) {
+            state.quizDraft.questions = serverQuiz.questions;
+        }
+        console.log(`[updateQuiz] ✓ تم التحديث على السيرفر — ID: ${quizId}, أسئلة بـ UUID: ${!!serverQuiz.questions}`);
         showAlert('✅ تم تحديث الامتحان بنجاح!');
     } catch (e) {
         console.error(`[updateQuiz] ✗ فشل التحديث:`, e.message);
