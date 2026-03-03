@@ -756,7 +756,47 @@ select {
     -webkit-box-orient: vertical;
 }
 
-/* === Quiz Container Mobile Fixes === */
+/* === Mobile: prevent ALL modals from hiding behind bottom nav === */
+@media (max-width: 767px) {
+    /* Push all modal overlays up to clear the ~80px fixed bottom nav */
+    [id$="-modal"]:not(#confirm-modal-overlay) {
+        padding-bottom: max(5.5rem, calc(5rem + env(safe-area-inset-bottom))) !important;
+        align-items: flex-end !important;
+        padding-top: 0.5rem !important;
+    }
+    /* Inner modal box: fill available height correctly */
+    [id$="-modal"]:not(#confirm-modal-overlay) > div {
+        max-height: calc(100vh - 5.5rem - env(safe-area-inset-bottom, 0px)) !important;
+        max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px)) !important;
+        height: auto !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        border-top-left-radius: 1.5rem !important;
+        border-top-right-radius: 1.5rem !important;
+    }
+    /* Scrollable inner body of modals */
+    [id$="-modal"] .overflow-y-auto {
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Small confirmation/alert modals stay centered */
+    #admin-auth-modal,
+    #delete-subject-modal,
+    #rename-subject-modal,
+    #student-menu-modal {
+        align-items: center !important;
+        padding-bottom: max(5.5rem, calc(5rem + env(safe-area-inset-bottom))) !important;
+    }
+    #admin-auth-modal > div,
+    #delete-subject-modal > div,
+    #rename-subject-modal > div,
+    #student-menu-modal > div {
+        border-radius: 1.5rem !important;
+        max-height: calc(100dvh - 7rem) !important;
+        overflow-y: auto !important;
+    }
+}
 @media (max-width: 640px) {
     #quiz-container {
         padding: 1rem !important;
