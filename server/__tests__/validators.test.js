@@ -65,14 +65,13 @@ async function runValidators(validators, body) {
 
 describe('validateCreateQuiz deep questions validation', () => {
     const validQuestion = {
-        text: 'What is 2 + 2?',
+        question: 'What is 2 + 2?',
         answerOptions: [
             { text: 'One' },
             { text: 'Two' },
             { text: 'Three' },
-            { text: 'Four' }
-        ],
-        correctAnswer: 3
+            { text: 'Four', isCorrect: true }
+        ]
     };
 
     test('valid quiz should pass validation', async () => {
@@ -97,7 +96,7 @@ describe('validateCreateQuiz deep questions validation', () => {
         const result = await runValidators(validateCreateQuiz, {
             title: 'Math Quiz',
             subject: 'Math',
-            questions: [{ ...validQuestion, text: '' }]
+            questions: [{ ...validQuestion, question: '' }]
         });
         expect(result.isEmpty()).toBe(false);
     });
@@ -117,27 +116,8 @@ describe('validateCreateQuiz deep questions validation', () => {
             subject: 'Math',
             questions: [{
                 ...validQuestion,
-                answerOptions: Array(7).fill({ text: 'Option' }),
-                correctAnswer: 0
+                answerOptions: Array(7).fill({ text: 'Option' })
             }]
-        });
-        expect(result.isEmpty()).toBe(false);
-    });
-
-    test('should reject correctAnswer out of range (negative)', async () => {
-        const result = await runValidators(validateCreateQuiz, {
-            title: 'Math Quiz',
-            subject: 'Math',
-            questions: [{ ...validQuestion, correctAnswer: -1 }]
-        });
-        expect(result.isEmpty()).toBe(false);
-    });
-
-    test('should reject correctAnswer out of range (> 5)', async () => {
-        const result = await runValidators(validateCreateQuiz, {
-            title: 'Math Quiz',
-            subject: 'Math',
-            questions: [{ ...validQuestion, correctAnswer: 6 }]
         });
         expect(result.isEmpty()).toBe(false);
     });

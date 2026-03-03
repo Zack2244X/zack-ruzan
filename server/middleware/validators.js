@@ -83,8 +83,8 @@ const validateCreateQuiz = [
     body('subject').trim().notEmpty().withMessage('المادة مطلوبة.')
         .isLength({ max: 100 }).withMessage('اسم المادة طويل جداً.'),
     body('questions').isArray({ min: 1, max: 200 }).withMessage('يجب إضافة سؤال واحد على الأقل (الحد الأقصى 200).'),
-    // Deep validation — each question
-    body('questions.*.text')
+    // Deep validation — each question (field name is "question", not "text")
+    body('questions.*.question')
         .trim().notEmpty().withMessage('نص كل سؤال مطلوب.')
         .isLength({ max: 2000 }).withMessage('نص السؤال طويل جداً (الحد 2000 حرف).'),
     body('questions.*.answerOptions')
@@ -92,8 +92,6 @@ const validateCreateQuiz = [
     body('questions.*.answerOptions.*.text')
         .trim().notEmpty().withMessage('نص كل خيار مطلوب.')
         .isLength({ max: 500 }).withMessage('نص الخيار طويل جداً.'),
-    body('questions.*.correctAnswer')
-        .isInt({ min: 0, max: 5 }).withMessage('الإجابة الصحيحة يجب أن تكون رقماً بين 0 و 5.'),
     body('timeLimit').optional().isInt({ min: 60, max: 7200 }).withMessage('المدة بين 1-120 دقيقة.'),
     validate
 ];
