@@ -3,11 +3,12 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v14';
+const CACHE_NAME = 'quiz-platform-v15';
 const STATIC_ASSETS = [
     '/css/styles.css',
     '/css/tailwind.css',
-    '/manifest.json'
+    '/manifest.json',
+    '/icons/bg.png'
 ];
 
 // Install — cache static assets only (CDN loaded by browser directly)

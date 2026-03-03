@@ -66,6 +66,10 @@ body {
     min-height: 100vh;
     position: relative;
     background: var(--bg);
+    background-image: url('/icons/bg.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
     color: var(--text);
     transition: background-color var(--transition-normal), color var(--transition-normal);
     -webkit-font-smoothing: antialiased;
