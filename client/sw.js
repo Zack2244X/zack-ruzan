@@ -3,7 +3,7 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v3';
+const CACHE_NAME = 'quiz-platform-v4';
 const STATIC_ASSETS = [
     '/',
     '/index.html',

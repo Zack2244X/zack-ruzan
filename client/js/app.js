@@ -285,6 +285,26 @@ Object.assign(window, {
     escapeHtml, showAlert, showConfirm, showLoading
 });
 
+console.log('✅ Module bindings ready. startGoogleRedirectLogin =', typeof window.startGoogleRedirectLogin);
+
+// Fallback: addEventListener for login button (in case onclick doesn't fire)
+document.addEventListener('DOMContentLoaded', () => {
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('🔵 Login button clicked (addEventListener)');
+            try {
+                startGoogleRedirectLogin('student');
+            } catch (err) {
+                console.error('❌ Login error:', err);
+                alert('خطأ في تسجيل الدخول: ' + err.message);
+            }
+        });
+        console.log('✅ Login button addEventListener attached');
+    }
+});
+
 // ============================================
 //  نقطة البداية
 // ============================================

@@ -12,25 +12,32 @@ import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, clo
  * @param {'student'|'admin'} mode — وضع التسجيل
  */
 export function startGoogleRedirectLogin(mode) {
-    const redirectMode = mode === 'admin' ? 'admin' : 'student';
-    const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    sessionStorage.setItem('googleLoginMode', redirectMode);
-    sessionStorage.setItem('googleNonce', nonce);
+    console.log('🔵 startGoogleRedirectLogin called with mode:', mode);
+    try {
+        const redirectMode = mode === 'admin' ? 'admin' : 'student';
+        const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        sessionStorage.setItem('googleLoginMode', redirectMode);
+        sessionStorage.setItem('googleNonce', nonce);
 
-    const currentUrl = new URL(window.location.href);
-    let redirectUri = currentUrl.origin + currentUrl.pathname;
-    if (redirectUri.endsWith('/')) redirectUri = redirectUri.slice(0, -1);
-    if (redirectUri.toLowerCase().endsWith('/index.html')) {
-        redirectUri = redirectUri.slice(0, -'/index.html'.length);
+        const currentUrl = new URL(window.location.href);
+        let redirectUri = currentUrl.origin + currentUrl.pathname;
+        if (redirectUri.endsWith('/')) redirectUri = redirectUri.slice(0, -1);
+        if (redirectUri.toLowerCase().endsWith('/index.html')) {
+            redirectUri = redirectUri.slice(0, -'/index.html'.length);
+        }
+        const oauthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        oauthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+        oauthUrl.searchParams.set('redirect_uri', redirectUri);
+        oauthUrl.searchParams.set('response_type', 'id_token');
+        oauthUrl.searchParams.set('scope', 'openid email profile');
+        oauthUrl.searchParams.set('nonce', nonce);
+        oauthUrl.searchParams.set('prompt', 'select_account');
+        console.log('🔵 Redirecting to:', oauthUrl.toString().substring(0, 100) + '...');
+        window.location.href = oauthUrl.toString();
+    } catch (err) {
+        console.error('❌ startGoogleRedirectLogin error:', err);
+        alert('خطأ في تسجيل الدخول: ' + err.message);
     }
-    const oauthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-    oauthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
-    oauthUrl.searchParams.set('redirect_uri', redirectUri);
-    oauthUrl.searchParams.set('response_type', 'id_token');
-    oauthUrl.searchParams.set('scope', 'openid email profile');
-    oauthUrl.searchParams.set('nonce', nonce);
-    oauthUrl.searchParams.set('prompt', 'select_account');
-    window.location.href = oauthUrl.toString();
 }
 
 /**
