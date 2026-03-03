@@ -76,8 +76,9 @@ router.get('/', authenticate, validatePagination, async (req, res) => {
 
         res.json({ data: quizzes, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
-        logger.error('خطأ في جلب الامتحانات:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ في جلب الامتحانات.' });
+        const dbMsg = error.original?.message || error.parent?.message || error.message;
+        logger.error('خطأ في جلب الامتحانات:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({ error: 'حدث خطأ في جلب الامتحانات.', debug: dbMsg });
     }
 });
 

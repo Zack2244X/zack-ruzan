@@ -272,8 +272,9 @@ router.get('/all', authenticate, requireAdmin, validatePagination, async (req, r
 
         res.json({ data: results, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
-        logger.error('خطأ في جلب كل النتائج:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+        const dbMsg = error.original?.message || error.parent?.message || error.message;
+        logger.error('خطأ في جلب كل النتائج:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({ error: 'حدث خطأ.', debug: dbMsg });
     }
 });
 

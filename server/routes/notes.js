@@ -50,8 +50,9 @@ router.get('/', authenticate, validatePagination, async (req, res) => {
 
         res.json({ data: notes, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
-        logger.error('خطأ في جلب المذكرات:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ في جلب المذكرات.' });
+        const dbMsg = error.original?.message || error.parent?.message || error.message;
+        logger.error('خطأ في جلب المذكرات:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({ error: 'حدث خطأ في جلب المذكرات.', debug: dbMsg });
     }
 });
 

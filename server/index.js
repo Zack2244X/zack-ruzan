@@ -332,6 +332,40 @@ let server;
  * @param {number} [retries=3] - Number of database connection attempts before giving up.
  * @returns {Promise<void>}
  */
+/**
+ * Safely adds missing columns to all tables using IF NOT EXISTS.
+ * Handles TiDB quirks where sequelize.sync({ alter }) may fail.
+ */
+async function runSafeMigrations() {
+    const migrations = [
+        // paranoid deletedAt columns
+        `ALTER TABLE \`users\`   ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
+        `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
+        `ALTER TABLE \`scores\`  ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
+        `ALTER TABLE \`notes\`   ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
+        // tokenVersion on users
+        `ALTER TABLE \`users\` ADD COLUMN IF NOT EXISTS \`tokenVersion\` INT NOT NULL DEFAULT 0`,
+        // percentage on scores
+        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`percentage\` FLOAT DEFAULT 0`,
+        // timeTaken on scores
+        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`timeTaken\` INT DEFAULT 0`,
+        // isActive on quizzes
+        `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`isActive\` TINYINT(1) DEFAULT 1`,
+        // createdBy on quizzes
+        `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`createdBy\` INT NULL DEFAULT NULL`,
+        // createdBy on notes
+        `ALTER TABLE \`notes\` ADD COLUMN IF NOT EXISTS \`createdBy\` INT NULL DEFAULT NULL`,
+    ];
+    for (const sql of migrations) {
+        try {
+            await sequelize.query(sql);
+        } catch (e) {
+            logger.warn(`⚠️ Migration skipped: ${e.message.substring(0, 80)}`);
+        }
+    }
+    logger.info('✅ Safe migrations complete.');
+}
+
 async function startServer(retries = 3) {
     const enableAlter = process.env.DB_SYNC_ALTER !== 'false';
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -363,6 +397,9 @@ async function startServer(retries = 3) {
             // Don't exit — let the server start and handle DB errors per-request
         }
     }
+
+    // Run explicit safe migrations for TiDB (IF NOT EXISTS — safe to run every time)
+    await runSafeMigrations();
 
     server = app.listen(PORT, () => {
         logger.info(`🚀 السيرفر شغال على: http://localhost:${PORT}`);
