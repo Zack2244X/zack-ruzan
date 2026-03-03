@@ -32,77 +32,108 @@ const JWT_SECRET = (() => {
 })();
 
 // ============================================
-//   سجل محاولات الدخول الفاشلة (في الذاكرة)
+//   سجل محاولات الدخول الفاشلة (قاعدة البيانات)
+//   — DB-backed: يبقى بعد restart وعبر instances —
+// ============================================
+const MAX_FAILED = 5;
+const LOCKOUT_TIME = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Checks whether the given IP is locked out (DB-backed, table: login_attempts).
+ * Fails open on DB error to avoid blocking legitimate users.
+ * @param {string} ip
+ * @returns {Promise<boolean>}
+ */
+async function checkBruteForce(ip) {
+    try {
+        const sequelize = require('../models/index');
+        const [[record]] = await sequelize.query(
+            'SELECT `count`, `last_attempt` FROM `login_attempts` WHERE `ip` = ?',
+            { replacements: [ip] }
+        );
+        if (!record) return false;
+        if (Date.now() - Number(record.last_attempt) > LOCKOUT_TIME) {
+            sequelize.query('DELETE FROM `login_attempts` WHERE `ip` = ?', { replacements: [ip] }).catch(() => {});
+            return false;
+        }
+        return Number(record.count) >= MAX_FAILED;
+    } catch {
+        return false; // fail open — لا نحجب المستخدمين لو DB غير متاحة
+    }
+}
+
+/**
+ * Records a failed login attempt via DB UPSERT.
+ * @param {string} ip
+ * @returns {Promise<void>}
+ */
+async function recordFailedAttempt(ip) {
+    try {
+        const sequelize = require('../models/index');
+        await sequelize.query(
+            'INSERT INTO `login_attempts` (`ip`, `count`, `last_attempt`) VALUES (?, 1, ?)' +
+            ' ON DUPLICATE KEY UPDATE `count` = `count` + 1, `last_attempt` = ?',
+            { replacements: [ip, Date.now(), Date.now()] }
+        );
+    } catch { /* fire-and-forget */ }
+}
+
+/**
+ * Clears failed login attempts for the given IP after a successful login.
+ * @param {string} ip
+ * @returns {Promise<void>}
+ */
+async function clearFailedAttempts(ip) {
+    try {
+        const sequelize = require('../models/index');
+        await sequelize.query('DELETE FROM `login_attempts` WHERE `ip` = ?', { replacements: [ip] });
+    } catch { /* fire-and-forget */ }
+}
+
+// ============================================
+//   CSRF Protection — Double Submit Cookie
 // ============================================
 /**
- * In-memory map tracking failed login attempts per IP address.
- * @type {Map<string, {count: number, lastAttempt: number}>}
+ * Sets a non-httpOnly CSRF token cookie that client JS reads and echoes
+ * back as the X-CSRF-Token header on every mutating request.
+ * The server compares header === cookie (Double Submit Cookie Pattern).
+ * Attackers from other origins cannot read our cookies, so they cannot forge the header.
+ * @param {import('express').Response} res
  */
-const failedAttempts = new Map();
+const setCsrfCookie = (res) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrf_token', token, {
+        httpOnly: false, // JS يجب أن يقرأ هذه القيمة
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/'
+    });
+};
 
 /**
- * Maximum failed login attempts before lockout.
- * @type {number}
- * @constant
+ * Clears the CSRF cookie on logout.
+ * @param {import('express').Response} res
  */
-const MAX_FAILED = 5;
+const clearCsrfCookie = (res) => {
+    res.clearCookie('csrf_token', { path: '/' });
+};
 
 /**
- * Lockout duration in milliseconds (30 minutes).
- * @type {number}
- * @constant
+ * Middleware: enforces CSRF double-submit cookie on mutating requests.
+ * GET / HEAD / OPTIONS are always allowed.
+ * POST /api/auth/google is exempt (handled in index.js) — no cookie on first login.
  */
-const LOCKOUT_TIME = 30 * 60 * 1000;
-
-/**
- * Checks whether the given IP address is currently locked out due to too many failed login attempts.
- * Automatically clears expired lockout records.
- * @param {string} ip - The client IP address to check.
- * @returns {boolean} `true` if the IP is locked out, `false` otherwise.
- */
-function checkBruteForce(ip) {
-    const record = failedAttempts.get(ip);
-    if (!record) return false;
-    if (Date.now() - record.lastAttempt > LOCKOUT_TIME) {
-        failedAttempts.delete(ip);
-        return false;
+const verifyCsrf = (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const cookieToken = req.cookies?.csrf_token;
+    const headerToken = req.headers['x-csrf-token'];
+    if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+        logger.warn(`🚨 CSRF mismatch — IP: ${req.ip}, ${req.method} ${req.path}`);
+        return res.status(403).json({ error: 'طلب غير صالح. أعد تحميل الصفحة وحاول مرة أخرى.' });
     }
-    return record.count >= MAX_FAILED;
-}
-
-/**
- * Records a failed login attempt for the given IP address.
- * @param {string} ip - The client IP address.
- * @returns {void}
- */
-function recordFailedAttempt(ip) {
-    const record = failedAttempts.get(ip) || { count: 0, lastAttempt: 0 };
-    record.count++;
-    record.lastAttempt = Date.now();
-    failedAttempts.set(ip, record);
-}
-
-/**
- * Clears all recorded failed login attempts for the given IP address.
- * Should be called after a successful login.
- * @param {string} ip - The client IP address.
- * @returns {void}
- */
-function clearFailedAttempts(ip) {
-    failedAttempts.delete(ip);
-}
-
-// تنظيف سجلات محاولات الدخول الفاشلة القديمة كل 10 دقائق
-const cleanupInterval = setInterval(() => {
-    const now = Date.now();
-    for (const [ip, record] of failedAttempts) {
-        if (now - record.lastAttempt > LOCKOUT_TIME) {
-            failedAttempts.delete(ip);
-        }
-    }
-}, 10 * 60 * 1000);
-// Allow Jest to exit cleanly
-if (typeof cleanupInterval.unref === 'function') cleanupInterval.unref();
+    next();
+};
 
 // ============================================
 //   1. التحقق من تسجيل الدخول (أي مستخدم)
@@ -258,6 +289,9 @@ module.exports = {
     generateToken,
     setTokenCookie,
     clearTokenCookie,
+    setCsrfCookie,
+    clearCsrfCookie,
+    verifyCsrf,
     COOKIE_OPTIONS,
     checkBruteForce,
     recordFailedAttempt,

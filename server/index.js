@@ -23,6 +23,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const logger = require('./utils/logger');
 const { sanitizeBody } = require('./middleware/sanitize');
+const { verifyCsrf } = require('./middleware/auth');
 
 // ============================================
 //   Environment Validation — فحص المتغيرات
@@ -272,6 +273,14 @@ app.get('/api/config', (req, res) => {
 // ============================================
 //              ربط المسارات
 // ============================================
+
+// CSRF verification — applied to all mutating API requests.
+// Exempt: POST /api/auth/google (initial login, no CSRF cookie exists yet).
+app.use('/api', (req, res, next) => {
+    if (req.path === '/auth/google' && req.method === 'POST') return next();
+    return verifyCsrf(req, res, next);
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/scores', scoreRoutes);
@@ -334,6 +343,13 @@ async function runSafeMigrations() {
         `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`createdBy\` INT NULL DEFAULT NULL`,
         // createdBy on notes
         `ALTER TABLE \`notes\` ADD COLUMN IF NOT EXISTS \`createdBy\` INT NULL DEFAULT NULL`,
+        // brute force tracking table (persists across restarts & instances)
+        `CREATE TABLE IF NOT EXISTS \`login_attempts\` (
+            \`ip\`           VARCHAR(45)  NOT NULL,
+            \`count\`        INT          NOT NULL DEFAULT 1,
+            \`last_attempt\` BIGINT       NOT NULL,
+            PRIMARY KEY (\`ip\`)
+        )`,
     ];
     for (const sql of migrations) {
         try {

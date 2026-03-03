@@ -18,6 +18,8 @@ const {
     authenticate,
     setTokenCookie,
     clearTokenCookie,
+    setCsrfCookie,
+    clearCsrfCookie,
     checkBruteForce,
     recordFailedAttempt,
     clearFailedAttempts
@@ -105,7 +107,7 @@ async function verifyGoogleToken(idToken) {
  */
 router.post('/google', validateGoogleLogin, async (req, res) => {
     try {
-        if (checkBruteForce(req.ip)) {
+        if (await checkBruteForce(req.ip)) {
             return res.status(429).json({ error: 'تم حظرك مؤقتاً بسبب محاولات كثيرة. انتظر 30 دقيقة.' });
         }
 
@@ -115,11 +117,11 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         try {
             googleData = await verifyGoogleToken(idToken);
         } catch (err) {
-            recordFailedAttempt(req.ip);
+            await recordFailedAttempt(req.ip);
             return res.status(401).json({ error: 'توكن Google غير صالح أو منتهي.' });
         }
 
-        clearFailedAttempts(req.ip);
+        await clearFailedAttempts(req.ip);
 
         // البحث عن المستخدم بالإيميل
         let user = await User.findOne({ where: { email: googleData.email } });
@@ -138,6 +140,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
 
             const token = generateToken(user.id, user.role, user.tokenVersion);
             setTokenCookie(res, token);
+            setCsrfCookie(res);
             logger.info(`تسجيل دخول — ${user.role === 'admin' ? '👑 أدمن' : '👤 طالب'}: ${user.email}`);
 
             return res.json({
@@ -174,6 +177,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
 
         const token = generateToken(user.id, user.role, user.tokenVersion);
         setTokenCookie(res, token);
+        setCsrfCookie(res);
 
         res.status(201).json({
             message: 'تم التسجيل بنجاح! يرجى إكمال اسمك.',
@@ -346,6 +350,7 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
 
             const token = generateToken(existing.id, existing.role, existing.tokenVersion);
             setTokenCookie(res, token);
+            setCsrfCookie(res);
             return res.json({
                 message: 'تم ترقية الحساب لمعلم بنجاح!',
                 user: {
@@ -371,6 +376,7 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
 
         const token = generateToken(user.id, user.role, user.tokenVersion);
         setTokenCookie(res, token);
+        setCsrfCookie(res);
 
         res.status(201).json({
             message: 'تم إنشاء حساب المعلم بنجاح!',
@@ -440,6 +446,7 @@ router.post('/logout', authenticate, async (req, res) => {
         user.tokenVersion = (user.tokenVersion || 0) + 1;
         await user.save();
         clearTokenCookie(res);
+        clearCsrfCookie(res);
         logger.info(`🚪 تسجيل خروج وإلغاء كل التوكنات — ${user.email}`);
         res.json({ message: 'تم تسجيل الخروج بنجاح.' });
     } catch (error) {

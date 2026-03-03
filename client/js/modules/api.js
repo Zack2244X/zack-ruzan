@@ -5,11 +5,27 @@
 import state from './state.js';
 
 /**
- * إنشاء هيدرز التوثيق
- * @returns {Object} هيدرز HTTP مع التوكن (للتوافق مع الموبايل)
+ * قراءة csrf_token من الكوكيز (يضعه السيرفر بعد تسجيل الدخول)
+ * @returns {string}
+ */
+function getCsrfToken() {
+    try {
+        return document.cookie.split(';')
+            .map(c => c.trim())
+            .find(c => c.startsWith('csrf_token='))
+            ?.split('=')[1] || '';
+    } catch { return ''; }
+}
+
+/**
+ * إنشاء هيدرز الطلب — يشمل CSRF token على الطلبات المُعدِّلة
+ * @returns {Object}
  */
 export function getAuthHeaders() {
-    return { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json' };
+    const csrf = getCsrfToken();
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+    return headers;
 }
 
 /**
