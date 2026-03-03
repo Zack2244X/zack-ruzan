@@ -35,6 +35,9 @@ const noteRoutes = require('./routes/notes');
 
 const app = express();
 
+// خلف البروكسي (Railway/NGINX) لتقرأ X-Forwarded-For بشكل صحيح
+app.set('trust proxy', 1);
+
 // ============================================
 //         طبقات الأمان (Security Layers)
 // ============================================
