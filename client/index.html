@@ -406,6 +406,10 @@
             background: radial-gradient(circle at 35% 35%, rgba(96, 165, 250, 0.55), rgba(59, 130, 246, 0.18) 55%, rgba(37, 99, 235, 0.05) 75%, transparent 100%);
             filter: blur(0.2px);
         }
+        .notes-card-hover-glow {
+            background: radial-gradient(circle at 35% 35%, rgba(251, 146, 60, 0.62), rgba(249, 115, 22, 0.24) 55%, rgba(234, 88, 12, 0.08) 75%, transparent 100%);
+            filter: blur(0.2px);
+        }
         @keyframes pulseTimeBadge {
             0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(59,130,246,0); }
             50% { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 16px rgba(59,130,246,0.28); }
@@ -2559,7 +2563,7 @@ function loadApp() {
                     
                     latestNotesGrid.innerHTML += `
                         <div onclick="forceDownload('${config.link}')" class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300 cursor-pointer border border-gray-100 hover:border-orange-400 group relative overflow-hidden">
-                            <div class="absolute -left-6 -top-6 w-24 h-24 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                            <div class="absolute -left-6 -top-6 w-24 h-24 notes-card-hover-glow rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
                             <div class="flex justify-between items-start mb-5 relative z-10">
                                 <div class="w-14 h-14 bg-gradient-to-br ${bgClass} rounded-2xl flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition duration-300"><i class="fas ${iconClass}"></i></div>
                                 <span class="text-xs bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 group-hover:bg-orange-600 group-hover:text-white transition"><i class="fas fa-download"></i> تحميل مباشر</span>
