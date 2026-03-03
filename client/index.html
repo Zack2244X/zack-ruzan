@@ -6,7 +6,8 @@
     <title>اختبار القواعد النحوية التفاعلي</title>
     <!-- تضمين Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js"></script>
     <style>
         /* === أكواد تسريع الأداء وجعل الواجهة سلسة === */
         body::before {
@@ -165,6 +166,29 @@
         /* تفاعل أيقونات الشريط السفلي */
         .dock-icon { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .dock-btn.active .dock-icon { transform: scale(1.2) translateY(-2px); }
+
+        /* توست عائم للتهنئة/التصحيح */
+        .toast-float {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 400;
+            min-width: 260px;
+            max-width: 90vw;
+            padding: 14px 18px;
+            border-radius: 14px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+            color: #0f172a;
+            font-weight: 800;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .toast-success { background: linear-gradient(135deg, #ecfdf3, #d1fae5); color: #065f46; }
+        .toast-error { background: linear-gradient(135deg, #fff1f2, #ffe4e6); color: #b91c1c; }
+        .toast-streak { background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: #1e1b4b; }
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -344,6 +368,21 @@
                             <label class="block font-bold text-gray-700 mb-2">وصف قصير</label>
                             <input type="text" id="new-q-desc" placeholder="اختياري..." class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none transition">
                         </div>
+                    </div>
+
+                    <div class="mt-6 p-4 border-2 border-dashed border-green-200 rounded-xl bg-green-50/60">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <p class="font-bold text-green-800">استيراد امتحان بصيغة أيكن</p>
+                                <p class="text-sm text-green-700">يدعم TXT (أولوية) وPDF. ضع علامة * على الإجابة الصحيحة، وسنخلط الاختيارات تلقائياً.</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <input id="import-exam-file" type="file" accept=".txt,.pdf" class="hidden" onchange="handleImportFileChange(event)">
+                                <button onclick="triggerImportExamFile()" class="px-4 py-2 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700 transition flex items-center gap-2"><i class="fas fa-file-import"></i> استيراد امتحان</button>
+                                <button onclick="reshuffleImportedAnswers()" class="px-3 py-2 bg-white text-green-700 font-bold rounded-lg border border-green-200 hover:bg-green-100 transition">إعادة توزيع الإجابات</button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-green-700 mt-2">نضمن ألا يتكرر نفس حرف الإجابة الصحيحة أكثر من مرتين متتاليتين.</p>
                     </div>
                 </div>
 
@@ -1344,6 +1383,181 @@
 
             renderBuilderQuestion();
         }
+
+        function triggerImportExamFile() {
+            const input = document.getElementById('import-exam-file');
+            if (input) input.click();
+        }
+
+        function reshuffleImportedAnswers() {
+            if (!quizDraft || !quizDraft.questions || !quizDraft.questions.length) {
+                alert('⚠️ لا توجد أسئلة لإعادة توزيع الإجابات بعد. استورد ملف أولاً.');
+                return;
+            }
+            quizDraft.questions.forEach(q => shuffleOptionsPreserveCorrect(q));
+            balanceCorrectLetters(quizDraft.questions);
+            bCurrentQIndex = 0;
+            renderBuilderQuestion();
+            alert('✅ تم إعادة توزيع الإجابات مع الحفاظ على الصح وضبط تكرار الحروف.');
+        }
+
+        async function handleImportFileChange(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            try {
+                let text = '';
+                const name = file.name.toLowerCase();
+                if (file.type === 'text/plain' || name.endsWith('.txt')) {
+                    text = await file.text();
+                } else if (file.type === 'application/pdf' || name.endsWith('.pdf')) {
+                    if (!window.pdfjsLib) throw new Error('تعذر تحميل pdf.js');
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js';
+                    text = await extractTextFromPdf(file);
+                } else {
+                    throw new Error('صيغة الملف غير مدعومة. استخدم TXT أو PDF.');
+                }
+
+                const parsedQuestions = parseIconQuestions(text);
+                if (!parsedQuestions.length) throw new Error('لم يتم العثور على أسئلة بصيغة أيكن.');
+
+                applyImportedQuestions(parsedQuestions);
+                alert(`✅ تم استيراد ${parsedQuestions.length} سؤالاً مع خلط الإجابات وضبط تكرار الحروف.`);
+            } catch (err) {
+                alert('⚠️ تعذر استيراد الملف: ' + (err.message || err));
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+        async function extractTextFromPdf(file) {
+            const data = new Uint8Array(await file.arrayBuffer());
+            const pdf = await pdfjsLib.getDocument({ data }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                fullText += content.items.map(item => item.str).join(' ') + '\n';
+            }
+            return fullText;
+        }
+
+        function parseIconQuestions(rawText) {
+            const lines = rawText.replace(/\r/g, '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+            const questions = [];
+            let current = null;
+            const questionRegex = /^Q\s*\d*\.?\s*(.+)$/i;
+            const optionRegex = /^([A-Za-zأ-ي])\s*[).،\.\-:]?\s*(.+)$/;
+
+            const pushCurrent = () => {
+                if (!current) return;
+                if (!current.answerOptions.length) return;
+                if (!current.answerOptions.some(o => o.isCorrect)) {
+                    current.answerOptions[0].isCorrect = true;
+                }
+                questions.push(current);
+                current = null;
+            };
+
+            lines.forEach(line => {
+                const qMatch = line.match(questionRegex);
+                if (qMatch) {
+                    pushCurrent();
+                    current = { question: qMatch[1].trim(), hint: '', answerOptions: [] };
+                    return;
+                }
+
+                const oMatch = line.match(optionRegex);
+                if (current && oMatch) {
+                    const rawText = oMatch[2].trim();
+                    const isCorrect = /\*$/.test(rawText);
+                    const cleanText = rawText.replace(/\*+\s*$/, '').trim();
+                    current.answerOptions.push({ text: cleanText, isCorrect });
+                }
+            });
+            pushCurrent();
+
+            questions.forEach(q => shuffleOptionsPreserveCorrect(q));
+            balanceCorrectLetters(questions);
+            return questions;
+        }
+
+        function shuffleOptionsPreserveCorrect(question) {
+            const options = question.answerOptions.map(o => ({ ...o }));
+            const correctOption = options.find(o => o.isCorrect) || options[0];
+            shuffleArray(options);
+            options.forEach(o => o.isCorrect = (o === correctOption));
+            question.answerOptions = options;
+        }
+
+        function balanceCorrectLetters(questions, maxRepeat = 2) {
+            let lastLetter = null;
+            let repeatCount = 0;
+            questions.forEach(q => {
+                let correctIdx = q.answerOptions.findIndex(o => o.isCorrect);
+                if (correctIdx === -1) { q.answerOptions[0].isCorrect = true; correctIdx = 0; }
+                let letter = String.fromCharCode(65 + correctIdx);
+                if (letter === lastLetter) {
+                    repeatCount++;
+                    if (repeatCount > maxRepeat) {
+                        const swapIdx = q.answerOptions.findIndex((_, idx) => idx !== correctIdx);
+                        if (swapIdx >= 0) {
+                            [q.answerOptions[correctIdx], q.answerOptions[swapIdx]] = [q.answerOptions[swapIdx], q.answerOptions[correctIdx]];
+                            correctIdx = swapIdx;
+                            letter = String.fromCharCode(65 + correctIdx);
+                            repeatCount = 1;
+                        }
+                    }
+                } else {
+                    repeatCount = 1;
+                }
+                lastLetter = letter;
+            });
+        }
+
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        }
+
+        function applyImportedQuestions(importedQuestions) {
+            const title = document.getElementById('new-q-title').value.trim();
+            const subject = document.getElementById('new-q-subject').value;
+            if(!title) { alert("⚠️ يجب إدخال عنوان للامتحان للبدء!"); return; }
+            if(!subject) { alert("⚠️ يجب اختيار مادة للامتحان للبدء!"); return; }
+
+            const closingMsg = document.getElementById('new-q-closing-msg').value.trim() || "شكراً لمشاركتك في الاختبار!";
+            const desc = document.getElementById('new-q-desc').value.trim() || "";
+            const timeLimit = (parseInt(document.getElementById('new-q-time').value) || 30) * 60;
+
+            quizDraft = {
+                config: {
+                    id: 'quiz-' + Date.now(),
+                    title,
+                    subject,
+                    description: desc,
+                    timeLimit,
+                    streakGoal: 3,
+                    language: 'ar',
+                    closingMessage: closingMsg,
+                    feedback: {
+                        correct: { message: "ماشاء الله! إجابة صحيحة.", onStreak: "أحسنت! سلسلة متتالية من الإجابات الصحيحة!" },
+                        incorrect: { message: "للأسف، الإجابة غير صحيحة." }
+                    }
+                },
+                questions: importedQuestions
+            };
+
+            bCurrentQIndex = 0;
+            document.getElementById('builder-step-1').classList.add('hidden');
+            document.getElementById('builder-step-2').classList.remove('hidden');
+            document.getElementById('btn-to-step-2').classList.add('hidden');
+            document.getElementById('btn-save-final').classList.remove('hidden');
+            document.getElementById('builder-subtitle').innerText = "الخطوة 2: إضافة الأسئلة وتحديد الإجابات";
+
+            renderBuilderQuestion();
+        }
         function submitQuiz() {
             clearInterval(timerInterval);
             
@@ -1762,6 +1976,87 @@
             }
         }
 
+        const toastPraise = [
+            'أحسنت بارك الله فيك 🌹',
+            'نعم العلم ونعم المتعلم 🌒',
+            'نعم العبد 🎉',
+            'نعم الفتى 👌',
+            'الله أكبر عليك إيه الحلاوة دي 🌟',
+            'أصبت كبد الحقيقة! 🎯',
+            'فتح الله عليك فتوح العارفين 🤲',
+            'لله درُّك من نبيهٍ أريب! 👑',
+            'نور على نور، زادك الله علماً 💡',
+            'هذا الشبل من ذاك الأسد 🦁',
+            'إيه الدماغ الألماظ دي! 💎',
+            'أستاذ ورئيس قسم 🎓',
+            'يا سيدي على الدماغ العالية والروقان 🧠',
+            'عداك العيب وقزح 🚀',
+            'معلم وابن معلم، جبت التايهة! 😎'
+        ];
+
+        const toastOops = [
+            'راجع العلم ✔️',
+            'لا يفل الحديد إلا الحديد ⚔️',
+            'وما أصابك من سيئة فمن نفسك 😔',
+            'لكل صارم هفوة 🗡️',
+            'لكل جواد كبوة 🎠',
+            'لكل عالم زلة 📕',
+            'جلّ من لا يسهو ☝️',
+            'من الخطأ يولد الصواب ✔️',
+            'قد يُخطئ السهم الهدف، فارمِ من جديد 🏹',
+            'المحاولة شرف، والخطأ طريق التعلم 🛤️',
+            'ليس كل ما يلمع ذهباً، راجع إجابتك 🔍',
+            'جليت منك المرة دي يا بطل 😂',
+            'شكلنا محتاجين كوباية شاي ونركز من تاني ☕',
+            'إنت جبت الكلام ده منين يا غالي؟ 🤦‍♂️',
+            'ولا يهمك، الشاطر بيقع ويقوم 💪',
+            'خانتك التعبيرات المرة دي، جرب تاني 😅'
+        ];
+
+        const streakToasts = {
+            2: ['شكلك فاهم يا نصة 😂'],
+            3: ['بدا أنك درعمي أصيل 👌'],
+            4: ['ماشاء الله نفع الله بك الأمة ♥️'],
+            5: [
+                'بلغ السيل الزبى 🔥',
+                'إنت واكل إيه النهاردة؟ الدماغ دي متكلفة! 🧠🔥',
+                'لا إحنا نقفل اللعبة على كده بقى، مفيش بعد كده! 🎮😎',
+                'قطر وماشي مفيش حاجة قادرة توقفه، ما شاء الله! 🚂💨',
+                'خمسة وخميسة في عين الحسود، إيه الحلاوة دي كلها! 🧿✨',
+                'براحة علينا شوية، إنت كده معدي السحاب! ☁️🚀',
+                'سيلٌ من الإبداع لا ينقطع، زادك الله من فضله! 🌊',
+                'كالغيْث أينما وقع نفع، إجاباتك كلها صائبة! 🌧️',
+                'سلسلة من الانتصارات المتتالية، لله درّ عقلك! ⛓️💡',
+                'ما زلت تبرهن أنك فارس هذا الميدان بلا منازع! 🏇',
+                'نور على نور، وتألق يتبعه تألق، استمر! 🌟',
+                'ضرب نار مستمر! 🔥',
+                'أداء أسطوري لا يُقهر! 🐉',
+                'السلسلة مستمرة.. إياك أن تتوقف! 🔄'
+            ]
+        };
+
+        function pickRandom(arr) {
+            if (!arr || !arr.length) return '';
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function showToastMessage(text, variant = 'success') {
+            if (!text) return;
+            const toast = document.createElement('div');
+            toast.className = `toast-float toast-${variant}`;
+            toast.innerText = text;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, 0)';
+            });
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, -12px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2200);
+        }
+
         // اختيار الإجابة
         function selectAnswer(selectedIndex) {
             if (userAnswers[currentQuestionIndex] !== null) return; // منع الإجابة مرتين
@@ -1785,6 +2080,16 @@
             // تحديث المتغيرات العامة
             streak = newStreak;
             scoreDisplayEl.textContent = `النقاط: ${score}`;
+
+            if (isCorrect) {
+                showToastMessage(pickRandom(toastPraise), 'success');
+                if (newStreak >= 2) {
+                    const streakBucket = newStreak >= 5 ? streakToasts[5] : (streakToasts[newStreak] || []);
+                    showToastMessage(pickRandom(streakBucket), 'streak');
+                }
+            } else {
+                showToastMessage(pickRandom(toastOops), 'error');
+            }
 
             // *** FIX 3: حفظ الإجابة مع رسالة التغذية الراجعة الكاملة ***
             userAnswers[currentQuestionIndex] = { selectedIndex, isCorrect, rationale, feedbackMessage: feedbackMsg };
