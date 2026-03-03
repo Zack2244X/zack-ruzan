@@ -361,7 +361,8 @@
             #theme-toggle {
                 top: 76px;
                 bottom: auto;
-                right: 12px;
+                left: 12px;
+                right: auto;
                 width: 42px;
                 height: 42px;
                 z-index: 95;
@@ -401,9 +402,13 @@
             animation: tickClock 1.2s ease-in-out infinite;
             display: inline-block;
         }
+        .exam-card-hover-glow {
+            background: radial-gradient(circle at 35% 35%, rgba(96, 165, 250, 0.55), rgba(59, 130, 246, 0.18) 55%, rgba(37, 99, 235, 0.05) 75%, transparent 100%);
+            filter: blur(0.2px);
+        }
         @keyframes pulseTimeBadge {
-            0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(239,68,68,0); }
-            50% { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 16px rgba(239,68,68,0.22); }
+            0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(59,130,246,0); }
+            50% { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 16px rgba(59,130,246,0.28); }
         }
         @keyframes tickClock {
             0%, 100% { transform: rotate(0deg); }
@@ -2522,10 +2527,10 @@ function loadApp() {
                     const realIndex = allQuizzes.length - 1 - idx;
                     latestExamsGrid.innerHTML += `
                         <div onclick="playQuiz(${realIndex})" class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300 cursor-pointer border border-gray-100 hover:border-blue-400 group relative overflow-hidden">
-                            <div class="absolute -left-6 -top-6 w-24 h-24 bg-blue-50 rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                            <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
                             <div class="flex justify-between items-start mb-5 relative z-10">
                                 <div class="w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition duration-300"><i class="fas fa-file-alt"></i></div>
-                                <span class="time-badge-anim text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><i class="far fa-clock"></i> ${q.config.timeLimit / 60} دقيقة</span>
+                                <span class="time-badge-anim text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><i class="far fa-clock"></i> ${q.config.timeLimit / 60} دقيقة</span>
                             </div>
                             <h3 class="font-extrabold text-gray-800 text-lg mb-2 line-clamp-1 relative z-10" title="${q.config.title}">${q.config.title}</h3>
                             ${q.config.description ? `<p class="text-sm text-gray-500 mb-4 line-clamp-2 relative z-10" title="${q.config.description}">${q.config.description}</p>` : '<div class="h-2 mb-4"></div>'}
