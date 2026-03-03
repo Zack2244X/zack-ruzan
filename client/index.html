@@ -359,13 +359,14 @@
         #theme-toggle i { font-size: 18px; }
         @media (max-width: 640px) {
             #theme-toggle {
-                top: 76px;
+                top: 12px;
                 bottom: auto;
                 left: 12px;
                 right: auto;
                 width: 42px;
                 height: 42px;
                 z-index: 95;
+                position: fixed;
             }
             #theme-toggle i { font-size: 16px; }
         }
@@ -1216,6 +1217,7 @@
             document.getElementById('dashboard-view').classList.remove('hidden');
             document.getElementById('quiz-container').classList.add('hidden');
             updateDockUI('home');
+            _showThemeToggle(true);
         }
 
         function navToSection(section) {
@@ -1255,15 +1257,31 @@
         }
 
         // دوال فتح وإغلاق النوافذ السفلية (Bottom Sheets) بنعومة
-        function _showThemeToggle(show) {
-            const t = document.getElementById('theme-toggle');
-            if (!t) return;
-            if (!show) { t.style.display = 'none'; return; }
-            // لا نظهره إلا لو مفيش أي مودال/شيت مفتوح
+        function _syncMainInteractionState() {
+            const dashboard = document.getElementById('dashboard-view');
+            const quiz = document.getElementById('quiz-container');
+            const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
+
             const anyOpen = ['create-section-modal','add-note-modal','edit-selection-modal','grades-modal','stats-modal','admin-auth-modal','delete-subject-modal','rename-subject-modal']
                 .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
             const sheetOpen = document.getElementById('tree-content')?.classList.contains('active') || document.getElementById('admin-content')?.classList.contains('active');
-            if (!anyOpen && !sheetOpen) t.style.display = '';
+            const blocked = anyOpen || sheetOpen;
+
+            if (dashboard) {
+                dashboard.classList.toggle('pointer-events-none', blocked);
+                dashboard.classList.toggle('select-none', blocked);
+            }
+            document.body.style.overflow = blocked ? 'hidden' : '';
+
+            const t = document.getElementById('theme-toggle');
+            if (t) t.style.display = (onHome && !blocked) ? '' : 'none';
+        }
+
+        function _showThemeToggle(show) {
+            const t = document.getElementById('theme-toggle');
+            if (!t) return;
+            if (!show) { t.style.display = 'none'; _syncMainInteractionState(); return; }
+            _syncMainInteractionState();
         }
         function openBottomSheet() {
             document.getElementById('tree-overlay').classList.add('active');
@@ -1300,6 +1318,7 @@
                 const el = document.getElementById(id);
                 if(el) el.classList.add('hidden');
             });
+            _syncMainInteractionState();
         }
 
         // === الثيم (فاتح/داكن) ===
@@ -1887,6 +1906,7 @@
             
             // تحديث البيانات
             renderDashboard();
+            _showThemeToggle(true);
         }
 
         function renderBuilderQuestion() {
@@ -2030,6 +2050,7 @@
             
             // 4. بدء الاختبار
             document.getElementById('quiz-container').classList.remove('hidden');
+            _showThemeToggle(false);
             initializeQuiz();
         }
 
@@ -2517,6 +2538,8 @@ function loadApp() {
             document.getElementById('dashboard-view').classList.add('hidden');
             document.getElementById('ios-bottom-nav').classList.add('hidden');
             googleLoginMode = 'student';
+            _showThemeToggle(false);
+            _syncMainInteractionState();
         }
                       function renderDashboard() {
             // --- 1. عرض آخر 4 امتحانات بتصميم احترافي (أزرق) ---
