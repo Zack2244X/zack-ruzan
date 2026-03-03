@@ -51,12 +51,6 @@
     --glass-blur: 18px;
 }
 
-/* Dark mode: hide background image, use dark gradient only */
-[data-theme="dark"] body {
-    background-image: none;
-    background: var(--bg);
-}
-
 /* === Base & Reset === */
 *,
 *::before,
@@ -72,10 +66,6 @@ body {
     min-height: 100vh;
     position: relative;
     background: var(--bg);
-    background-image: url('/icons/bg.png');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
     color: var(--text);
     transition: background-color var(--transition-normal), color var(--transition-normal);
     -webkit-font-smoothing: antialiased;
@@ -83,15 +73,21 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-/* Background overlay — local gradient, no external request */
+/* Background overlay image */
 body::before {
     content: "";
     position: fixed;
     inset: 0;
-    background: radial-gradient(ellipse at 20% 30%, rgba(37,99,235,0.07) 0%, transparent 55%),
-                radial-gradient(ellipse at 80% 70%, rgba(16,185,129,0.06) 0%, transparent 50%);
+    background-image: url('/icons/bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.22;
     z-index: -1;
     pointer-events: none;
+    filter: saturate(0.85) brightness(1.05);
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 /* === Performance Optimization === */
