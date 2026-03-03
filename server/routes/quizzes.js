@@ -58,7 +58,7 @@ router.get('/', authenticate, validatePagination, async (req, res) => {
             offset
         });
 
-        // للطلاب: إخفاء الإجابات الصحيحة
+        // للطلاب: إخفاء التبريرات فقط (isCorrect لازم يتبعت عشان التغذية الراجعة الفورية)
         if (req.user.role === 'student') {
             const sanitized = quizzes.map(quiz => {
                 const q = quiz.toJSON();
@@ -66,7 +66,8 @@ router.get('/', authenticate, validatePagination, async (req, res) => {
                     ...question,
                     answerOptions: question.answerOptions.map(opt => ({
                         text: opt.text,
-                        rationale: ''
+                        isCorrect: !!opt.isCorrect,
+                        rationale: opt.rationale || ''
                     }))
                 }));
                 return q;
@@ -197,7 +198,8 @@ router.get('/:id', authenticate, async (req, res) => {
                 ...question,
                 answerOptions: question.answerOptions.map(opt => ({
                     text: opt.text,
-                    rationale: ''
+                    isCorrect: !!opt.isCorrect,
+                    rationale: opt.rationale || ''
                 }))
             }));
             return res.json(q);
