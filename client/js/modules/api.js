@@ -9,11 +9,7 @@ import state from './state.js';
  * @returns {Object} هيدرز HTTP مع التوكن (للتوافق مع الموبايل)
  */
 export function getAuthHeaders() {
-    const token = state.currentUser?.token || state.adminToken;
-    return {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-    };
+    return { 'Content-Type': 'application/json' };
 }
 
 /**

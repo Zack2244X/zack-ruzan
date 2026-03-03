@@ -346,7 +346,8 @@ async function runSafeMigrations() {
 }
 
 async function startServer(retries = 3) {
-    const enableAlter = process.env.DB_SYNC_ALTER !== 'false';
+    // In production, only alter if explicitly enabled (safety for real data)
+    const enableAlter = process.env.DB_SYNC_ALTER === 'true';
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             await sequelize.authenticate();

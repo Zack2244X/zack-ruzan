@@ -299,9 +299,23 @@ select {
     font-size: 16px; /* Prevents zoom on iOS */
 }
 
-/* === iOS Dock / Bottom Nav === */
+/* === iOS Safe Area Support === */
+
+/* Bottom nav: sit above home indicator on iPhone */
+#ios-bottom-nav {
+    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Bottom sheets: add padding so content clears the home indicator */
+#tree-content,
+#admin-content {
+    padding-bottom: max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom)));
+}
+
+/* iOS Dock / Bottom Nav */
 .ios-dock {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .bottom-sheet-overlay {
@@ -677,6 +691,53 @@ select {
 
 @media (min-width: 1024px) {
     body { padding: 0 32px; }
+}
+
+/* === Quiz Container Mobile Fixes === */
+@media (max-width: 640px) {
+    #quiz-container {
+        padding: 1rem !important;
+        margin: 0.5rem auto 5rem !important; /* bottom margin clears the dock */
+        border-radius: 1.25rem !important;
+    }
+    #quiz-container header {
+        margin-bottom: 1rem;
+    }
+    #quiz-main-title {
+        font-size: 1.1rem !important;
+        line-height: 1.4;
+    }
+    #quiz-subtitle {
+        font-size: 0.75rem;
+    }
+    /* Score / Timer / Question number row */
+    #quiz-container header > div:last-of-type {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    #question-text {
+        font-size: 1rem !important;
+    }
+    /* Navigation buttons */
+    #quiz-container .flex.justify-between {
+        margin-top: 1.25rem !important;
+        gap: 0.5rem;
+    }
+    #previous-btn,
+    #next-btn,
+    #submit-btn {
+        padding: 0.65rem 1rem !important;
+        font-size: 0.82rem !important;
+        min-width: 0;
+    }
+    /* Results screen: full height friendly */
+    #results-screen > div {
+        padding: 1.5rem !important;
+        margin: 1rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
 }
 
 /* Landscape mode on mobile */

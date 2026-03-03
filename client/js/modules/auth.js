@@ -136,7 +136,6 @@ export async function handleGoogleAdminResponse(response) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'فشل التحقق');
         if (data.user.role === 'admin') {
-            state.adminToken = data.token;
             state.isAdmin = true;
             loadingEl.classList.add('hidden');
             closeAdminAuth();
@@ -220,11 +219,11 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         state.currentUser = {
             fname: fname || data.user.fname, lname: lname || data.user.lname,
             fullName: ((fname + ' ' + lname).trim() || data.user.fullName || data.user.email || '').trim(),
-            avatar: data.user.avatar || '', token: data.token,
+            avatar: data.user.avatar || '',
             role: data.user.role, email: data.user.email || ''
         };
 
-        if (data.user.role === 'admin') { state.adminToken = data.token; state.isAdmin = true; }
+        if (data.user.role === 'admin') { state.isAdmin = true; }
         loadingEl.classList.add('hidden');
 
         const safeName = (state.currentUser.fname || state.currentUser.fullName || state.currentUser.email || 'صديقنا').trim();
@@ -242,9 +241,8 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof startTokenRefresh === 'function') startTokenRefresh();
 
-        // Store user info without token in sessionStorage (token is in httpOnly cookie)
-        const { token: _t, ...safeUser } = state.currentUser;
-        sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
+        // Store user info in sessionStorage (token is in httpOnly cookie only)
+        sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
         sessionStorage.setItem('isAdmin', state.isAdmin.toString());
 
         loadDataFromServer().then(() => {
@@ -285,14 +283,9 @@ export function startTokenRefresh() {
     state.tokenRefreshTimer = setInterval(async () => {
         if (!state.currentUser) return;
         try {
-            const data = await apiCall('POST', '/api/auth/refresh');
-            if (data.token) {
-                state.currentUser.token = data.token;
-                if (state.isAdmin) state.adminToken = data.token;
-                // Token refreshed via httpOnly cookie; persist user info without token
-                const { token: _t, ...safeUser } = state.currentUser;
-                sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
-            }
+            await apiCall('POST', '/api/auth/refresh');
+            // Token refreshed in httpOnly cookie automatically
+            sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
         } catch (e) { console.warn('⚠️ فشل تجديد التوكن:', e.message); }
     }, 6 * 60 * 60 * 1000);
 }
