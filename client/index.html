@@ -6,9 +6,43 @@
     <title>اختبار القواعد النحوية التفاعلي</title>
     <!-- تضمين Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js"></script>
     <style>
+        :root {
+            --bg: #f5f7fb;
+            --bg-soft: rgba(255, 255, 255, 0.68);
+            --card: rgba(255, 255, 255, 0.92);
+            --card-strong: rgba(255, 255, 255, 0.85);
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --muted: #475569;
+            --primary: #2563eb;
+            --success: #16a34a;
+            --warning: #ea580c;
+            --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+            --glass-blur: 16px;
+        }
+        [data-theme="dark"] {
+            --bg: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.09), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(16, 185, 129, 0.08), transparent 32%),
+                  #0b1220;
+            --bg-soft: rgba(255, 255, 255, 0.08);
+            --card: rgba(255, 255, 255, 0.06);
+            --card-strong: rgba(255, 255, 255, 0.09);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e2e8f0;
+            --muted: #cbd5e1;
+            --primary: #60a5fa;
+            --success: #22c55e;
+            --warning: #fb923c;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            --glass-blur: 18px;
+        }
+
         /* === أكواد تسريع الأداء وجعل الواجهة سلسة === */
         body::before {
             will-change: transform; /* يمنع إعادة رسم الخلفية مع السكرول */
@@ -20,13 +54,15 @@
             transform: translateZ(0); /* يجبر المتصفح على استخدام كارت الشاشة */
         }
         /* خط "Inter" الذي يوصى به (لكن نستخدم خطوط النظام لسهولة عرض العربية) */
-                body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        body {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
             min-height: 100vh;
             position: relative;
-            background-color: #f8fafc; /* لون احتياطي */
+            background: var(--bg);
+            color: var(--text);
+            transition: background-color 0.25s ease, color 0.25s ease;
         }
 
         /* طبقة الخلفية الشفافة المثبتة */
@@ -42,12 +78,10 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            
-            /* درجة الشفافية (0.3 معناها 30% وضوح، لو عايزها اكتر قلل الرقم لـ 0.2) */
-            opacity: 0.25; 
-            
+            opacity: 0.22; 
             z-index: -1; /* خليها في القاع تحت كل العناصر */
             pointer-events: none;
+            filter: saturate(0.85) brightness(1.05);
         }
         /* تصميم زر الإجابة عند التحويم والضغط */
         .answer-option:hover {
@@ -167,6 +201,58 @@
         .dock-icon { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .dock-btn.active .dock-icon { transform: scale(1.2) translateY(-2px); }
 
+        /* سمات زجاجية + بطاقات موحدة */
+        .glass-card {
+            background: var(--card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        .glass-soft {
+            background: var(--bg-soft);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        [id$="-modal"] > div {
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        .answer-option {
+            background: var(--card);
+            border-color: var(--border);
+            color: var(--text);
+        }
+        .bg-white { background-color: var(--card) !important; }
+        .bg-gray-50 { background-color: var(--bg-soft) !important; }
+        .text-gray-800 { color: var(--text) !important; }
+        .text-gray-500, .text-gray-600 { color: var(--muted) !important; }
+        .border-gray-200, .border-gray-100 { border-color: var(--border) !important; }
+        .shadow-sm, .shadow, .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: var(--shadow) !important; }
+
+        /* toggle الثيم */
+        #theme-toggle {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            z-index: 120;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--card-strong);
+            color: var(--text);
+            display: grid;
+            place-items: center;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        #theme-toggle:hover { transform: translateY(-2px) scale(1.02); }
+        #theme-toggle i { font-size: 18px; }
+
         /* توست عائم للتهنئة/التصحيح */
         .toast-float {
             position: fixed;
@@ -192,6 +278,7 @@
     </style>
 </head>
 <body class="p-4 sm:p-8">
+    <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم"><i class="fas fa-moon"></i></button>
     <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
         <button onclick="navToHome()" id="dock-home" class="dock-btn active flex flex-col items-center gap-1 w-16 p-1.5 text-blue-600 transition-all">
             <i class="fas fa-home text-xl dock-icon"></i>
@@ -1061,6 +1148,30 @@
                 if(el) el.classList.add('hidden');
             });
         }
+
+        // === الثيم (فاتح/داكن) ===
+        const THEME_KEY = 'app-theme';
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            const icon = document.querySelector('#theme-toggle i');
+            const finalTheme = theme === 'dark' ? 'dark' : 'light';
+            root.setAttribute('data-theme', finalTheme);
+            localStorage.setItem(THEME_KEY, finalTheme);
+            if (icon) icon.className = finalTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            applyTheme(current === 'light' ? 'dark' : 'light');
+        }
+        (function initTheme() {
+            const stored = localStorage.getItem(THEME_KEY);
+            if (stored) {
+                applyTheme(stored);
+            } else {
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                applyTheme(prefersDark ? 'dark' : 'light');
+            }
+        })();
 
         // === (جديد) دالة تسجيل الخروج ===
         function logoutUser() {
