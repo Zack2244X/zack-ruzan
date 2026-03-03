@@ -7,7 +7,6 @@
     <!-- تضمين Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         /* === أكواد تسريع الأداء وجعل الواجهة سلسة === */
         body::before {
@@ -242,8 +241,9 @@
             </div>
             <h2 class="text-2xl font-extrabold text-gray-800 mb-2">منطقة الإدارة</h2>
             <p class="text-sm text-gray-500 mb-6">سجل دخولك بحساب Google المعتمد لفتح لوحة التحكم</p>
-            <div id="admin-google-btn" class="flex justify-center mb-4"></div>
-            <button onclick="startGoogleRedirectLogin('admin')" class="text-sm text-blue-600 hover:text-blue-800 font-bold underline mb-4">لو نافذة Google علّقت، اضغط هنا</button>
+            <button onclick="startGoogleRedirectLogin('admin')" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition mb-4">
+                <i class="fab fa-google ml-2"></i> تسجيل الدخول باستخدام Google
+            </button>
             <p id="admin-auth-error" class="text-red-500 text-sm font-bold hidden mb-4"></p>
             <p id="admin-auth-loading" class="text-blue-500 text-sm font-bold hidden mb-4"><i class="fas fa-spinner fa-spin ml-2"></i> جاري التحقق...</p>
             <button onclick="closeAdminAuth()" class="py-3 px-6 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إلغاء</button>
@@ -397,9 +397,9 @@
             </div>
             <h1 class="text-3xl font-extrabold text-gray-800 mb-2">مرحباً بك في المنصة</h1>
             <p class="text-gray-500 mb-6">سجل دخولك بحساب Google لبدء الاختبارات</p>
-            
-            <div id="student-google-btn" class="flex justify-center mb-4"></div>
-            <button onclick="startGoogleRedirectLogin('student')" class="text-sm text-blue-600 hover:text-blue-800 font-bold underline mb-2">لو نافذة Google علّقت، اضغط هنا للتسجيل المباشر</button>
+            <button onclick="startGoogleRedirectLogin('student')" class="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl shadow-lg hover:bg-blue-700 transition mb-2">
+                <i class="fab fa-google ml-2"></i> تسجيل الدخول باستخدام Google
+            </button>
             <p id="login-error" class="text-red-500 text-sm font-bold hidden mb-2"></p>
             <p id="login-loading" class="text-blue-500 text-sm font-bold hidden mb-2"><i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...</p>
         </div>
@@ -983,8 +983,8 @@
                 document.getElementById('admin-overlay').classList.add('active');
                 document.getElementById('admin-content').classList.add('active');
             } else {
+                googleLoginMode = 'admin';
                 document.getElementById('admin-auth-modal').classList.remove('hidden');
-                renderAdminGoogleButton();
             }
         }
 
@@ -1090,58 +1090,7 @@
         }
 
         function initGoogleSignIn() {
-            if (typeof google !== 'undefined' && google.accounts) {
-                google.accounts.id.initialize({
-                    client_id: GOOGLE_CLIENT_ID,
-                    callback: handleGoogleCallback,
-                    ux_mode: 'popup',
-                    itp_support: true
-                });
-                // عرض زر الطالب على شاشة الدخول
-                renderStudentGoogleButton();
-            } else if (gsiRetries < 20) {
-                gsiRetries++;
-                setTimeout(initGoogleSignIn, 500);
-            }
-        }
-
-        function handleGoogleCallback(response) {
-            if (googleLoginMode === 'admin') {
-                handleGoogleAdminResponse(response);
-            } else {
-                handleStudentGoogleLogin(response);
-            }
-        }
-
-        function renderStudentGoogleButton() {
-            const container = document.getElementById('student-google-btn');
-            if (container && typeof google !== 'undefined' && google.accounts) {
-                container.innerHTML = '';
-                google.accounts.id.renderButton(container, {
-                    theme: 'filled_blue',
-                    size: 'large',
-                    shape: 'pill',
-                    text: 'signin_with',
-                    locale: 'ar',
-                    width: 300
-                });
-            }
-        }
-
-        function renderAdminGoogleButton() {
-            googleLoginMode = 'admin';
-            const container = document.getElementById('admin-google-btn');
-            if (container && typeof google !== 'undefined' && google.accounts) {
-                container.innerHTML = '';
-                google.accounts.id.renderButton(container, {
-                    theme: 'filled_blue',
-                    size: 'large',
-                    shape: 'pill',
-                    text: 'signin_with',
-                    locale: 'ar',
-                    width: 280
-                });
-            }
+            gsiRetries = 0;
         }
 
         async function handleGoogleAdminResponse(response) {
@@ -1710,10 +1659,15 @@
                     showAdminToast();
                 }
 
-                // تحميل البيانات من السيرفر
-                await loadDataFromServer();
                 navToHome();
                 renderDashboard();
+
+                // تحميل البيانات من السيرفر بالخلفية لتحسين سرعة الدخول
+                loadDataFromServer().then(() => {
+                    renderSubjectFilters();
+                    renderHistoryTree();
+                    renderDashboard();
+                });
             } catch (err) {
                 loadingEl.classList.add('hidden');
                 errorEl.textContent = '❌ ' + (err.message || 'حدث خطأ أثناء تسجيل الدخول');
@@ -1972,8 +1926,7 @@ function loadApp() {
             document.getElementById('login-screen').classList.remove('hidden');
             document.getElementById('dashboard-view').classList.add('hidden');
             document.getElementById('ios-bottom-nav').classList.add('hidden');
-            // عرض زر Google لما الشاشة تظهر
-            setTimeout(() => renderStudentGoogleButton(), 300);
+            googleLoginMode = 'student';
         }
                       function renderDashboard() {
             // --- 1. عرض آخر 4 امتحانات بتصميم احترافي (أزرق) ---
