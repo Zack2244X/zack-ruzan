@@ -3,7 +3,7 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v20';
+const CACHE_NAME = 'quiz-platform-v21';
 const STATIC_ASSETS = [
     '/css/styles.css',
     '/css/tailwind.css',

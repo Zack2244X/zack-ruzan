@@ -465,11 +465,12 @@ export async function submitQuiz() {
 
             // إرسال النتيجة للسيرفر
             const quizId = state.currentQuizData.id || state.currentQuizData.config?.id;
-            console.log(`[submitScore] بدء إرسال النتيجة — quizId: ${quizId}, النتيجة: ${state.score}/${state.totalQuestions}`);
-            if (quizId && typeof quizId === 'number') {
+            const numericId = Number(quizId);
+            console.log(`[submitScore] بدء إرسال النتيجة — quizId: ${quizId} (type: ${typeof quizId}), النتيجة: ${state.score}/${state.totalQuestions}`);
+            if (quizId && Number.isFinite(numericId) && numericId > 0) {
                 try {
                     const scoreResult = await apiCall('POST', '/api/scores', {
-                        quizId,
+                        quizId: numericId,
                         answers: state.userAnswers.map((a, i) => ({
                             questionId: state.currentQuizData.questions[i]?.id || i,
                             selectedIndex: a ? a.selectedIndex : -1
