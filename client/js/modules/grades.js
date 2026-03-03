@@ -5,14 +5,44 @@
 import state from './state.js';
 import { escapeHtml } from './helpers.js';
 import { _showThemeToggle } from './navigation.js';
+import { fetchScoresFromServer, fetchLeaderboardFromServer } from './api.js';
 
 /**
- * فتح مودل الدرجات وعرض القائمة
+ * فتح مودل الدرجات — يجلب أحدث بيانات من السيرفر ثم يعرضها
  */
-export function openGradesModal() {
+export async function openGradesModal() {
     _showThemeToggle(false);
-    renderGradesList();
     document.getElementById('grades-modal').classList.remove('hidden');
+
+    // عرض حالة تحميل مؤقتة
+    const container = document.getElementById('grades-list-container');
+    container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات من السيرفر...</p></div>`;
+
+    // جلب أحدث البيانات من السيرفر
+    try {
+        const [freshScores, freshLeaderboard] = await Promise.all([
+            fetchScoresFromServer().catch(() => []),
+            fetchLeaderboardFromServer().catch(() => [])
+        ]);
+        if (freshScores.length > 0) {
+            state.serverScores = freshScores;
+            state.allUserScores = freshScores.map(s => ({
+                userName: s.userName || 'طالب',
+                quizTitle: s.quizTitle || 'امتحان',
+                quizSubject: s.quizSubject || '',
+                score: Number(s.score) || 0,
+                total: Number(s.total) || 0,
+                percentage: Number(s.percentage) || 0,
+                date: s.date || new Date().toISOString()
+            }));
+        }
+        if (freshLeaderboard.length > 0) state.serverLeaderboard = freshLeaderboard;
+        console.log(`[grades] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف من السيرفر`);
+    } catch (e) {
+        console.error('[grades] ✗ فشل تحديث البيانات:', e.message);
+    }
+
+    renderGradesList();
 }
 
 /**
