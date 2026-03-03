@@ -2769,13 +2769,15 @@ function loadApp() {
                             'bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700'
                         ];
                         const medals = ['🥇', '🥈', '🥉'];
+                        const colorIdx = Math.min(rank - 1, colors.length - 1);
+                        const medal = medals[Math.min(rank - 1, medals.length - 1)] || '⭐';
                         const baseRankText = [`المركز الأول`, `المركز الثاني`, `المركز الثالث`][rank - 1] || 'متقدم';
                         const rankText = repeatIndex > 0 ? `${baseRankText} (${repeatIndex === 1 ? 'أول' : repeatIndex === 2 ? 'ثاني' : 'مكرر'} مكرر)` : baseRankText;
 
                         leaderboardList.innerHTML += `
-                            <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[idx] || 'bg-gray-50'} shadow-sm">
+                            <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[colorIdx] || 'bg-gray-50'} shadow-sm">
                                 <div class="flex items-center gap-4">
-                                    <span class="text-3xl drop-shadow-sm">${medals[idx] || '⭐'}</span>
+                                    <span class="text-3xl drop-shadow-sm">${medal}</span>
                                     <div>
                                         <p class="font-black text-gray-800 text-lg">${entry.userName}</p>
                                         <p class="text-xs font-bold opacity-80 mt-0.5">${rankText}</p>
