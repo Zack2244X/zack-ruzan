@@ -307,10 +307,13 @@ select {
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Bottom sheets: add padding so content clears the home indicator */
+/* Bottom sheets: add padding so content clears the bottom nav + home indicator */
 #tree-content,
 #admin-content {
-    padding-bottom: max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom)));
+    padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom)));
+    max-height: 85vh;
+    max-height: 85dvh;
+    overflow-y: auto;
 }
 
 /* iOS Dock / Bottom Nav */
