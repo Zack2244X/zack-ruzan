@@ -2399,7 +2399,17 @@ function loadApp() {
             const treeData = {};
             itemsToShow.forEach(item => {
                 const config = item.data.config;
-                const timestamp = config.id ? parseInt(config.id.split('-')[1]) || Date.now() : Date.now();
+                let timestamp = Date.now();
+                const rawId = config.id || item.data.id;
+                if (typeof rawId === 'string' && rawId.includes('-')) {
+                    const maybeTs = parseInt(rawId.split('-')[1]);
+                    if (!isNaN(maybeTs)) timestamp = maybeTs;
+                } else if (!isNaN(Number(rawId))) {
+                    timestamp = Number(rawId);
+                } else if (item.data.createdAt) {
+                    const t = new Date(item.data.createdAt).getTime();
+                    if (!isNaN(t)) timestamp = t;
+                }
                 const date = new Date(timestamp);
                 const year = date.getFullYear();
                 const monthName = date.toLocaleDateString('ar-EG', { month: 'long' });
