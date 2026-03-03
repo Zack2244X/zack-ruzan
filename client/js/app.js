@@ -271,7 +271,7 @@ Object.assign(window, {
     openCreateSection, closeCreateSection, goToBuilderStep2,
     renderBuilderQuestion, updateBuilderData, updateBuilderOptionText, setBuilderCorrectOption,
     addBuilderOption, removeBuilderOption, addBuilderQuestion,
-    navBuilderQuestion, saveBuiltQuiz, updateExistingQuiz,
+    navBuilderQuestion, saveBuiltQuiz, loadQuizIntoBuilder, updateExistingQuiz,
     triggerImportExamFile, reshuffleImportedAnswers, handleImportFileChange,
 
     // Tree & Subjects
