@@ -132,8 +132,8 @@
                         <input type="url" id="new-n-link" dir="ltr" placeholder="https://..." class="w-full p-4 border-2 border-gray-200 rounded-xl text-left focus:border-orange-500 outline-none transition">
                     </div>
 
-                    <div class="flex gap-4">
-                        <div class="w-1/2">
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="w-full sm:w-1/2">
                             <label class="block font-bold text-gray-700 mb-2">نوع الملف</label>
                             <select id="new-n-type" class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none transition bg-white">
                                 <option value="pdf">PDF (كتاب/مذكرة)</option>
@@ -141,7 +141,7 @@
                                 <option value="link">رابط خارجي</option>
                             </select>
                         </div>
-                        <div class="w-1/2">
+                        <div class="w-full sm:w-1/2">
                             <label class="block font-bold text-gray-700 mb-2">وصف قصير</label>
                             <input type="text" id="new-n-desc" placeholder="اختياري..." class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none transition">
                         </div>
@@ -187,12 +187,12 @@
                         <datalist id="subjects-list">
                             </datalist>
                     </div>
-                    <div class="flex gap-4">
-                        <div class="w-1/2">
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="w-full sm:w-1/2">
                             <label class="block font-bold text-gray-700 mb-2">المدة (بالدقائق)</label>
                             <input type="number" id="new-q-time" placeholder="30" class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none transition">
                         </div>
-                        <div class="w-1/2">
+                        <div class="w-full sm:w-1/2">
                             <label class="block font-bold text-gray-700 mb-2">وصف قصير</label>
                             <input type="text" id="new-q-desc" placeholder="اختياري..." class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none transition">
                         </div>

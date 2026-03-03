@@ -59,10 +59,45 @@ export function updateDockUI(activeId) {
     }
 }
 
+/**
+ * إضافة swipe-to-close لعنصر bottom sheet
+ * @param {HTMLElement} el — عنصر المحتوى
+ * @param {Function} closeFn — دالة الإغلاق
+ */
+function _attachSwipeToClose(el, closeFn) {
+    if (!el || el._swipeAttached) return;
+    el._swipeAttached = true;
+    let startY = 0;
+    let isDragging = false;
+
+    el.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        el.style.transition = 'none';
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > 0) el.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+
+    el.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const dy = e.changedTouches[0].clientY - startY;
+        el.style.transition = '';
+        el.style.transform = '';
+        if (dy > 80) closeFn();
+    }, { passive: true });
+}
+
 /** فتح القائمة السفلية (Bottom Sheet) */
 export function openBottomSheet() {
+    const content = document.getElementById('tree-content');
     document.getElementById('tree-overlay').classList.add('active');
-    document.getElementById('tree-content').classList.add('active');
+    content.classList.add('active');
+    _attachSwipeToClose(content, closeBottomSheet);
     _showThemeToggle(false);
     _syncMainInteractionState();
 }
@@ -170,8 +205,10 @@ export function openAdminAuthOrPanel() {
     closeAllOverlays();
     updateDockUI('settings');
     if (state.isAdmin) {
+        const adminContent = document.getElementById('admin-content');
         document.getElementById('admin-overlay').classList.add('active');
-        document.getElementById('admin-content').classList.add('active');
+        adminContent.classList.add('active');
+        _attachSwipeToClose(adminContent, closeAdminSheet);
     } else {
         document.getElementById('student-menu-modal').classList.remove('hidden');
     }
