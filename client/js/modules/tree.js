@@ -397,10 +397,13 @@ export async function executeRenameSubject(renderSubjectFiltersFn, renderHistory
     }
 
     if (state.subjectToRename && newName !== state.subjectToRename) {
+        console.log(`[renameSubject] بدء تعديل اسم المادة — "${state.subjectToRename}" → "${newName}"`);
         try {
-            await apiCall('PUT', '/api/quizzes/subject/rename', { oldName: state.subjectToRename, newName });
+            const result = await apiCall('PUT', '/api/quizzes/subject/rename', { oldName: state.subjectToRename, newName });
+            console.log(`[renameSubject] ✓ تم على السيرفر — ${result.modifiedCount || 0} امتحان تأثر`);
         } catch (e) {
-            console.warn('تعذر تعديل اسم المادة على السيرفر:', e.message);
+            console.error(`[renameSubject] ✗ فشل:`, e.message);
+            showAlert('⚠️ تعذر تعديل اسم المادة على السيرفر: ' + e.message, 'warning');
         }
         state.allQuizzes.forEach(q => {
             if (q.config.subject === state.subjectToRename) q.config.subject = newName;
@@ -444,10 +447,13 @@ export function closeDeleteModal() {
  */
 export async function executeDeleteSubject(renderSubjectFiltersFn, renderHistoryTreeFn, renderDashboardFn) {
     if (state.subjectToDelete) {
+        console.log(`[deleteSubject] بدء حذف المادة — "${state.subjectToDelete}"`);
         try {
-            await apiCall('DELETE', '/api/quizzes/subject/' + encodeURIComponent(state.subjectToDelete));
+            const result = await apiCall('DELETE', '/api/quizzes/subject/' + encodeURIComponent(state.subjectToDelete));
+            console.log(`[deleteSubject] ✓ تم على السيرفر — ${result.deletedCount || 0} امتحان محذوف`);
         } catch (e) {
-            console.warn('تعذر حذف المادة على السيرفر:', e.message);
+            console.error(`[deleteSubject] ✗ فشل:`, e.message);
+            showAlert('⚠️ تعذر حذف المادة على السيرفر: ' + e.message, 'warning');
         }
         state.allQuizzes = state.allQuizzes.filter(q => q.config.subject !== state.subjectToDelete);
         if (state.currentSubjectFilter === state.subjectToDelete) state.currentSubjectFilter = 'الكل';

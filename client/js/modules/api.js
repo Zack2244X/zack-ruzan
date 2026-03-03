@@ -38,6 +38,8 @@ export function getAuthHeaders() {
  * @throws {Error} في حالة فشل الاتصال
  */
 export async function apiCall(method, url, body) {
+    const tag = `[API] ${method} ${url}`;
+    console.log(`${tag} — إرسال...`, body ? body : '');
     const opts = {
         method,
         headers: getAuthHeaders(),
@@ -47,9 +49,13 @@ export async function apiCall(method, url, body) {
     const res = await fetch(url, opts);
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'خطأ في الاتصال بالسيرفر');
+        const errMsg = data.error || `HTTP ${res.status}`;
+        console.error(`${tag} ✗ فشل — ${res.status}:`, data);
+        throw new Error(errMsg);
     }
-    return res.json();
+    const data = await res.json();
+    console.log(`${tag} ✓ نجح — ${res.status}`, data);
+    return data;
 }
 
 /**
@@ -102,13 +108,14 @@ export async function fetchScoresFromServer() {
  * تحميل جميع البيانات من السيرفر
  */
 export async function loadDataFromServer() {
-    if (!state.currentUser) return;
+    if (!state.currentUser) { console.warn('[loadData] لا يوجد مستخدم — تخطي'); return; }
+    console.log('[loadData] بدء تحميل البيانات من السيرفر...');
     try {
         const [quizzesRes, notesRes, leaderboardRemote, scoresRemote] = await Promise.all([
-            apiCall('GET', '/api/quizzes').catch(() => ({ data: [] })),
-            apiCall('GET', '/api/notes').catch(() => ({ data: [] })),
-            fetchLeaderboardFromServer().catch(() => []),
-            fetchScoresFromServer().catch(() => [])
+            apiCall('GET', '/api/quizzes').catch(e => { console.error('[loadData] ✗ فشل تحميل الامتحانات:', e.message); return { data: [] }; }),
+            apiCall('GET', '/api/notes').catch(e => { console.error('[loadData] ✗ فشل تحميل المذكرات:', e.message); return { data: [] }; }),
+            fetchLeaderboardFromServer().catch(e => { console.error('[loadData] ✗ فشل تحميل لوحة الشرف:', e.message); return []; }),
+            fetchScoresFromServer().catch(e => { console.error('[loadData] ✗ فشل تحميل الدرجات:', e.message); return []; })
         ]);
         const quizzes = Array.isArray(quizzesRes) ? quizzesRes : (quizzesRes?.data || []);
         const notes = Array.isArray(notesRes) ? notesRes : (notesRes?.data || []);
@@ -144,7 +151,8 @@ export async function loadDataFromServer() {
             }));
         }
         state.dataLoaded = true;
+        console.log(`[loadData] ✓ تم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${state.serverScores.length} نتيجة، ${state.serverLeaderboard.length} في لوحة الشرف`);
     } catch (e) {
-        console.warn('تعذر تحميل البيانات:', e.message);
+        console.error('[loadData] ✗ فشل تحميل البيانات:', e.message);
     }
 }

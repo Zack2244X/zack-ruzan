@@ -215,6 +215,7 @@ function handleStudentGoogleLogin(response) {
 
 /** @description تحميل التطبيق عند بدء التشغيل */
 function loadApp() {
+    console.log('[app] بدء تحميل التطبيق...');
     try {
         // Scores are loaded from server via loadAllDataFromServer() — no localStorage fallback
 
@@ -239,9 +240,11 @@ function loadApp() {
                 renderSubjectFilters();
                 renderHistoryTree();
                 renderDashboard();
+                console.log('[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر');
             });
             return;
         }
+        console.log('[app] لا يوجد مستخدم مسجّل — عرض شاشة الدخول');
         showLoginScreen();
     } catch (e) {
         console.warn("تعذر الوصول للذاكرة المحلية:", e);

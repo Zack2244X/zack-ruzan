@@ -179,6 +179,7 @@ export function showAdminToast() {
  * @param {Function} startTokenRefresh — دالة بدء تجديد التوكن
  */
 export async function handleStudentGoogleLogin(response, renderSubjectFilters, renderHistoryTree, renderDashboard, startTokenRefresh) {
+    console.log('[auth] بدء تسجيل دخول الطالب...');
     const errorEl = document.getElementById('login-error');
     const loadingEl = document.getElementById('login-loading');
     errorEl.classList.add('hidden');
@@ -220,6 +221,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
 
         if (data.user.role === 'admin') { state.isAdmin = true; }
         loadingEl.classList.add('hidden');
+        console.log(`[auth] ✓ تسجيل دخول ناجح — ${state.currentUser.fullName} (${state.isAdmin ? 'أدمن' : 'طالب'})`);
 
         const safeName = (state.currentUser.fname || state.currentUser.fullName || state.currentUser.email || 'صديقنا').trim();
         const greetings = [
@@ -258,6 +260,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
  * تسجيل الخروج مع إلغاء التوكن ومزامنة بين التبويبات
  */
 export async function logoutUser() {
+    console.log('[auth] بدء تسجيل الخروج...');
     try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
     state.currentUser = null;
     state.isAdmin = false;
@@ -266,6 +269,7 @@ export async function logoutUser() {
     // Signal other tabs to logout
     localStorage.setItem('logout_event', Date.now().toString());
     localStorage.removeItem('logout_event');
+    console.log('[auth] ✓ تم تسجيل الخروج');
     location.reload();
 }
 
@@ -274,12 +278,14 @@ export async function logoutUser() {
  */
 export function startTokenRefresh() {
     if (state.tokenRefreshTimer) clearInterval(state.tokenRefreshTimer);
+    console.log('[auth] ✓ بدء تجديد التوكن التلقائي (كل 6 ساعات)');
     state.tokenRefreshTimer = setInterval(async () => {
         if (!state.currentUser) return;
         try {
             await apiCall('POST', '/api/auth/refresh');
+            console.log('[auth] ✓ تم تجديد التوكن تلقائياً');
             // Token refreshed in httpOnly cookie automatically
             sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
-        } catch (e) { console.warn('⚠️ فشل تجديد التوكن:', e.message); }
+        } catch (e) { console.error('[auth] ✗ فشل تجديد التوكن:', e.message); }
     }, 6 * 60 * 60 * 1000);
 }

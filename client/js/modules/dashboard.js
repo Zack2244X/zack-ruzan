@@ -13,6 +13,7 @@ import { escapeHtml } from './helpers.js';
 export function renderDashboard() {
     // حالة التحميل
     if (!state.dataLoaded) {
+        console.log('[dashboard] ⏳ البيانات لم تُحمّل بعد...');
         const spinner = `<div class="col-span-full py-12 text-center text-gray-400"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات...</p></div>`;
         const eg = document.getElementById('latest-exams-grid');
         const ng = document.getElementById('latest-notes-grid');
@@ -255,4 +256,5 @@ export function renderDashboard() {
             leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج ضمن أول 3 مراكز بعد.</div>`;
         }
     }
+    console.log(`[dashboard] ✓ تم رسم لوحة التحكم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${sourceLeaderboard.length} في الشرف`);
 }

@@ -58,12 +58,14 @@ export async function saveNote(renderEditTree, renderSubjectFilters, renderHisto
         description: document.getElementById('new-n-desc').value.trim()
     };
 
+    console.log(`[saveNote] بدء حفظ المذكرة — العنوان: "${title}"`);
     try {
         const saved = await apiCall('POST', '/api/notes', noteData);
+        const serverId = saved.note?.id || saved.id;
         const newNote = {
-            id: saved.id || saved.note?.id,
+            id: serverId,
             config: {
-                id: saved.id || saved.note?.id || 'note-' + Date.now(),
+                id: serverId,
                 title,
                 subject,
                 link,
@@ -72,8 +74,10 @@ export async function saveNote(renderEditTree, renderSubjectFilters, renderHisto
             }
         };
         state.allNotes.push(newNote);
+        console.log(`[saveNote] ✓ تم الحفظ على السيرفر — ID: ${serverId}`);
         showAlert('✅ تم إضافة الملف بنجاح!');
     } catch (e) {
+        console.error(`[saveNote] ✗ فشل الحفظ:`, e.message);
         const newNote = {
             config: {
                 id: 'note-' + Date.now(),
@@ -85,7 +89,7 @@ export async function saveNote(renderEditTree, renderSubjectFilters, renderHisto
             }
         };
         state.allNotes.push(newNote);
-        showAlert('✅ تم إضافة الملف محلياً (' + e.message + ')', 'warning');
+        showAlert('⚠️ تعذر الحفظ على السيرفر: ' + e.message, 'warning');
     }
     closeAddNoteModal();
     if (renderEditTree) renderEditTree();
@@ -147,11 +151,14 @@ export async function updateExistingNote(renderHistoryTree, renderEditTree, rend
         description: document.getElementById('new-n-desc').value.trim()
     };
 
+    console.log(`[updateNote] بدء تحديث المذكرة — ID: ${noteId}, العنوان: "${title}"`);
     try {
         await apiCall('PUT', '/api/notes/' + noteId, noteUpdateData);
+        console.log(`[updateNote] ✓ تم التحديث على السيرفر — ID: ${noteId}`);
         showAlert('✅ تم تحديث المذكرة بنجاح!');
     } catch (e) {
-        showAlert('✅ تم تحديث المذكرة محلياً (' + e.message + ')', 'warning');
+        console.error(`[updateNote] ✗ فشل التحديث:`, e.message);
+        showAlert('⚠️ تعذر التحديث على السيرفر: ' + e.message, 'warning');
     }
 
     state.allNotes[state.editingNoteIndex].config.title = title;
@@ -172,6 +179,7 @@ export async function updateExistingNote(renderHistoryTree, renderEditTree, rend
  * @param {string} url — رابط الملف الأصلي
  */
 export function forceDownload(url) {
+    console.log(`[forceDownload] بدء تحميل —`, url);
     // التحقق من أن الرابط آمن — منع javascript: و data: و vbscript:
     const lowerUrl = (url || '').trim().toLowerCase();
     if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {

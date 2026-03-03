@@ -216,14 +216,17 @@ export async function saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDas
             questions: state.quizDraft.questions
         });
 
-        state.quizDraft.id = saved.id || saved.quiz?.id;
-        state.quizDraft.config.id = state.quizDraft.id;
+        const serverId = saved.quiz?.id || saved.id;
+        state.quizDraft.id = serverId;
+        state.quizDraft.config.id = serverId;
         state.allQuizzes.push(state.quizDraft);
 
+        console.log(`[saveQuiz] ✓ تم الحفظ على السيرفر — ID: ${serverId}, العنوان: "${state.quizDraft.config.title}"`);
         showAlert('✅ تم بناء الاختبار وحفظه بنجاح!');
     } catch (e) {
+        console.error(`[saveQuiz] ✗ فشل الحفظ على السيرفر:`, e.message);
         state.allQuizzes.push(state.quizDraft);
-        showAlert('✅ تم حفظ الاختبار محلياً (تعذر الحفظ على السيرفر: ' + e.message + ')', 'warning');
+        showAlert('⚠️ تعذر الحفظ على السيرفر: ' + e.message, 'warning');
     }
 
     closeCreateSection();
@@ -277,6 +280,7 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
     }
 
     const quizId = state.allQuizzes[index].id || state.allQuizzes[index].config?.id;
+    console.log(`[updateQuiz] بدء تحديث الامتحان — ID: ${quizId}, العنوان: "${state.quizDraft.config.title}"`);
     try {
         await apiCall('PUT', '/api/quizzes/' + quizId, {
             title: state.quizDraft.config.title,
@@ -287,9 +291,11 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
             questions: state.quizDraft.questions,
             isActive: true
         });
+        console.log(`[updateQuiz] ✓ تم التحديث على السيرفر — ID: ${quizId}`);
         showAlert('✅ تم تحديث الامتحان بنجاح!');
     } catch (e) {
-        showAlert('✅ تم تحديث الامتحان محلياً (' + e.message + ')', 'warning');
+        console.error(`[updateQuiz] ✗ فشل التحديث:`, e.message);
+        showAlert('⚠️ تعذر التحديث على السيرفر: ' + e.message, 'warning');
     }
 
     state.allQuizzes[index] = state.quizDraft;

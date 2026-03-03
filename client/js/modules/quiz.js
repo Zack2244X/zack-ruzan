@@ -124,6 +124,7 @@ export function playQuiz(index) {
     // 1. استدعاء بيانات الاختبار
     state.currentQuizData = state.allQuizzes[index];
     const quizId = state.currentQuizData.id || state.currentQuizData.config?.id;
+    console.log(`[playQuiz] بدء الامتحان — index: ${index}, ID: ${quizId}, العنوان: "${state.currentQuizData.config.title}", أسئلة: ${state.currentQuizData.questions.length}`);
 
     // منع إعادة الامتحان لنفس الحساب (حتى لو أدمن)
     const takenServer = state.serverScores.find(s => s.quizId && quizId && String(s.quizId) === String(quizId));
@@ -463,24 +464,30 @@ export async function submitQuiz() {
             state.allUserScores.push(resultEntry);
 
             // إرسال النتيجة للسيرفر
-            if (state.currentQuizData.id) {
-                apiCall('POST', '/api/scores', {
-                    quizId: state.currentQuizData.id,
-                    answers: state.userAnswers.map((a, i) => ({
-                        questionId: state.currentQuizData.questions[i]?.id || i,
-                        selectedIndex: a ? a.selectedIndex : -1
-                    })),
-                    timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
-                }).catch(e => {
-                    console.warn('تعذر حفظ النتيجة:', e.message);
-                    // إظهار رسالة للمستخدم بدل من فشل صامت
+            const quizId = state.currentQuizData.id || state.currentQuizData.config?.id;
+            console.log(`[submitScore] بدء إرسال النتيجة — quizId: ${quizId}, النتيجة: ${state.score}/${state.totalQuestions}`);
+            if (quizId && typeof quizId === 'number') {
+                try {
+                    const scoreResult = await apiCall('POST', '/api/scores', {
+                        quizId,
+                        answers: state.userAnswers.map((a, i) => ({
+                            questionId: state.currentQuizData.questions[i]?.id || i,
+                            selectedIndex: a ? a.selectedIndex : -1
+                        })),
+                        timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
+                    });
+                    console.log(`[submitScore] ✓ تم حفظ النتيجة على السيرفر`, scoreResult.result || scoreResult);
+                } catch (e) {
+                    console.error(`[submitScore] ✗ فشل حفظ النتيجة:`, e.message);
                     const saveErrEl = document.getElementById('save-score-error');
                     if (saveErrEl) {
-                        saveErrEl.textContent = '⚠️ تعذّر حفظ نتيجتك على السيرفر (مشكلة في الاتصال). نتيجتك محفوظة محلياً فقط.';
+                        saveErrEl.textContent = '⚠️ تعذّر حفظ نتيجتك على السيرفر: ' + e.message;
                         saveErrEl.classList.remove('hidden');
                         setTimeout(() => saveErrEl.classList.add('hidden'), 6000);
                     }
-                });
+                }
+            } else {
+                console.warn(`[submitScore] ⚠️ الامتحان ليس له ID سيرفر صالح (${quizId}) — النتيجة محفوظة محلياً فقط`);
             }
         }
         // ========================================
