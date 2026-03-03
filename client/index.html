@@ -270,6 +270,51 @@
             outline: none;
         }
 
+        /* تعميم الثيم الداكن على كل البطاقات/المودالات والخلفيات المتدرجة */
+        [data-theme="dark"] .bg-white,
+        [data-theme="dark"] .bg-gray-50,
+        [data-theme="dark"] .bg-white\/95,
+        [data-theme="dark"] .bg-white\/90,
+        [data-theme="dark"] .bg-white\/75 {
+            background: var(--card) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+        }
+        [data-theme="dark"] .bg-gradient-to-r,
+        [data-theme="dark"] .bg-gradient-to-l {
+            background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)) !important;
+            border-color: var(--border) !important;
+        }
+        [data-theme="dark"] .text-gray-800,
+        [data-theme="dark"] .text-gray-700,
+        [data-theme="dark"] .text-gray-600,
+        [data-theme="dark"] .text-gray-500 {
+            color: var(--text) !important;
+        }
+
+        /* ضبط حجم المودالات والشيت السفلي للموبايل والأجهزة القديمة */
+        .bottom-sheet-content,
+        #admin-content,
+        #tree-content {
+            max-width: min(520px, 94vw);
+            width: 100%;
+        }
+
+        /* فallback للأجهزة بدون دعم blur (مثل بعض إصدارات أندرويد 8/10) */
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            .glass-card,
+            .glass-soft,
+            [id$="-modal"] > div,
+            #theme-toggle,
+            #ios-bottom-nav,
+            .bottom-sheet-content {
+                background: var(--card);
+                border-color: var(--border);
+                box-shadow: 0 14px 38px rgba(0,0,0,0.28);
+            }
+            body { background: var(--bg); }
+        }
+
         /* toggle الثيم */
         #theme-toggle {
             position: fixed;
