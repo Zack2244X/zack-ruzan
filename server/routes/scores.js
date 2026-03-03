@@ -176,7 +176,7 @@ router.get('/leaderboard', authenticate, async (req, res) => {
             WHERE s.deletedAt IS NULL
               AND u.deletedAt IS NULL
             GROUP BY s.userId, u.fname, u.lname
-            ORDER BY totalScore DESC, avgPercentage DESC
+            ORDER BY avgPercentage DESC, totalScore DESC
             LIMIT 50
         `);
 

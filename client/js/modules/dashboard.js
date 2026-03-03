@@ -93,7 +93,7 @@ export function renderDashboard() {
         latestNotesGrid.innerHTML = notesHtml;
     }
 
-    // --- 3. لوحة الشرف: أعلى 3 بمجموع الدرجات في كل الامتحانات ---
+    // --- 3. لوحة الشرف: أعلى 3 بمتوسط النسبة المئوية (نفس ترتيب متابعة الدرجات) ---
     const leaderboardList = document.getElementById('leaderboard-list');
     leaderboardList.innerHTML = '';
 
@@ -129,8 +129,8 @@ export function renderDashboard() {
     const ranked = sourceLeaderboard
         .filter(item => item.totalScore > 0)
         .sort((a, b) => {
-            if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
             if (b.avgPercentage !== a.avgPercentage) return b.avgPercentage - a.avgPercentage;
+            if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
             return String(a.userName).localeCompare(String(b.userName), 'ar');
         });
 
@@ -154,12 +154,12 @@ export function renderDashboard() {
                         <span class="text-3xl drop-shadow-sm">${medals[i]}</span>
                         <div>
                             <p class="font-black text-gray-800 text-lg">${safeName}</p>
-                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankNames[i]}</p>
+                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankNames[i]} — ${entry.examsCount} امتحان</p>
                         </div>
                     </div>
                     <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
-                        <span class="font-black text-base">${entry.totalScore}/${entry.totalMax}</span>
-                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">${entry.examsCount} امتحان — ${entry.avgPercentage}%</p>
+                        <span class="font-black text-xl text-blue-600">${entry.avgPercentage}%</span>
+                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">${entry.totalScore}/${entry.totalMax}</p>
                     </div>
                 </div>
             `;
