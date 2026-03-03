@@ -3,7 +3,7 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v4';
+const CACHE_NAME = 'quiz-platform-v5';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -50,6 +50,20 @@ self.addEventListener('fetch', (event) => {
                     headers: { 'Content-Type': 'application/json' }
                 });
             })
+        );
+        return;
+    }
+
+    // JS files — Network First (ensures fresh code after deployments)
+    if (url.pathname.endsWith('.js') && !url.pathname.endsWith('sw.js')) {
+        event.respondWith(
+            fetch(request).then((response) => {
+                if (response && response.status === 200 && response.type === 'basic') {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                }
+                return response;
+            }).catch(() => caches.match(request).then(cached => cached || new Response('', { status: 408 })))
         );
         return;
     }
