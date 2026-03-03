@@ -8,7 +8,7 @@
 'use strict';
 
 // === الوحدات (Modules) ===
-import state, { setGoogleClientId } from './modules/state.js';
+import state from './modules/state.js';
 import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray } from './modules/helpers.js';
 import { apiCall, loadDataFromServer, fetchLeaderboardFromServer, fetchScoresFromServer } from './modules/api.js';
 import {
@@ -318,7 +318,7 @@ window.onload = async function () {
         const configRes = await fetch('/api/config');
         if (configRes.ok) {
             const configData = await configRes.json();
-            setGoogleClientId(configData.googleClientId);
+            if (configData.googleClientId) state.GOOGLE_CLIENT_ID = configData.googleClientId;
         }
     } catch (e) {
         console.warn('⚠️ تعذر جلب إعدادات السيرفر، استخدام القيم الافتراضية.');

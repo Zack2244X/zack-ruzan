@@ -2,7 +2,7 @@
  * @module auth
  * @description تسجيل الدخول بـ Google OAuth، إدارة الجلسة، تسجيل الخروج
  */
-import state, { GOOGLE_CLIENT_ID } from './state.js';
+import state from './state.js';
 import { showAlert } from './helpers.js';
 import { apiCall, loadDataFromServer } from './api.js';
 import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
@@ -29,7 +29,7 @@ export function startGoogleRedirectLogin(mode) {
             redirectUri = redirectUri.slice(0, -'/index.html'.length);
         }
         const oauthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-        oauthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+        oauthUrl.searchParams.set('client_id', state.GOOGLE_CLIENT_ID);
         oauthUrl.searchParams.set('redirect_uri', redirectUri);
         oauthUrl.searchParams.set('response_type', 'id_token');
         oauthUrl.searchParams.set('scope', 'openid email profile');
