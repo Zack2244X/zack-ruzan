@@ -19,6 +19,18 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // --- قائمة إيميلات الأدمن المعتمدة ---
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
+function splitName(fullName = '') {
+    const clean = (fullName || '').trim();
+    if (!clean) return { fname: '', lname: '' };
+    const parts = clean.split(/\s+/);
+    const fname = parts.shift() || '';
+    const lname = parts.join(' ') || '';
+    return {
+        fname: fname.substring(0, 50),
+        lname: lname.substring(0, 50)
+    };
+}
+
 // ============================================
 //   دالة مساعدة: التحقق من توكن Google
 // ============================================
@@ -71,10 +83,15 @@ router.post('/google', async (req, res) => {
 
         if (user) {
             // === مستخدم موجود → تسجيل دخول ===
+            if ((!user.fname || !user.lname) && googleData.name) {
+                const { fname, lname } = splitName(googleData.name);
+                if (fname) user.fname = fname;
+                if (lname) user.lname = lname;
+            }
             if (googleData.avatar && user.avatar !== googleData.avatar) {
                 user.avatar = googleData.avatar;
-                await user.save();
             }
+            await user.save();
 
             const token = generateToken(user.id, user.role);
 
@@ -98,13 +115,14 @@ router.post('/google', async (req, res) => {
 
         // === مستخدم جديد → إنشاء حساب ===
         const isAdminEmail = ADMIN_EMAILS.includes(googleData.email.toLowerCase());
+        const { fname, lname } = splitName(googleData.name);
 
         user = await User.create({
             email: googleData.email,
             googleId: googleData.googleId,
             avatar: googleData.avatar,
-            fname: '',
-            lname: '',
+            fname: fname || '',
+            lname: lname || '',
             isProfileComplete: false,
             role: isAdminEmail ? 'admin' : 'student'
         });
