@@ -197,7 +197,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             body: JSON.stringify({ idToken: response.credential })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'فشل تسجيل الدخول');
+        if (!res.ok) throw new Error(data.debug ? `${data.error} [${data.debug}]` : (data.error || 'فشل تسجيل الدخول'));
 
         let fname = data.user.fname || '';
         let lname = data.user.lname || '';
