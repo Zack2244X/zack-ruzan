@@ -23,7 +23,7 @@ WORKDIR /app
 COPY server/package*.json ./server/
 
 # Install production dependencies only
-RUN cd server && npm ci --omit=dev
+RUN npm --prefix server ci --omit=dev
 
 # Copy application code
 COPY server/ ./server/
