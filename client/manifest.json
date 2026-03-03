@@ -1,7 +1,7 @@
 {
-    "name": "منصة الاختبارات التفاعلية",
-    "short_name": "اختبارات",
-    "description": "منصة تعليمية تفاعلية للاختبارات والمذكرات",
+    "name": "Zack Exam",
+    "short_name": "Zack Exam",
+    "description": "Zack Exam — منصة تعليمية تفاعلية للاختبارات والمذكرات",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0b1220",

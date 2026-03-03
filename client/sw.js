@@ -1,9 +1,9 @@
 // ============================================
 //   Service Worker — PWA Offline Support
-//   منصة الاختبارات التفاعلية
+//   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v15';
+const CACHE_NAME = 'quiz-platform-v16';
 const STATIC_ASSETS = [
     '/css/styles.css',
     '/css/tailwind.css',
