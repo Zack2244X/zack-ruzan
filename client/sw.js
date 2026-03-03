@@ -3,10 +3,8 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v6';
+const CACHE_NAME = 'quiz-platform-v7';
 const STATIC_ASSETS = [
-    '/',
-    '/index.html',
     '/css/styles.css',
     '/css/tailwind.css',
     '/manifest.json'
@@ -54,8 +52,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // JS files — Network First (ensures fresh code after deployments)
-    if (url.pathname.endsWith('.js') && !url.pathname.endsWith('sw.js')) {
+    // JS & HTML files — Network First (ensures fresh code after deployments)
+    if ((url.pathname.endsWith('.js') && !url.pathname.endsWith('sw.js')) || url.pathname.endsWith('.html') || url.pathname === '/') {
         event.respondWith(
             fetch(request).then((response) => {
                 if (response && response.status === 200 && response.type === 'basic') {
