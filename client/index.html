@@ -1536,32 +1536,38 @@
             const container = document.getElementById('grades-list-container');
             container.innerHTML = '';
 
-            if (allUserScores.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
-                return;
-            }
+                    const validScores = allUserScores.filter(e => Number(e.total) > 0 && Number(e.score) >= 0);
+                    if (validScores.length === 0) {
+                        container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
+                        return;
+                    }
 
             // 1. تجميع البيانات لكل مستخدم
             const usersData = {};
             allQuizzes.forEach(q => { /* حاجة تحسبية */ }); // عشان نعرف عدد الامتحانات الكلي
             
-            allUserScores.forEach(entry => {
-                if (!usersData[entry.userName]) {
-                    usersData[entry.userName] = { 
+            validScores.forEach(entry => {
+                const userName = entry.userName || 'طالب';
+                const score = Number(entry.score) || 0;
+                const total = Number(entry.total) || 0;
+                if (total <= 0) return;
+
+                if (!usersData[userName]) {
+                    usersData[userName] = { 
                         scores: [], 
                         totalScore: 0, 
                         totalMax: 0 
                     };
                 }
-                usersData[entry.userName].scores.push(entry);
-                usersData[entry.userName].totalScore += entry.score;
-                usersData[entry.userName].totalMax += entry.total;
+                usersData[userName].scores.push({ ...entry, score, total });
+                usersData[userName].totalScore += score;
+                usersData[userName].totalMax += total;
             });
 
             // 2. تحويل البيانات لمصفوفة وحساب المتوسط والترتيب
             const rankedUsers = Object.keys(usersData).map(name => {
                 const data = usersData[name];
-                const avgPercent = Math.round((data.totalScore / data.totalMax) * 100);
+                const avgPercent = data.totalMax > 0 ? Math.round((data.totalScore / data.totalMax) * 100) : 0;
                 
                 // تحديد أفضل امتحان
                 let bestEntry = data.scores[0];
@@ -1576,10 +1582,15 @@
                     avg: avgPercent,
                     scores: data.scores,
                     takenCount: data.scores.length,
-                    bestQuizTitle: bestEntry.quizTitle,
+                    bestQuizTitle: bestEntry?.quizTitle || 'امتحان',
                     isComplete: data.scores.length === allQuizzes.length
                 };
-            }).sort((a, b) => b.avg - a.avg);
+            }).filter(u => u.scores.length > 0).sort((a, b) => b.avg - a.avg);
+
+            if (rankedUsers.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
+                return;
+            }
 
             // 3. عرض الشجرة (Tree View)
             rankedUsers.forEach((user, idx) => {
@@ -2605,7 +2616,7 @@ function loadApp() {
                 });
             }
 
-            // --- 3. لوحة الشرف: أعلى 3 حسب عدد الامتحانات المقفولة ---
+            // --- 3. لوحة الشرف: أعلى 3 حسب عدد الامتحانات المقفولة، مع بديل أعلى نسب مئوية ---
             const leaderboardList = document.getElementById('leaderboard-list');
             leaderboardList.innerHTML = '';
             const fullMarksByUser = {};
@@ -2641,7 +2652,44 @@ function loadApp() {
                 });
 
             if (rankedFullMarks.length === 0) {
-                leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج مسجلة بعد.</div>`;
+                // بديل: اعرض أعلى 3 نسب مئوية لو مفيش درجات كاملة
+                const scoresWithPercent = allUserScores
+                    .filter(e => Number(e.total) > 0)
+                    .map(e => ({
+                        userName: e.userName || 'طالب',
+                        percent: Math.round((Number(e.score) / Number(e.total)) * 100)
+                    }))
+                    .sort((a,b) => b.percent - a.percent);
+
+                if (scoresWithPercent.length === 0) {
+                    leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج مسجلة بعد.</div>`;
+                } else {
+                    scoresWithPercent.slice(0,3).forEach((entry, idx) => {
+                        const colors = [
+                            'bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700',
+                            'bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600',
+                            'bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700'
+                        ];
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const rankText = [`المركز الأول`, `المركز الثاني`, `المركز الثالث`][idx] || 'متقدم';
+
+                        leaderboardList.innerHTML += `
+                            <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[idx] || 'bg-gray-50'} shadow-sm">
+                                <div class="flex items-center gap-4">
+                                    <span class="text-3xl drop-shadow-sm">${medals[idx] || '⭐'}</span>
+                                    <div>
+                                        <p class="font-black text-gray-800 text-lg">${entry.userName}</p>
+                                        <p class="text-xs font-bold opacity-80 mt-0.5">${rankText}</p>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
+                                    <span class="font-black text-base">${entry.percent}%</span>
+                                    <p class="text-[11px] text-gray-500 font-bold mt-0.5">أعلى نسبة</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
             } else {
                 const rankNames = ["المركز الأول", "المركز الثاني", "المركز الثالث"];
                 const repeatNames = ["أول", "ثاني", "ثالث", "رابع", "خامس"];
