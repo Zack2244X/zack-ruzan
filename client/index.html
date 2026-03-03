@@ -2299,15 +2299,23 @@
             const isCorrect = currentQ.answerOptions[selectedIndex].isCorrect;
             const rationale = currentQ.answerOptions[selectedIndex].rationale || "لا يوجد تبرير متاح لهذا الخيار.";
 
+            const feedbackConfig = currentQuizData?.config?.feedback || {};
+            const correctFeedback = feedbackConfig.correct || {};
+            const incorrectFeedback = feedbackConfig.incorrect || {};
+            const streakGoal = Number(currentQuizData?.config?.streakGoal) || 0;
+
             
             // تحديث النتيجة والـ Streak
             let newStreak = isCorrect ? streak + 1 : 0;
-            let feedbackMsg = isCorrect ? currentQuizData.config.feedback.correct.message : currentQuizData.config.feedback.incorrect.message;
+            let feedbackMsg = isCorrect
+                ? (correctFeedback.message || "✅ إجابة صحيحة")
+                : (incorrectFeedback.message || "❌ إجابة غير صحيحة");
             
             if (isCorrect) {
                 score++;
-                if (newStreak % currentQuizData.config.streakGoal === 0) {
-                    feedbackMsg += `<br><span class="text-xl font-black block mt-2 text-green-700">${currentQuizData.config.feedback.correct.onStreak}</span>`;
+                if (streakGoal > 0 && newStreak % streakGoal === 0) {
+                    const streakMsg = correctFeedback.onStreak || "🔥 سلسلة إجابات صحيحة رائعة";
+                    feedbackMsg += `<br><span class="text-xl font-black block mt-2 text-green-700">${streakMsg}</span>`;
                 }
             }
             
