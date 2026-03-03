@@ -51,6 +51,12 @@
     --glass-blur: 18px;
 }
 
+/* Dark mode: hide background image, use dark gradient only */
+[data-theme="dark"] body {
+    background-image: none;
+    background: var(--bg);
+}
+
 /* === Base & Reset === */
 *,
 *::before,
