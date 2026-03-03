@@ -174,8 +174,9 @@ router.get('/leaderboard', authenticate, async (req, res) => {
             FROM scores s
             INNER JOIN users u ON s.userId = u.id
             WHERE s.deletedAt IS NULL
+              AND u.deletedAt IS NULL
             GROUP BY s.userId, u.fname, u.lname
-            ORDER BY avgPercentage DESC
+            ORDER BY fullMarksCount DESC, avgPercentage DESC
             LIMIT 50
         `);
 

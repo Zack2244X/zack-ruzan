@@ -135,13 +135,21 @@ export function renderDashboard() {
         });
 
     if (rankedFullMarks.length === 0) {
-        // بديل: اعرض أعلى 3 نسب مئوية
-        const scoresWithPercent = (state.serverScores.length > 0 ? state.serverScores : state.allUserScores)
-            .filter(e => Number(e.total) > 0)
-            .map(e => ({
+        // بديل: اعرض أعلى 3 نسب مئوية من بيانات السيرفر الكاملة
+        const sourceForPercent = state.serverLeaderboard.length > 0
+            ? state.serverLeaderboard.map(e => ({
                 userName: e.userName || 'طالب',
-                percent: Math.round((Number(e.score) / Number(e.total)) * 100)
+                percent: Number(e.avgPercentage) || 0
             }))
+            : state.allUserScores
+                .filter(e => Number(e.total) > 0)
+                .map(e => ({
+                    userName: e.userName || 'طالب',
+                    percent: Math.round((Number(e.score) / Number(e.total)) * 100)
+                }));
+
+        const scoresWithPercent = sourceForPercent
+            .filter(e => e.percent > 0)
             .sort((a, b) => b.percent - a.percent);
 
         if (scoresWithPercent.length === 0) {
@@ -152,7 +160,7 @@ export function renderDashboard() {
             let repeatIndex = 0;
             let lbHtml = '';
 
-            scoresWithPercent.slice(0, 3).forEach((entry, idx) => {
+            scoresWithPercent.slice(0, 3).forEach((entry) => {
                 if (prevPercent === null || entry.percent !== prevPercent) {
                     rank += 1;
                     repeatIndex = 0;
