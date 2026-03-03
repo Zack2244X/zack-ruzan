@@ -16,8 +16,11 @@ export function startGoogleRedirectLogin(mode) {
     try {
         const redirectMode = mode === 'admin' ? 'admin' : 'student';
         const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        // Save to both sessionStorage and localStorage (mobile compat)
         sessionStorage.setItem('googleLoginMode', redirectMode);
         sessionStorage.setItem('googleNonce', nonce);
+        localStorage.setItem('googleLoginMode', redirectMode);
+        localStorage.setItem('googleNonce', nonce);
 
         const currentUrl = new URL(window.location.href);
         let redirectUri = currentUrl.origin + currentUrl.pathname;
@@ -32,7 +35,8 @@ export function startGoogleRedirectLogin(mode) {
         oauthUrl.searchParams.set('scope', 'openid email profile');
         oauthUrl.searchParams.set('nonce', nonce);
         oauthUrl.searchParams.set('prompt', 'select_account');
-        console.log('🔵 Redirecting to:', oauthUrl.toString().substring(0, 100) + '...');
+        console.log('🔵 Redirect URI:', redirectUri);
+        console.log('🔵 Redirecting to Google OAuth...');
         window.location.href = oauthUrl.toString();
     } catch (err) {
         console.error('❌ startGoogleRedirectLogin error:', err);
@@ -45,22 +49,42 @@ export function startGoogleRedirectLogin(mode) {
  * @returns {boolean} هل تم معالجة التوكن
  */
 export function handleGoogleRedirectToken() {
+    // Handle Google error redirect (e.g., access_denied)
+    if (window.location.hash && window.location.hash.includes('error=')) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const error = hashParams.get('error');
+        const errorDesc = hashParams.get('error_description') || error;
+        history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        console.error('❌ Google OAuth error:', error, errorDesc);
+        const errorEl = document.getElementById('login-error');
+        if (errorEl) {
+            errorEl.textContent = '❌ خطأ من Google: ' + decodeURIComponent(errorDesc || 'غير معروف');
+            errorEl.classList.remove('hidden');
+        }
+        return true;
+    }
+
     if (!window.location.hash || !window.location.hash.includes('id_token=')) return false;
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const idToken = hashParams.get('id_token');
     const returnedNonce = hashParams.get('nonce');
-    const expectedNonce = sessionStorage.getItem('googleNonce');
-    const savedMode = sessionStorage.getItem('googleLoginMode') || 'student';
+    // Try both sessionStorage and localStorage for nonce (mobile compat)
+    const expectedNonce = sessionStorage.getItem('googleNonce') || localStorage.getItem('googleNonce');
+    const savedMode = sessionStorage.getItem('googleLoginMode') || localStorage.getItem('googleLoginMode') || 'student';
 
     history.replaceState({}, document.title, window.location.pathname + window.location.search);
     sessionStorage.removeItem('googleNonce');
     sessionStorage.removeItem('googleLoginMode');
+    localStorage.removeItem('googleNonce');
+    localStorage.removeItem('googleLoginMode');
 
     if (!idToken) return false;
     if (expectedNonce && returnedNonce && expectedNonce !== returnedNonce) {
         showAlert('❌ فشل التحقق من تسجيل Google. حاول مرة أخرى.', 'error');
         return true;
     }
+
+    console.log('🔵 Google redirect token received, mode:', savedMode);
 
     state.googleLoginMode = savedMode;
     const response = { credential: idToken };
@@ -212,6 +236,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         });
     } catch (err) {
         loadingEl.classList.add('hidden');
+        console.error('❌ Login error details:', err);
         errorEl.textContent = '❌ ' + (err.message || 'حدث خطأ أثناء تسجيل الدخول');
         errorEl.classList.remove('hidden');
     }
