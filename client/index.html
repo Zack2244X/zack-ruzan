@@ -698,7 +698,7 @@
         //        دوال الاتصال بالسيرفر (API)
         // ============================================
         function getAuthHeaders() {
-            const token = currentUser && currentUser.token ? currentUser.token : localStorage.getItem('adminToken');
+            const token = currentUser && currentUser.token ? currentUser.token : adminToken;
             return {
                 'Content-Type': 'application/json',
                 ...(token ? { 'Authorization': 'Bearer ' + token } : {})
@@ -1026,9 +1026,7 @@
         // === (جديد) دالة تسجيل الخروج ===
         function logoutUser() {
             // مسح بيانات المستخدم من الذاكرة
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminUser');
+            currentUser = null;
             isAdmin = false;
             adminToken = null;
             location.reload();
@@ -1165,8 +1163,6 @@
                 if (data.user.role === 'admin') {
                     adminToken = data.token;
                     isAdmin = true;
-                    localStorage.setItem('adminToken', data.token);
-                    localStorage.setItem('adminUser', JSON.stringify(data.user));
                     loadingEl.classList.add('hidden');
                     closeAdminAuth();
                     openAdminAuthOrPanel();
@@ -1688,14 +1684,11 @@
                     token: data.token,
                     role: data.user.role
                 };
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
                 // لو أدمن → نحفظ التوكن
                 if (data.user.role === 'admin') {
                     adminToken = data.token;
                     isAdmin = true;
-                    localStorage.setItem('adminToken', data.token);
-                    localStorage.setItem('adminUser', JSON.stringify(data.user));
                 }
 
                 loadingEl.classList.add('hidden');
@@ -1955,72 +1948,20 @@
         }
 function loadApp() {
             try {
-                const savedUser = localStorage.getItem('currentUser');
                 const savedScores = localStorage.getItem('allUserScores');
                 
                 if (savedScores) {
                     allUserScores = JSON.parse(savedScores);
                 }
 
-                if (savedUser) {
-                    const parsed = JSON.parse(savedUser);
-                    
-                    // لو مفيش توكن (جلسة قديمة بدون Google) → امسحها واطلب تسجيل دخول جديد
-                    if (!parsed.token) {
-                        localStorage.removeItem('currentUser');
-                        showLoginScreen();
-                        return;
-                    }
-                    
-                    // تحقق من التوكن مع السيرفر
-                    fetch('/api/auth/me', {
-                        headers: { 'Authorization': 'Bearer ' + parsed.token }
-                    }).then(res => {
-                        if (!res.ok) throw new Error('invalid');
-                        return res.json();
-                    }).then(data => {
-                        currentUser = {
-                            fname: data.user.fname || parsed.fname,
-                            lname: data.user.lname || parsed.lname,
-                            fullName: data.user.fullName || parsed.fullName,
-                            avatar: data.user.avatar || parsed.avatar || '',
-                            token: parsed.token,
-                            role: data.user.role
-                        };
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                        
-                        document.getElementById('login-screen').classList.add('hidden');
-                        document.getElementById('dashboard-view').classList.remove('hidden');
-                        document.getElementById('ios-bottom-nav').classList.remove('hidden');
-                        
-                        const greetings = [
-                            `أهلاً بك مجدداً يا ${currentUser.fname}، واصل تقدمك!`,
-                            `نورت المنصة يا ${currentUser.fname}.`
-                        ];
-                        document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
-                        
-                        // استعادة حالة الأدمن
-                        if (data.user.role === 'admin') {
-                            isAdmin = true;
-                            adminToken = parsed.token;
-                            localStorage.setItem('adminToken', parsed.token);
-                        }
-                        
-                        // تحميل البيانات من السيرفر
-                        loadDataFromServer().then(() => {
-                            navToHome();
-                            renderDashboard();
-                        });
-                    }).catch(() => {
-                        // التوكن منتهي أو غلط → امسحه واطلب تسجيل جديد
-                        localStorage.removeItem('currentUser');
-                        localStorage.removeItem('adminToken');
-                        localStorage.removeItem('adminUser');
-                        showLoginScreen();
-                    });
-                } else {
-                    showLoginScreen();
-                }
+                // منع أي جلسة قديمة محفوظة: تسجيل Google مطلوب بعد كل Refresh
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                currentUser = null;
+                adminToken = null;
+                isAdmin = false;
+                showLoginScreen();
             } catch (e) {
                 console.warn("تعذر الوصول للذاكرة المحلية:", e);
                 showLoginScreen();
@@ -2733,9 +2674,11 @@ function updateExistingQuiz(index) {
             saveBtn.onclick = saveBuiltQuiz;
         }
         window.onload = function() {
-            handleGoogleRedirectToken();
+            const handledRedirect = handleGoogleRedirectToken();
             initGoogleSignIn();
-            loadApp();
+            if (!handledRedirect) {
+                loadApp();
+            }
         };
     </script>
 </body>
