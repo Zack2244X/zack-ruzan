@@ -364,9 +364,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
                 السابق
             </button>
-          <button id="add-question-btn" onclick="addNewQuestion()" class="edit-controls hidden px-4 py-2 bg-purple-500 text-white font-bold rounded-lg shadow-md hover:bg-purple-600 transition">
-                <i class="fas fa-plus-circle ml-2"></i> إضافة سؤال
-            </button>
+
             <button id="next-btn" onclick="goToNextQuestion()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-extrabold rounded-xl shadow-xl hover:bg-blue-700 transition duration-300 transform hover:scale-105" disabled>
                 التالي
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L6.414 10l5.889 5.889a1 1 0 010 1.414z" clip-rule="evenodd" transform="scale(-1, 1)"/></svg>
@@ -457,7 +455,7 @@
                     <h2 class="text-2xl font-extrabold text-blue-700 flex items-center"><i class="fas fa-edit ml-2"></i> إدارة وتعديل المحتوى</h2>
                     <p class="text-gray-500 text-sm mt-1">اختر القسم ثم اضغط على الكارت لتعديله</p>
                 </div>
-                <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden'); _showThemeToggle(true);" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden'); window._showThemeToggle(true);" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -530,6 +528,6 @@
     <!-- Toast container -->
     <div id="toast-container" class="toast-float" role="alert" aria-live="polite"></div>
     <!-- App JS -->
-    <script type="module" src="/js/app.js"></script>
+    <script type="module" src="/js/app.js?v=3"></script>
 </body>
 </html>

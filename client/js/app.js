@@ -37,7 +37,7 @@ import {
     saveBuiltQuiz as _saveBuiltQuiz, loadQuizIntoBuilder as _loadQuizIntoBuilder,
     updateExistingQuiz as _updateExistingQuiz,
     triggerImportExamFile, reshuffleImportedAnswers,
-    handleImportFileChange, applyImportedQuestions
+    handleImportFileChange
 } from './modules/builder.js';
 import {
     getDynamicSubjects,
@@ -249,7 +249,7 @@ Object.assign(window, {
     // Navigation
     navToHome, navToSection, openAdminAuthOrPanel, closeStudentMenu,
     openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
-    toggleTheme, updateDockUI, toggleTreeNode,
+    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle,
 
     // Auth
     startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin,
@@ -260,7 +260,7 @@ Object.assign(window, {
 
     // Builder
     openCreateSection, closeCreateSection, goToBuilderStep2,
-    renderBuilderQuestion, updateBuilderOptionText, setBuilderCorrectOption,
+    renderBuilderQuestion, updateBuilderData, updateBuilderOptionText, setBuilderCorrectOption,
     addBuilderOption, removeBuilderOption, addBuilderQuestion,
     navBuilderQuestion, saveBuiltQuiz, updateExistingQuiz,
     triggerImportExamFile, reshuffleImportedAnswers, handleImportFileChange,

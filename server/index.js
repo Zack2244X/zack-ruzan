@@ -84,6 +84,7 @@ app.use(helmet({
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https:", "blob:"],
             connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+            workerSrc: ["'self'"],
             frameSrc: ["https://accounts.google.com"]
         }
     },
@@ -143,12 +144,17 @@ app.use(sanitizeBody);
 
 // 7. Static files مع Cache headers
 app.use(express.static(path.join(__dirname, '../client'), {
-    maxAge: process.env.NODE_ENV === 'production' ? '1y' : '0',
+    maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
     etag: true,
     lastModified: true,
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html')) {
+        // HTML & SW: always revalidate
+        if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
             res.setHeader('Cache-Control', 'no-cache');
+        }
+        // JS modules: short cache so updates arrive quickly
+        if (filePath.endsWith('.js') && !filePath.endsWith('sw.js')) {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
         }
     }
 }));

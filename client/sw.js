@@ -3,12 +3,12 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v2';
+const CACHE_NAME = 'quiz-platform-v3';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/css/styles.css',
-    '/js/app.js',
+    '/css/tailwind.css',
     '/manifest.json'
 ];
 
