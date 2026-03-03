@@ -76,7 +76,7 @@ describe('Score model', () => {
         expect(attrs.userId).toBeDefined();
     });
 
-    test('should NOT have paranoid (hard delete)', () => {
-        expect(Score.options.paranoid).toBeFalsy();
+    test('should have paranoid enabled (soft delete)', () => {
+        expect(Score.options.paranoid).toBeTruthy();
     });
 });

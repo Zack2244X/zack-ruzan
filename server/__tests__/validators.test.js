@@ -51,3 +51,114 @@ describe('Validator chains exist and are arrays', () => {
         expect(typeof validate).toBe('function');
     });
 });
+
+// Helper: run a validator chain against a mock request body
+const { validationResult } = require('express-validator');
+
+async function runValidators(validators, body) {
+    const req = { body, query: {}, params: {}, headers: {}, cookies: {} };
+    // Filter to only proper express-validator chains (they have a .run() method)
+    const chains = validators.filter(v => typeof v.run === 'function');
+    await Promise.all(chains.map(v => v.run(req)));
+    return validationResult(req);
+}
+
+describe('validateCreateQuiz deep questions validation', () => {
+    const validQuestion = {
+        text: 'What is 2 + 2?',
+        answerOptions: [
+            { text: 'One' },
+            { text: 'Two' },
+            { text: 'Three' },
+            { text: 'Four' }
+        ],
+        correctAnswer: 3
+    };
+
+    test('valid quiz should pass validation', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [validQuestion]
+        });
+        expect(result.isEmpty()).toBe(true);
+    });
+
+    test('should reject empty questions array', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: []
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject question with empty text', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [{ ...validQuestion, text: '' }]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject question with only 1 answer option (< 2)', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [{ ...validQuestion, answerOptions: [{ text: 'Only one' }] }]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject question with 7 answer options (> 6)', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [{
+                ...validQuestion,
+                answerOptions: Array(7).fill({ text: 'Option' }),
+                correctAnswer: 0
+            }]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject correctAnswer out of range (negative)', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [{ ...validQuestion, correctAnswer: -1 }]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject correctAnswer out of range (> 5)', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [{ ...validQuestion, correctAnswer: 6 }]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject missing title', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            subject: 'Math',
+            questions: [validQuestion]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+
+    test('should reject answer option with empty text', async () => {
+        const result = await runValidators(validateCreateQuiz, {
+            title: 'Math Quiz',
+            subject: 'Math',
+            questions: [{
+                ...validQuestion,
+                answerOptions: [{ text: 'A' }, { text: '' }, { text: 'C' }, { text: 'D' }]
+            }]
+        });
+        expect(result.isEmpty()).toBe(false);
+    });
+});

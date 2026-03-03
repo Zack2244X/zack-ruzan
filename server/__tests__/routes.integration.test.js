@@ -28,6 +28,11 @@ describe('Security headers', () => {
         const res = await request(app).get('/api/health');
         expect(res.headers['x-frame-options']).toBeDefined();
     });
+
+    test('should include Strict-Transport-Security header', async () => {
+        const res = await request(app).get('/api/health');
+        expect(res.headers['strict-transport-security']).toBeDefined();
+    });
 });
 
 describe('API routes return proper errors without auth', () => {
@@ -51,6 +56,45 @@ describe('API routes return proper errors without auth', () => {
             .post('/api/auth/google')
             .send({});
         expect(res.statusCode).toBe(400);
+    });
+});
+
+describe('CSRF Protection', () => {
+    test('POST /api/auth/logout without CSRF token should return 403', async () => {
+        const res = await request(app)
+            .post('/api/auth/logout')
+            .set('Cookie', 'jwt=fake-token')
+            .send({});
+        expect(res.statusCode).toBe(403);
+    });
+
+    test('POST /api/quizzes without CSRF token should return 403', async () => {
+        const res = await request(app)
+            .post('/api/quizzes')
+            .set('Cookie', 'jwt=fake-token')
+            .send({ title: 'test' });
+        expect(res.statusCode).toBe(403);
+    });
+
+    test('GET /api/quizzes skips CSRF (read-only)', async () => {
+        // GET requests must NOT be blocked by CSRF — they return 401 (no auth), not 403
+        const res = await request(app).get('/api/quizzes');
+        expect(res.statusCode).toBe(401);
+    });
+
+    test('POST /api/auth/google skips CSRF (initial login exemption)', async () => {
+        // /api/auth/google is explicitly exempt — returns 400 (bad token), not 403
+        const res = await request(app)
+            .post('/api/auth/google')
+            .send({ idToken: 'bad-token' });
+        expect([400, 401]).toContain(res.statusCode);
+    });
+});
+
+describe('Leaderboard endpoint', () => {
+    test('GET /api/scores/leaderboard should require authentication', async () => {
+        const res = await request(app).get('/api/scores/leaderboard');
+        expect(res.statusCode).toBe(401);
     });
 });
 

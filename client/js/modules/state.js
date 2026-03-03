@@ -52,8 +52,6 @@ const state = {
     isEditMode: false,
     /** @type {boolean} هل أدمن */
     isAdmin: false,
-    /** @type {string|null} توكن الأدمن */
-    adminToken: null,
     /** @type {boolean} هل تم تحميل البيانات */
     dataLoaded: false,
     /** @type {number} بداية المؤقت */

@@ -94,6 +94,11 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    hsts: {
+        maxAge: 31536000, // 1 سنة
+        includeSubDomains: true,
+        preload: true
+    },
     permissionsPolicy: {
         features: {
             camera: [],

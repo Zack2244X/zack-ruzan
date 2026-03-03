@@ -471,7 +471,16 @@ export async function submitQuiz() {
                         selectedIndex: a ? a.selectedIndex : -1
                     })),
                     timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
-                }).catch(e => console.warn('تعذر حفظ النتيجة:', e.message));
+                }).catch(e => {
+                    console.warn('تعذر حفظ النتيجة:', e.message);
+                    // إظهار رسالة للمستخدم بدل من فشل صامت
+                    const saveErrEl = document.getElementById('save-score-error');
+                    if (saveErrEl) {
+                        saveErrEl.textContent = '⚠️ تعذّر حفظ نتيجتك على السيرفر (مشكلة في الاتصال). نتيجتك محفوظة محلياً فقط.';
+                        saveErrEl.classList.remove('hidden');
+                        setTimeout(() => saveErrEl.classList.add('hidden'), 6000);
+                    }
+                });
             }
         }
         // ========================================

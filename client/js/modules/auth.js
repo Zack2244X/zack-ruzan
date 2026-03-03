@@ -12,7 +12,6 @@ import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, upd
  * @param {'student'|'admin'} mode — وضع التسجيل
  */
 export function startGoogleRedirectLogin(mode) {
-    console.log('🔵 startGoogleRedirectLogin called with mode:', mode);
     try {
         const redirectMode = mode === 'admin' ? 'admin' : 'student';
         const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -35,8 +34,6 @@ export function startGoogleRedirectLogin(mode) {
         oauthUrl.searchParams.set('scope', 'openid email profile');
         oauthUrl.searchParams.set('nonce', nonce);
         oauthUrl.searchParams.set('prompt', 'select_account');
-        console.log('🔵 Redirect URI:', redirectUri);
-        console.log('🔵 Redirecting to Google OAuth...');
         window.location.href = oauthUrl.toString();
     } catch (err) {
         console.error('❌ startGoogleRedirectLogin error:', err);
@@ -93,8 +90,6 @@ export function handleGoogleRedirectToken() {
             return true;
         }
     }
-
-    console.log('🔵 Google redirect token received, mode:', savedMode);
 
     state.googleLoginMode = savedMode;
     const response = { credential: idToken };
@@ -266,7 +261,6 @@ export async function logoutUser() {
     try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
     state.currentUser = null;
     state.isAdmin = false;
-    state.adminToken = null;
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('isAdmin');
     // Signal other tabs to logout

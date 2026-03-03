@@ -54,5 +54,21 @@
             "type": "image/png",
             "purpose": "any maskable"
         }
+    ],
+    "screenshots": [
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "لوحة الاختبارات التفاعلية"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "لوحة القيادة"
+        }
     ]
 }

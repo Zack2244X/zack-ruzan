@@ -76,7 +76,6 @@ window.addEventListener('unhandledrejection', (e) => {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('✅ Service Worker registered:', reg.scope))
             .catch(err => console.warn('⚠️ SW registration failed:', err));
     });
 }
@@ -86,7 +85,6 @@ window.addEventListener('storage', (e) => {
     if (e.key === 'logout_event') {
         state.currentUser = null;
         state.isAdmin = false;
-        state.adminToken = null;
         sessionStorage.removeItem('currentUser');
         sessionStorage.removeItem('isAdmin');
         showLoginScreen();
@@ -294,15 +292,12 @@ Object.assign(window, {
     escapeHtml, showAlert, showConfirm, showLoading
 });
 
-console.log('✅ Module bindings ready. startGoogleRedirectLogin =', typeof window.startGoogleRedirectLogin);
-
 // Fallback: addEventListener for login button (in case onclick doesn't fire)
 document.addEventListener('DOMContentLoaded', () => {
     const loginBtn = document.getElementById('login-btn');
     if (loginBtn) {
         loginBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            console.log('🔵 Login button clicked (addEventListener)');
             try {
                 startGoogleRedirectLogin('student');
             } catch (err) {
@@ -310,7 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('خطأ في تسجيل الدخول: ' + err.message);
             }
         });
-        console.log('✅ Login button addEventListener attached');
     }
 });
 
