@@ -12,17 +12,21 @@ const STATIC_ASSETS = [
     '/manifest.json'
 ];
 
-// External CDN assets to cache
+// External CDN assets to cache (best-effort)
 const CDN_ASSETS = [
     'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
-// Install — cache static assets
+// Install — cache static assets, then try CDN (non-blocking)
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
+        caches.open(CACHE_NAME).then(async (cache) => {
+            await cache.addAll(STATIC_ASSETS);
+            // CDN assets are best-effort — don't fail install if blocked
+            for (const url of CDN_ASSETS) {
+                try { await cache.add(url); } catch (e) { /* CSP or network — skip */ }
+            }
         })
     );
     self.skipWaiting();
@@ -70,7 +74,7 @@ self.addEventListener('fetch', (event) => {
                     caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                 }
                 return response;
-            }).catch(() => cached);
+            }).catch(() => cached || new Response('', { status: 408 }));
 
             return cached || networkFetch;
         })
