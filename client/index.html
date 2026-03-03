@@ -93,13 +93,26 @@
             background-color: #eff6ff;
         }
         .answer-option.correct-answer {
-            background-color: #d1fae5; /* أخضر فاتح للجواب الصحيح */
-            border-color: #10b981;
-            box-shadow: 0 0 10px #10b981;
+            background-color: #d1fae5 !important; /* أخضر فاتح للجواب الصحيح */
+            border-color: #10b981 !important;
+            box-shadow: 0 0 10px #10b981 !important;
+            color: #065f46 !important;
         }
         .answer-option.incorrect-answer {
-            background-color: #fee2e2; /* أحمر فاتح للجواب الخاطئ */
-            border-color: #ef4444;
+            background-color: #fee2e2 !important; /* أحمر فاتح للجواب الخاطئ */
+            border-color: #ef4444 !important;
+            color: #991b1b !important;
+        }
+        [data-theme="dark"] .answer-option.correct-answer {
+            background-color: rgba(16, 185, 129, 0.25) !important;
+            border-color: #10b981 !important;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4) !important;
+            color: #6ee7b7 !important;
+        }
+        [data-theme="dark"] .answer-option.incorrect-answer {
+            background-color: rgba(239, 68, 68, 0.2) !important;
+            border-color: #ef4444 !important;
+            color: #fca5a5 !important;
         }
         .correct-bg {
             background-color: #10b981; /* أخضر قوي */
@@ -806,7 +819,7 @@
                     <h2 class="text-2xl font-extrabold text-blue-700 flex items-center"><i class="fas fa-edit ml-2"></i> إدارة وتعديل المحتوى</h2>
                     <p class="text-gray-500 text-sm mt-1">اختر القسم ثم اضغط على الكارت لتعديله</p>
                 </div>
-                <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden')" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden'); _showThemeToggle(true);" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -1194,6 +1207,7 @@
         function openAdminAuthOrPanel() {
             closeAllOverlays(); // إغلاق كل شيء أولاً
             updateDockUI('settings');
+            _showThemeToggle(false);
             if (isAdmin) {
                 document.getElementById('admin-overlay').classList.add('active');
                 document.getElementById('admin-content').classList.add('active');
@@ -1204,20 +1218,33 @@
         }
 
         // دوال فتح وإغلاق النوافذ السفلية (Bottom Sheets) بنعومة
+        function _showThemeToggle(show) {
+            const t = document.getElementById('theme-toggle');
+            if (!t) return;
+            if (!show) { t.style.display = 'none'; return; }
+            // لا نظهره إلا لو مفيش أي مودال/شيت مفتوح
+            const anyOpen = ['create-section-modal','add-note-modal','edit-selection-modal','grades-modal','stats-modal','admin-auth-modal','delete-subject-modal','rename-subject-modal']
+                .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+            const sheetOpen = document.getElementById('tree-content')?.classList.contains('active') || document.getElementById('admin-content')?.classList.contains('active');
+            if (!anyOpen && !sheetOpen) t.style.display = '';
+        }
         function openBottomSheet() {
             document.getElementById('tree-overlay').classList.add('active');
             document.getElementById('tree-content').classList.add('active');
+            _showThemeToggle(false);
         }
         function closeBottomSheet() {
             document.getElementById('tree-overlay').classList.remove('active');
             document.getElementById('tree-content').classList.remove('active');
-            if(currentViewMode) updateDockUI('home'); // نرجع تلوين زرار الـ Home لو قفلنا الشاشة
+            if(currentViewMode) updateDockUI('home');
+            _showThemeToggle(true);
         }
 
                 function closeAdminSheet() {
             document.getElementById('admin-overlay').classList.remove('active');
             document.getElementById('admin-content').classList.remove('active');
             updateDockUI('home');
+            _showThemeToggle(true);
         }
 
         // === (جديد) دالة سحرية لإغلاق أي نافذة مفتوحة ===
@@ -1374,6 +1401,7 @@
 
         function closeAdminAuth() {
             document.getElementById('admin-auth-modal').classList.add('hidden');
+            _showThemeToggle(true);
             const errorEl = document.getElementById('admin-auth-error');
             const loadingEl = document.getElementById('admin-auth-loading');
             if (errorEl) errorEl.classList.add('hidden');
@@ -1411,7 +1439,7 @@
             // أغلق أي قوائم مفتوحة
             closeAdminSheet();
             closeBottomSheet();
-            
+            _showThemeToggle(false);
             document.getElementById('create-section-modal').classList.remove('hidden');
             
             // تصفير الواجهة للخطوة 1
@@ -1429,16 +1457,19 @@
 
         function closeCreateSection() {
             document.getElementById('create-section-modal').classList.add('hidden');
+            _showThemeToggle(true);
         }
 
                 // ========== دوال مودل الدرجات المتقدم ==========
 
         function openGradesModal() {
+            _showThemeToggle(false);
             renderGradesList();
             document.getElementById('grades-modal').classList.remove('hidden');
         }
 
         function closeGradesModal() {
+            _showThemeToggle(true);
             document.getElementById('grades-modal').classList.add('hidden');
         }
 
@@ -2714,12 +2745,14 @@ function loadApp() {
         // ========== دوال مودل الإحصائيات ==========
 
         function openStatsModal() {
+            _showThemeToggle(false);
             renderStatsContent();
             document.getElementById('stats-modal').classList.remove('hidden');
         }
 
         function closeStatsModal() {
             document.getElementById('stats-modal').classList.add('hidden');
+            _showThemeToggle(true);
         }
 
         function renderStatsContent() {
@@ -2801,6 +2834,7 @@ function loadApp() {
         //         دوال تعديل المحتوى (الامتحانات والمذكرات)
         // ==========================================
         function openEditSelectionModal() {
+            _showThemeToggle(false);
             switchEditTab('exams'); // يفتح دايماً على الامتحانات في البداية
             document.getElementById('edit-selection-modal').classList.remove('hidden');
         }
@@ -2847,7 +2881,8 @@ function loadApp() {
             const treeData = {};
             itemsToShow.forEach(item => {
                 const config = item.data.config;
-                const timestamp = config.id ? parseInt(config.id.split('-')[1]) || Date.now() : Date.now();
+                const rawId = String(config.id || '');
+                const timestamp = rawId.includes('-') ? (parseInt(rawId.split('-')[1]) || Date.now()) : (item.data.createdAt ? new Date(item.data.createdAt).getTime() : Date.now());
                 const date = new Date(timestamp);
                 const year = date.getFullYear();
                 const monthName = date.toLocaleDateString('ar-EG', { month: 'long' });
@@ -2973,6 +3008,7 @@ function loadApp() {
         });
         
         function openAddNoteModal() {
+            _showThemeToggle(false);
             document.getElementById('new-n-title').value = "";
             document.getElementById('new-n-subject').value = "";
             document.getElementById('new-n-link').value = "";
@@ -2981,6 +3017,7 @@ function loadApp() {
         }
 
         function closeAddNoteModal() {
+            _showThemeToggle(true);
             document.getElementById('add-note-modal').classList.add('hidden');
             // إعادة الزرار لشكله الأصلي لكي لا يحدث تداخل في المرة القادمة
             const saveBtn = document.getElementById('save-note-btn');
