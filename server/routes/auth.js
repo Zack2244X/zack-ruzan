@@ -136,6 +136,14 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             if (googleData.avatar && user.avatar !== googleData.avatar) {
                 user.avatar = googleData.avatar;
             }
+            // مزامنة الدور مع ADMIN_EMAILS عند كل تسجيل دخول
+            const shouldBeAdmin = ADMIN_EMAILS.includes(googleData.email.toLowerCase());
+            const correctRole = shouldBeAdmin ? 'admin' : 'student';
+            if (user.role !== correctRole) {
+                logger.info(`🔄 تحديث دور المستخدم: ${user.email} من ${user.role} إلى ${correctRole}`);
+                user.role = correctRole;
+                user.tokenVersion = (user.tokenVersion || 0) + 1; // إلغاء الجلسات القديمة
+            }
             await user.save();
 
             const token = generateToken(user.id, user.role, user.tokenVersion);
