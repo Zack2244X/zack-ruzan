@@ -67,7 +67,6 @@ export function handleGoogleRedirectToken() {
     if (!window.location.hash || !window.location.hash.includes('id_token=')) return false;
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const idToken = hashParams.get('id_token');
-    const returnedNonce = hashParams.get('nonce');
     // Try both sessionStorage and localStorage for nonce (mobile compat)
     const expectedNonce = sessionStorage.getItem('googleNonce') || localStorage.getItem('googleNonce');
     const savedMode = sessionStorage.getItem('googleLoginMode') || localStorage.getItem('googleLoginMode') || 'student';
@@ -79,10 +78,20 @@ export function handleGoogleRedirectToken() {
     localStorage.removeItem('googleLoginMode');
 
     if (!idToken) return false;
-    // Nonce must be present and match — missing nonce is a failure
-    if (!expectedNonce || !returnedNonce || expectedNonce !== returnedNonce) {
-        showAlert('❌ فشل التحقق من تسجيل Google. حاول مرة أخرى.', 'error');
-        return true;
+
+    // Nonce verification: decode the JWT payload to extract the nonce
+    // (Google implicit flow embeds nonce inside the id_token, not as a URL parameter)
+    if (expectedNonce) {
+        try {
+            const payload = JSON.parse(atob(idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload.nonce !== expectedNonce) {
+                showAlert('❌ فشل التحقق من تسجيل Google (nonce mismatch). حاول مرة أخرى.', 'error');
+                return true;
+            }
+        } catch {
+            showAlert('❌ فشل التحقق من تسجيل Google. حاول مرة أخرى.', 'error');
+            return true;
+        }
     }
 
     console.log('🔵 Google redirect token received, mode:', savedMode);

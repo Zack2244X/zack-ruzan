@@ -81,7 +81,7 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://cdnjs.cloudflare.com"],
-            scriptSrcAttr: ["'none'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https:", "blob:"],
@@ -320,12 +320,8 @@ async function startServer(retries = 3) {
         }
     }
 
-    if (process.env.NODE_ENV === 'production') {
-        logger.info('⚠️ Production mode: skipping sequelize.sync(). Use migrations for schema changes.');
-    } else {
-        await sequelize.sync({ alter: false });
-        logger.info('✅ تم مزامنة الجداول.');
-    }
+    await sequelize.sync({ alter: false });
+    logger.info('✅ تم مزامنة الجداول.');
 
     server = app.listen(PORT, () => {
         logger.info(`🚀 السيرفر شغال على: http://localhost:${PORT}`);
