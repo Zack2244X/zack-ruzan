@@ -324,6 +324,7 @@ let server;
  * @returns {Promise<void>}
  */
 async function startServer(retries = 3) {
+    const enableAlter = process.env.DB_SYNC_ALTER !== 'false';
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             await sequelize.authenticate();
@@ -339,8 +340,8 @@ async function startServer(retries = 3) {
         }
     }
 
-    await sequelize.sync({ alter: false });
-    logger.info('✅ تم مزامنة الجداول.');
+    await sequelize.sync({ alter: enableAlter });
+    logger.info(`✅ تم مزامنة الجداول${enableAlter ? ' (alter: true)' : ''}.`);
 
     server = app.listen(PORT, () => {
         logger.info(`🚀 السيرفر شغال على: http://localhost:${PORT}`);
