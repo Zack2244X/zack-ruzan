@@ -2400,15 +2400,18 @@ function loadApp() {
             itemsToShow.forEach(item => {
                 const config = item.data.config;
                 let timestamp = Date.now();
-                const rawId = config.id || item.data.id;
-                if (typeof rawId === 'string' && rawId.includes('-')) {
-                    const maybeTs = parseInt(rawId.split('-')[1]);
-                    if (!isNaN(maybeTs)) timestamp = maybeTs;
-                } else if (!isNaN(Number(rawId))) {
-                    timestamp = Number(rawId);
-                } else if (item.data.createdAt) {
-                    const t = new Date(item.data.createdAt).getTime();
+
+                // أولوية التاريخ من قاعدة البيانات
+                const createdAt = item.data.createdAt || config.createdAt || item.data.updatedAt;
+                if (createdAt) {
+                    const t = new Date(createdAt).getTime();
                     if (!isNaN(t)) timestamp = t;
+                } else {
+                    const rawId = config.id;
+                    if (typeof rawId === 'string' && rawId.includes('-')) {
+                        const maybeTs = parseInt(rawId.split('-')[1]);
+                        if (!isNaN(maybeTs)) timestamp = maybeTs;
+                    }
                 }
                 const date = new Date(timestamp);
                 const year = date.getFullYear();
