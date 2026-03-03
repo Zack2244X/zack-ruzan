@@ -338,7 +338,28 @@ window.onload = async function () {
     // معالجة Google redirect أو تحميل التطبيق
     const handledRedirect = handleGoogleRedirectToken();
     initGoogleSignIn();
+
+    // ─── إعادة تسجيل الدخول عند كل Refresh ───
+    // اكتشاف إذا كان المستخدم يعيد تحميل الصفحة (F5 / Ctrl+R)
     if (!handledRedirect) {
+        const navEntry = performance.getEntriesByType('navigation')[0];
+        if (navEntry && navEntry.type === 'reload') {
+            // مسح الجلسة من sessionStorage
+            sessionStorage.removeItem('currentUser');
+            sessionStorage.removeItem('isAdmin');
+            // إلغاء cookie JWT + CSRF من السيرفر (fire-and-forget)
+            const csrfToken = document.cookie.split(';')
+                .map(c => c.trim())
+                .find(c => c.startsWith('csrf_token='))?.split('=')[1] || '';
+            fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}) },
+                credentials: 'include'
+            }).catch(() => {});
+            // عرض شاشة تسجيل الدخول مباشرة
+            loadApp();
+            return;
+        }
         loadApp();
     }
 };

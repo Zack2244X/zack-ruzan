@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "سيرفر منصة الاختبارات التفاعلية - zack",
   "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
