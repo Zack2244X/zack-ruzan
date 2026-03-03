@@ -14,4 +14,9 @@ npm-debug.log*
 # OS/editor
 .DS_Store
 .vscode/
-**/.env.*
+
+# Coverage
+coverage/
+
+# Backup files
+*.bak

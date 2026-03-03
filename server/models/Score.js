@@ -1,9 +1,42 @@
+/**
+ * @file Score model definition
+ * @description Defines the Sequelize Score model for storing quiz results.
+ *   Includes server-side percentage calculation via Sequelize hooks and a
+ *   unique constraint preventing duplicate submissions per user per quiz.
+ * @module models/Score
+ */
+
 // ============================================
 //   موديل الدرجة / النتيجة (Score) — Sequelize + TiDB
 // ============================================
 const { DataTypes } = require('sequelize');
 const sequelize = require('./index');
 
+/**
+ * @typedef {Object} GradedAnswer
+ * @property {string} questionId - The UUID of the question answered.
+ * @property {number} selectedIndex - Index of the selected answer option.
+ * @property {boolean} isCorrect - Whether the selected answer was correct.
+ */
+
+/**
+ * @typedef {Object} ScoreAttributes
+ * @property {number} id - Auto-incremented primary key.
+ * @property {number} userId - Foreign key to the student (User.id).
+ * @property {number} quizId - Foreign key to the quiz (Quiz.id).
+ * @property {GradedAnswer[]} answers - Detailed answer data stored as JSON.
+ * @property {number} score - Number of correct answers.
+ * @property {number} total - Total number of questions.
+ * @property {number} percentage - Calculated percentage (auto-set by hooks).
+ * @property {number} timeTaken - Time taken to complete the quiz in seconds.
+ * @property {Date} createdAt - Record creation timestamp.
+ * @property {Date} updatedAt - Record last-update timestamp.
+ */
+
+/**
+ * Sequelize model representing a student's quiz score/result.
+ * @type {import('sequelize').ModelStatic<import('sequelize').Model<ScoreAttributes>>}
+ */
 const Score = sequelize.define('Score', {
     id: {
         type: DataTypes.INTEGER,

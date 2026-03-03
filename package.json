@@ -8,7 +8,14 @@
   },
   "scripts": {
     "postinstall": "cd server && npm install",
+    "build:css": "npx tailwindcss -i client/css/tailwind-input.css -o client/css/tailwind.css --minify",
+    "watch:css": "npx tailwindcss -i client/css/tailwind-input.css -o client/css/tailwind.css --watch",
+    "build": "npm run build:css",
     "start": "cd server && node index.js",
-    "dev": "cd server && npm run dev"
+    "dev": "cd server && npm run dev",
+    "test": "cd server && npm test"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
   }
 }

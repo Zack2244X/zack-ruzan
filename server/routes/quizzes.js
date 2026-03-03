@@ -1,3 +1,11 @@
+/**
+ * @file Quiz CRUD routes
+ * @description Express router for managing quizzes/exams.
+ *   Students see only active quizzes with answers hidden; admins have full CRUD access
+ *   including subject renaming and bulk deletion.
+ * @module routes/quizzes
+ */
+
 // ============================================
 //   مسارات الامتحانات (CRUD)
 //   — Sequelize + TiDB —
@@ -9,13 +17,27 @@ const sequelize = require('../models/index');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { validateCreateQuiz, validateUpdateQuiz, validateRenameSubject, validatePagination } = require('../middleware/validators');
+const logger = require('../utils/logger');
 
 // ============================================
 //   GET /api/quizzes — جلب كل الامتحانات
 // ============================================
-router.get('/', authenticate, async (req, res) => {
+/**
+ * @route GET /api/quizzes
+ * @description Retrieves a paginated list of quizzes, optionally filtered by subject and active status.
+ *   Students only see active quizzes with correct answers stripped; admins see full data.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with optional `subject`, `active`, `page`, `limit` query params.
+ * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
+ * @returns {Promise<void>}
+ */
+router.get('/', authenticate, validatePagination, async (req, res) => {
     try {
         const { subject, active } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
         const where = {};
 
         if (req.user.role === 'student') {
@@ -28,10 +50,12 @@ router.get('/', authenticate, async (req, res) => {
             where.subject = subject;
         }
 
-        const quizzes = await Quiz.findAll({
+        const { count, rows: quizzes } = await Quiz.findAndCountAll({
             where,
             order: [['createdAt', 'DESC']],
-            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }]
+            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }],
+            limit,
+            offset
         });
 
         // للطلاب: إخفاء الإجابات الصحيحة
@@ -47,12 +71,12 @@ router.get('/', authenticate, async (req, res) => {
                 }));
                 return q;
             });
-            return res.json(sanitized);
+            return res.json({ data: sanitized, total: count, page, totalPages: Math.ceil(count / limit) });
         }
 
-        res.json(quizzes);
+        res.json({ data: quizzes, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
-        console.error('خطأ في جلب الامتحانات:', error.message);
+        logger.error('خطأ في جلب الامتحانات:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ في جلب الامتحانات.' });
     }
 });
@@ -61,6 +85,15 @@ router.get('/', authenticate, async (req, res) => {
 //   GET /api/quizzes/subjects/list — قائمة المواد
 //   (يجب أن يكون قبل /:id حتى لا يتم التقاطه كـ id)
 // ============================================
+/**
+ * @route GET /api/quizzes/subjects/list
+ * @description Returns a list of distinct subject names from all quizzes.
+ *   Must be defined before `/:id` to avoid being captured as an ID parameter.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with an array of subject strings.
+ * @returns {Promise<void>}
+ */
 router.get('/subjects/list', authenticate, async (req, res) => {
     try {
         const results = await Quiz.findAll({
@@ -70,7 +103,67 @@ router.get('/subjects/list', authenticate, async (req, res) => {
         const subjects = results.map(r => r.subject);
         res.json(subjects);
     } catch (error) {
-        console.error('خطأ في جلب المواد:', error.message);
+        logger.error('خطأ في جلب المواد:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ.' });
+    }
+});
+
+// ============================================
+//   PUT /api/quizzes/subject/rename — تعديل اسم مادة (أدمن فقط)
+//   (يجب أن يكون قبل /:id حتى لا يتم التقاطه كـ id)
+// ============================================
+/**
+ * @route PUT /api/quizzes/subject/rename
+ * @description Renames a subject across all quizzes. Requires admin privileges.
+ *   Must be defined before `/:id` to avoid being captured as an ID parameter.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `oldName` and `newName` in body.
+ * @param {import('express').Response} res - Express response with `{ message, modifiedCount }`.
+ * @returns {Promise<void>}
+ */
+router.put('/subject/rename', authenticate, requireAdmin, validateRenameSubject, async (req, res) => {
+    try {
+        const { oldName, newName } = req.body;
+
+        const [affectedCount] = await Quiz.update(
+            { subject: newName },
+            { where: { subject: oldName } }
+        );
+
+        res.json({
+            message: `تم تعديل اسم المادة من "${oldName}" إلى "${newName}".`,
+            modifiedCount: affectedCount
+        });
+    } catch (error) {
+        logger.error('خطأ في تعديل اسم المادة:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ.' });
+    }
+});
+
+// ============================================
+//   DELETE /api/quizzes/subject/:name — حذف كل امتحانات مادة (أدمن فقط)
+//   (يجب أن يكون قبل /:id حتى لا يتم التقاطه كـ id)
+// ============================================
+/**
+ * @route DELETE /api/quizzes/subject/:name
+ * @description Deletes all quizzes belonging to a specific subject. Requires admin privileges.
+ *   Must be defined before `/:id` to avoid being captured as an ID parameter.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with URL-encoded `name` param.
+ * @param {import('express').Response} res - Express response with `{ message, deletedCount }`.
+ * @returns {Promise<void>}
+ */
+router.delete('/subject/:name', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const subjectName = decodeURIComponent(req.params.name);
+        const deletedCount = await Quiz.destroy({ where: { subject: subjectName } });
+
+        res.json({
+            message: `تم حذف مجلد "${subjectName}" وجميع امتحاناته.`,
+            deletedCount
+        });
+    } catch (error) {
+        logger.error('خطأ في حذف المادة:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -78,6 +171,15 @@ router.get('/subjects/list', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/quizzes/:id — جلب امتحان واحد
 // ============================================
+/**
+ * @route GET /api/quizzes/:id
+ * @description Retrieves a single quiz by its ID.
+ *   Students see the quiz with correct answers hidden; admins see the full quiz.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with `id` param.
+ * @param {import('express').Response} res - Express response with the quiz object.
+ * @returns {Promise<void>}
+ */
 router.get('/:id', authenticate, async (req, res) => {
     try {
         const quiz = await Quiz.findByPk(req.params.id, {
@@ -102,7 +204,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
         res.json(quiz);
     } catch (error) {
-        console.error('خطأ في جلب الامتحان:', error.message);
+        logger.error('خطأ في جلب الامتحان:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ في جلب الامتحان.' });
     }
 });
@@ -110,16 +212,21 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================
 //   POST /api/quizzes — إنشاء امتحان جديد (أدمن فقط)
 // ============================================
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+/**
+ * @route POST /api/quizzes
+ * @description Creates a new quiz with validated questions. Requires admin privileges.
+ *   Each question receives a unique UUID if not already provided.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with quiz data in body.
+ * @param {import('express').Response} res - Express response with `{ message, quiz }`.
+ * @returns {Promise<void>}
+ */
+router.post('/', authenticate, requireAdmin, validateCreateQuiz, async (req, res) => {
     try {
         const {
             title, subject, description, timeLimit,
             closingMessage, streakGoal, feedback, questions
         } = req.body;
-
-        if (!title || !subject || !questions || questions.length === 0) {
-            return res.status(400).json({ error: 'العنوان والمادة والأسئلة مطلوبة.' });
-        }
 
         // التحقق من صحة كل سؤال + إضافة ID فريد
         const processedQuestions = [];
@@ -165,7 +272,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
             quiz
         });
     } catch (error) {
-        console.error('خطأ في إنشاء الامتحان:', error.message);
+        logger.error('خطأ في إنشاء الامتحان:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء إنشاء الامتحان.' });
     }
 });
@@ -173,7 +280,16 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 // ============================================
 //   PUT /api/quizzes/:id — تعديل امتحان (أدمن فقط)
 // ============================================
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+/**
+ * @route PUT /api/quizzes/:id
+ * @description Updates an existing quiz. Requires admin privileges.
+ *   Only allowed fields are updated; new questions get auto-generated UUIDs.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `id` param and update fields in body.
+ * @param {import('express').Response} res - Express response with `{ message, quiz }`.
+ * @returns {Promise<void>}
+ */
+router.put('/:id', authenticate, requireAdmin, validateUpdateQuiz, async (req, res) => {
     try {
         const quiz = await Quiz.findByPk(req.params.id);
         if (!quiz) {
@@ -215,7 +331,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
             quiz
         });
     } catch (error) {
-        console.error('خطأ في تعديل الامتحان:', error.message);
+        logger.error('خطأ في تعديل الامتحان:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء تعديل الامتحان.' });
     }
 });
@@ -223,6 +339,14 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 // ============================================
 //   DELETE /api/quizzes/:id — حذف امتحان (أدمن فقط)
 // ============================================
+/**
+ * @route DELETE /api/quizzes/:id
+ * @description Deletes a quiz by its ID. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `id` param.
+ * @param {import('express').Response} res - Express response with `{ message }`.
+ * @returns {Promise<void>}
+ */
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
     try {
         const deleted = await Quiz.destroy({ where: { id: req.params.id } });
@@ -231,51 +355,8 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
         }
         res.json({ message: 'تم حذف الامتحان بنجاح.' });
     } catch (error) {
-        console.error('خطأ في حذف الامتحان:', error.message);
+        logger.error('خطأ في حذف الامتحان:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء حذف الامتحان.' });
-    }
-});
-
-// ============================================
-//   PUT /api/quizzes/subject/rename — تعديل اسم مادة (أدمن فقط)
-// ============================================
-router.put('/subject/rename', authenticate, requireAdmin, async (req, res) => {
-    try {
-        const { oldName, newName } = req.body;
-        if (!oldName || !newName) {
-            return res.status(400).json({ error: 'الاسم القديم والجديد مطلوبان.' });
-        }
-
-        const [affectedCount] = await Quiz.update(
-            { subject: newName },
-            { where: { subject: oldName } }
-        );
-
-        res.json({
-            message: `تم تعديل اسم المادة من "${oldName}" إلى "${newName}".`,
-            modifiedCount: affectedCount
-        });
-    } catch (error) {
-        console.error('خطأ في تعديل اسم المادة:', error.message);
-        res.status(500).json({ error: 'حدث خطأ.' });
-    }
-});
-
-// ============================================
-//   DELETE /api/quizzes/subject/:name — حذف كل امتحانات مادة (أدمن فقط)
-// ============================================
-router.delete('/subject/:name', authenticate, requireAdmin, async (req, res) => {
-    try {
-        const subjectName = decodeURIComponent(req.params.name);
-        const deletedCount = await Quiz.destroy({ where: { subject: subjectName } });
-
-        res.json({
-            message: `تم حذف مجلد "${subjectName}" وجميع امتحاناته.`,
-            deletedCount
-        });
-    } catch (error) {
-        console.error('خطأ في حذف المادة:', error.message);
-        res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
 

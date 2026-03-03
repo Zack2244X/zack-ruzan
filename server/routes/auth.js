@@ -1,3 +1,10 @@
+/**
+ * @file Authentication routes — Google OAuth
+ * @description Express router handling Google OAuth login/registration, profile completion,
+ *   admin creation/promotion, token refresh, and logout with token revocation.
+ * @module routes/auth
+ */
+
 // ============================================
 //   مسارات التوثيق — Google OAuth
 //   — Sequelize + TiDB —
@@ -13,12 +20,22 @@ const {
     recordFailedAttempt,
     clearFailedAttempts
 } = require('../middleware/auth');
+const { validateGoogleLogin, validateCompleteProfile, validateCreateAdmin } = require('../middleware/validators');
+const logger = require('../utils/logger');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// --- قائمة إيميلات الأدمن المعتمدة ---
+/**
+ * Pre-approved admin email addresses loaded from the ADMIN_EMAILS environment variable.
+ * @type {string[]}
+ */
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
+/**
+ * Splits a full name string into first name and last name.
+ * @param {string} [fullName=''] - The full name to split.
+ * @returns {{ fname: string, lname: string }} Object with `fname` and `lname` properties (max 50 chars each).
+ */
 function splitName(fullName = '') {
     const clean = (fullName || '').trim();
     if (!clean) return { fname: '', lname: '' };
@@ -34,6 +51,14 @@ function splitName(fullName = '') {
 // ============================================
 //   دالة مساعدة: التحقق من توكن Google
 // ============================================
+/**
+ * Verifies a Google OAuth ID token and extracts user information.
+ * @async
+ * @param {string} idToken - The Google ID token to verify.
+ * @returns {Promise<{googleId: string, email: string, name: string, avatar: string}>}
+ *   The extracted user data from the Google token payload.
+ * @throws {Error} If the token is invalid or verification fails.
+ */
 async function verifyGoogleToken(idToken) {
     const ticket = await googleClient.verifyIdToken({
         idToken,
@@ -51,22 +76,25 @@ async function verifyGoogleToken(idToken) {
 // ============================================
 //   POST /api/auth/google — تسجيل/دخول بالجيميل
 // ============================================
-router.post('/google', async (req, res) => {
+/**
+ * @route POST /api/auth/google
+ * @description Handles Google OAuth login and registration.
+ *   - Checks for brute-force lockout.
+ *   - Verifies the Google ID token.
+ *   - Creates a new user or logs in an existing one.
+ *   - Auto-assigns admin role if the email is in ADMIN_EMAILS.
+ * @access Public
+ * @param {import('express').Request} req - Express request with `idToken` in body.
+ * @param {import('express').Response} res - Express response.
+ * @returns {Promise<void>}
+ */
+router.post('/google', validateGoogleLogin, async (req, res) => {
     try {
         if (checkBruteForce(req.ip)) {
             return res.status(429).json({ error: 'تم حظرك مؤقتاً بسبب محاولات كثيرة. انتظر 30 دقيقة.' });
         }
 
         const { idToken } = req.body;
-
-        if (!idToken) {
-            return res.status(400).json({ error: 'توكن Google مطلوب.' });
-        }
-
-        if (typeof idToken !== 'string' || idToken.length > 4096) {
-            recordFailedAttempt(req.ip);
-            return res.status(400).json({ error: 'بيانات غير صالحة.' });
-        }
 
         let googleData;
         try {
@@ -93,9 +121,8 @@ router.post('/google', async (req, res) => {
             }
             await user.save();
 
-            const token = generateToken(user.id, user.role);
-
-            console.log(`✅ دخول ناجح — ${user.role === 'admin' ? '👑 أدمن' : '👤 طالب'}: ${user.email}`);
+            const token = generateToken(user.id, user.role, user.tokenVersion);
+            logger.info(`تسجيل دخول — ${user.role === 'admin' ? '👑 أدمن' : '👤 طالب'}: ${user.email}`);
 
             return res.json({
                 message: `مرحباً بك مجدداً يا ${user.fname || 'صديقنا'}!`,
@@ -128,9 +155,9 @@ router.post('/google', async (req, res) => {
             role: isAdminEmail ? 'admin' : 'student'
         });
 
-        console.log(`🆕 تسجيل جديد — ${isAdminEmail ? '👑 أدمن' : '👤 طالب'}: ${googleData.email}`);
+        logger.info(`🆕 تسجيل جديد — ${isAdminEmail ? '👑 أدمن' : '👤 طالب'}: ${googleData.email}`);
 
-        const token = generateToken(user.id, user.role);
+        const token = generateToken(user.id, user.role, user.tokenVersion);
 
         res.status(201).json({
             message: 'تم التسجيل بنجاح! يرجى إكمال اسمك.',
@@ -151,7 +178,7 @@ router.post('/google', async (req, res) => {
         if (error instanceof UniqueConstraintError) {
             return res.status(409).json({ error: 'هذا الحساب مسجل بالفعل.' });
         }
-        console.error('خطأ في تسجيل Google:', error.message);
+        logger.error('خطأ في تسجيل Google:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء التسجيل بالجيميل.' });
     }
 });
@@ -159,33 +186,25 @@ router.post('/google', async (req, res) => {
 // ============================================
 //   PUT /api/auth/complete-profile — إكمال الاسم
 // ============================================
-router.put('/complete-profile', authenticate, async (req, res) => {
+/**
+ * @route PUT /api/auth/complete-profile
+ * @description Allows an authenticated user to set their first and last name, marking their profile as complete.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with `fname` and `lname` in body.
+ * @param {import('express').Response} res - Express response.
+ * @returns {Promise<void>}
+ */
+router.put('/complete-profile', authenticate, validateCompleteProfile, async (req, res) => {
     try {
         const { fname, lname } = req.body;
-
-        if (!fname || !lname) {
-            return res.status(400).json({ error: 'الاسم الأول والثاني مطلوبان.' });
-        }
-
-        const cleanFname = fname.trim().replace(/<[^>]*>/g, '').substring(0, 50);
-        const cleanLname = lname.trim().replace(/<[^>]*>/g, '').substring(0, 50);
-
-        if (cleanFname.length < 2 || cleanLname.length < 2) {
-            return res.status(400).json({ error: 'كل اسم يجب أن يكون حرفين على الأقل.' });
-        }
-
-        const nameRegex = /^[\u0600-\u06FFa-zA-Z\s]+$/;
-        if (!nameRegex.test(cleanFname) || !nameRegex.test(cleanLname)) {
-            return res.status(400).json({ error: 'الاسم يجب أن يحتوي على حروف فقط (عربي أو إنجليزي).' });
-        }
 
         const user = await User.findByPk(req.user.id);
         if (!user) {
             return res.status(404).json({ error: 'المستخدم غير موجود.' });
         }
 
-        user.fname = cleanFname;
-        user.lname = cleanLname;
+        user.fname = fname.trim().substring(0, 50);
+        user.lname = lname.trim().substring(0, 50);
         user.isProfileComplete = true;
         await user.save();
 
@@ -201,7 +220,7 @@ router.put('/complete-profile', authenticate, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('خطأ في إكمال البروفايل:', error.message);
+        logger.error('خطأ في إكمال البروفايل:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء حفظ الاسم.' });
     }
 });
@@ -209,6 +228,15 @@ router.put('/complete-profile', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/auth/me — جلب بيانات المستخدم الحالي
 // ============================================
+/**
+ * @route GET /api/auth/me
+ * @description Returns the currently authenticated user's profile data.
+ *   Admin users receive their email in the response; students do not.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with `req.user` set by authenticate.
+ * @param {import('express').Response} res - Express response.
+ * @returns {void}
+ */
 router.get('/me', authenticate, (req, res) => {
     const userData = {
         id: req.user.id,
@@ -230,9 +258,17 @@ router.get('/me', authenticate, (req, res) => {
 // ============================================
 //   GET /api/auth/verify-admin
 // ============================================
+/**
+ * @route GET /api/auth/verify-admin
+ * @description Verifies whether the authenticated user has admin privileges.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with `{ isAdmin: boolean }`.
+ * @returns {void}
+ */
 router.get('/verify-admin', authenticate, (req, res) => {
     if (req.user.role !== 'admin') {
-        console.warn(`🚨 محاولة وصول لصلاحيات الأدمن — بواسطة: ${req.user.email}, IP: ${req.ip}`);
+        logger.warn(`🚨 محاولة وصول لصلاحيات الأدمن — بواسطة: ${req.user.email}, IP: ${req.ip}`);
         return res.status(403).json({
             isAdmin: false,
             error: 'ليس لديك صلاحيات الإدارة. تواصل مع المعلم.'
@@ -248,19 +284,27 @@ router.get('/verify-admin', authenticate, (req, res) => {
 // ============================================
 //   POST /api/auth/create-admin — إنشاء/ترقية أدمن
 // ============================================
-router.post('/create-admin', async (req, res) => {
+/**
+ * @route POST /api/auth/create-admin
+ * @description Creates a new admin account or promotes an existing user to admin.
+ *   Requires the correct `ADMIN_CREATE_SECRET` in the request body.
+ * @access Public (protected by secret).
+ * @param {import('express').Request} req - Express request with `email`, `fname`, `lname`, `adminSecret` in body.
+ * @param {import('express').Response} res - Express response.
+ * @returns {Promise<void>}
+ */
+router.post('/create-admin', validateCreateAdmin, async (req, res) => {
     try {
         const { email, fname, lname, adminSecret } = req.body;
 
-        const expectedSecret = process.env.ADMIN_CREATE_SECRET || 'create-admin-secret-2024';
+        const expectedSecret = process.env.ADMIN_CREATE_SECRET;
+        if (!expectedSecret) {
+            return res.status(503).json({ error: 'لم يتم تكوين مفتاح إنشاء الأدمن على السيرفر.' });
+        }
         if (adminSecret !== expectedSecret) {
-            console.warn(`🚨 محاولة إنشاء أدمن بكلمة سر خاطئة — IP: ${req.ip}`);
+            logger.warn(`🚨 محاولة إنشاء أدمن بكلمة سر خاطئة — IP: ${req.ip}`);
             recordFailedAttempt(req.ip);
             return res.status(403).json({ error: 'كلمة السر السرية غير صحيحة.' });
-        }
-
-        if (!email || !fname || !lname) {
-            return res.status(400).json({ error: 'البريد الإلكتروني والاسم مطلوبان.' });
         }
 
         const existing = await User.findOne({ where: { email: email.toLowerCase() } });
@@ -271,9 +315,9 @@ router.post('/create-admin', async (req, res) => {
             existing.isProfileComplete = true;
             await existing.save();
 
-            console.log(`👑 تم ترقية ${email} إلى أدمن`);
+            logger.info(`👑 تم ترقية ${email} إلى أدمن`);
 
-            const token = generateToken(existing.id, existing.role);
+            const token = generateToken(existing.id, existing.role, existing.tokenVersion);
             return res.json({
                 message: 'تم ترقية الحساب لمعلم بنجاح!',
                 token,
@@ -296,9 +340,9 @@ router.post('/create-admin', async (req, res) => {
             role: 'admin'
         });
 
-        console.log(`👑 تم إنشاء حساب أدمن جديد: ${email}`);
+        logger.info(`👑 تم إنشاء حساب أدمن جديد: ${email}`);
 
-        const token = generateToken(user.id, user.role);
+        const token = generateToken(user.id, user.role, user.tokenVersion);
 
         res.status(201).json({
             message: 'تم إنشاء حساب المعلم بنجاح!',
@@ -316,8 +360,62 @@ router.post('/create-admin', async (req, res) => {
         if (error instanceof UniqueConstraintError) {
             return res.status(409).json({ error: 'هذا البريد مسجل بالفعل.' });
         }
-        console.error('خطأ في إنشاء الأدمن:', error.message);
+        logger.error('خطأ في إنشاء الأدمن:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء إنشاء حساب المعلم.' });
+    }
+});
+
+// ============================================
+//   POST /api/auth/refresh — تجديد التوكن
+/**
+ * @route POST /api/auth/refresh
+ * @description Refreshes the JWT for the authenticated user.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with `{ token: string }`.
+ * @returns {Promise<void>}
+ */
+router.post('/refresh', authenticate, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id);
+        if (!user) {
+            return res.status(401).json({ error: 'المستخدم غير موجود.' });
+        }
+        const newToken = generateToken(user.id, user.role, user.tokenVersion);
+        logger.info(`🔄 تجديد توكن — ${user.email}`);
+        res.json({ token: newToken });
+    } catch (error) {
+        logger.error('خطأ في تجديد التوكن:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ أثناء تجديد الجلسة.' });
+    }
+});
+
+// ============================================
+//   POST /api/auth/logout — تسجيل الخروج (إلغاء كل التوكنات)
+// ============================================
+/**
+ * @route POST /api/auth/logout
+ * @description Logs the user out by incrementing their `tokenVersion`, effectively
+ *   invalidating all previously issued JWTs.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response.
+ * @returns {Promise<void>}
+ */
+router.post('/logout', authenticate, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id);
+        if (!user) {
+            return res.status(401).json({ error: 'المستخدم غير موجود.' });
+        }
+        // زيادة tokenVersion لإلغاء كل التوكنات السابقة
+        user.tokenVersion = (user.tokenVersion || 0) + 1;
+        await user.save();
+        logger.info(`🚪 تسجيل خروج وإلغاء كل التوكنات — ${user.email}`);
+        res.json({ message: 'تم تسجيل الخروج بنجاح.' });
+    } catch (error) {
+        logger.error('خطأ في تسجيل الخروج:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ أثناء تسجيل الخروج.' });
     }
 });
 

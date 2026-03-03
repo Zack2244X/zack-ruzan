@@ -1,0 +1,457 @@
+/**
+ * @module tree
+ * @description وحدة رسم الشجرة — عرض الامتحانات والمذكرات بتنسيق شجري حسب التاريخ
+ */
+import state from './state.js';
+import { escapeHtml } from './helpers.js';
+import { apiCall } from './api.js';
+import { toggleTreeNode } from './navigation.js';
+
+/** @constant {Array<string>} المواد الافتراضية */
+const DEFAULT_SUBJECTS = [
+    'الصرف',
+    'الفلسفة وعلم الأخلاق',
+    'القضايا المجتمعية',
+    'النحو التطبيقي',
+    'علم البيان',
+    'علم اللغة وفقهها',
+    'نصوص الأدب الجاهلي'
+];
+
+/**
+ * استخراج قائمة المواد الديناميكية من الاختبارات والمذكرات مع الافتراضية
+ * @returns {Array<string>} مصفوفة المواد مع "الكل" في البداية
+ */
+export function getDynamicSubjects() {
+    const subjectsSet = new Set(DEFAULT_SUBJECTS);
+
+    const targetArray = state.currentViewMode === 'notes' ? state.allNotes : state.allQuizzes;
+    targetArray.forEach(item => {
+        if (item.config && item.config.subject) subjectsSet.add(item.config.subject);
+    });
+    return ['الكل', ...Array.from(subjectsSet)];
+}
+
+/**
+ * رسم أزرار فلتر المواد في القائمة الرئيسية ونافذة التعديل مع أدوات الأدمن
+ * @param {Function} renameSubjectFn — دالة تعديل اسم المادة
+ * @param {Function} confirmDeleteSubjectFn — دالة تأكيد حذف المادة
+ */
+export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
+    const subjects = getDynamicSubjects();
+
+    // 1. تحديث قائمة Datalist
+    const dataList = document.getElementById('subjects-list');
+    if (dataList) {
+        let dlHtml = '';
+        subjects.forEach(sub => {
+            if (sub !== 'الكل') dlHtml += `<option value="${escapeHtml(sub)}">`;
+        });
+        dataList.innerHTML = dlHtml;
+    }
+
+    // 2. تحديث شريط الفلاتر في القائمة الرئيسية
+    const mainContainer = document.getElementById('subject-filters-container');
+    if (mainContainer) {
+        let filtersHtml = '';
+        subjects.forEach(sub => {
+            const isActive = sub === state.currentSubjectFilter;
+            const activeClasses = isActive
+                ? 'bg-blue-600 text-white shadow-md border-blue-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600';
+
+            let adminTools = '';
+            if (state.isAdmin && sub !== 'الكل') {
+                adminTools = `
+                    <span class="inline-flex items-center gap-2 mr-3 pr-3 border-r ${isActive ? 'border-blue-400' : 'border-gray-200'}">
+                        <i onclick="renameSubject('${escapeHtml(sub)}', event)" class="fas fa-pen text-xs hover:text-green-400 transition cursor-pointer" title="تعديل الاسم"></i>
+                        <i onclick="confirmDeleteSubject('${escapeHtml(sub)}', event)" class="fas fa-times text-xs hover:text-red-500 transition cursor-pointer" title="حذف المجلد"></i>
+                    </span>
+                `;
+            }
+
+            filtersHtml += `
+                <button onclick="setSubjectFilter('${escapeHtml(sub)}')" class="flex items-center whitespace-nowrap px-4 py-2 rounded-full border text-sm font-bold transition duration-300 ${activeClasses}">
+                    ${escapeHtml(sub)} ${adminTools}
+                </button>
+            `;
+        });
+        mainContainer.innerHTML = filtersHtml;
+    }
+
+    // 3. تحديث شريط الفلاتر في نافذة التعديل
+    const editContainer = document.getElementById('edit-subject-filters-container');
+    if (editContainer) {
+        let editHtml = '';
+        subjects.forEach(sub => {
+            const isActive = sub === state.editSubjectFilter;
+            const activeClasses = isActive
+                ? 'bg-purple-600 text-white shadow-md border-purple-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-600';
+            editHtml += `<button onclick="setEditSubjectFilter('${escapeHtml(sub)}')" class="whitespace-nowrap px-3 py-1.5 rounded-full border text-xs font-bold transition duration-300 ${activeClasses}">${escapeHtml(sub)}</button>`;
+        });
+        editContainer.innerHTML = editHtml;
+    }
+}
+
+/**
+ * تعيين فلتر المادة في القائمة الرئيسية وإعادة الرسم
+ * @param {string} subject — اسم المادة المختارة
+ * @param {Function} renderHistoryTree — دالة رسم الشجرة الرئيسية
+ */
+export function setSubjectFilter(subject, renderHistoryTree) {
+    state.currentSubjectFilter = subject;
+    renderSubjectFilters();
+    renderHistoryTree();
+}
+
+/**
+ * تعيين فلتر المادة في نافذة التعديل وإعادة الرسم
+ * @param {string} subject — اسم المادة المختارة
+ * @param {Function} renderEditTree — دالة رسم شجرة التعديل
+ */
+export function setEditSubjectFilter(subject, renderEditTree) {
+    state.editSubjectFilter = subject;
+    renderSubjectFilters();
+    renderEditTree();
+}
+
+/**
+ * رسم الشجرة الرئيسية (امتحانات أو مذكرات) مرتبة حسب السنة/الشهر/اليوم
+ * @param {Function} playQuizFn — دالة بدء الاختبار
+ * @param {Function} forceDownloadFn — دالة تحميل المذكرة
+ */
+export function renderHistoryTree(playQuizFn, forceDownloadFn) {
+    const historyTree = document.getElementById('history-tree');
+    if (!historyTree) return;
+    historyTree.innerHTML = '';
+
+    const targetArray = state.currentViewMode === 'notes' ? state.allNotes : state.allQuizzes;
+    let itemsToShow = targetArray.map((item, index) => ({ data: item, originalIndex: index }));
+
+    // تطبيق الفلتر
+    if (state.currentSubjectFilter !== 'الكل') {
+        itemsToShow = itemsToShow.filter(item => item.data.config.subject === state.currentSubjectFilter);
+    }
+
+    if (itemsToShow.length === 0) {
+        historyTree.innerHTML = `<div class="p-5 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-center text-gray-500 text-sm font-medium">لا توجد بيانات مسجلة هنا حالياً.</div>`;
+        return;
+    }
+
+    // بناء هيكل الشجرة
+    const treeData = {};
+    itemsToShow.forEach(item => {
+        const config = item.data.config;
+        let timestamp = Date.now();
+
+        const createdAt = item.data.createdAt || config.createdAt || item.data.updatedAt;
+        if (createdAt) {
+            const t = new Date(createdAt).getTime();
+            if (!isNaN(t)) timestamp = t;
+        } else {
+            const rawId = config.id;
+            if (typeof rawId === 'string' && rawId.includes('-')) {
+                const maybeTs = parseInt(rawId.split('-')[1]);
+                if (!isNaN(maybeTs)) timestamp = maybeTs;
+            }
+        }
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const monthName = date.toLocaleDateString('ar-EG', { month: 'long' });
+        const monthNum = date.getMonth() + 1;
+        const day = date.getDate();
+
+        if (!treeData[year]) treeData[year] = {};
+        if (!treeData[year][monthNum]) treeData[year][monthNum] = { name: monthName, days: {} };
+        if (!treeData[year][monthNum].days[day]) treeData[year][monthNum].days[day] = [];
+        treeData[year][monthNum].days[day].push(item);
+    });
+
+    // رسم الشجرة
+    let html = '';
+    const themeColor = state.currentViewMode === 'notes' ? 'orange' : 'blue';
+
+    const years = Object.keys(treeData).sort((a, b) => b - a);
+    years.forEach(year => {
+        html += `
+            <div id="year-${year}" class="mb-2">
+                <button onclick="toggleTreeNode('content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-xl hover:bg-gray-200 transition">
+                    <span><i class="far fa-calendar text-${themeColor}-500 ml-2"></i> ${year}</span>
+                    <i class="fas fa-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
+                </button>
+                <div id="content-year-${year}" class="pr-4 mt-2 space-y-2 border-r-2 border-gray-200 hidden">
+        `;
+
+        const months = Object.keys(treeData[year]).sort((a, b) => b - a);
+        months.forEach(monthNum => {
+            const monthName = treeData[year][monthNum].name;
+            const monthId = `${year}-${monthNum}`;
+
+            html += `
+                <div id="month-${monthId}" class="mb-2">
+                    <button onclick="toggleTreeNode('content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-2 hover:bg-${themeColor}-50 rounded-lg transition">
+                        <span><i class="fas fa-folder-open text-yellow-400 ml-2"></i> ${monthName}</span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
+                    </button>
+                    <div id="content-month-${monthId}" class="pr-5 mt-1 space-y-3 border-r-2 border-${themeColor}-100 hidden">
+            `;
+
+            const days = Object.keys(treeData[year][monthNum].days).sort((a, b) => b - a);
+            days.forEach(day => {
+                const dayId = `${year}-${monthNum}-${day}`;
+                html += `
+                    <div id="day-${dayId}" class="mb-2 relative">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-3 h-3 rounded-full bg-green-500 shadow-sm border-2 border-white absolute -right-[23px]"></span>
+                            <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">يوم ${day}</span>
+                        </div>
+                        <div id="content-day-${dayId}" class="pr-2 space-y-2">
+                `;
+
+                treeData[year][monthNum].days[day].forEach(item => {
+                    const config = item.data.config;
+
+                    if (state.currentViewMode === 'exams') {
+                        html += `
+                            <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer group mb-2">
+                                <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
+                                ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
+                                <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                    <span class="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        const iconClass = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500' : 'fa-file-pdf text-orange-500';
+                        const safeLink = encodeURI(config.link || '');
+                        html += `
+                            <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-300 transition cursor-pointer group mb-2">
+                                <div class="flex justify-between items-start">
+                                    <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
+                                    <i class="fas ${iconClass} text-lg"></i>
+                                </div>
+                                ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
+                                <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                    <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                    <span class="bg-orange-50 px-2 py-1 rounded text-orange-700 font-bold hover:bg-orange-100 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                html += `</div></div>`;
+            });
+            html += `</div></div>`;
+        });
+        html += `</div></div>`;
+    });
+    historyTree.innerHTML = html;
+}
+
+/**
+ * رسم شجرة التعديل للأدمن (امتحانات أو مذكرات)
+ * @param {Function} loadQuizIntoBuilderFn — دالة تحميل اختبار للتعديل
+ * @param {Function} loadNoteIntoBuilderFn — دالة تحميل مذكرة للتعديل
+ */
+export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
+    const editTree = document.getElementById('edit-history-tree');
+    if (!editTree) return;
+    editTree.innerHTML = '';
+
+    const targetArray = state.editTabMode === 'exams' ? state.allQuizzes : state.allNotes;
+    let itemsToShow = targetArray.map((item, index) => ({ data: item, originalIndex: index }));
+
+    if (state.editSubjectFilter !== 'الكل') {
+        itemsToShow = itemsToShow.filter(item => item.data.config.subject === state.editSubjectFilter);
+    }
+
+    if (itemsToShow.length === 0) {
+        editTree.innerHTML = `<div class="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm text-center text-gray-500 text-sm font-medium">لا يوجد محتوى مسجل هنا لتعديله.</div>`;
+        return;
+    }
+
+    const treeData = {};
+    itemsToShow.forEach(item => {
+        const config = item.data.config;
+        const rawId = String(config.id || '');
+        const timestamp = rawId.includes('-') ? (parseInt(rawId.split('-')[1]) || Date.now()) : (item.data.createdAt ? new Date(item.data.createdAt).getTime() : Date.now());
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const monthName = date.toLocaleDateString('ar-EG', { month: 'long' });
+        const monthNum = date.getMonth() + 1;
+
+        if (!treeData[year]) treeData[year] = {};
+        if (!treeData[year][monthNum]) treeData[year][monthNum] = { name: monthName, items: [] };
+        treeData[year][monthNum].items.push(item);
+    });
+
+    let html = '';
+    const themeColor = state.editTabMode === 'exams' ? 'blue' : 'orange';
+    const years = Object.keys(treeData).sort((a, b) => b - a);
+
+    years.forEach(year => {
+        html += `
+            <div id="edit-year-${year}" class="mb-2">
+                <button onclick="toggleTreeNode('edit-content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-white shadow-sm border border-gray-100 p-3 rounded-xl hover:bg-gray-50 transition">
+                    <span><i class="far fa-calendar text-${themeColor}-500 ml-2"></i> ${year}</span>
+                    <i class="fas fa-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
+                </button>
+                <div id="edit-content-year-${year}" class="pr-4 mt-2 space-y-2 border-r-2 border-gray-200 hidden">
+        `;
+
+        const months = Object.keys(treeData[year]).sort((a, b) => b - a);
+        months.forEach(monthNum => {
+            const monthName = treeData[year][monthNum].name;
+            const monthId = `${year}-${monthNum}`;
+
+            html += `
+                <div id="edit-month-${monthId}" class="mb-2">
+                    <button onclick="toggleTreeNode('edit-content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-2 hover:bg-${themeColor}-50 rounded-lg transition">
+                        <span><i class="fas fa-folder-open text-yellow-400 ml-2"></i> ${monthName}</span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
+                    </button>
+                    <div id="edit-content-month-${monthId}" class="pr-5 mt-1 space-y-2 border-r-2 border-${themeColor}-100 hidden">
+            `;
+
+            treeData[year][monthNum].items.forEach(item => {
+                const config = item.data.config;
+
+                if (state.editTabMode === 'exams') {
+                    html += `
+                        <div onclick="loadQuizIntoBuilder(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer group mb-2">
+                            <div class="flex justify-between items-center">
+                                <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
+                                <i class="fas fa-pen text-blue-200 group-hover:text-blue-500 transition"></i>
+                            </div>
+                            <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div onclick="loadNoteIntoBuilder(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-400 transition cursor-pointer group mb-2">
+                            <div class="flex justify-between items-center">
+                                <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate">${escapeHtml(config.title)}</p>
+                                <i class="fas fa-pen text-orange-200 group-hover:text-orange-500 transition"></i>
+                            </div>
+                            <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            html += `</div></div>`;
+        });
+        html += `</div></div>`;
+    });
+    editTree.innerHTML = html;
+}
+
+// ==========================================
+//         دوال إدارة المجلدات (المواد)
+// ==========================================
+
+/**
+ * فتح مودل تعديل اسم المادة
+ * @param {string} oldName — اسم المادة الحالي
+ * @param {Event} event — حدث النقر
+ */
+export function renameSubject(oldName, event) {
+    event.stopPropagation();
+    state.subjectToRename = oldName;
+
+    const inputEl = document.getElementById('rename-subject-input');
+    inputEl.value = oldName;
+
+    document.getElementById('rename-subject-modal').classList.remove('hidden');
+    setTimeout(() => inputEl.select(), 100);
+}
+
+/**
+ * إغلاق مودل تعديل اسم المادة
+ */
+export function closeRenameModal() {
+    state.subjectToRename = null;
+    document.getElementById('rename-subject-modal').classList.add('hidden');
+}
+
+/**
+ * تنفيذ تعديل اسم المادة على السيرفر وتحديث البيانات المحلية
+ * @param {Function} renderSubjectFiltersFn — دالة رسم الفلاتر
+ * @param {Function} renderHistoryTreeFn — دالة رسم الشجرة
+ * @param {Function} renderDashboardFn — دالة رسم لوحة التحكم
+ */
+export async function executeRenameSubject(renderSubjectFiltersFn, renderHistoryTreeFn, renderDashboardFn) {
+    const newName = document.getElementById('rename-subject-input').value.trim();
+
+    if (newName === '') {
+        showAlert('⚠️ يرجى إدخال اسم صحيح للمادة!', 'warning');
+        return;
+    }
+
+    if (state.subjectToRename && newName !== state.subjectToRename) {
+        try {
+            await apiCall('PUT', '/api/quizzes/subject/rename', { oldName: state.subjectToRename, newName });
+        } catch (e) {
+            console.warn('تعذر تعديل اسم المادة على السيرفر:', e.message);
+        }
+        state.allQuizzes.forEach(q => {
+            if (q.config.subject === state.subjectToRename) q.config.subject = newName;
+        });
+        if (state.currentSubjectFilter === state.subjectToRename) state.currentSubjectFilter = newName;
+        if (state.editSubjectFilter === state.subjectToRename) state.editSubjectFilter = newName;
+        closeRenameModal();
+        if (renderSubjectFiltersFn) renderSubjectFiltersFn();
+        if (renderHistoryTreeFn) renderHistoryTreeFn();
+        if (renderDashboardFn) renderDashboardFn();
+    } else {
+        closeRenameModal();
+    }
+}
+
+/**
+ * فتح مودل تأكيد حذف المادة
+ * @param {string} subjectName — اسم المادة المراد حذفها
+ * @param {Event} event — حدث النقر
+ */
+export function confirmDeleteSubject(subjectName, event) {
+    event.stopPropagation();
+    state.subjectToDelete = subjectName;
+    document.getElementById('delete-subject-msg').innerText = `هل أنت متأكد من حذف مجلد "${subjectName}"؟ سيتم مسح جميع الامتحانات بداخله نهائياً!`;
+    document.getElementById('delete-subject-modal').classList.remove('hidden');
+}
+
+/**
+ * إغلاق مودل تأكيد حذف المادة
+ */
+export function closeDeleteModal() {
+    state.subjectToDelete = null;
+    document.getElementById('delete-subject-modal').classList.add('hidden');
+}
+
+/**
+ * تنفيذ حذف المادة على السيرفر وإزالة الامتحانات المرتبطة محلياً
+ * @param {Function} renderSubjectFiltersFn — دالة رسم الفلاتر
+ * @param {Function} renderHistoryTreeFn — دالة رسم الشجرة
+ * @param {Function} renderDashboardFn — دالة رسم لوحة التحكم
+ */
+export async function executeDeleteSubject(renderSubjectFiltersFn, renderHistoryTreeFn, renderDashboardFn) {
+    if (state.subjectToDelete) {
+        try {
+            await apiCall('DELETE', '/api/quizzes/subject/' + encodeURIComponent(state.subjectToDelete));
+        } catch (e) {
+            console.warn('تعذر حذف المادة على السيرفر:', e.message);
+        }
+        state.allQuizzes = state.allQuizzes.filter(q => q.config.subject !== state.subjectToDelete);
+        if (state.currentSubjectFilter === state.subjectToDelete) state.currentSubjectFilter = 'الكل';
+        if (state.editSubjectFilter === state.subjectToDelete) state.editSubjectFilter = 'الكل';
+        closeDeleteModal();
+        if (renderSubjectFiltersFn) renderSubjectFiltersFn();
+        if (renderHistoryTreeFn) renderHistoryTreeFn();
+        if (renderDashboardFn) renderDashboardFn();
+    }
+}

@@ -5,21 +5,41 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "jest --forceExit --detectOpenHandles --coverage"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.4",
+    "express-validator": "^7.3.1",
     "google-auth-library": "^9.4.1",
     "helmet": "^7.1.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.18.2",
-    "sequelize": "^6.37.7"
+    "sanitize-html": "^2.17.1",
+    "sequelize": "^6.37.7",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@jest/globals": "^30.2.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^7.2.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": ["./__tests__/setup.js"],
+    "testMatch": ["**/__tests__/**/*.test.js"],
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "middleware/**/*.js",
+      "models/**/*.js",
+      "routes/**/*.js",
+      "utils/**/*.js"
+    ]
   }
 }

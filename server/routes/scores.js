@@ -1,3 +1,10 @@
+/**
+ * @file Score and results routes
+ * @description Express router for quiz score submission, retrieval, leaderboard,
+ *   admin statistics, and score management. Scores are graded server-side to prevent cheating.
+ * @module routes/scores
+ */
+
 // ============================================
 //   مسارات الدرجات والنتائج
 //   — Sequelize + TiDB —
@@ -9,18 +16,26 @@ const Score = require('../models/Score');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { validateSubmitScore, validatePagination } = require('../middleware/validators');
+const logger = require('../utils/logger');
 
 // ============================================
 //   POST /api/scores — تسليم إجابات الامتحان
 //   (السيرفر يحسب الدرجة لمنع الغش)
 // ============================================
-router.post('/', authenticate, async (req, res) => {
+/**
+ * @route POST /api/scores
+ * @description Submits a student's quiz answers. The server fetches the quiz, grades each
+ *   answer against the stored correct options, and creates a Score record.
+ *   Prevents duplicate submissions per user per quiz.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with `quizId`, `answers`, and optional `timeTaken` in body.
+ * @param {import('express').Response} res - Express response with `{ message, result, details }`.
+ * @returns {Promise<void>}
+ */
+router.post('/', authenticate, validateSubmitScore, async (req, res) => {
     try {
         const { quizId, answers, timeTaken } = req.body;
-
-        if (!quizId || !answers || !Array.isArray(answers)) {
-            return res.status(400).json({ error: 'بيانات الامتحان غير مكتملة.' });
-        }
 
         // التحقق من أن الطالب لم يجب من قبل
         const existingScore = await Score.findOne({
@@ -99,7 +114,7 @@ router.post('/', authenticate, async (req, res) => {
         if (error instanceof UniqueConstraintError) {
             return res.status(409).json({ error: 'لقد أجبت على هذا الامتحان من قبل.' });
         }
-        console.error('خطأ في تسليم الامتحان:', error.message);
+        logger.error('خطأ في تسليم الامتحان:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء تسليم الامتحان.' });
     }
 });
@@ -107,6 +122,15 @@ router.post('/', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/scores/my — درجاتي (الطالب الحالي)
 // ============================================
+/**
+ * @route GET /api/scores/my
+ * @description Retrieves all scores for the currently authenticated student,
+ *   including associated quiz titles and subjects, ordered by most recent.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with an array of score objects.
+ * @returns {Promise<void>}
+ */
 router.get('/my', authenticate, async (req, res) => {
     try {
         const scores = await Score.findAll({
@@ -117,7 +141,7 @@ router.get('/my', authenticate, async (req, res) => {
 
         res.json(scores);
     } catch (error) {
-        console.error('خطأ في جلب الدرجات:', error.message);
+        logger.error('خطأ في جلب الدرجات:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -125,6 +149,15 @@ router.get('/my', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/scores/leaderboard — لوحة الشرف
 // ============================================
+/**
+ * @route GET /api/scores/leaderboard
+ * @description Returns the top 50 students ranked by average percentage.
+ *   Aggregates total score, exam count, average percentage, and full-marks count.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with an array of leaderboard entries.
+ * @returns {Promise<void>}
+ */
 router.get('/leaderboard', authenticate, async (req, res) => {
     try {
         // تجميع النتائج حسب المستخدم
@@ -164,7 +197,7 @@ router.get('/leaderboard', authenticate, async (req, res) => {
 
         res.json(result);
     } catch (error) {
-        console.error('خطأ في جلب لوحة الشرف:', error.message);
+        logger.error('خطأ في جلب لوحة الشرف:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -172,6 +205,15 @@ router.get('/leaderboard', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/scores/quiz/:quizId — نتائج امتحان (أدمن فقط)
 // ============================================
+/**
+ * @route GET /api/scores/quiz/:quizId
+ * @description Retrieves all scores for a specific quiz, sorted by percentage descending.
+ *   Includes student names. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `quizId` param.
+ * @param {import('express').Response} res - Express response with an array of score result objects.
+ * @returns {Promise<void>}
+ */
 router.get('/quiz/:quizId', authenticate, requireAdmin, async (req, res) => {
     try {
         const scores = await Score.findAll({
@@ -191,7 +233,7 @@ router.get('/quiz/:quizId', authenticate, requireAdmin, async (req, res) => {
 
         res.json(results);
     } catch (error) {
-        console.error('خطأ في جلب نتائج الامتحان:', error.message);
+        logger.error('خطأ في جلب نتائج الامتحان:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -199,14 +241,29 @@ router.get('/quiz/:quizId', authenticate, requireAdmin, async (req, res) => {
 // ============================================
 //   GET /api/scores/all — كل النتائج (أدمن فقط)
 // ============================================
-router.get('/all', authenticate, requireAdmin, async (req, res) => {
+/**
+ * @route GET /api/scores/all
+ * @description Retrieves a paginated list of all scores across all quizzes.
+ *   Includes student names and quiz details. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with optional `page` and `limit` query params.
+ * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
+ * @returns {Promise<void>}
+ */
+router.get('/all', authenticate, requireAdmin, validatePagination, async (req, res) => {
     try {
-        const scores = await Score.findAll({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+
+        const { count, rows: scores } = await Score.findAndCountAll({
             include: [
                 { model: User, as: 'user', attributes: ['fname', 'lname'] },
                 { model: Quiz, as: 'quiz', attributes: ['title', 'subject'] }
             ],
-            order: [['createdAt', 'DESC']]
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset
         });
 
         const results = scores.map(s => ({
@@ -219,9 +276,9 @@ router.get('/all', authenticate, requireAdmin, async (req, res) => {
             date: s.createdAt
         }));
 
-        res.json(results);
+        res.json({ data: results, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
-        console.error('خطأ في جلب كل النتائج:', error.message);
+        logger.error('خطأ في جلب كل النتائج:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -229,6 +286,15 @@ router.get('/all', authenticate, requireAdmin, async (req, res) => {
 // ============================================
 //   GET /api/scores/stats — إحصائيات عامة (أدمن فقط)
 // ============================================
+/**
+ * @route GET /api/scores/stats
+ * @description Returns platform-wide statistics: total students, total exams,
+ *   total scores submitted, and overall average percentage. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with `{ totalStudents, totalExams, totalScores, avgPercentage }`.
+ * @returns {Promise<void>}
+ */
 router.get('/stats', authenticate, requireAdmin, async (req, res) => {
     try {
         const [totalStudents, totalExams, totalScores, avgResult] = await Promise.all([
@@ -250,8 +316,34 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
                 : 0
         });
     } catch (error) {
-        console.error('خطأ في الإحصائيات:', error.message);
+        logger.error('خطأ في الإحصائيات:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
+    }
+});
+
+// ============================================
+//   DELETE /api/scores/:id — حذف نتيجة (أدمن فقط)
+// ============================================
+/**
+ * @route DELETE /api/scores/:id
+ * @description Deletes a single score record by its ID. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `id` param.
+ * @param {import('express').Response} res - Express response with `{ message }`.
+ * @returns {Promise<void>}
+ */
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const score = await Score.findByPk(req.params.id);
+        if (!score) {
+            return res.status(404).json({ error: 'النتيجة غير موجودة.' });
+        }
+        await score.destroy();
+        logger.info(`🗑️ حذف نتيجة #${req.params.id} — بواسطة: ${req.user.email}`);
+        res.json({ message: 'تم حذف النتيجة بنجاح.' });
+    } catch (error) {
+        logger.error('خطأ في حذف النتيجة:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ أثناء حذف النتيجة.' });
     }
 });
 

@@ -1,8 +1,19 @@
+/**
+ * @file Database connection configuration
+ * @description Initializes and exports a Sequelize instance connected to a TiDB (MySQL-compatible) database.
+ *   Supports SSL, connection pooling, and environment-based logging.
+ * @module models/index
+ */
+
 // ============================================
 //   إعداد الاتصال بقاعدة البيانات — Sequelize + TiDB
 // ============================================
 const { Sequelize } = require('sequelize');
 
+/**
+ * Sequelize instance configured for TiDB/MySQL.
+ * @type {import('sequelize').Sequelize}
+ */
 const sequelize = new Sequelize(
     process.env.DB_NAME || 'quiz_platform',
     process.env.DB_USER || 'root',
@@ -16,7 +27,7 @@ const sequelize = new Sequelize(
                 ? { minVersion: 'TLSv1.2', rejectUnauthorized: false }
                 : undefined
         },
-        logging: process.env.NODE_ENV === 'development' ? console.log : false,
+        logging: process.env.NODE_ENV === 'development' ? (msg) => require('../utils/logger').debug(msg) : false,
         pool: {
             max: 10,
             min: 0,

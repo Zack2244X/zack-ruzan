@@ -1,3 +1,10 @@
+/**
+ * @file Notes CRUD routes
+ * @description Express router for managing educational notes/resources.
+ *   Students can view notes; admins can create, update, and delete them.
+ * @module routes/notes
+ */
+
 // ============================================
 //   مسارات المذكرات والملفات (CRUD)
 //   — Sequelize + TiDB —
@@ -7,28 +14,43 @@ const sequelize = require('../models/index');
 const Note = require('../models/Note');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
+const { validateCreateNote, validateUpdateNote, validatePagination } = require('../middleware/validators');
+const logger = require('../utils/logger');
 
 // ============================================
 //   GET /api/notes — جلب كل المذكرات
 // ============================================
-router.get('/', authenticate, async (req, res) => {
+/**
+ * @route GET /api/notes
+ * @description Retrieves a paginated list of notes, optionally filtered by subject.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with optional `subject`, `page`, `limit` query params.
+ * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
+ * @returns {Promise<void>}
+ */
+router.get('/', authenticate, validatePagination, async (req, res) => {
     try {
         const { subject } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
         const where = {};
 
         if (subject && subject !== 'الكل') {
             where.subject = subject;
         }
 
-        const notes = await Note.findAll({
+        const { count, rows: notes } = await Note.findAndCountAll({
             where,
             order: [['createdAt', 'DESC']],
-            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }]
+            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }],
+            limit,
+            offset
         });
 
-        res.json(notes);
+        res.json({ data: notes, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
-        console.error('خطأ في جلب المذكرات:', error.message);
+        logger.error('خطأ في جلب المذكرات:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ في جلب المذكرات.' });
     }
 });
@@ -36,6 +58,14 @@ router.get('/', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/notes/subjects/list — قائمة مواد المذكرات
 // ============================================
+/**
+ * @route GET /api/notes/subjects/list
+ * @description Returns a list of distinct subject names from all notes.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request.
+ * @param {import('express').Response} res - Express response with an array of subject strings.
+ * @returns {Promise<void>}
+ */
 router.get('/subjects/list', authenticate, async (req, res) => {
     try {
         const results = await Note.findAll({
@@ -45,7 +75,7 @@ router.get('/subjects/list', authenticate, async (req, res) => {
         const subjects = results.map(r => r.subject);
         res.json(subjects);
     } catch (error) {
-        console.error('خطأ في جلب المواد:', error.message);
+        logger.error('خطأ في جلب المواد:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -53,6 +83,14 @@ router.get('/subjects/list', authenticate, async (req, res) => {
 // ============================================
 //   GET /api/notes/:id — جلب مذكرة واحدة
 // ============================================
+/**
+ * @route GET /api/notes/:id
+ * @description Retrieves a single note by its ID, including the creator's name.
+ * @access Private — requires authentication.
+ * @param {import('express').Request} req - Express request with `id` param.
+ * @param {import('express').Response} res - Express response with the note object.
+ * @returns {Promise<void>}
+ */
 router.get('/:id', authenticate, async (req, res) => {
     try {
         const note = await Note.findByPk(req.params.id, {
@@ -65,7 +103,7 @@ router.get('/:id', authenticate, async (req, res) => {
 
         res.json(note);
     } catch (error) {
-        console.error('خطأ في جلب المذكرة:', error.message);
+        logger.error('خطأ في جلب المذكرة:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ.' });
     }
 });
@@ -73,13 +111,17 @@ router.get('/:id', authenticate, async (req, res) => {
 // ============================================
 //   POST /api/notes — إضافة مذكرة جديدة (أدمن فقط)
 // ============================================
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+/**
+ * @route POST /api/notes
+ * @description Creates a new note/resource. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `title`, `subject`, `link`, optional `type` and `description` in body.
+ * @param {import('express').Response} res - Express response with `{ message, note }`.
+ * @returns {Promise<void>}
+ */
+router.post('/', authenticate, requireAdmin, validateCreateNote, async (req, res) => {
     try {
         const { title, subject, link, type, description } = req.body;
-
-        if (!title || !subject || !link) {
-            return res.status(400).json({ error: 'العنوان والمادة والرابط مطلوبة.' });
-        }
 
         const note = await Note.create({
             title: title.trim(),
@@ -95,7 +137,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
             note
         });
     } catch (error) {
-        console.error('خطأ في إضافة المذكرة:', error.message);
+        logger.error('خطأ في إضافة المذكرة:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء إضافة المذكرة.' });
     }
 });
@@ -103,7 +145,16 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 // ============================================
 //   PUT /api/notes/:id — تعديل مذكرة (أدمن فقط)
 // ============================================
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+/**
+ * @route PUT /api/notes/:id
+ * @description Updates an existing note. Requires admin privileges.
+ *   Only allowed fields (`title`, `subject`, `link`, `type`, `description`) are updated.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `id` param and update fields in body.
+ * @param {import('express').Response} res - Express response with `{ message, note }`.
+ * @returns {Promise<void>}
+ */
+router.put('/:id', authenticate, requireAdmin, validateUpdateNote, async (req, res) => {
     try {
         const note = await Note.findByPk(req.params.id);
         if (!note) {
@@ -126,7 +177,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
             note
         });
     } catch (error) {
-        console.error('خطأ في تعديل المذكرة:', error.message);
+        logger.error('خطأ في تعديل المذكرة:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء تعديل المذكرة.' });
     }
 });
@@ -134,6 +185,14 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 // ============================================
 //   DELETE /api/notes/:id — حذف مذكرة (أدمن فقط)
 // ============================================
+/**
+ * @route DELETE /api/notes/:id
+ * @description Deletes a note by its ID. Requires admin privileges.
+ * @access Private — requires authentication + admin role.
+ * @param {import('express').Request} req - Express request with `id` param.
+ * @param {import('express').Response} res - Express response with `{ message }`.
+ * @returns {Promise<void>}
+ */
 router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
     try {
         const deleted = await Note.destroy({ where: { id: req.params.id } });
@@ -142,7 +201,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
         }
         res.json({ message: 'تم حذف المذكرة بنجاح.' });
     } catch (error) {
-        console.error('خطأ في حذف المذكرة:', error.message);
+        logger.error('خطأ في حذف المذكرة:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء حذف المذكرة.' });
     }
 });
