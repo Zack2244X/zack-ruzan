@@ -93,41 +93,31 @@ export function renderDashboard() {
         latestNotesGrid.innerHTML = notesHtml;
     }
 
-    // --- 3. لوحة الشرف: أعلى 3 حسب عدد الدرجات النهائية ثم متوسط النسبة ---
+    // --- 3. لوحة الشرف: أعلى 3 — نفس مصدر بيانات متابعة الدرجات ---
     const leaderboardList = document.getElementById('leaderboard-list');
     leaderboardList.innerHTML = '';
 
     const totalExams = state.allQuizzes.length || 1;
-    let sourceLeaderboard = [];
-    if (state.serverLeaderboard && state.serverLeaderboard.length > 0) {
-        sourceLeaderboard = state.serverLeaderboard.map(item => ({
-            userName: item.userName || 'طالب',
-            totalScore: Number(item.totalScore) || 0,
-            totalMax: Number(item.totalMax) || 0,
-            examsCount: Number(item.examsCount) || 0,
-            avgPercentage: Number(item.avgPercentage) || 0,
-            fullMarksCount: Number(item.fullMarksCount) || 0
-        }));
-    } else {
-        const scoresByUser = {};
-        state.allUserScores.forEach(entry => {
-            const userName = entry.userName || 'طالب';
-            const total = Number(entry.total) || 0;
-            const score = Number(entry.score) || 0;
-            if (total <= 0) return;
-            if (!scoresByUser[userName]) {
-                scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
-            }
-            scoresByUser[userName].totalScore += score;
-            scoresByUser[userName].totalMax += total;
-            scoresByUser[userName].examsCount += 1;
-            if (score === total) scoresByUser[userName].fullMarksCount += 1;
-        });
-        sourceLeaderboard = Object.values(scoresByUser).map(u => ({
-            ...u,
-            avgPercentage: u.totalMax > 0 ? Math.round((u.totalScore / u.totalMax) * 100) : 0
-        }));
-    }
+    // استخدام نفس البيانات اللي متابعة الدرجات بتستخدمها
+    const sourceScores = (state.serverScores && state.serverScores.length > 0) ? state.serverScores : state.allUserScores;
+    const scoresByUser = {};
+    sourceScores.forEach(entry => {
+        const userName = entry.userName || 'طالب';
+        const total = Number(entry.total) || 0;
+        const score = Number(entry.score) || 0;
+        if (total <= 0) return;
+        if (!scoresByUser[userName]) {
+            scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
+        }
+        scoresByUser[userName].totalScore += score;
+        scoresByUser[userName].totalMax += total;
+        scoresByUser[userName].examsCount += 1;
+        if (score === total) scoresByUser[userName].fullMarksCount += 1;
+    });
+    const sourceLeaderboard = Object.values(scoresByUser).map(u => ({
+        ...u,
+        avgPercentage: u.totalMax > 0 ? Math.round((u.totalScore / u.totalMax) * 100) : 0
+    }));
 
     const ranked = sourceLeaderboard
         .filter(item => item.totalScore > 0)
