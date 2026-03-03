@@ -93,10 +93,11 @@ export function renderDashboard() {
         latestNotesGrid.innerHTML = notesHtml;
     }
 
-    // --- 3. لوحة الشرف: أعلى 3 بمتوسط النسبة المئوية (نفس ترتيب متابعة الدرجات) ---
+    // --- 3. لوحة الشرف: أعلى 3 حسب عدد الدرجات النهائية ثم متوسط النسبة ---
     const leaderboardList = document.getElementById('leaderboard-list');
     leaderboardList.innerHTML = '';
 
+    const totalExams = state.allQuizzes.length || 1;
     let sourceLeaderboard = [];
     if (state.serverLeaderboard && state.serverLeaderboard.length > 0) {
         sourceLeaderboard = state.serverLeaderboard.map(item => ({
@@ -104,7 +105,8 @@ export function renderDashboard() {
             totalScore: Number(item.totalScore) || 0,
             totalMax: Number(item.totalMax) || 0,
             examsCount: Number(item.examsCount) || 0,
-            avgPercentage: Number(item.avgPercentage) || 0
+            avgPercentage: Number(item.avgPercentage) || 0,
+            fullMarksCount: Number(item.fullMarksCount) || 0
         }));
     } else {
         const scoresByUser = {};
@@ -114,11 +116,12 @@ export function renderDashboard() {
             const score = Number(entry.score) || 0;
             if (total <= 0) return;
             if (!scoresByUser[userName]) {
-                scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0 };
+                scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
             }
             scoresByUser[userName].totalScore += score;
             scoresByUser[userName].totalMax += total;
             scoresByUser[userName].examsCount += 1;
+            if (score === total) scoresByUser[userName].fullMarksCount += 1;
         });
         sourceLeaderboard = Object.values(scoresByUser).map(u => ({
             ...u,
@@ -129,6 +132,7 @@ export function renderDashboard() {
     const ranked = sourceLeaderboard
         .filter(item => item.totalScore > 0)
         .sort((a, b) => {
+            if (b.fullMarksCount !== a.fullMarksCount) return b.fullMarksCount - a.fullMarksCount;
             if (b.avgPercentage !== a.avgPercentage) return b.avgPercentage - a.avgPercentage;
             if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
             return String(a.userName).localeCompare(String(b.userName), 'ar');
@@ -148,18 +152,21 @@ export function renderDashboard() {
         let lbHtml = '';
         ranked.slice(0, 3).forEach((entry, i) => {
             const safeName = escapeHtml(entry.userName);
+            const fullMarkLabel = entry.fullMarksCount > 0
+                ? `🌟 ${entry.fullMarksCount}/${totalExams} درجة نهائية`
+                : `${entry.examsCount}/${totalExams} امتحان`;
             lbHtml += `
                 <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[i] || 'bg-gray-50'} shadow-sm">
                     <div class="flex items-center gap-4">
                         <span class="text-3xl drop-shadow-sm">${medals[i]}</span>
                         <div>
                             <p class="font-black text-gray-800 text-lg">${safeName}</p>
-                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankNames[i]} — ${entry.examsCount} امتحان</p>
+                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankNames[i]}</p>
                         </div>
                     </div>
                     <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
-                        <span class="font-black text-xl text-blue-600">${entry.avgPercentage}%</span>
-                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">${entry.totalScore}/${entry.totalMax}</p>
+                        <span class="font-black text-base">${fullMarkLabel}</span>
+                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">متوسط ${entry.avgPercentage}%</p>
                     </div>
                 </div>
             `;
