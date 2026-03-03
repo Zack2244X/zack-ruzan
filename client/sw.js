@@ -3,7 +3,7 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v1';
+const CACHE_NAME = 'quiz-platform-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -12,22 +12,10 @@ const STATIC_ASSETS = [
     '/manifest.json'
 ];
 
-// External CDN assets to cache (best-effort)
-const CDN_ASSETS = [
-    'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
-];
-
-// Install — cache static assets, then try CDN (non-blocking)
+// Install — cache static assets only (CDN loaded by browser directly)
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(async (cache) => {
-            await cache.addAll(STATIC_ASSETS);
-            // CDN assets are best-effort — don't fail install if blocked
-            for (const url of CDN_ASSETS) {
-                try { await cache.add(url); } catch (e) { /* CSP or network — skip */ }
-            }
-        })
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
     );
     self.skipWaiting();
 });
@@ -44,15 +32,16 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch — Network First for API, Cache First for static
+// Fetch — only handle same-origin GET requests
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Skip non-GET requests
+    // Only handle http/https from our own origin
     if (request.method !== 'GET') return;
+    if (url.origin !== self.location.origin) return;
 
-    // API calls — Network Only (don't cache dynamic data)
+    // API calls — Network Only
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(request).catch(() => {
@@ -69,7 +58,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(request).then((cached) => {
             const networkFetch = fetch(request).then((response) => {
-                if (response && response.status === 200) {
+                if (response && response.status === 200 && response.type === 'basic') {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                 }
