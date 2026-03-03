@@ -1042,7 +1042,13 @@
             sessionStorage.setItem('googleLoginMode', redirectMode);
             sessionStorage.setItem('googleNonce', nonce);
 
-            const redirectUri = window.location.origin + window.location.pathname;
+            // تطبيع redirect_uri ليطابق القيم المضافة في Google Console حرفياً
+            const currentUrl = new URL(window.location.href);
+            let redirectUri = currentUrl.origin + currentUrl.pathname;
+            if (redirectUri.endsWith('/')) redirectUri = redirectUri.slice(0, -1);
+            if (redirectUri.toLowerCase().endsWith('/index.html')) {
+                redirectUri = redirectUri.slice(0, -'/index.html'.length);
+            }
             const oauthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
             oauthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
             oauthUrl.searchParams.set('redirect_uri', redirectUri);
