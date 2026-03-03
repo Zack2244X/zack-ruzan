@@ -355,6 +355,8 @@ async function runSafeMigrations() {
             \`last_attempt\` BIGINT       NOT NULL,
             PRIMARY KEY (\`ip\`)
         )`,
+        // index for leaderboard query: WHERE deletedAt IS NULL GROUP BY userId
+        `CREATE INDEX IF NOT EXISTS \`idx_scores_user_deleted\` ON \`scores\` (\`userId\`, \`deletedAt\`)`,
     ];
     for (const sql of migrations) {
         try {

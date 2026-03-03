@@ -44,8 +44,8 @@ export function renderDashboard() {
                         <div class="w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition duration-300"><i class="fas fa-file-alt"></i></div>
                         <span class="time-badge-anim text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><i class="far fa-clock"></i> ${q.config.timeLimit / 60} دقيقة</span>
                     </div>
-                    <h3 class="font-extrabold text-gray-800 text-lg mb-2 line-clamp-1 relative z-10" title="${safeTitle}">${safeTitle}</h3>
-                    ${q.config.description ? `<p class="text-sm text-gray-500 mb-4 line-clamp-2 relative z-10" title="${safeDesc}">${safeDesc}</p>` : '<div class="h-2 mb-4"></div>'}
+                    <h3 class="font-extrabold text-gray-800 text-lg mb-2 line-clamp-2 relative z-10" title="${safeTitle}">${safeTitle}</h3>
+                    ${q.config.description ? `<p class="text-sm text-gray-500 mb-3 line-clamp-2 relative z-10" title="${safeDesc}">${safeDesc}</p>` : '<div class="h-1 mb-3"></div>'}
                     <div class="flex items-center justify-between pt-4 border-t border-gray-100 relative z-10 mt-auto">
                         <span class="text-xs bg-blue-50 text-blue-700 px-2.5 py-1.5 rounded-md font-bold truncate max-w-[120px]">${safeSubject}</span>
                         <span class="text-xs text-gray-500 font-bold bg-gray-50 px-2.5 py-1.5 rounded-md">${q.questions.length} أسئلة</span>
@@ -80,8 +80,8 @@ export function renderDashboard() {
                         <div class="w-14 h-14 bg-gradient-to-br ${bgClass} rounded-2xl flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition duration-300"><i class="fas ${iconClass}"></i></div>
                         <span class="text-xs bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 group-hover:bg-orange-600 group-hover:text-white transition"><i class="fas fa-download"></i> تحميل مباشر</span>
                     </div>
-                    <h3 class="font-extrabold text-gray-800 text-lg mb-2 line-clamp-1 relative z-10" title="${safeTitle}">${safeTitle}</h3>
-                    ${config.description ? `<p class="text-sm text-gray-500 mb-4 line-clamp-2 relative z-10" title="${safeDesc}">${safeDesc}</p>` : '<div class="h-2 mb-4"></div>'}
+                    <h3 class="font-extrabold text-gray-800 text-lg mb-2 line-clamp-2 relative z-10" title="${safeTitle}">${safeTitle}</h3>
+                    ${config.description ? `<p class="text-sm text-gray-500 mb-3 line-clamp-2 relative z-10" title="${safeDesc}">${safeDesc}</p>` : '<div class="h-1 mb-3"></div>'}
                     <div class="flex items-center justify-between pt-4 border-t border-gray-100 relative z-10 mt-auto">
                         <span class="text-xs bg-orange-50 text-orange-800 px-2.5 py-1.5 rounded-md font-bold truncate max-w-[150px]">${safeSubject}</span>
                         <span class="text-xs text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-link"></i> ${escapeHtml((config.type || 'pdf').toUpperCase())}</span>

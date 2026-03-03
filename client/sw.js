@@ -3,7 +3,7 @@
 //   منصة الاختبارات التفاعلية
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v9';
+const CACHE_NAME = 'quiz-platform-v10';
 const STATIC_ASSETS = [
     '/css/styles.css',
     '/css/tailwind.css',
