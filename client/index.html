@@ -243,6 +243,7 @@
             <h2 class="text-2xl font-extrabold text-gray-800 mb-2">منطقة الإدارة</h2>
             <p class="text-sm text-gray-500 mb-6">سجل دخولك بحساب Google المعتمد لفتح لوحة التحكم</p>
             <div id="admin-google-btn" class="flex justify-center mb-4"></div>
+            <button onclick="startGoogleRedirectLogin('admin')" class="text-sm text-blue-600 hover:text-blue-800 font-bold underline mb-4">لو نافذة Google علّقت، اضغط هنا</button>
             <p id="admin-auth-error" class="text-red-500 text-sm font-bold hidden mb-4"></p>
             <p id="admin-auth-loading" class="text-blue-500 text-sm font-bold hidden mb-4"><i class="fas fa-spinner fa-spin ml-2"></i> جاري التحقق...</p>
             <button onclick="closeAdminAuth()" class="py-3 px-6 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إلغاء</button>
@@ -398,6 +399,7 @@
             <p class="text-gray-500 mb-6">سجل دخولك بحساب Google لبدء الاختبارات</p>
             
             <div id="student-google-btn" class="flex justify-center mb-4"></div>
+            <button onclick="startGoogleRedirectLogin('student')" class="text-sm text-blue-600 hover:text-blue-800 font-bold underline mb-2">لو نافذة Google علّقت، اضغط هنا للتسجيل المباشر</button>
             <p id="login-error" class="text-red-500 text-sm font-bold hidden mb-2"></p>
             <p id="login-loading" class="text-blue-500 text-sm font-bold hidden mb-2"><i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...</p>
         </div>
@@ -1035,6 +1037,59 @@
         // === Google Sign-In: تهيئة وتسجيل الدخول ===
         let googleLoginMode = 'student'; // 'student' أو 'admin'
         let gsiRetries = 0;
+
+        function startGoogleRedirectLogin(mode) {
+            const redirectMode = mode === 'admin' ? 'admin' : 'student';
+            const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+            sessionStorage.setItem('googleLoginMode', redirectMode);
+            sessionStorage.setItem('googleNonce', nonce);
+
+            const redirectUri = window.location.origin + window.location.pathname;
+            const oauthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+            oauthUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+            oauthUrl.searchParams.set('redirect_uri', redirectUri);
+            oauthUrl.searchParams.set('response_type', 'id_token');
+            oauthUrl.searchParams.set('scope', 'openid email profile');
+            oauthUrl.searchParams.set('nonce', nonce);
+            oauthUrl.searchParams.set('prompt', 'select_account');
+
+            window.location.href = oauthUrl.toString();
+        }
+
+        function handleGoogleRedirectToken() {
+            if (!window.location.hash || !window.location.hash.includes('id_token=')) {
+                return false;
+            }
+
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const idToken = hashParams.get('id_token');
+            const returnedNonce = hashParams.get('nonce');
+            const expectedNonce = sessionStorage.getItem('googleNonce');
+            const savedMode = sessionStorage.getItem('googleLoginMode') || 'student';
+
+            history.replaceState({}, document.title, window.location.pathname + window.location.search);
+            sessionStorage.removeItem('googleNonce');
+            sessionStorage.removeItem('googleLoginMode');
+
+            if (!idToken) {
+                return false;
+            }
+
+            if (expectedNonce && returnedNonce && expectedNonce !== returnedNonce) {
+                alert('❌ فشل التحقق من تسجيل Google. حاول مرة أخرى.');
+                return true;
+            }
+
+            googleLoginMode = savedMode;
+            const response = { credential: idToken };
+            if (savedMode === 'admin') {
+                handleGoogleAdminResponse(response);
+            } else {
+                handleStudentGoogleLogin(response);
+            }
+
+            return true;
+        }
 
         function initGoogleSignIn() {
             if (typeof google !== 'undefined' && google.accounts) {
@@ -2678,6 +2733,7 @@ function updateExistingQuiz(index) {
             saveBtn.onclick = saveBuiltQuiz;
         }
         window.onload = function() {
+            handleGoogleRedirectToken();
             initGoogleSignIn();
             loadApp();
         };

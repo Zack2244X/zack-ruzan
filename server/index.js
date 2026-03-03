@@ -42,7 +42,8 @@ const app = express();
 // 1. Helmet — هيدرز أمان تلقائية
 app.use(helmet({
     contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
 }));
 
 // 2. CORS — تحديد المصادر المسموحة
