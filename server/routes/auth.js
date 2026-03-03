@@ -195,10 +195,19 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         if (error instanceof UniqueConstraintError) {
             return res.status(409).json({ error: 'هذا الحساب مسجل بالفعل.' });
         }
-        logger.error('خطأ في تسجيل Google:', { error: error.message, stack: error.stack });
+        const mysqlMsg = error.original?.message || error.parent?.message || '';
+        const mysqlCode = error.original?.code || error.parent?.code || '';
+        const sqlQuery  = error.sql || '';
+        logger.error('خطأ في تسجيل Google:', {
+            message: error.message,
+            mysqlMsg,
+            mysqlCode,
+            sql: sqlQuery,
+            stack: error.stack
+        });
         res.status(500).json({ 
             error: 'حدث خطأ أثناء التسجيل بالجيميل.',
-            debug: error.message
+            debug: mysqlMsg || error.message || 'unknown error'
         });
     }
 });

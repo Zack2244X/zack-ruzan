@@ -122,6 +122,12 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
     : ['http://localhost:3000'];
 
+// Auto-allow the Railway production domain if RAILWAY_PUBLIC_DOMAIN is set
+if (process.env.RAILWAY_PUBLIC_DOMAIN && !allowedOrigins.includes('*')) {
+    const railwayOrigin = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+    if (!allowedOrigins.includes(railwayOrigin)) allowedOrigins.push(railwayOrigin);
+}
+
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
