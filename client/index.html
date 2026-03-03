@@ -391,6 +391,25 @@
         .toast-success { background: linear-gradient(135deg, #ecfdf3, #d1fae5); color: #065f46; }
         .toast-error { background: linear-gradient(135deg, #fff1f2, #ffe4e6); color: #b91c1c; }
         .toast-streak { background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: #1e1b4b; }
+
+        /* أنيميشن شارة الوقت في كارت الامتحان */
+        .time-badge-anim {
+            animation: pulseTimeBadge 1.8s ease-in-out infinite;
+            transform-origin: center;
+        }
+        .time-badge-anim i {
+            animation: tickClock 1.2s ease-in-out infinite;
+            display: inline-block;
+        }
+        @keyframes pulseTimeBadge {
+            0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(239,68,68,0); }
+            50% { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 16px rgba(239,68,68,0.22); }
+        }
+        @keyframes tickClock {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-8deg); }
+            75% { transform: rotate(8deg); }
+        }
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -678,16 +697,11 @@
                 </div>
         </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 bg-white rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-200"></div>
-                <h3 class="text-xl font-black text-gray-800 mb-6 flex items-center"><i class="fas fa-trophy text-yellow-500 ml-3 text-2xl"></i> لوحة الشرف (الأوائل)</h3>
-                <div id="leaderboard-list" class="space-y-3"></div>
-            </div>
+        <section class="grid grid-cols-1 gap-8">
             <div class="bg-white rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-200"></div>
-                <h3 class="text-xl font-black text-gray-800 mb-6 flex items-center"><i class="fas fa-chart-bar text-green-500 ml-3 text-2xl"></i> أعلى الدرجات</h3>
-                <div id="high-scores-list" class="space-y-3"></div>
+                <div class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-200"></div>
+                <h3 class="text-xl font-black text-gray-800 mb-6 flex items-center"><i class="fas fa-trophy text-yellow-500 ml-3 text-2xl"></i> لوحة الشرف (الأعلى إغلاقًا)</h3>
+                <div id="leaderboard-list" class="space-y-3"></div>
             </div>
         </section>
     </div>
@@ -2511,7 +2525,7 @@ function loadApp() {
                             <div class="absolute -left-6 -top-6 w-24 h-24 bg-blue-50 rounded-full opacity-0 group-hover:opacity-100 transition duration-500"></div>
                             <div class="flex justify-between items-start mb-5 relative z-10">
                                 <div class="w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition duration-300"><i class="fas fa-file-alt"></i></div>
-                                <span class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><i class="far fa-clock"></i> ${q.config.timeLimit / 60} دقيقة</span>
+                                <span class="time-badge-anim text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><i class="far fa-clock"></i> ${q.config.timeLimit / 60} دقيقة</span>
                             </div>
                             <h3 class="font-extrabold text-gray-800 text-lg mb-2 line-clamp-1 relative z-10" title="${q.config.title}">${q.config.title}</h3>
                             ${q.config.description ? `<p class="text-sm text-gray-500 mb-4 line-clamp-2 relative z-10" title="${q.config.description}">${q.config.description}</p>` : '<div class="h-2 mb-4"></div>'}
@@ -2556,79 +2570,92 @@ function loadApp() {
                 });
             }
 
-            // --- 3. استكمال كود ترتيب الدرجات ولوحة الشرف ---
-            // (تم الإبقاء على نفس المنطق الخاص بك لتحويل الدرجات لنسب مئوية)
-            const scoresWithPercent = allUserScores.map(e => ({
-                ...e, percent: Math.round((e.score / e.total) * 100)
-            }));
-            const sortedScores = scoresWithPercent.sort((a, b) => b.percent - a.percent);
-
-            // أ. عرض قائمة الشرف (الأسماء)
+            // --- 3. لوحة الشرف: أعلى 3 حسب عدد الامتحانات المقفولة ---
             const leaderboardList = document.getElementById('leaderboard-list');
             leaderboardList.innerHTML = '';
-            if (sortedScores.length === 0) {
+            const fullMarksByUser = {};
+            allUserScores.forEach(entry => {
+                const userName = entry.userName || 'طالب';
+                const total = Number(entry.total) || 0;
+                const score = Number(entry.score) || 0;
+                if (total <= 0) return;
+
+                if (!fullMarksByUser[userName]) {
+                    fullMarksByUser[userName] = {
+                        userName,
+                        fullMarksCount: 0,
+                        bestPercent: 0
+                    };
+                }
+
+                const percent = Math.round((score / total) * 100);
+                if (percent > fullMarksByUser[userName].bestPercent) {
+                    fullMarksByUser[userName].bestPercent = percent;
+                }
+                if (score === total) {
+                    fullMarksByUser[userName].fullMarksCount += 1;
+                }
+            });
+
+            const rankedFullMarks = Object.values(fullMarksByUser)
+                .filter(item => item.fullMarksCount > 0)
+                .sort((a, b) => {
+                    if (b.fullMarksCount !== a.fullMarksCount) return b.fullMarksCount - a.fullMarksCount;
+                    if (b.bestPercent !== a.bestPercent) return b.bestPercent - a.bestPercent;
+                    return String(a.userName).localeCompare(String(b.userName), 'ar');
+                });
+
+            if (rankedFullMarks.length === 0) {
                 leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج مسجلة بعد.</div>`;
             } else {
-                let rank = 0; let prevPercent = null;
-                sortedScores.forEach((entry, i) => {
-                    if (entry.percent !== prevPercent) rank = i + 1;
-                    prevPercent = entry.percent;
+                const rankNames = ["المركز الأول", "المركز الثاني", "المركز الثالث"];
+                const repeatNames = ["أول", "ثاني", "ثالث", "رابع", "خامس"];
+                const colors = [
+                    'bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700',
+                    'bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600',
+                    'bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700'
+                ];
+                const medals = ['🥇', '🥈', '🥉'];
 
-                    if (rank <= 3) {
-                        const rankNames = ["المركز الأول", "المركز الثاني", "المركز الثالث"];
-                        let rankText = rankNames[rank-1];
-                        if (i > 0 && entry.percent === sortedScores[i-1].percent) rankText += " (مكرر)";
+                let rank = 0;
+                let prevCount = null;
+                let repeatIndex = 0;
 
-                        const colors = [
-                            'bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700', 
-                            'bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600', 
-                            'bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700'
-                        ];
-                        const medals = ['🥇', '🥈', '🥉'];
-                        
-                        leaderboardList.innerHTML += `
-                            <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[rank-1] || 'bg-gray-50'} shadow-sm">
-                                <div class="flex items-center gap-4">
-                                    <span class="text-3xl drop-shadow-sm">${medals[rank-1]}</span>
-                                    <div>
-                                        <p class="font-black text-gray-800 text-lg">${entry.userName}</p>
-                                        <p class="text-xs font-bold opacity-80 mt-0.5">${rankText}</p>
-                                    </div>
-                                </div>
-                                <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center border-2 border-white shadow-sm">
-                                    <span class="font-black text-xl">${entry.percent}%</span>
+                rankedFullMarks.forEach((entry) => {
+                    if (entry.fullMarksCount !== prevCount) {
+                        rank += 1;
+                        prevCount = entry.fullMarksCount;
+                        repeatIndex = 0;
+                    } else {
+                        repeatIndex += 1;
+                    }
+
+                    if (rank > 3) return;
+
+                    const repeatText = repeatIndex > 0
+                        ? ` (${(repeatNames[repeatIndex - 1] || repeatIndex) } مكرر)`
+                        : '';
+                    const rankText = `${rankNames[rank - 1]}${repeatText}`;
+
+                    leaderboardList.innerHTML += `
+                        <div class="flex items-center justify-between p-4 rounded-2xl border ${colors[rank-1] || 'bg-gray-50'} shadow-sm">
+                            <div class="flex items-center gap-4">
+                                <span class="text-3xl drop-shadow-sm">${medals[rank-1]}</span>
+                                <div>
+                                    <p class="font-black text-gray-800 text-lg">${entry.userName}</p>
+                                    <p class="text-xs font-bold opacity-80 mt-0.5">${rankText}</p>
                                 </div>
                             </div>
-                        `;
-                    }
-                });
-            }
-
-            // ب. عرض أعلى النسب المئوية
-            const highScoresList = document.getElementById('high-scores-list');
-            highScoresList.innerHTML = '';
-            if (sortedScores.length === 0) {
-                highScoresList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج.</div>`;
-            } else {
-                let displayRank = 0; let lastShownPercent = -1;
-                for(let i=0; i<sortedScores.length; i++) {
-                    if(displayRank >= 3) break; 
-                    const entry = sortedScores[i];
-                    if (entry.percent !== lastShownPercent) {
-                        displayRank++; lastShownPercent = entry.percent;
-                    }
-                    let rankLabel = ["الأعلى", "الثاني", "الثالث"][displayRank-1];
-                    if (i > 0 && entry.percent === sortedScores[i-1].percent) rankLabel += " (مكرر)";
-
-                    highScoresList.innerHTML += `
-                        <div class="flex justify-between items-center p-3.5 hover:bg-gray-50 rounded-xl transition border-b border-dashed border-gray-100 last:border-0">
-                             <div class="flex gap-3 items-center">
-                                <span class="font-black text-green-600 bg-green-50 w-12 h-10 flex items-center justify-center rounded-lg text-lg">${entry.percent}%</span>
-                                <span class="text-gray-700 font-bold">${entry.userName}</span>
+                            <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
+                                <span class="font-black text-base">${entry.fullMarksCount} امتحان</span>
+                                <p class="text-[11px] text-gray-500 font-bold mt-0.5">درجة كاملة</p>
                             </div>
-                            <span class="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full font-bold">${rankLabel}</span>
                         </div>
                     `;
+                });
+                
+                if (!leaderboardList.innerHTML.trim()) {
+                    leaderboardList.innerHTML = `<div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">لا توجد نتائج ضمن أول 3 مراكز بعد.</div>`;
                 }
             }
         }
