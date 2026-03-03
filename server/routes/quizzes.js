@@ -17,7 +17,7 @@ const sequelize = require('../models/index');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateCreateQuiz, validateUpdateQuiz, validateRenameSubject, validatePagination } = require('../middleware/validators');
+const { validateCreateQuiz, validateUpdateQuiz, validateRenameSubject, validatePagination, validateIdParam, validateSubjectParam } = require('../middleware/validators');
 const logger = require('../utils/logger');
 
 // ============================================
@@ -153,7 +153,7 @@ router.put('/subject/rename', authenticate, requireAdmin, validateRenameSubject,
  * @param {import('express').Response} res - Express response with `{ message, deletedCount }`.
  * @returns {Promise<void>}
  */
-router.delete('/subject/:name', authenticate, requireAdmin, async (req, res) => {
+router.delete('/subject/:name', authenticate, requireAdmin, validateSubjectParam, async (req, res) => {
     try {
         const subjectName = decodeURIComponent(req.params.name);
         const deletedCount = await Quiz.destroy({ where: { subject: subjectName } });
@@ -347,7 +347,7 @@ router.put('/:id', authenticate, requireAdmin, validateUpdateQuiz, async (req, r
  * @param {import('express').Response} res - Express response with `{ message }`.
  * @returns {Promise<void>}
  */
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
     try {
         const deleted = await Quiz.destroy({ where: { id: req.params.id } });
         if (!deleted) {

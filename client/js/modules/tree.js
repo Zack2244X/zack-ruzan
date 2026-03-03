@@ -3,9 +3,8 @@
  * @description وحدة رسم الشجرة — عرض الامتحانات والمذكرات بتنسيق شجري حسب التاريخ
  */
 import state from './state.js';
-import { escapeHtml } from './helpers.js';
+import { escapeHtml, showAlert } from './helpers.js';
 import { apiCall } from './api.js';
-import { toggleTreeNode } from './navigation.js';
 
 /** @constant {Array<string>} المواد الافتراضية */
 const DEFAULT_SUBJECTS = [
@@ -98,10 +97,12 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
  * تعيين فلتر المادة في القائمة الرئيسية وإعادة الرسم
  * @param {string} subject — اسم المادة المختارة
  * @param {Function} renderHistoryTree — دالة رسم الشجرة الرئيسية
+ * @param {Function} [renameSubjectFn] — دالة تعديل اسم المادة
+ * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
-export function setSubjectFilter(subject, renderHistoryTree) {
+export function setSubjectFilter(subject, renderHistoryTree, renameSubjectFn, confirmDeleteSubjectFn) {
     state.currentSubjectFilter = subject;
-    renderSubjectFilters();
+    renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
     renderHistoryTree();
 }
 
@@ -109,10 +110,12 @@ export function setSubjectFilter(subject, renderHistoryTree) {
  * تعيين فلتر المادة في نافذة التعديل وإعادة الرسم
  * @param {string} subject — اسم المادة المختارة
  * @param {Function} renderEditTree — دالة رسم شجرة التعديل
+ * @param {Function} [renameSubjectFn] — دالة تعديل اسم المادة
+ * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
-export function setEditSubjectFilter(subject, renderEditTree) {
+export function setEditSubjectFilter(subject, renderEditTree, renameSubjectFn, confirmDeleteSubjectFn) {
     state.editSubjectFilter = subject;
-    renderSubjectFilters();
+    renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
     renderEditTree();
 }
 

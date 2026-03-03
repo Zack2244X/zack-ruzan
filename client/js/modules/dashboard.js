@@ -7,10 +7,10 @@ import { escapeHtml } from './helpers.js';
 
 /**
  * رسم لوحة التحكم الرئيسية: آخر 4 امتحانات، آخر 3 مذكرات، وأعلى 3 في لوحة الشرف
- * @param {Function} playQuizFn — دالة بدء الاختبار (تُستدعى عند الضغط على كارت امتحان)
- * @param {Function} forceDownloadFn — دالة تحميل المذكرة (تُستدعى عند الضغط على كارت مذكرة)
+ * Renders the dashboard view with latest exams, notes, and leaderboard.
+ * Uses window.playQuiz and window.forceDownload for event handlers.
  */
-export function renderDashboard(playQuizFn, forceDownloadFn) {
+export function renderDashboard() {
     // حالة التحميل
     if (!state.dataLoaded) {
         const spinner = `<div class="col-span-full py-12 text-center text-gray-400"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات...</p></div>`;
@@ -65,8 +65,7 @@ export function renderDashboard(playQuizFn, forceDownloadFn) {
         latestNotesGrid.innerHTML = `<div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-200 text-center text-gray-400 font-medium">لا توجد مذكرات أو ملفات مضافة حتى الآن.</div>`;
     } else {
         let notesHtml = '';
-        latestNotes.forEach((n, idx) => {
-            const realIndex = state.allNotes.length - 1 - idx;
+        latestNotes.forEach((n) => {
             const config = n.config;
             const iconClass = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500' : 'fa-file-pdf text-orange-500';
             const bgClass = config.type === 'ppt' ? 'from-red-50 to-red-100' : 'from-orange-50 to-orange-100';
@@ -85,7 +84,7 @@ export function renderDashboard(playQuizFn, forceDownloadFn) {
                     ${config.description ? `<p class="text-sm text-gray-500 mb-4 line-clamp-2 relative z-10" title="${safeDesc}">${safeDesc}</p>` : '<div class="h-2 mb-4"></div>'}
                     <div class="flex items-center justify-between pt-4 border-t border-gray-100 relative z-10 mt-auto">
                         <span class="text-xs bg-orange-50 text-orange-800 px-2.5 py-1.5 rounded-md font-bold truncate max-w-[150px]">${safeSubject}</span>
-                        <span class="text-xs text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-link"></i> ${escapeHtml(config.type.toUpperCase())}</span>
+                        <span class="text-xs text-gray-400 font-medium flex items-center gap-1"><i class="fas fa-link"></i> ${escapeHtml((config.type || 'pdf').toUpperCase())}</span>
                     </div>
                 </div>
             `;

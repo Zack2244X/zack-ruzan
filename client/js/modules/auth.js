@@ -3,9 +3,9 @@
  * @description تسجيل الدخول بـ Google OAuth، إدارة الجلسة، تسجيل الخروج
  */
 import state, { GOOGLE_CLIENT_ID } from './state.js';
-import { escapeHtml, showAlert } from './helpers.js';
+import { showAlert } from './helpers.js';
 import { apiCall, loadDataFromServer } from './api.js';
-import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, closeAdminSheet, updateDockUI } from './navigation.js';
+import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
 
 /**
  * بدء تسجيل دخول Google عبر Redirect
@@ -79,7 +79,8 @@ export function handleGoogleRedirectToken() {
     localStorage.removeItem('googleLoginMode');
 
     if (!idToken) return false;
-    if (expectedNonce && returnedNonce && expectedNonce !== returnedNonce) {
+    // Nonce must be present and match — missing nonce is a failure
+    if (!expectedNonce || !returnedNonce || expectedNonce !== returnedNonce) {
         showAlert('❌ فشل التحقق من تسجيل Google. حاول مرة أخرى.', 'error');
         return true;
     }
@@ -91,10 +92,14 @@ export function handleGoogleRedirectToken() {
     if (savedMode === 'admin') {
         handleGoogleAdminResponse(response);
     } else {
+        // Always use the window wrapper (set by app.js) which includes all callbacks
         if (window.handleStudentGoogleLogin) {
             window.handleStudentGoogleLogin(response);
         } else {
-            handleStudentGoogleLogin(response);
+            console.warn('handleStudentGoogleLogin wrapper not ready, deferring...');
+            window.addEventListener('load', () => {
+                if (window.handleStudentGoogleLogin) window.handleStudentGoogleLogin(response);
+            }, { once: true });
         }
     }
     return true;
@@ -116,6 +121,7 @@ export async function handleGoogleAdminResponse(response) {
         const res = await fetch('/api/auth/google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ idToken: response.credential })
         });
         const data = await res.json();
@@ -178,6 +184,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         const res = await fetch('/api/auth/google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ idToken: response.credential })
         });
         const data = await res.json();
@@ -195,6 +202,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
                 await fetch('/api/auth/complete-profile', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.token },
+                    credentials: 'include',
                     body: JSON.stringify({ fname, lname })
                 }).catch(() => { });
             }
@@ -225,7 +233,9 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof startTokenRefresh === 'function') startTokenRefresh();
 
-        sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
+        // Store user info without token in sessionStorage (token is in httpOnly cookie)
+        const { token: _t, ...safeUser } = state.currentUser;
+        sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
         sessionStorage.setItem('isAdmin', state.isAdmin.toString());
 
         loadDataFromServer().then(() => {
@@ -243,7 +253,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
 }
 
 /**
- * تسجيل الخروج مع إلغاء التوكن
+ * تسجيل الخروج مع إلغاء التوكن ومزامنة بين التبويبات
  */
 export async function logoutUser() {
     try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
@@ -252,7 +262,9 @@ export async function logoutUser() {
     state.adminToken = null;
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('isAdmin');
-    localStorage.removeItem('session_token');
+    // Signal other tabs to logout
+    localStorage.setItem('logout_event', Date.now().toString());
+    localStorage.removeItem('logout_event');
     location.reload();
 }
 
@@ -262,13 +274,15 @@ export async function logoutUser() {
 export function startTokenRefresh() {
     if (state.tokenRefreshTimer) clearInterval(state.tokenRefreshTimer);
     state.tokenRefreshTimer = setInterval(async () => {
-        if (!state.currentUser || !state.currentUser.token) return;
+        if (!state.currentUser) return;
         try {
             const data = await apiCall('POST', '/api/auth/refresh');
             if (data.token) {
                 state.currentUser.token = data.token;
                 if (state.isAdmin) state.adminToken = data.token;
-                sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
+                // Token refreshed via httpOnly cookie; persist user info without token
+                const { token: _t, ...safeUser } = state.currentUser;
+                sessionStorage.setItem('currentUser', JSON.stringify(safeUser));
             }
         } catch (e) { console.warn('⚠️ فشل تجديد التوكن:', e.message); }
     }, 6 * 60 * 60 * 1000);

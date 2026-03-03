@@ -7,11 +7,11 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - ./server/.env
     environment:
       - NODE_ENV=development
       - PORT=3000
     volumes:
-      - ./server:/app/server:ro
-      - ./client:/app/client:ro
+      - ./server:/app/server
+      - ./client:/app/client
     restart: unless-stopped

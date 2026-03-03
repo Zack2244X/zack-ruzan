@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -32,8 +33,12 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFiles": ["./__tests__/setup.js"],
-    "testMatch": ["**/__tests__/**/*.test.js"],
+    "setupFiles": [
+      "./__tests__/setup.js"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ],
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
       "middleware/**/*.js",

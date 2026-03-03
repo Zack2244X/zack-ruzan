@@ -76,6 +76,7 @@ const Score = sequelize.define('Score', {
 }, {
     tableName: 'scores',
     timestamps: true,
+    paranoid: true,
     indexes: [
         { unique: true, fields: ['userId', 'quizId'] }, // منع تكرار الامتحان
         { fields: ['quizId', 'percentage'] },

@@ -16,14 +16,29 @@ const User = require('../models/User');
 const {
     generateToken,
     authenticate,
+    setTokenCookie,
+    clearTokenCookie,
     checkBruteForce,
     recordFailedAttempt,
     clearFailedAttempts
 } = require('../middleware/auth');
 const { validateGoogleLogin, validateCompleteProfile, validateCreateAdmin } = require('../middleware/validators');
 const logger = require('../utils/logger');
+const rateLimit = require('express-rate-limit');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/**
+ * Strict rate limiter for admin creation endpoint — 3 attempts per hour.
+ * @type {import('express').RequestHandler}
+ */
+const createAdminLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'محاولات كثيرة لإنشاء أدمن. حاول بعد ساعة.' }
+});
 
 /**
  * Pre-approved admin email addresses loaded from the ADMIN_EMAILS environment variable.
@@ -122,6 +137,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             await user.save();
 
             const token = generateToken(user.id, user.role, user.tokenVersion);
+            setTokenCookie(res, token);
             logger.info(`تسجيل دخول — ${user.role === 'admin' ? '👑 أدمن' : '👤 طالب'}: ${user.email}`);
 
             return res.json({
@@ -158,6 +174,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         logger.info(`🆕 تسجيل جديد — ${isAdminEmail ? '👑 أدمن' : '👤 طالب'}: ${googleData.email}`);
 
         const token = generateToken(user.id, user.role, user.tokenVersion);
+        setTokenCookie(res, token);
 
         res.status(201).json({
             message: 'تم التسجيل بنجاح! يرجى إكمال اسمك.',
@@ -293,7 +310,7 @@ router.get('/verify-admin', authenticate, (req, res) => {
  * @param {import('express').Response} res - Express response.
  * @returns {Promise<void>}
  */
-router.post('/create-admin', validateCreateAdmin, async (req, res) => {
+router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req, res) => {
     try {
         const { email, fname, lname, adminSecret } = req.body;
 
@@ -318,6 +335,7 @@ router.post('/create-admin', validateCreateAdmin, async (req, res) => {
             logger.info(`👑 تم ترقية ${email} إلى أدمن`);
 
             const token = generateToken(existing.id, existing.role, existing.tokenVersion);
+            setTokenCookie(res, token);
             return res.json({
                 message: 'تم ترقية الحساب لمعلم بنجاح!',
                 token,
@@ -343,6 +361,7 @@ router.post('/create-admin', validateCreateAdmin, async (req, res) => {
         logger.info(`👑 تم إنشاء حساب أدمن جديد: ${email}`);
 
         const token = generateToken(user.id, user.role, user.tokenVersion);
+        setTokenCookie(res, token);
 
         res.status(201).json({
             message: 'تم إنشاء حساب المعلم بنجاح!',
@@ -382,6 +401,7 @@ router.post('/refresh', authenticate, async (req, res) => {
             return res.status(401).json({ error: 'المستخدم غير موجود.' });
         }
         const newToken = generateToken(user.id, user.role, user.tokenVersion);
+        setTokenCookie(res, newToken);
         logger.info(`🔄 تجديد توكن — ${user.email}`);
         res.json({ token: newToken });
     } catch (error) {
@@ -411,6 +431,7 @@ router.post('/logout', authenticate, async (req, res) => {
         // زيادة tokenVersion لإلغاء كل التوكنات السابقة
         user.tokenVersion = (user.tokenVersion || 0) + 1;
         await user.save();
+        clearTokenCookie(res);
         logger.info(`🚪 تسجيل خروج وإلغاء كل التوكنات — ${user.email}`);
         res.json({ message: 'تم تسجيل الخروج بنجاح.' });
     } catch (error) {

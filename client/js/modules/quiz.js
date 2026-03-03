@@ -407,6 +407,10 @@ export function updateProgressBar() {
  */
 export function startTimer() {
     if (state.timerInterval) clearInterval(state.timerInterval);
+    // Reset timer display styles from previous quiz
+    if (timerDisplayEl) {
+        timerDisplayEl.classList.remove('text-orange-500', 'text-red-600', 'animate-pulse');
+    }
     state.timerStartTime = Date.now();
     state.timerTotalSeconds = state.timeRemaining;
     state.timerInterval = setInterval(() => {
@@ -429,63 +433,75 @@ export function startTimer() {
 
 /**
  * تسليم الاختبار — حفظ النتيجة وعرض شاشة النتائج
+ * يتضمن حماية من التسليم المزدوج (race condition مع المؤقت)
  */
+let _isSubmitting = false;
 export async function submitQuiz() {
-    if (state.timeRemaining > 0) {
-        const confirmed = await showConfirm('إنهاء الاختبار', 'هل أنت متأكد؟ لا يمكنك العودة بعد التسليم.', '⏱️');
-        if (!confirmed) return;
-    }
-    clearInterval(state.timerInterval);
+    // منع التسليم المزدوج
+    if (_isSubmitting) return;
+    _isSubmitting = true;
 
-    // === حفظ النتيجة على السيرفر + محلياً ===
-    if (state.currentUser) {
-        const resultEntry = {
-            userName: state.currentUser.fullName,
-            quizTitle: state.currentQuizData.config.title,
-            score: state.score,
-            total: state.totalQuestions,
-            date: new Date().toLocaleDateString('ar-EG')
-        };
-        state.allUserScores.push(resultEntry);
-        localStorage.setItem('allUserScores', JSON.stringify(state.allUserScores));
-
-        // إرسال النتيجة للسيرفر
-        if (state.currentQuizData.id) {
-            apiCall('POST', '/api/scores', {
-                quizId: state.currentQuizData.id,
-                answers: state.userAnswers.map((a, i) => ({
-                    questionId: state.currentQuizData.questions[i]?.id || i,
-                    selectedIndex: a ? a.selectedIndex : -1
-                })),
-                timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
-            }).catch(e => console.warn('تعذر حفظ النتيجة:', e.message));
+    try {
+        if (state.timeRemaining > 0) {
+            const confirmed = await showConfirm('إنهاء الاختبار', 'هل أنت متأكد؟ لا يمكنك العودة بعد التسليم.', '⏱️');
+            if (!confirmed) {
+                _isSubmitting = false;
+                return;
+            }
         }
+        clearInterval(state.timerInterval);
+
+        // === حفظ النتيجة على السيرفر + محلياً ===
+        if (state.currentUser) {
+            const resultEntry = {
+                userName: state.currentUser.fullName,
+                quizTitle: state.currentQuizData.config.title,
+                score: state.score,
+                total: state.totalQuestions,
+                date: new Date().toLocaleDateString('ar-EG')
+            };
+            state.allUserScores.push(resultEntry);
+
+            // إرسال النتيجة للسيرفر
+            if (state.currentQuizData.id) {
+                apiCall('POST', '/api/scores', {
+                    quizId: state.currentQuizData.id,
+                    answers: state.userAnswers.map((a, i) => ({
+                        questionId: state.currentQuizData.questions[i]?.id || i,
+                        selectedIndex: a ? a.selectedIndex : -1
+                    })),
+                    timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
+                }).catch(e => console.warn('تعذر حفظ النتيجة:', e.message));
+            }
+        }
+        // ========================================
+
+        document.getElementById('quiz-container').classList.add('hidden');
+        document.getElementById('results-screen').classList.remove('hidden');
+
+        const percentage = (state.score / state.totalQuestions) * 100;
+
+        // تحديث النقاط والعدد
+        document.getElementById('final-score').textContent = state.score;
+        document.getElementById('final-total').textContent = state.totalQuestions;
+
+        // عرض الرسالة المخصصة
+        document.getElementById('custom-closing-text').textContent = state.currentQuizData.config.closingMessage || "شكراً لمشاركتك!";
+
+        let finalMessage = "ما شاء الله تبارك الرحمن! نتائجك مُبهرة.";
+
+        if (percentage < 50) {
+            finalMessage = "هون عليك! لكل جواد كبوة، والتعلم رحلة مستمرة.";
+        } else if (percentage < 75) {
+            finalMessage = "مستوى جيد جداً! لديك أساس متين.";
+        } else if (percentage < 90) {
+            finalMessage = "ممتاز يا بطل! أداؤك قوي.";
+        }
+
+        document.getElementById('final-message').textContent = finalMessage;
+    } finally {
+        _isSubmitting = false;
     }
-    // ========================================
-
-    document.getElementById('quiz-container').classList.add('hidden');
-    document.getElementById('results-screen').classList.remove('hidden');
-
-    const percentage = (state.score / state.totalQuestions) * 100;
-
-    // تحديث النقاط والعدد
-    document.getElementById('final-score').textContent = state.score;
-    document.getElementById('final-total').textContent = state.totalQuestions;
-
-    // عرض الرسالة المخصصة
-    document.getElementById('custom-closing-text').textContent = state.currentQuizData.config.closingMessage || "شكراً لمشاركتك!";
-
-    let finalMessage = "ما شاء الله تبارك الرحمن! نتائجك مُبهرة.";
-
-    if (percentage < 50) {
-        finalMessage = "هون عليك! لكل جواد كبوة، والتعلم رحلة مستمرة.";
-    } else if (percentage < 75) {
-        finalMessage = "مستوى جيد جداً! لديك أساس متين.";
-    } else if (percentage < 90) {
-        finalMessage = "ممتاز يا بطل! أداؤك قوي.";
-    }
-
-    document.getElementById('final-message').textContent = finalMessage;
 }
 
 /**

@@ -8,7 +8,7 @@
 'use strict';
 
 // === الوحدات (Modules) ===
-import state from './modules/state.js';
+import state, { setGoogleClientId } from './modules/state.js';
 import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray } from './modules/helpers.js';
 import { apiCall, loadDataFromServer, fetchLeaderboardFromServer, fetchScoresFromServer } from './modules/api.js';
 import {
@@ -83,10 +83,12 @@ if ('serviceWorker' in navigator) {
 
 // === Multi-tab Sync: Logout ===
 window.addEventListener('storage', (e) => {
-    if (e.key === 'session_token' && !e.newValue) {
+    if (e.key === 'logout_event') {
         state.currentUser = null;
         state.isAdmin = false;
         state.adminToken = null;
+        sessionStorage.removeItem('currentUser');
+        sessionStorage.removeItem('isAdmin');
         showLoginScreen();
     }
 });
@@ -118,12 +120,12 @@ function renderDashboard() {
 
 /** @private تبديل فلتر المادة الرئيسية */
 function setSubjectFilter(subject) {
-    _setSubjectFilter(subject, renderHistoryTree);
+    _setSubjectFilter(subject, renderHistoryTree, renameSubject, confirmDeleteSubject);
 }
 
 /** @private تبديل فلتر المادة في نافذة التعديل */
 function setEditSubjectFilter(subject) {
-    _setEditSubjectFilter(subject, renderEditTree);
+    _setEditSubjectFilter(subject, renderEditTree, renameSubject, confirmDeleteSubject);
 }
 
 /** @private الانتقال لقسم */
@@ -208,14 +210,13 @@ function handleStudentGoogleLogin(response) {
 /** @description تحميل التطبيق عند بدء التشغيل */
 function loadApp() {
     try {
-        const savedScores = localStorage.getItem('allUserScores');
-        if (savedScores) state.allUserScores = JSON.parse(savedScores);
+        // Scores are loaded from server via loadAllDataFromServer() — no localStorage fallback
 
         const savedUser = sessionStorage.getItem('currentUser');
         if (savedUser) {
             state.currentUser = JSON.parse(savedUser);
             state.isAdmin = sessionStorage.getItem('isAdmin') === 'true';
-            if (state.isAdmin) state.adminToken = state.currentUser.token;
+            // Token is managed via httpOnly cookie; adminToken set on fresh login only
 
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard-view').classList.remove('hidden');
@@ -308,9 +309,20 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 //  نقطة البداية
 // ============================================
-window.onload = function () {
+window.onload = async function () {
     // تهيئة الثيم
     initTheme();
+
+    // جلب إعدادات السيرفر (GOOGLE_CLIENT_ID) لإزالة التكرار
+    try {
+        const configRes = await fetch('/api/config');
+        if (configRes.ok) {
+            const configData = await configRes.json();
+            setGoogleClientId(configData.googleClientId);
+        }
+    } catch (e) {
+        console.warn('⚠️ تعذر جلب إعدادات السيرفر، استخدام القيم الافتراضية.');
+    }
 
     // تهيئة عناصر DOM للاختبار
     initQuizDOM();

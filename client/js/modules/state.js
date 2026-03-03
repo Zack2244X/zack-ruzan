@@ -74,8 +74,20 @@ const state = {
     tokenRefreshTimer: null
 };
 
-/** @constant {string} معرف Google OAuth */
-export const GOOGLE_CLIENT_ID = '124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com';
+/**
+ * @constant {string} معرف Google OAuth
+ * يُستخدم كقيمة افتراضية ويُحدَّث تلقائياً من السيرفر عبر /api/config
+ * لتجنب تكرار القيمة في مكانين (state.js + .env)
+ */
+export let GOOGLE_CLIENT_ID = '124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com';
+
+/**
+ * تحديث GOOGLE_CLIENT_ID من السيرفر
+ * @param {string} id — معرف Google OAuth من السيرفر
+ */
+export function setGoogleClientId(id) {
+    if (id) GOOGLE_CLIENT_ID = id;
+}
 
 /** @constant {string} مفتاح تخزين الثيم */
 export const THEME_KEY = 'app-theme';

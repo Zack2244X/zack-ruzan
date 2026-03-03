@@ -3,7 +3,7 @@
  * @description وحدة الدرجات والإحصائيات — عرض النتائج، لوحة الشرف، وتبويب التعديل
  */
 import state from './state.js';
-import { escapeHtml, showAlert } from './helpers.js';
+import { escapeHtml } from './helpers.js';
 import { _showThemeToggle } from './navigation.js';
 
 /**

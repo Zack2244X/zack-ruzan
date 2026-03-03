@@ -14,7 +14,7 @@ const sequelize = require('../models/index');
 const Note = require('../models/Note');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateCreateNote, validateUpdateNote, validatePagination } = require('../middleware/validators');
+const { validateCreateNote, validateUpdateNote, validatePagination, validateIdParam } = require('../middleware/validators');
 const logger = require('../utils/logger');
 
 // ============================================
@@ -193,7 +193,7 @@ router.put('/:id', authenticate, requireAdmin, validateUpdateNote, async (req, r
  * @param {import('express').Response} res - Express response with `{ message }`.
  * @returns {Promise<void>}
  */
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
     try {
         const deleted = await Note.destroy({ where: { id: req.params.id } });
         if (!deleted) {

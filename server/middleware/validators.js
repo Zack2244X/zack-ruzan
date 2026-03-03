@@ -169,6 +169,34 @@ const validatePagination = [
     validate
 ];
 
+/**
+ * Validation for ID param in routes like DELETE /quizzes/:id, DELETE /scores/:id, DELETE /notes/:id
+ * @type {Array<import('express').RequestHandler>}
+ */
+const validateIdParam = [
+    param('id').isInt({ min: 1 }).withMessage('معرّف غير صالح.'),
+    validate
+];
+
+/**
+ * Validation for subject name param in DELETE /quizzes/subject/:name
+ * @type {Array<import('express').RequestHandler>}
+ */
+const validateSubjectParam = [
+    param('name').trim().notEmpty().withMessage('اسم المادة مطلوب.')
+        .isLength({ max: 100 }).withMessage('اسم المادة طويل جداً.'),
+    validate
+];
+
+/**
+ * Validation for quizId param in GET /scores/quiz/:quizId
+ * @type {Array<import('express').RequestHandler>}
+ */
+const validateQuizIdParam = [
+    param('quizId').isInt({ min: 1 }).withMessage('معرّف الامتحان غير صالح.'),
+    validate
+];
+
 module.exports = {
     validate,
     validateGoogleLogin,
@@ -180,5 +208,8 @@ module.exports = {
     validateSubmitScore,
     validateCreateNote,
     validateUpdateNote,
-    validatePagination
+    validatePagination,
+    validateIdParam,
+    validateSubjectParam,
+    validateQuizIdParam
 };

@@ -6,7 +6,7 @@ import state from './state.js';
 
 /**
  * إنشاء هيدرز التوثيق
- * @returns {Object} هيدرز HTTP مع التوكن
+ * @returns {Object} هيدرز HTTP مع التوكن (للتوافق مع الموبايل)
  */
 export function getAuthHeaders() {
     const token = state.currentUser?.token || state.adminToken;
@@ -18,6 +18,7 @@ export function getAuthHeaders() {
 
 /**
  * استدعاء API عام
+ * يرسل الكوكيز تلقائياً (httpOnly JWT) + Authorization header كـ fallback
  * @param {'GET'|'POST'|'PUT'|'DELETE'} method — HTTP method
  * @param {string} url — المسار
  * @param {Object} [body] — البيانات المرسلة
@@ -25,7 +26,11 @@ export function getAuthHeaders() {
  * @throws {Error} في حالة فشل الاتصال
  */
 export async function apiCall(method, url, body) {
-    const opts = { method, headers: getAuthHeaders() };
+    const opts = {
+        method,
+        headers: getAuthHeaders(),
+        credentials: 'include'  // إرسال الكوكيز مع كل طلب
+    };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(url, opts);
     if (!res.ok) {
@@ -85,7 +90,7 @@ export async function fetchScoresFromServer() {
  * تحميل جميع البيانات من السيرفر
  */
 export async function loadDataFromServer() {
-    if (!state.currentUser || !state.currentUser.token) return;
+    if (!state.currentUser) return;
     try {
         const [quizzesRes, notesRes, leaderboardRemote, scoresRemote] = await Promise.all([
             apiCall('GET', '/api/quizzes').catch(() => ({ data: [] })),

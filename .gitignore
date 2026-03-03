@@ -3,6 +3,8 @@
 
 # Environment secrets
 **/.env
+*.env.local
+*.env.production
 
 # TLS certs / local secrets
 **/*.pem
@@ -10,13 +12,27 @@
 # Logs
 *.log
 npm-debug.log*
+logs/
 
 # OS/editor
 .DS_Store
+Thumbs.db
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Coverage
 coverage/
+.nyc_output/
 
 # Backup files
 *.bak
+
+# Build outputs
+client/css/tailwind.css
+
+# Temporary
+tmp/
+temp/

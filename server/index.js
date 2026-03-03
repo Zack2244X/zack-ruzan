@@ -18,6 +18,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const compression = require('compression');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const logger = require('./utils/logger');
@@ -32,7 +33,7 @@ const { sanitizeBody } = require('./middleware/sanitize');
  * @type {string[]}
  * @constant
  */
-const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'GOOGLE_CLIENT_ID'];
+const requiredEnvVars = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'JWT_SECRET', 'GOOGLE_CLIENT_ID'];
 const missingEnv = requiredEnvVars.filter(v => !process.env[v]);
 if (missingEnv.length > 0) {
     logger.error(`❌ متغيرات البيئة الناقصة: ${missingEnv.join(', ')}`);
@@ -79,8 +80,8 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://apis.google.com", "https://cdnjs.cloudflare.com"],
-            scriptSrcAttr: ["'unsafe-inline'"],
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://cdnjs.cloudflare.com"],
+            scriptSrcAttr: ["'none'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https:", "blob:"],
@@ -136,9 +137,12 @@ app.use(cors({
 // 4. منع HTTP Parameter Pollution
 app.use(hpp());
 
+// 4.5. Cookie Parser — لقراءة JWT من الكوكيز
+app.use(cookieParser());
+
 // 5. JSON parsing مع حد آمن
 app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // 6. Sanitize all request bodies
 app.use(sanitizeBody);
@@ -203,8 +207,16 @@ const adminLimiter = rateLimit({
 
 app.use('/api', generalLimiter);
 app.use('/api/auth', authLimiter);
-app.use('/api/quizzes', adminLimiter);
-app.use('/api/notes', adminLimiter);
+
+// Admin limiter — only apply to write operations (POST/PUT/DELETE) on admin routes
+const applyAdminLimiter = (req, res, next) => {
+    if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+        return adminLimiter(req, res, next);
+    }
+    next();
+};
+app.use('/api/quizzes', applyAdminLimiter);
+app.use('/api/notes', applyAdminLimiter);
 
 // ============================================
 //   Health Check Endpoint
@@ -234,6 +246,20 @@ app.get('/api/health', async (req, res) => {
             error: process.env.NODE_ENV === 'production' ? 'خطأ في قاعدة البيانات' : err.message
         });
     }
+});
+
+// ============================================
+//   Public Config Endpoint (non-sensitive)
+// ============================================
+/**
+ * @route GET /api/config
+ * @description Returns non-sensitive public configuration like Google Client ID.
+ * @access Public
+ */
+app.get('/api/config', (req, res) => {
+    res.json({
+        googleClientId: process.env.GOOGLE_CLIENT_ID || ''
+    });
 });
 
 // ============================================
@@ -294,8 +320,12 @@ async function startServer(retries = 3) {
         }
     }
 
-    await sequelize.sync({ alter: false });
-    logger.info('✅ تم مزامنة الجداول.');
+    if (process.env.NODE_ENV === 'production') {
+        logger.info('⚠️ Production mode: skipping sequelize.sync(). Use migrations for schema changes.');
+    } else {
+        await sequelize.sync({ alter: false });
+        logger.info('✅ تم مزامنة الجداول.');
+    }
 
     server = app.listen(PORT, () => {
         logger.info(`🚀 السيرفر شغال على: http://localhost:${PORT}`);

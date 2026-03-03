@@ -2,12 +2,11 @@ services:
   - type: web
     name: quiz-platform-server
     runtime: node
-    rootDir: server
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
     autoDeploy: true
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production

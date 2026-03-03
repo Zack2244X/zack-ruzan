@@ -108,9 +108,43 @@ if (typeof cleanupInterval.unref === 'function') cleanupInterval.unref();
 //   1. التحقق من تسجيل الدخول (أي مستخدم)
 // ============================================
 /**
- * Express middleware that verifies the JWT from the Authorization header,
- * looks up the user in the database, validates role and tokenVersion, and
- * attaches the user object to `req.user`.
+ * Express middleware that verifies the JWT from the httpOnly cookie or
+ * Authorization header, looks up the user in the database, validates
+ * role and tokenVersion, and attaches the user object to the request.
+ */
+
+/**
+ * Cookie options for the JWT httpOnly cookie.
+ * @type {Object}
+ */
+const COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/'
+};
+
+/**
+ * Sets the JWT token as an httpOnly cookie on the response.
+ * @param {import('express').Response} res - Express response object.
+ * @param {string} token - The JWT token to set.
+ */
+const setTokenCookie = (res, token) => {
+    res.cookie('jwt', token, COOKIE_OPTIONS);
+};
+
+/**
+ * Clears the JWT cookie from the response.
+ * @param {import('express').Response} res - Express response object.
+ */
+const clearTokenCookie = (res) => {
+    res.clearCookie('jwt', { ...COOKIE_OPTIONS, maxAge: 0 });
+};
+
+/**
+ * Express middleware that verifies the JWT from httpOnly cookie or Authorization header.
+ * Supports both mechanisms for mobile/API compatibility.
  * @async
  * @param {import('express').Request} req - Express request object.
  * @param {import('express').Response} res - Express response object.
@@ -120,12 +154,21 @@ if (typeof cleanupInterval.unref === 'function') cleanupInterval.unref();
  */
 const authenticate = async (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً.' });
+        // Priority: httpOnly cookie > Authorization header
+        let token = null;
+
+        if (req.cookies && req.cookies.jwt) {
+            token = req.cookies.jwt;
+        } else {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.split(' ')[1];
+            }
         }
 
-        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً.' });
+        }
 
         if (token.length > 2048) {
             return res.status(401).json({ error: 'توكن غير صالح.' });
@@ -137,19 +180,16 @@ const authenticate = async (req, res, next) => {
             return res.status(401).json({ error: 'توكن غير صالح.' });
         }
 
-        // Sequelize: findByPk بدل findById
         const user = await User.findByPk(decoded.userId);
         if (!user) {
             return res.status(401).json({ error: 'المستخدم غير موجود.' });
         }
 
-        // حماية: التحقق من تطابق الـ role
         if (decoded.role !== user.role) {
             logger.warn(`⚠️ محاولة تلاعب بالتوكن — IP: ${req.ip}, User: ${user.email}, Token role: ${decoded.role}, DB role: ${user.role}`);
             return res.status(401).json({ error: 'توكن غير صالح. سجل دخولك مرة أخرى.' });
         }
 
-        // حماية: التحقق من tokenVersion (إلغاء التوكنات القديمة)
         if (typeof decoded.tokenVersion === 'number' && decoded.tokenVersion !== user.tokenVersion) {
             return res.status(401).json({ error: 'تم إلغاء هذا التوكن. سجل دخولك مرة أخرى.' });
         }
@@ -216,6 +256,9 @@ module.exports = {
     authenticate,
     requireAdmin,
     generateToken,
+    setTokenCookie,
+    clearTokenCookie,
+    COOKIE_OPTIONS,
     checkBruteForce,
     recordFailedAttempt,
     clearFailedAttempts

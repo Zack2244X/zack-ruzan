@@ -168,9 +168,17 @@ export async function updateExistingNote(renderHistoryTree, renderEditTree, rend
 
 /**
  * تحميل ملف من Google Drive أو SharePoint أو OneDrive بتحويل الرابط للتحميل المباشر
+ * يتحقق من أن الرابط آمن (يبدأ بـ http/https فقط) لمنع XSS
  * @param {string} url — رابط الملف الأصلي
  */
 export function forceDownload(url) {
+    // التحقق من أن الرابط آمن — منع javascript: و data: و vbscript:
+    const lowerUrl = (url || '').trim().toLowerCase();
+    if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
+        showAlert('⚠️ رابط غير آمن. يجب أن يبدأ بـ https://', 'warning');
+        return;
+    }
+
     let finalUrl = url;
 
     try {

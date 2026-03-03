@@ -16,7 +16,7 @@ const Score = require('../models/Score');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
 const { authenticate, requireAdmin } = require('../middleware/auth');
-const { validateSubmitScore, validatePagination } = require('../middleware/validators');
+const { validateSubmitScore, validatePagination, validateIdParam, validateQuizIdParam } = require('../middleware/validators');
 const logger = require('../utils/logger');
 
 // ============================================
@@ -214,7 +214,7 @@ router.get('/leaderboard', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Express response with an array of score result objects.
  * @returns {Promise<void>}
  */
-router.get('/quiz/:quizId', authenticate, requireAdmin, async (req, res) => {
+router.get('/quiz/:quizId', authenticate, requireAdmin, validateQuizIdParam, async (req, res) => {
     try {
         const scores = await Score.findAll({
             where: { quizId: req.params.quizId },
@@ -332,7 +332,7 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
  * @param {import('express').Response} res - Express response with `{ message }`.
  * @returns {Promise<void>}
  */
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
     try {
         const score = await Score.findByPk(req.params.id);
         if (!score) {
