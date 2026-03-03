@@ -292,6 +292,11 @@
             color: var(--text) !important;
         }
 
+        /* توحيد شريط قائمة الامتحانات ومنع تراكب طبقتين */
+        #tree-content { background: var(--card); border-color: var(--border); }
+        .sheet-header { background: var(--card) !important; border-color: var(--border) !important; }
+        .sheet-handle { background: transparent; }
+
         /* ضبط حجم المودالات والشيت السفلي للموبايل والأجهزة القديمة */
         .bottom-sheet-content,
         #admin-content,
@@ -385,15 +390,15 @@
     <div id="tree-bottom-sheet" class="fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
         <div id="tree-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
         <div id="tree-content" class="relative w-full md:max-w-md bg-gray-50 rounded-t-3xl h-[85vh] flex flex-col bottom-sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pointer-events-auto">
-            <div class="w-full flex justify-center py-3 cursor-pointer" onclick="closeBottomSheet()">
+            <div class="w-full flex justify-center py-3 cursor-pointer sheet-handle" onclick="closeBottomSheet()">
                 <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
-            <div class="px-6 pb-4 border-b border-gray-200 bg-white rounded-t-3xl flex justify-between items-center shrink-0">
+            <div class="px-6 pb-4 border-b border-gray-200 bg-white rounded-t-3xl flex justify-between items-center shrink-0 sheet-header">
                 <div class="flex items-center">
                     <i id="sheet-icon" class="fas fa-bolt text-blue-500 bg-blue-50 p-2 rounded-xl ml-3 text-lg"></i>
                     <h2 id="sheet-title" class="text-2xl font-black text-gray-800 tracking-tight">سجل الامتحانات</h2>
                 </div>
-                <button onclick="closeBottomSheet()" class="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-times"></i></button>
+                <button onclick="closeBottomSheet()" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-6 overflow-y-auto flex-1 pb-24">
                 <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
@@ -1923,6 +1928,7 @@
             
             closeCreateSection();
             renderHistoryTree();
+            renderEditTree();
             renderDashboard();
         }
         function playQuiz(index) {
@@ -2956,6 +2962,7 @@ function loadApp() {
             
             closeAddNoteModal();
             renderHistoryTree();
+            renderEditTree();
             renderDashboard();
         }
         // تفعيل زر Enter للحفظ السريع في مودل التعديل
@@ -3032,10 +3039,11 @@ function loadApp() {
                 alert("✅ تم إضافة الملف محلياً (" + e.message + ")");
             }
             closeAddNoteModal();
+            renderEditTree();
             
             // التأكد من فتح قسم المذكرات حتى يرى الأدمن ما أضافه
             if(currentViewMode !== 'notes') navToSection('notes');
-            else { renderSubjectFilters(); renderHistoryTree(); }
+            else { renderSubjectFilters(); renderHistoryTree(); renderEditTree(); }
         }
 function forceDownload(url) {
     let finalUrl = url;
@@ -3140,6 +3148,7 @@ function updateExistingQuiz(index) {
             alert("✅ تم تحديث الامتحان بنجاح!");
             closeCreateSection();
             renderHistoryTree();
+            renderEditTree();
             renderDashboard();
             
             // إعادة الزرار لحالته الأصلية للمرات القادمة
