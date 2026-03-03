@@ -1848,10 +1848,11 @@
                 currentUser = {
                     fname: fname || data.user.fname,
                     lname: lname || data.user.lname,
-                    fullName: (fname + ' ' + lname).trim() || data.user.fullName,
+                    fullName: ((fname + ' ' + lname).trim() || data.user.fullName || data.user.email || '').trim(),
                     avatar: data.user.avatar || '',
                     token: data.token,
-                    role: data.user.role
+                    role: data.user.role,
+                    email: data.user.email || ''
                 };
 
                 // لو أدمن → نحفظ التوكن
@@ -1863,9 +1864,10 @@
                 loadingEl.classList.add('hidden');
 
                 // رسالة ترحيب
+                const safeName = (currentUser.fname || currentUser.fullName || currentUser.email || 'صديقنا').trim();
                 const greetings = [
-                    `أهلاً بك يا ${currentUser.fname}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
-                    `نورت المنصة يا ${currentUser.fname}، أسأل الله أن ينفعك بما تعلمت.`
+                    `أهلاً بك يا ${safeName}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
+                    `نورت المنصة يا ${safeName}، أسأل الله أن ينفعك بما تعلمت.`
                 ];
                 document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
 

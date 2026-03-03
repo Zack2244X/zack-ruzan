@@ -108,7 +108,8 @@ router.post('/google', async (req, res) => {
                     lname: user.lname,
                     fullName: user.fname && user.lname ? `${user.fname} ${user.lname}` : '',
                     avatar: user.avatar,
-                    role: user.role
+                    role: user.role,
+                    email: user.email
                 }
             });
         }
@@ -138,11 +139,12 @@ router.post('/google', async (req, res) => {
             token,
             user: {
                 id: user.id,
-                fname: '',
-                lname: '',
-                fullName: '',
+                fname: user.fname,
+                lname: user.lname,
+                fullName: user.fname && user.lname ? `${user.fname} ${user.lname}` : user.email,
                 avatar: user.avatar,
-                role: user.role
+                role: user.role,
+                email: user.email
             }
         });
     } catch (error) {
