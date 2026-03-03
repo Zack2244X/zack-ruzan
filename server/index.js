@@ -268,12 +268,15 @@ app.get('/api/debug/tables', async (req, res) => {
         const [results] = await sequelize.query('SHOW TABLES');
         const tables = results.map(r => Object.values(r)[0]);
         
-        // Check User table structure
+        // Try both cases for the users table name
         let userCols = [];
-        try {
-            const [cols] = await sequelize.query('DESCRIBE Users');
-            userCols = cols.map(c => c.Field);
-        } catch (e) { userCols = ['ERROR: ' + e.message]; }
+        for (const tbl of ['users', 'Users']) {
+            try {
+                const [cols] = await sequelize.query(`DESCRIBE \`${tbl}\``);
+                userCols = cols.map(c => ({ field: c.Field, type: c.Type, null: c.Null, default: c.Default }));
+                break;
+            } catch (e) { userCols = ['ERROR on ' + tbl + ': ' + e.message]; }
+        }
         
         res.json({ tables, userColumns: userCols, env: { NODE_ENV: process.env.NODE_ENV, hasJWT: !!process.env.JWT_SECRET, hasGoogleId: !!process.env.GOOGLE_CLIENT_ID } });
     } catch (e) {
@@ -340,8 +343,20 @@ async function startServer(retries = 3) {
         }
     }
 
-    await sequelize.sync({ alter: enableAlter });
-    logger.info(`✅ تم مزامنة الجداول${enableAlter ? ' (alter: true)' : ''}.`);
+    // Try alter first; if TiDB rejects it, fall back to no-op sync
+    try {
+        await sequelize.sync({ alter: enableAlter });
+        logger.info(`✅ تم مزامنة الجداول${enableAlter ? ' (alter: true)' : ''}.`);
+    } catch (syncErr) {
+        logger.warn('⚠️ sync alter فشل، محاولة بدون alter:', syncErr.message);
+        try {
+            await sequelize.sync({ alter: false });
+            logger.info('✅ تم مزامنة الجداول (alter: false fallback).');
+        } catch (syncErr2) {
+            logger.error('❌ فشل sync نهائياً:', syncErr2.message);
+            // Don't exit — let the server start and handle DB errors per-request
+        }
+    }
 
     server = app.listen(PORT, () => {
         logger.info(`🚀 السيرفر شغال على: http://localhost:${PORT}`);
