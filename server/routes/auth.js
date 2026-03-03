@@ -144,7 +144,6 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
                 message: `مرحباً بك مجدداً يا ${user.fname || 'صديقنا'}!`,
                 isNew: false,
                 isProfileComplete: user.isProfileComplete,
-                token,
                 user: {
                     id: user.id,
                     fname: user.fname,
@@ -180,7 +179,6 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             message: 'تم التسجيل بنجاح! يرجى إكمال اسمك.',
             isNew: true,
             isProfileComplete: false,
-            token,
             user: {
                 id: user.id,
                 fname: user.fname,
@@ -207,7 +205,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         });
         res.status(500).json({ 
             error: 'حدث خطأ أثناء التسجيل بالجيميل.',
-            debug: mysqlMsg || error.message || 'unknown error'
+            ...(process.env.NODE_ENV !== 'production' && { debug: mysqlMsg || error.message })
         });
     }
 });
@@ -350,7 +348,6 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
             setTokenCookie(res, token);
             return res.json({
                 message: 'تم ترقية الحساب لمعلم بنجاح!',
-                token,
                 user: {
                     id: existing.id,
                     email: existing.email,
@@ -377,7 +374,6 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
 
         res.status(201).json({
             message: 'تم إنشاء حساب المعلم بنجاح!',
-            token,
             user: {
                 id: user.id,
                 email: user.email,
@@ -415,7 +411,7 @@ router.post('/refresh', authenticate, async (req, res) => {
         const newToken = generateToken(user.id, user.role, user.tokenVersion);
         setTokenCookie(res, newToken);
         logger.info(`🔄 تجديد توكن — ${user.email}`);
-        res.json({ token: newToken });
+        res.json({ message: 'تم تجديد الجلسة.' });
     } catch (error) {
         logger.error('خطأ في تجديد التوكن:', { error: error.message });
         res.status(500).json({ error: 'حدث خطأ أثناء تجديد الجلسة.' });

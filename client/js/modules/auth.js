@@ -210,7 +210,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             if (fname && lname) {
                 await fetch('/api/auth/complete-profile', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.token },
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ fname, lname })
                 }).catch(() => { });

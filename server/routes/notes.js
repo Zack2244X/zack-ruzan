@@ -52,7 +52,7 @@ router.get('/', authenticate, validatePagination, async (req, res) => {
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب المذكرات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ في جلب المذكرات.', debug: dbMsg });
+        res.status(500).json({ error: 'حدث خطأ في جلب المذكرات.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
     }
 });
 

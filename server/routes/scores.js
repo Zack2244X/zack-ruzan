@@ -143,7 +143,7 @@ router.get('/my', authenticate, async (req, res) => {
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب الدرجات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ.', debug: dbMsg });
+        res.status(500).json({ error: 'حدث خطأ.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
     }
 });
 
@@ -192,7 +192,7 @@ router.get('/leaderboard', authenticate, async (req, res) => {
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب لوحة الشرف:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ.', debug: dbMsg });
+        res.status(500).json({ error: 'حدث خطأ.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
     }
 });
 
@@ -274,7 +274,7 @@ router.get('/all', authenticate, requireAdmin, validatePagination, async (req, r
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب كل النتائج:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ.', debug: dbMsg });
+        res.status(500).json({ error: 'حدث خطأ.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
     }
 });
 

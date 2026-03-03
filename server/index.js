@@ -268,27 +268,6 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// Temporary diagnostic endpoint — remove after debugging
-app.get('/api/debug/tables', async (req, res) => {
-    try {
-        const [results] = await sequelize.query('SHOW TABLES');
-        const tables = results.map(r => Object.values(r)[0]);
-        
-        // Try both cases for the users table name
-        let userCols = [];
-        for (const tbl of ['users', 'Users']) {
-            try {
-                const [cols] = await sequelize.query(`DESCRIBE \`${tbl}\``);
-                userCols = cols.map(c => ({ field: c.Field, type: c.Type, null: c.Null, default: c.Default }));
-                break;
-            } catch (e) { userCols = ['ERROR on ' + tbl + ': ' + e.message]; }
-        }
-        
-        res.json({ tables, userColumns: userCols, env: { NODE_ENV: process.env.NODE_ENV, hasJWT: !!process.env.JWT_SECRET, hasGoogleId: !!process.env.GOOGLE_CLIENT_ID } });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 // ============================================
 //              ربط المسارات
