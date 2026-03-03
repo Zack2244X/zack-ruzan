@@ -938,6 +938,8 @@
         let timeRemaining = 0;
         let userAnswers = [];
         let totalQuestions = 0;
+        let serverLeaderboard = [];
+        let serverScores = [];
         let quizStarted = false;
         let isEditMode = false;
         let isAdmin = false;
@@ -986,9 +988,11 @@
         async function loadDataFromServer() {
             if (!currentUser || !currentUser.token) return;
             try {
-                const [quizzes, notes] = await Promise.all([
+                const [quizzes, notes, leaderboardRemote, scoresRemote] = await Promise.all([
                     apiCall('GET', '/api/quizzes').catch(() => []),
-                    apiCall('GET', '/api/notes').catch(() => [])
+                    apiCall('GET', '/api/notes').catch(() => []),
+                    fetchLeaderboardFromServer().catch(() => []),
+                    fetchScoresFromServer().catch(() => [])
                 ]);
                 // تحويل بيانات السيرفر لصيغة الفرونت
                 allQuizzes = (quizzes || []).map(q => ({
@@ -1014,8 +1018,62 @@
                         description: n.description || ''
                     }
                 }));
+
+                serverLeaderboard = leaderboardRemote || [];
+                serverScores = scoresRemote || [];
+                // تحديث الكاش المحلي للأغراض الاحتياطية
+                if (serverScores.length > 0) {
+                    allUserScores = serverScores.map(s => ({
+                        userName: s.userName || 'طالب',
+                        quizTitle: s.quizTitle || 'امتحان',
+                        score: Number(s.score) || 0,
+                        total: Number(s.total) || 0,
+                        percentage: Number(s.percentage) || 0,
+                        date: s.date || s.createdAt || new Date().toISOString()
+                    }));
+                }
+
+                console.log('✅ تم الاتصال بالسيرفر: quizzes', quizzes?.length || 0, 'notes', notes?.length || 0, 'leaderboard', serverLeaderboard.length, 'scores', serverScores.length);
             } catch (e) {
                 console.warn('تعذر تحميل البيانات:', e.message);
+            }
+        }
+
+        async function fetchLeaderboardFromServer() {
+            try {
+                const data = await apiCall('GET', '/api/scores/leaderboard');
+                console.log('✅ تم جلب لوحة الشرف من السيرفر، عدد السجلات:', data.length);
+                return data.map(item => ({
+                    userName: item.userName || 'طالب',
+                    fullMarksCount: Number(item.fullMarksCount) || 0,
+                    avgPercentage: Number(item.avgPercentage) || 0,
+                    totalScore: Number(item.totalScore) || 0,
+                    totalMax: Number(item.totalMax) || 0,
+                    examsCount: Number(item.examsCount) || 0
+                }));
+            } catch (err) {
+                console.warn('⚠️ تعذر جلب لوحة الشرف من السيرفر:', err.message);
+                return [];
+            }
+        }
+
+        async function fetchScoresFromServer() {
+            try {
+                const endpoint = isAdmin ? '/api/scores/all' : '/api/scores/my';
+                const data = await apiCall('GET', endpoint);
+                console.log('✅ تم جلب الدرجات من السيرفر:', data.length, 'مسار', endpoint);
+                return data.map(item => ({
+                    userName: item.userName || (item.user ? `${item.user.fname || ''} ${item.user.lname || ''}`.trim() : 'طالب'),
+                    quizTitle: item.quizTitle || (item.quiz ? item.quiz.title : 'امتحان'),
+                    quizSubject: item.quizSubject || (item.quiz ? item.quiz.subject : ''),
+                    score: Number(item.score) || 0,
+                    total: Number(item.total) || 0,
+                    percentage: Number(item.percentage) || Math.round(((Number(item.score) || 0) / (Number(item.total) || 1)) * 100),
+                    date: item.date || item.createdAt || new Date().toISOString()
+                }));
+            } catch (err) {
+                console.warn('⚠️ تعذر جلب الدرجات من السيرفر:', err.message);
+                return [];
             }
         }
 
@@ -1536,7 +1594,8 @@
             const container = document.getElementById('grades-list-container');
             container.innerHTML = '';
 
-                    const validScores = allUserScores.filter(e => Number(e.total) > 0 && Number(e.score) >= 0);
+                    const sourceScores = (serverScores && serverScores.length > 0) ? serverScores : allUserScores;
+                    const validScores = sourceScores.filter(e => Number(e.total) > 0 && Number(e.score) >= 0);
                     if (validScores.length === 0) {
                         container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
                         return;
@@ -1591,6 +1650,8 @@
                 container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
                 return;
             }
+
+            console.log('📊 مصدر الدرجات المستخدم في العرض:', serverScores.length > 0 ? 'السيرفر' : 'محلي');
 
             // 3. عرض الشجرة (Tree View)
             rankedUsers.forEach((user, idx) => {
@@ -2619,31 +2680,46 @@ function loadApp() {
             // --- 3. لوحة الشرف: أعلى 3 حسب عدد الامتحانات المقفولة، مع بديل أعلى نسب مئوية ---
             const leaderboardList = document.getElementById('leaderboard-list');
             leaderboardList.innerHTML = '';
-            const fullMarksByUser = {};
-            allUserScores.forEach(entry => {
-                const userName = entry.userName || 'طالب';
-                const total = Number(entry.total) || 0;
-                const score = Number(entry.score) || 0;
-                if (total <= 0) return;
 
-                if (!fullMarksByUser[userName]) {
-                    fullMarksByUser[userName] = {
-                        userName,
-                        fullMarksCount: 0,
-                        bestPercent: 0
-                    };
-                }
+            // استخدم بيانات السيرفر إن وجدت، وإلا fallback على البيانات المحلية
+            let sourceLeaderboard = [];
+            if (serverLeaderboard && serverLeaderboard.length > 0) {
+                sourceLeaderboard = serverLeaderboard.map(item => ({
+                    userName: item.userName || 'طالب',
+                    fullMarksCount: Number(item.fullMarksCount) || 0,
+                    bestPercent: Number(item.avgPercentage) || 0
+                }));
+                console.log('🏆 عرض لوحة الشرف ببيانات السيرفر:', sourceLeaderboard.length);
+            } else {
+                const fullMarksByUser = {};
+                allUserScores.forEach(entry => {
+                    const userName = entry.userName || 'طالب';
+                    const total = Number(entry.total) || 0;
+                    const score = Number(entry.score) || 0;
+                    if (total <= 0) return;
 
-                const percent = Math.round((score / total) * 100);
-                if (percent > fullMarksByUser[userName].bestPercent) {
-                    fullMarksByUser[userName].bestPercent = percent;
-                }
-                if (score === total) {
-                    fullMarksByUser[userName].fullMarksCount += 1;
-                }
-            });
+                    if (!fullMarksByUser[userName]) {
+                        fullMarksByUser[userName] = {
+                            userName,
+                            fullMarksCount: 0,
+                            bestPercent: 0
+                        };
+                    }
 
-            const rankedFullMarks = Object.values(fullMarksByUser)
+                    const percent = Math.round((score / total) * 100);
+                    if (percent > fullMarksByUser[userName].bestPercent) {
+                        fullMarksByUser[userName].bestPercent = percent;
+                    }
+                    if (score === total) {
+                        fullMarksByUser[userName].fullMarksCount += 1;
+                    }
+                });
+
+                sourceLeaderboard = Object.values(fullMarksByUser);
+                console.log('🏆 عرض لوحة الشرف ببيانات محلية:', sourceLeaderboard.length);
+            }
+
+            const rankedFullMarks = sourceLeaderboard
                 .filter(item => item.fullMarksCount > 0)
                 .sort((a, b) => {
                     if (b.fullMarksCount !== a.fullMarksCount) return b.fullMarksCount - a.fullMarksCount;
@@ -2653,7 +2729,7 @@ function loadApp() {
 
             if (rankedFullMarks.length === 0) {
                 // بديل: اعرض أعلى 3 نسب مئوية لو مفيش درجات كاملة
-                const scoresWithPercent = allUserScores
+                const scoresWithPercent = (serverScores.length > 0 ? serverScores : allUserScores)
                     .filter(e => Number(e.total) > 0)
                     .map(e => ({
                         userName: e.userName || 'طالب',
