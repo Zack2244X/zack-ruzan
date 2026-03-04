@@ -72,6 +72,9 @@ window.addEventListener('unhandledrejection', (e) => {
     e.preventDefault();
 });
 
+// quick startup instrumentation check
+try { logFunctionStatus('app_init', typeof navigator !== 'undefined' ? navigator.onLine : true); } catch (e) { /* ignore */ }
+
 // === Service Worker Registration (PWA) ===
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
