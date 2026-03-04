@@ -231,7 +231,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
 
         const safeName = (state.currentUser.fname || state.currentUser.fullName || state.currentUser.email || 'صديقنا').trim();
         const greetings = [
-            `أهلاً بك يا ${safeName}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
+            `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
             `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}، أسأل الله أن ينفعك بما تعلمت.`
         ];
         document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
