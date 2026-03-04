@@ -852,31 +852,6 @@ select {
     }
 }
 
-/* Custom login logo styles (used instead of FontAwesome Google icon) */
-.login-logo-wrap {
-    background: linear-gradient(180deg, rgba(37,99,235,0.06), rgba(37,99,235,0.02));
-}
-.login-logo {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.06);
-    box-shadow: 0 12px 30px rgba(2,6,23,0.45);
-}
-#login-btn .login-logo {
-    width: 20px;
-    height: 20px;
-    margin-left: 0.5rem;
-    vertical-align: middle;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
-}
-
-@media (prefers-color-scheme: dark) {
-    .login-logo-wrap { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
-    .login-logo { border: 1px solid rgba(255,255,255,0.06); }
-}
-
 /* Landscape mode on mobile */
 @media (max-height: 500px) and (orientation: landscape) {
     #ios-bottom-nav { display: none !important; }
