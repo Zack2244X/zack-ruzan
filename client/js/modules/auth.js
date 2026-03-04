@@ -3,7 +3,7 @@
  * @description تسجيل الدخول بـ Google OAuth، إدارة الجلسة، تسجيل الخروج
  */
 import state from './state.js';
-import { showAlert } from './helpers.js';
+import { showAlert, logFunctionStatus } from './helpers.js';
 import { apiCall, loadDataFromServer } from './api.js';
 import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
 
@@ -13,6 +13,7 @@ import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, upd
  */
 export function startGoogleRedirectLogin(mode) {
     try {
+        logFunctionStatus('startGoogleRedirectLogin', false);
         const redirectMode = mode === 'admin' ? 'admin' : 'student';
         const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
         // Save to both sessionStorage and localStorage (mobile compat)
@@ -46,6 +47,7 @@ export function startGoogleRedirectLogin(mode) {
  * @returns {boolean} هل تم معالجة التوكن
  */
 export function handleGoogleRedirectToken() {
+    logFunctionStatus('handleGoogleRedirectToken', false);
     // Handle Google error redirect (e.g., access_denied)
     if (window.location.hash && window.location.hash.includes('error=')) {
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -112,6 +114,8 @@ export function handleGoogleRedirectToken() {
 /** @private */
 export function initGoogleSignIn() { state.gsiRetries = 0; }
 
+export function initGoogleSignInWrapper() { logFunctionStatus('initGoogleSignIn', false); initGoogleSignIn(); }
+
 /**
  * معالجة تسجيل دخول المعلم (أدمن) عبر Google
  * @param {{ credential: string }} response — استجابة Google
@@ -119,6 +123,7 @@ export function initGoogleSignIn() { state.gsiRetries = 0; }
 export async function handleGoogleAdminResponse(response) {
     const errorEl = document.getElementById('admin-auth-error');
     const loadingEl = document.getElementById('admin-auth-loading');
+    logFunctionStatus('handleGoogleAdminResponse', true);
     errorEl.classList.add('hidden');
     loadingEl.classList.remove('hidden');
     try {
@@ -179,6 +184,7 @@ export function showAdminToast() {
  * @param {Function} startTokenRefresh — دالة بدء تجديد التوكن
  */
 export async function handleStudentGoogleLogin(response, renderSubjectFilters, renderHistoryTree, renderDashboard, startTokenRefresh) {
+    logFunctionStatus('handleStudentGoogleLogin', true);
     console.log('[auth] بدء تسجيل دخول الطالب...');
     const errorEl = document.getElementById('login-error');
     const loadingEl = document.getElementById('login-loading');
@@ -260,6 +266,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
  * تسجيل الخروج مع إلغاء التوكن ومزامنة بين التبويبات
  */
 export async function logoutUser() {
+    logFunctionStatus('logoutUser', true);
     console.log('[auth] بدء تسجيل الخروج...');
     try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
     state.currentUser = null;
@@ -277,6 +284,7 @@ export async function logoutUser() {
  * بدء تجديد التوكن تلقائياً كل 6 ساعات
  */
 export function startTokenRefresh() {
+    logFunctionStatus('startTokenRefresh', true);
     if (state.tokenRefreshTimer) clearInterval(state.tokenRefreshTimer);
     console.log('[auth] ✓ بدء تجديد التوكن التلقائي (كل 6 ساعات)');
     state.tokenRefreshTimer = setInterval(async () => {

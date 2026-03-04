@@ -3,7 +3,7 @@
  * @description وحدة بناء الاختبارات — إنشاء، تعديل، استيراد الأسئلة
  */
 import state from './state.js';
-import { escapeHtml, showAlert, shuffleArray } from './helpers.js';
+import { escapeHtml, showAlert, shuffleArray, logFunctionStatus } from './helpers.js';
 import { apiCall } from './api.js';
 import { closeAdminSheet, closeBottomSheet, _showThemeToggle } from './navigation.js';
 
@@ -11,6 +11,7 @@ import { closeAdminSheet, closeBottomSheet, _showThemeToggle } from './navigatio
  * فتح نافذة بناء اختبار جديد — تصفير الواجهة للخطوة 1
  */
 export function openCreateSection() {
+    logFunctionStatus('openCreateSection', false);
     closeAdminSheet();
     closeBottomSheet();
     _showThemeToggle(false);
@@ -33,6 +34,7 @@ export function openCreateSection() {
  * إغلاق نافذة بناء الاختبار
  */
 export function closeCreateSection() {
+    logFunctionStatus('closeCreateSection', false);
     document.getElementById('create-section-modal').classList.add('hidden');
     _showThemeToggle(true);
 }
@@ -41,6 +43,7 @@ export function closeCreateSection() {
  * التحقق من العنوان والمادة ثم إنشاء المسودة والانتقال للخطوة 2
  */
 export function goToBuilderStep2() {
+    logFunctionStatus('goToBuilderStep2', false);
     const title = document.getElementById('new-q-title').value.trim();
     const subject = document.getElementById('new-q-subject').value;
 
@@ -91,6 +94,7 @@ export function goToBuilderStep2() {
  * رسم السؤال الحالي في واجهة البناء مع الخيارات وأزرار الراديو
  */
 export function renderBuilderQuestion() {
+    logFunctionStatus('renderBuilderQuestion', false);
     const q = state.quizDraft.questions[state.bCurrentQIndex];
     document.getElementById('b-current-num').innerText = state.bCurrentQIndex + 1;
     document.getElementById('b-total-num').innerText = state.quizDraft.questions.length;
@@ -119,6 +123,7 @@ export function renderBuilderQuestion() {
  * حفظ بيانات السؤال الحالي من الواجهة إلى المسودة
  */
 export function updateBuilderData() {
+    logFunctionStatus('updateBuilderData', false);
     if (!state.quizDraft) return;
     const q = state.quizDraft.questions[state.bCurrentQIndex];
     q.question = document.getElementById('b-question-text').value;
@@ -131,6 +136,7 @@ export function updateBuilderData() {
  * @param {string} val — النص الجديد
  */
 export function updateBuilderOptionText(idx, val) {
+    logFunctionStatus('updateBuilderOptionText', false);
     state.quizDraft.questions[state.bCurrentQIndex].answerOptions[idx].text = val;
 }
 
@@ -139,6 +145,7 @@ export function updateBuilderOptionText(idx, val) {
  * @param {number} idx — فهرس الخيار الصحيح
  */
 export function setBuilderCorrectOption(idx) {
+    logFunctionStatus('setBuilderCorrectOption', false);
     state.quizDraft.questions[state.bCurrentQIndex].answerOptions.forEach((o, i) => o.isCorrect = (i === idx));
     renderBuilderQuestion();
 }
@@ -147,6 +154,7 @@ export function setBuilderCorrectOption(idx) {
  * إضافة خيار جديد فارغ للسؤال الحالي
  */
 export function addBuilderOption() {
+    logFunctionStatus('addBuilderOption', false);
     state.quizDraft.questions[state.bCurrentQIndex].answerOptions.push({ text: '', isCorrect: false });
     renderBuilderQuestion();
 }
@@ -156,6 +164,7 @@ export function addBuilderOption() {
  * @param {number} idx — فهرس الخيار المراد حذفه
  */
 export function removeBuilderOption(idx) {
+    logFunctionStatus('removeBuilderOption', false);
     const q = state.quizDraft.questions[state.bCurrentQIndex];
     if (q.answerOptions.length > 2) {
         q.answerOptions.splice(idx, 1);
@@ -170,6 +179,7 @@ export function removeBuilderOption(idx) {
  * إضافة سؤال جديد فارغ إلى المسودة
  */
 export function addBuilderQuestion() {
+    logFunctionStatus('addBuilderQuestion', false);
     updateBuilderData();
     state.quizDraft.questions.push({
         question: '', hint: '', answerOptions: [{ text: '', isCorrect: true }, { text: '', isCorrect: false }]
@@ -183,6 +193,7 @@ export function addBuilderQuestion() {
  * @param {number} dir — الاتجاه (+1 تالي، -1 سابق)
  */
 export function navBuilderQuestion(dir) {
+    logFunctionStatus('navBuilderQuestion', false);
     updateBuilderData();
     state.bCurrentQIndex += dir;
     renderBuilderQuestion();
@@ -195,6 +206,7 @@ export function navBuilderQuestion(dir) {
  * @param {Function} renderDashboard — دالة رسم لوحة التحكم
  */
 export async function saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDashboard) {
+    logFunctionStatus('saveBuiltQuiz', true);
     updateBuilderData();
 
     for (let i = 0; i < state.quizDraft.questions.length; i++) {
@@ -245,6 +257,7 @@ export async function saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDas
  * @param {number} index — فهرس الاختبار في allQuizzes
  */
 export function loadQuizIntoBuilder(index) {
+    logFunctionStatus('loadQuizIntoBuilder', false);
     document.getElementById('edit-selection-modal').classList.add('hidden');
 
     openCreateSection();
@@ -273,6 +286,7 @@ export function loadQuizIntoBuilder(index) {
  * @param {Function} renderDashboard — دالة رسم لوحة التحكم
  */
 export async function updateExistingQuiz(index, renderHistoryTree, renderEditTree, renderDashboard) {
+    logFunctionStatus('updateExistingQuiz', true);
     updateBuilderData();
 
     for (let i = 0; i < state.quizDraft.questions.length; i++) {
@@ -323,6 +337,7 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
  * تفعيل نقرة حقل ملف الاستيراد
  */
 export function triggerImportExamFile() {
+    logFunctionStatus('triggerImportExamFile', false);
     const input = document.getElementById('import-exam-file');
     if (input) input.click();
 }
@@ -331,6 +346,7 @@ export function triggerImportExamFile() {
  * إعادة توزيع الإجابات عشوائياً في المسودة مع الحفاظ على الصحيح
  */
 export function reshuffleImportedAnswers() {
+    logFunctionStatus('reshuffleImportedAnswers', false);
     if (!state.quizDraft || !state.quizDraft.questions || !state.quizDraft.questions.length) {
         showAlert('⚠️ لا توجد أسئلة لإعادة توزيع الإجابات بعد. استورد ملف أولاً.', 'warning');
         return;
@@ -347,6 +363,7 @@ export function reshuffleImportedAnswers() {
  * @param {Event} event — حدث تغيير حقل الملف
  */
 export async function handleImportFileChange(event) {
+    logFunctionStatus('handleImportFileChange', false);
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -388,6 +405,7 @@ export async function handleImportFileChange(event) {
  * @returns {Promise<string>} النص المستخرج
  */
 export async function extractTextFromPdf(file) {
+    logFunctionStatus('extractTextFromPdf', false);
     const data = new Uint8Array(await file.arrayBuffer());
     const pdf = await pdfjsLib.getDocument({ data }).promise;
     let fullText = '';
@@ -405,6 +423,7 @@ export async function extractTextFromPdf(file) {
  * @returns {Array<Object>} مصفوفة الأسئلة المستخرجة
  */
 export function parseIconQuestions(rawText) {
+    logFunctionStatus('parseIconQuestions', false);
     const lines = rawText.replace(/\r/g, '').split(/\n+/).map(l => l.trim()).filter(Boolean);
     const questions = [];
     let current = null;
@@ -449,6 +468,7 @@ export function parseIconQuestions(rawText) {
  * @param {Object} question — كائن السؤال
  */
 export function shuffleOptionsPreserveCorrect(question) {
+    logFunctionStatus('shuffleOptionsPreserveCorrect', false);
     const options = question.answerOptions.map(o => ({ ...o }));
     const correctOption = options.find(o => o.isCorrect) || options[0];
     shuffleArray(options);
@@ -462,6 +482,7 @@ export function shuffleOptionsPreserveCorrect(question) {
  * @param {number} [maxRepeat=2] — الحد الأقصى للتكرار المتتالي
  */
 export function balanceCorrectLetters(questions, maxRepeat = 2) {
+    logFunctionStatus('balanceCorrectLetters', false);
     let lastLetter = null;
     let repeatCount = 0;
     questions.forEach(q => {
@@ -491,6 +512,7 @@ export function balanceCorrectLetters(questions, maxRepeat = 2) {
  * @param {Array<Object>} importedQuestions — مصفوفة الأسئلة المستوردة
  */
 export function applyImportedQuestions(importedQuestions) {
+    logFunctionStatus('applyImportedQuestions', false);
     const title = document.getElementById('new-q-title').value.trim();
     const subject = document.getElementById('new-q-subject').value;
     if (!title) { showAlert('⚠️ يجب إدخال عنوان للامتحان للبدء!', 'warning'); return; }

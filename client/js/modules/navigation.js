@@ -3,11 +3,13 @@
  * @description دوال التنقل، إدارة النوافذ، الثيم، والشريط السفلي
  */
 import state, { THEME_KEY } from './state.js';
+import { logFunctionStatus } from './helpers.js';
 
 /**
  * مزامنة حالة التفاعل مع العناصر الرئيسية (منع التفاعل عند فتح نوافذ)
  */
 export function _syncMainInteractionState() {
+    logFunctionStatus('_syncMainInteractionState', false);
     const dashboard = document.getElementById('dashboard-view');
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
@@ -32,6 +34,7 @@ export function _syncMainInteractionState() {
  * @param {boolean} show — إظهار أم إخفاء
  */
 export function _showThemeToggle(show) {
+    logFunctionStatus('_showThemeToggle', false);
     const t = document.getElementById('theme-toggle');
     if (!t) return;
     if (!show) { t.style.display = 'none'; return; }
@@ -43,6 +46,7 @@ export function _showThemeToggle(show) {
  * @param {string} activeId — المعرف النشط (home, exams, notes, settings)
  */
 export function updateDockUI(activeId) {
+    logFunctionStatus('updateDockUI', false);
     const allBtns = document.querySelectorAll('.dock-btn');
     allBtns.forEach(btn => {
         btn.classList.remove('active', 'text-blue-600', 'text-orange-600', 'text-purple-600');
@@ -65,6 +69,7 @@ export function updateDockUI(activeId) {
  * @param {Function} closeFn — دالة الإغلاق
  */
 function _attachSwipeToClose(el, closeFn) {
+    logFunctionStatus('_attachSwipeToClose', false);
     if (!el || el._swipeAttached) return;
     el._swipeAttached = true;
     let startY = 0;
@@ -94,6 +99,7 @@ function _attachSwipeToClose(el, closeFn) {
 
 /** فتح القائمة السفلية (Bottom Sheet) */
 export function openBottomSheet() {
+    logFunctionStatus('openBottomSheet', false);
     const content = document.getElementById('tree-content');
     document.getElementById('tree-overlay').classList.add('active');
     content.classList.add('active');
@@ -104,6 +110,7 @@ export function openBottomSheet() {
 
 /** إغلاق القائمة السفلية */
 export function closeBottomSheet() {
+    logFunctionStatus('closeBottomSheet', false);
     document.getElementById('tree-overlay').classList.remove('active');
     document.getElementById('tree-content').classList.remove('active');
     if (state.currentViewMode) updateDockUI('home');
@@ -112,6 +119,7 @@ export function closeBottomSheet() {
 
 /** إغلاق قائمة الأدمن السفلية */
 export function closeAdminSheet() {
+    logFunctionStatus('closeAdminSheet', false);
     document.getElementById('admin-overlay').classList.remove('active');
     document.getElementById('admin-content').classList.remove('active');
     updateDockUI('home');
@@ -120,6 +128,7 @@ export function closeAdminSheet() {
 
 /** إغلاق جميع النوافذ المنبثقة */
 export function closeAllOverlays() {
+    logFunctionStatus('closeAllOverlays', false);
     closeBottomSheet();
     closeAdminSheet();
     const modalsToClose = [
@@ -139,6 +148,7 @@ export function closeAllOverlays() {
  * @param {'light'|'dark'} theme — الثيم المطلوب
  */
 export function applyTheme(theme) {
+    logFunctionStatus('applyTheme', false);
     const root = document.documentElement;
     const icon = document.querySelector('#theme-toggle i');
     const finalTheme = theme === 'dark' ? 'dark' : 'light';
@@ -149,12 +159,14 @@ export function applyTheme(theme) {
 
 /** تبديل الثيم بين فاتح وداكن */
 export function toggleTheme() {
+    logFunctionStatus('toggleTheme', false);
     const current = document.documentElement.getAttribute('data-theme') || 'light';
     applyTheme(current === 'light' ? 'dark' : 'light');
 }
 
 /** تهيئة الثيم عند بدء التطبيق */
 export function initTheme() {
+    logFunctionStatus('initTheme', false);
     const stored = localStorage.getItem(THEME_KEY);
     if (stored) {
         applyTheme(stored);
@@ -166,6 +178,7 @@ export function initTheme() {
 
 /** الانتقال للصفحة الرئيسية */
 export function navToHome() {
+    logFunctionStatus('navToHome', false);
     closeAllOverlays();
     document.getElementById('dashboard-view').classList.remove('hidden');
     document.getElementById('quiz-container').classList.add('hidden');
@@ -180,6 +193,7 @@ export function navToHome() {
  * @param {Function} renderHistoryTree — دالة رسم الشجرة
  */
 export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
+    logFunctionStatus('navToSection', false);
     closeAllOverlays();
     state.currentViewMode = section;
     state.currentSubjectFilter = 'الكل';
@@ -202,6 +216,7 @@ export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
  * فتح لوحة الأدمن أو قائمة الطالب
  */
 export function openAdminAuthOrPanel() {
+    logFunctionStatus('openAdminAuthOrPanel', false);
     closeAllOverlays();
     updateDockUI('settings');
     if (state.isAdmin) {
@@ -218,6 +233,7 @@ export function openAdminAuthOrPanel() {
 
 /** إغلاق قائمة الطالب */
 export function closeStudentMenu() {
+    logFunctionStatus('closeStudentMenu', false);
     document.getElementById('student-menu-modal').classList.add('hidden');
     _showThemeToggle(true);
     updateDockUI('home');
@@ -225,6 +241,7 @@ export function closeStudentMenu() {
 
 /** عرض شاشة تسجيل الدخول */
 export function showLoginScreen() {
+    logFunctionStatus('showLoginScreen', false);
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('ios-bottom-nav').classList.add('hidden');
@@ -235,6 +252,7 @@ export function showLoginScreen() {
 
 /** طي/فتح فروع الشجرة */
 export function toggleTreeNode(contentId, btn) {
+    logFunctionStatus('toggleTreeNode', false);
     const content = document.getElementById(contentId);
     const icon = btn.querySelector('.fa-chevron-down');
     if (content.classList.contains('hidden')) {

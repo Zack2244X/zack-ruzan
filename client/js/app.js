@@ -9,7 +9,7 @@
 
 // === الوحدات (Modules) ===
 import state from './modules/state.js';
-import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray } from './modules/helpers.js';
+import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray, logFunctionStatus } from './modules/helpers.js';
 import { apiCall, loadDataFromServer, fetchLeaderboardFromServer, fetchScoresFromServer } from './modules/api.js';
 import {
     _syncMainInteractionState, _showThemeToggle, updateDockUI,
@@ -233,6 +233,7 @@ function handleStudentGoogleLogin(response) {
 
 /** @description تحميل التطبيق عند بدء التشغيل */
 function loadApp() {
+    logFunctionStatus('loadApp', true);
     console.log('[app] بدء تحميل التطبيق...');
     try {
         // Scores are loaded from server via loadAllDataFromServer() — no localStorage fallback
@@ -333,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
 //  نقطة البداية
 // ============================================
 window.onload = async function () {
+    logFunctionStatus('window.onload', false);
     // تهيئة الثيم
     initTheme();
 

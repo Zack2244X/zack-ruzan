@@ -3,7 +3,7 @@
  * @description محرك الاختبارات التفاعلي — يتحكم في تشغيل الاختبار، الأسئلة، المؤقت، النتائج والتغذية الراجعة
  */
 import state from './state.js';
-import { escapeHtml, showAlert, showConfirm, formatTime, showToastMessage, pickRandom } from './helpers.js';
+import { escapeHtml, showAlert, showConfirm, formatTime, showToastMessage, pickRandom, logFunctionStatus } from './helpers.js';
 import { apiCall } from './api.js';
 import { _showThemeToggle, closeBottomSheet, closeAdminSheet } from './navigation.js';
 
@@ -96,6 +96,7 @@ const streakToasts = {
  * تهيئة عناصر DOM الخاصة بالاختبار — يجب استدعاؤها بعد تحميل الصفحة
  */
 export function initQuizDOM() {
+    logFunctionStatus('initQuizDOM', false);
     questionTextEl = document.getElementById('question-text');
     questionHintEl = document.getElementById('question-hint');
     optionsContainerEl = document.getElementById('options-container');
@@ -121,6 +122,7 @@ export function initQuizDOM() {
  * @param {number} index — فهرس الاختبار في allQuizzes
  */
 export function playQuiz(index) {
+    logFunctionStatus('playQuiz', false);
     // 1. استدعاء بيانات الاختبار
     state.currentQuizData = state.allQuizzes[index];
     const quizId = state.currentQuizData.id || state.currentQuizData.config?.id;
@@ -171,6 +173,7 @@ export function playQuiz(index) {
  * تهيئة الاختبار — ضبط العدد الكلي وبدء العرض والمؤقت
  */
 export function initializeQuiz() {
+    logFunctionStatus('initializeQuiz', false);
     totalQuestionsEl.textContent = state.totalQuestions;
     if (state.totalQuestions > 0) {
         renderQuestion();
@@ -183,6 +186,7 @@ export function initializeQuiz() {
  * عرض السؤال الحالي مع الخيارات والتقدم
  */
 export function renderQuestion() {
+    logFunctionStatus('renderQuestion', false);
     const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
 
     // تحديث العناوين
@@ -256,6 +260,7 @@ export function renderQuestion() {
  * @param {number} selectedIndex — فهرس الخيار المُختار
  */
 export function selectAnswer(selectedIndex) {
+    logFunctionStatus('selectAnswer', false);
     if (state.userAnswers[state.currentQuestionIndex] !== null) return; // منع الإجابة مرتين
 
     const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
@@ -333,6 +338,7 @@ export function selectAnswer(selectedIndex) {
  * @param {string} message — رسالة التغذية الراجعة (مُعقَّمة مسبقاً)
  */
 export function showFeedback(isCorrect, rationale, message) {
+    logFunctionStatus('showFeedback', false);
     const safeMessage = message || (isCorrect ? "إجابة صحيحة." : "إجابة غير صحيحة.");
     const safeRationale = rationale || "لا يوجد تبرير متاح لهذا الخيار.";
     feedbackMessageEl.innerHTML = safeMessage; // Safe: already escaped in selectAnswer()
@@ -363,6 +369,7 @@ export function showFeedback(isCorrect, rationale, message) {
  * إخفاء صندوق التغذية الراجعة
  */
 export function hideFeedback() {
+    logFunctionStatus('hideFeedback', false);
     feedbackBoxEl.classList.add('scale-y-0', 'h-0', 'opacity-0');
     feedbackBoxEl.classList.remove('scale-y-100', 'h-auto', 'opacity-100', 'p-4', 'correct-bg', 'incorrect-bg');
     questionHintEl.classList.add('hidden');
@@ -372,6 +379,7 @@ export function hideFeedback() {
  * تعطيل جميع الخيارات بعد الإجابة
  */
 export function disableOptions() {
+    logFunctionStatus('disableOptions', false);
     Array.from(optionsContainerEl.children).forEach(el => el.onclick = null);
 }
 
@@ -379,6 +387,7 @@ export function disableOptions() {
  * الانتقال للسؤال التالي
  */
 export function goToNextQuestion() {
+    logFunctionStatus('goToNextQuestion', false);
     if (state.currentQuestionIndex < state.totalQuestions - 1) {
         state.currentQuestionIndex++;
         renderQuestion();
@@ -389,6 +398,7 @@ export function goToNextQuestion() {
  * الانتقال للسؤال السابق
  */
 export function goToPreviousQuestion() {
+    logFunctionStatus('goToPreviousQuestion', false);
     if (state.currentQuestionIndex > 0) {
         state.currentQuestionIndex--;
         renderQuestion();
@@ -399,6 +409,7 @@ export function goToPreviousQuestion() {
  * تحديث عرض شريط التقدم بناءً على السؤال الحالي
  */
 export function updateProgressBar() {
+    logFunctionStatus('updateProgressBar', false);
     const progress = state.totalQuestions > 0 ? ((state.currentQuestionIndex + 1) / state.totalQuestions) * 100 : 0;
     progressBarEl.style.width = `${progress}%`;
 }
@@ -407,6 +418,7 @@ export function updateProgressBar() {
  * بدء المؤقت التنازلي باستخدام Date.now() لدقة أعلى
  */
 export function startTimer() {
+    logFunctionStatus('startTimer', false);
     if (state.timerInterval) clearInterval(state.timerInterval);
     // Reset timer display styles from previous quiz
     if (timerDisplayEl) {
@@ -438,6 +450,7 @@ export function startTimer() {
  */
 let _isSubmitting = false;
 export async function submitQuiz() {
+    logFunctionStatus('submitQuiz', true);
     // منع التسليم المزدوج
     if (_isSubmitting) return;
     _isSubmitting = true;

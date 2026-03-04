@@ -3,6 +3,7 @@
  * @description دوال الاتصال بالسيرفر — API calls
  */
 import state from './state.js';
+import { logFunctionStatus } from './helpers.js';
 
 /**
  * قراءة csrf_token من الكوكيز (يضعه السيرفر بعد تسجيل الدخول)
@@ -38,6 +39,7 @@ export function getAuthHeaders() {
  * @throws {Error} في حالة فشل الاتصال
  */
 export async function apiCall(method, url, body) {
+    logFunctionStatus(`apiCall ${method} ${url}`, true);
     const tag = `[API] ${method} ${url}`;
     console.log(`${tag} — إرسال...`, body ? body : '');
     const opts = {
@@ -63,6 +65,7 @@ export async function apiCall(method, url, body) {
  * @returns {Promise<Array>} بيانات لوحة الشرف
  */
 export async function fetchLeaderboardFromServer() {
+    logFunctionStatus('fetchLeaderboardFromServer', true);
     try {
         const data = await apiCall('GET', '/api/scores/leaderboard');
         return data.map(item => ({
@@ -84,6 +87,7 @@ export async function fetchLeaderboardFromServer() {
  * @returns {Promise<Array>} بيانات الدرجات
  */
 export async function fetchScoresFromServer() {
+    logFunctionStatus('fetchScoresFromServer', true);
     try {
         const endpoint = state.isAdmin ? '/api/scores/all' : '/api/scores/my';
         const raw = await apiCall('GET', endpoint);
@@ -108,6 +112,7 @@ export async function fetchScoresFromServer() {
  * تحميل جميع البيانات من السيرفر
  */
 export async function loadDataFromServer() {
+    logFunctionStatus('loadDataFromServer', true);
     if (!state.currentUser) { console.warn('[loadData] لا يوجد مستخدم — تخطي'); return; }
     console.log('[loadData] بدء تحميل البيانات من السيرفر...');
     try {

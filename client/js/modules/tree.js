@@ -3,7 +3,7 @@
  * @description وحدة رسم الشجرة — عرض الامتحانات والمذكرات بتنسيق شجري حسب التاريخ
  */
 import state from './state.js';
-import { escapeHtml, showAlert } from './helpers.js';
+import { escapeHtml, showAlert, logFunctionStatus } from './helpers.js';
 import { apiCall } from './api.js';
 
 /** @constant {Array<string>} المواد الافتراضية */
@@ -22,6 +22,7 @@ const DEFAULT_SUBJECTS = [
  * @returns {Array<string>} مصفوفة المواد مع "الكل" في البداية
  */
 export function getDynamicSubjects() {
+    logFunctionStatus('getDynamicSubjects', false);
     const subjectsSet = new Set(DEFAULT_SUBJECTS);
 
     const targetArray = state.currentViewMode === 'notes' ? state.allNotes : state.allQuizzes;
@@ -37,6 +38,7 @@ export function getDynamicSubjects() {
  * @param {Function} confirmDeleteSubjectFn — دالة تأكيد حذف المادة
  */
 export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
+    logFunctionStatus('renderSubjectFilters', false);
     const subjects = getDynamicSubjects();
 
     // 1. تحديث قائمة Datalist
@@ -101,6 +103,7 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
  * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
 export function setSubjectFilter(subject, renderHistoryTree, renameSubjectFn, confirmDeleteSubjectFn) {
+    logFunctionStatus('setSubjectFilter', false);
     state.currentSubjectFilter = subject;
     renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
     renderHistoryTree();
@@ -114,6 +117,7 @@ export function setSubjectFilter(subject, renderHistoryTree, renameSubjectFn, co
  * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
 export function setEditSubjectFilter(subject, renderEditTree, renameSubjectFn, confirmDeleteSubjectFn) {
+    logFunctionStatus('setEditSubjectFilter', false);
     state.editSubjectFilter = subject;
     renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
     renderEditTree();
@@ -125,6 +129,7 @@ export function setEditSubjectFilter(subject, renderEditTree, renameSubjectFn, c
  * @param {Function} forceDownloadFn — دالة تحميل المذكرة
  */
 export function renderHistoryTree(playQuizFn, forceDownloadFn) {
+    logFunctionStatus('renderHistoryTree', false);
     const historyTree = document.getElementById('history-tree');
     if (!historyTree) return;
     historyTree.innerHTML = '';
@@ -259,6 +264,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
  * @param {Function} loadNoteIntoBuilderFn — دالة تحميل مذكرة للتعديل
  */
 export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
+    logFunctionStatus('renderEditTree', false);
     const editTree = document.getElementById('edit-history-tree');
     if (!editTree) return;
     editTree.innerHTML = '';
@@ -364,6 +370,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
  * @param {Event} event — حدث النقر
  */
 export function renameSubject(oldName, event) {
+    logFunctionStatus('renameSubject', false);
     event.stopPropagation();
     state.subjectToRename = oldName;
 
@@ -378,6 +385,7 @@ export function renameSubject(oldName, event) {
  * إغلاق مودل تعديل اسم المادة
  */
 export function closeRenameModal() {
+    logFunctionStatus('closeRenameModal', false);
     state.subjectToRename = null;
     document.getElementById('rename-subject-modal').classList.add('hidden');
 }
@@ -389,6 +397,7 @@ export function closeRenameModal() {
  * @param {Function} renderDashboardFn — دالة رسم لوحة التحكم
  */
 export async function executeRenameSubject(renderSubjectFiltersFn, renderHistoryTreeFn, renderDashboardFn) {
+    logFunctionStatus('executeRenameSubject', true);
     const newName = document.getElementById('rename-subject-input').value.trim();
 
     if (newName === '') {
@@ -425,6 +434,7 @@ export async function executeRenameSubject(renderSubjectFiltersFn, renderHistory
  * @param {Event} event — حدث النقر
  */
 export function confirmDeleteSubject(subjectName, event) {
+    logFunctionStatus('confirmDeleteSubject', false);
     event.stopPropagation();
     state.subjectToDelete = subjectName;
     document.getElementById('delete-subject-msg').innerText = `هل أنت متأكد من حذف مجلد "${subjectName}"؟ سيتم مسح جميع الامتحانات بداخله نهائياً!`;
@@ -435,6 +445,7 @@ export function confirmDeleteSubject(subjectName, event) {
  * إغلاق مودل تأكيد حذف المادة
  */
 export function closeDeleteModal() {
+    logFunctionStatus('closeDeleteModal', false);
     state.subjectToDelete = null;
     document.getElementById('delete-subject-modal').classList.add('hidden');
 }
@@ -446,6 +457,7 @@ export function closeDeleteModal() {
  * @param {Function} renderDashboardFn — دالة رسم لوحة التحكم
  */
 export async function executeDeleteSubject(renderSubjectFiltersFn, renderHistoryTreeFn, renderDashboardFn) {
+    logFunctionStatus('executeDeleteSubject', true);
     if (state.subjectToDelete) {
         console.log(`[deleteSubject] بدء حذف المادة — "${state.subjectToDelete}"`);
         try {

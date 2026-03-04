@@ -3,7 +3,7 @@
  * @description وحدة الدرجات والإحصائيات — عرض النتائج، لوحة الشرف، وتبويب التعديل
  */
 import state from './state.js';
-import { escapeHtml } from './helpers.js';
+import { escapeHtml, logFunctionStatus } from './helpers.js';
 import { _showThemeToggle } from './navigation.js';
 import { fetchScoresFromServer, fetchLeaderboardFromServer } from './api.js';
 
@@ -11,6 +11,7 @@ import { fetchScoresFromServer, fetchLeaderboardFromServer } from './api.js';
  * فتح مودل الدرجات — يجلب أحدث بيانات من السيرفر ثم يعرضها
  */
 export async function openGradesModal() {
+    logFunctionStatus('openGradesModal', true);
     _showThemeToggle(false);
     document.getElementById('grades-modal').classList.remove('hidden');
 
@@ -49,6 +50,7 @@ export async function openGradesModal() {
  * إغلاق مودل الدرجات
  */
 export function closeGradesModal() {
+    logFunctionStatus('closeGradesModal', false);
     _showThemeToggle(true);
     document.getElementById('grades-modal').classList.add('hidden');
 }
@@ -57,6 +59,7 @@ export function closeGradesModal() {
  * رسم قائمة الدرجات بشكل شجري — تجميع المستخدمين وترتيبهم حسب المتوسط
  */
 export function renderGradesList() {
+    logFunctionStatus('renderGradesList', false);
     const container = document.getElementById('grades-list-container');
     container.innerHTML = '';
 
@@ -157,6 +160,7 @@ export function renderGradesList() {
  * فتح مودل الإحصائيات — يجلب أحدث بيانات من السيرفر ثم يعرضها
  */
 export async function openStatsModal() {
+    logFunctionStatus('openStatsModal', true);
     _showThemeToggle(false);
     document.getElementById('stats-modal').classList.remove('hidden');
 
@@ -193,6 +197,7 @@ export async function openStatsModal() {
  * إغلاق مودل الإحصائيات
  */
 export function closeStatsModal() {
+    logFunctionStatus('closeStatsModal', false);
     document.getElementById('stats-modal').classList.add('hidden');
     _showThemeToggle(true);
 }
@@ -201,6 +206,7 @@ export function closeStatsModal() {
  * رسم محتوى الإحصائيات — أبطال آخر امتحان، أعلى مجموع، أعلى متوسط، أكثر درجات كاملة
  */
 export function renderStatsContent() {
+    logFunctionStatus('renderStatsContent', false);
     const container = document.getElementById('stats-list-container');
     container.innerHTML = '';
 
@@ -287,6 +293,7 @@ export function renderStatsContent() {
  * فتح مودل اختيار التعديل (امتحانات/مذكرات)
  */
 export function openEditSelectionModal() {
+    logFunctionStatus('openEditSelectionModal', false);
     _showThemeToggle(false);
     document.getElementById('edit-selection-modal').classList.remove('hidden');
 }
@@ -298,6 +305,7 @@ export function openEditSelectionModal() {
  * @param {Function} renderEditTreeFn — دالة رسم شجرة التعديل
  */
 export function switchEditTab(tab, renderSubjectFiltersFn, renderEditTreeFn) {
+    logFunctionStatus('switchEditTab', false);
     state.editTabMode = tab;
     state.editSubjectFilter = 'الكل';
 

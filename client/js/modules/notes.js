@@ -3,7 +3,7 @@
  * @description وحدة المذكرات — إضافة، تعديل، تحميل الملفات والمذكرات
  */
 import state from './state.js';
-import { escapeHtml, showAlert } from './helpers.js';
+import { escapeHtml, showAlert, logFunctionStatus } from './helpers.js';
 import { apiCall } from './api.js';
 import { _showThemeToggle } from './navigation.js';
 
@@ -11,6 +11,7 @@ import { _showThemeToggle } from './navigation.js';
  * فتح مودل إضافة مذكرة جديدة — تصفير الحقول
  */
 export function openAddNoteModal() {
+    logFunctionStatus('openAddNoteModal', false);
     _showThemeToggle(false);
     document.getElementById('new-n-title').value = '';
     document.getElementById('new-n-subject').value = '';
@@ -23,6 +24,7 @@ export function openAddNoteModal() {
  * إغلاق مودل إضافة/تعديل المذكرة — إعادة زر الحفظ لشكله الأصلي
  */
 export function closeAddNoteModal() {
+    logFunctionStatus('closeAddNoteModal', false);
     _showThemeToggle(true);
     document.getElementById('add-note-modal').classList.add('hidden');
     const saveBtn = document.getElementById('save-note-btn');
@@ -41,6 +43,7 @@ export function closeAddNoteModal() {
  * @param {Function} navToSectionFn — دالة الانتقال لقسم المذكرات
  */
 export async function saveNote(renderEditTree, renderSubjectFilters, renderHistoryTree, navToSectionFn) {
+    logFunctionStatus('saveNote', true);
     const title = document.getElementById('new-n-title').value.trim();
     const subject = document.getElementById('new-n-subject').value.trim();
     const link = document.getElementById('new-n-link').value.trim();
@@ -108,6 +111,7 @@ export async function saveNote(renderEditTree, renderSubjectFilters, renderHisto
  * @param {number} index — فهرس المذكرة في allNotes
  */
 export function loadNoteIntoBuilder(index) {
+    logFunctionStatus('loadNoteIntoBuilder', false);
     document.getElementById('edit-selection-modal').classList.add('hidden');
 
     const noteData = state.allNotes[index].config;
@@ -133,6 +137,7 @@ export function loadNoteIntoBuilder(index) {
  * @param {Function} renderDashboard — دالة رسم لوحة التحكم
  */
 export async function updateExistingNote(renderHistoryTree, renderEditTree, renderDashboard) {
+    logFunctionStatus('updateExistingNote', true);
     const title = document.getElementById('new-n-title').value.trim();
     const subject = document.getElementById('new-n-subject').value.trim();
     const link = document.getElementById('new-n-link').value.trim();
@@ -179,6 +184,7 @@ export async function updateExistingNote(renderHistoryTree, renderEditTree, rend
  * @param {string} url — رابط الملف الأصلي
  */
 export function forceDownload(url) {
+    logFunctionStatus('forceDownload', false);
     console.log(`[forceDownload] بدء تحميل —`, url);
     // التحقق من أن الرابط آمن — منع javascript: و data: و vbscript:
     const lowerUrl = (url || '').trim().toLowerCase();

@@ -3,7 +3,7 @@
  * @description وحدة لوحة التحكم الرئيسية — عرض آخر الامتحانات والمذكرات ولوحة الشرف
  */
 import state from './state.js';
-import { escapeHtml } from './helpers.js';
+import { escapeHtml, logFunctionStatus } from './helpers.js';
 
 /**
  * رسم لوحة التحكم الرئيسية: آخر 4 امتحانات، آخر 3 مذكرات، وأعلى 3 في لوحة الشرف
@@ -11,6 +11,7 @@ import { escapeHtml } from './helpers.js';
  * Uses window.playQuiz and window.forceDownload for event handlers.
  */
 export function renderDashboard() {
+    logFunctionStatus('renderDashboard', false);
     // حالة التحميل
     if (!state.dataLoaded) {
         console.log('[dashboard] ⏳ البيانات لم تُحمّل بعد...');

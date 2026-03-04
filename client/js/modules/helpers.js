@@ -19,6 +19,20 @@ export function escapeHtml(str) {
 }
 
 /**
+ * Logs function invocation status to the browser console.
+ * @param {string} fnName — function name
+ * @param {boolean} serverBound — whether the function is expected to call the server
+ */
+export function logFunctionStatus(fnName, serverBound = false) {
+    try {
+        const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        console.log(`[FUNC] ${fnName} — online:${online} serverBound:${serverBound}`);
+    } catch (e) {
+        // ignore logging errors
+    }
+}
+
+/**
  * عرض رسالة Toast مع شريط تقدم
  * @param {string} message — نص الرسالة
  * @param {'success'|'error'|'warning'|'streak'} type — نوع الرسالة
