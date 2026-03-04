@@ -252,7 +252,7 @@ function loadApp() {
             document.getElementById('ios-bottom-nav').classList.remove('hidden');
 
             const safeName = escapeHtml(state.currentUser.fname || state.currentUser.fullName || 'صديقنا');
-            document.getElementById('welcome-msg').innerText = `مرحباً بك يا ${safeName}`;
+            document.getElementById('welcome-msg').innerText = `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
 
             navToHome();
             renderDashboard();
