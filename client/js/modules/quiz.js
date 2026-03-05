@@ -1,7 +1,13 @@
 /**
  * @module quiz
  * @description محرك الاختبارات التفاعلي — يتحكم في تشغيل الاختبار، الأسئلة، المؤقت، النتائج والتغذية الراجعة
- * @version 2.0.0 — Hardened Edition
+ * @version 3.0.0 — Multi-Attempt Edition
+ * @changelog
+ *   v3.0.0 — دعم إعادة المحاولة غير المحدودة:
+ *     • المحاولة الأولى رسمية (isOfficial = true) وتُحتسب في لوحة الشرف
+ *     • المحاولات التالية تدريبية (isOfficial = false) ولا تُحتسب
+ *     • state.attemptsMap يتتبع المحاولات محلياً ومزامنتها مع السيرفر
+ *     • لافتة توضيحية قبل كل محاولة وبعدها
  */
 import state from './state.js';
 import { escapeHtml, showAlert, showConfirm, formatTime, showToastMessage, pickRandom, logFunctionStatus } from './helpers.js';
@@ -12,9 +18,10 @@ import { _showThemeToggle, closeBottomSheet, closeAdminSheet } from './navigatio
 //  ثوابت النظام
 // =============================================
 
-/** مفتاح localStorage لتتبع الاختبارات المُسلَّمة عبر التبويبات والتحميل */
-const SUBMISSION_KEY_PREFIX = 'quiz_submitted_';
-/** مفتاح localStorage لحفظ النتائج المعلّقة حتى تأكيد السيرفر */
+/**
+ * مفتاح localStorage لحفظ النتائج المعلّقة حتى تأكيد السيرفر.
+ * ملاحظة: حُذف SUBMISSION_KEY_PREFIX — لم تعد هناك حاجة لمنع إعادة المحاولة.
+ */
 const PENDING_SCORE_KEY_PREFIX = 'quiz_pending_score_';
 /** الحد الأقصى لمحاولات إرسال النتيجة تلقائياً */
 const MAX_SCORE_RETRIES = 3;
@@ -70,15 +77,14 @@ const streakToasts = {
 // =============================================
 
 /**
- * تسجيل أخطاء الوحدة مركزياً مع السياق الكامل
- * يمكن توسيعه لاحقاً لإرسال الأخطاء لخدمة مراقبة خارجية.
- * @param {string} context — الدالة أو الموضع الذي حدث فيه الخطأ
- * @param {Error|string} error — كائن الخطأ أو رسالته
- * @param {Object} [extra={}] — بيانات سياقية إضافية للتشخيص
+ * تسجيل أخطاء الوحدة مركزياً مع السياق الكامل.
+ * @param {string}       context — الدالة أو الموضع الذي حدث فيه الخطأ
+ * @param {Error|string} error   — كائن الخطأ أو رسالته
+ * @param {Object}       [extra={}] — بيانات سياقية إضافية
  */
 function logQuizError(context, error, extra = {}) {
     const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
+    const stack   = error instanceof Error ? error.stack   : undefined;
     console.error(`[QuizModule][${context}]`, message, { ...extra, ...(stack ? { stack } : {}) });
 }
 
@@ -88,7 +94,6 @@ function logQuizError(context, error, extra = {}) {
 
 /**
  * استخراج معرّف الاختبار بشكل موحّد من بنية quizData.
- * يُستخدم في كل موضع يحتاج إلى quizId بدلاً من التكرار.
  * @param {Object} quizData
  * @returns {string|number|null}
  */
@@ -96,62 +101,15 @@ function getQuizId(quizData) {
     return quizData?.id ?? quizData?.config?.id ?? null;
 }
 
-/**
- * بناء مفتاح localStorage للحماية من التسليم المزدوج.
- * يعتمد على quizId + userName لضمان التفرّد لكل مستخدم واختبار.
- * @param {string|number|null} quizId
- * @param {string} userName
- * @returns {string}
- */
-function getSubmissionStorageKey(quizId, userName) {
-    const safeId = (quizId !== null && quizId !== undefined) ? String(quizId) : 'unknown';
-    const safeUser = userName ? encodeURIComponent(String(userName)) : 'anonymous';
-    return `${SUBMISSION_KEY_PREFIX}${safeId}_${safeUser}`;
-}
-
-// =============================================
-//  الحماية من التسليم المزدوج عبر التبويبات والتحميل
-// =============================================
-
-/**
- * يتحقق إذا كان الاختبار قد سُلِّم مسبقاً لهذا المستخدم عبر localStorage.
- * يعمل عبر التبويبات المتعددة وإعادة تحميل الصفحة.
- * عند تعذّر الوصول لـ localStorage يُرجع false (Fail Open).
- * @param {string|number|null} quizId
- * @param {string} userName
- * @returns {boolean}
- */
-function isAlreadySubmittedInStorage(quizId, userName) {
-    try {
-        return localStorage.getItem(getSubmissionStorageKey(quizId, userName)) === 'true';
-    } catch (e) {
-        logQuizError('isAlreadySubmittedInStorage', e, { quizId, userName });
-        return false;
-    }
-}
-
-/**
- * يُسجِّل الاختبار كمُسلَّم في localStorage بعد النجاح.
- * @param {string|number|null} quizId
- * @param {string} userName
- */
-function markSubmittedInStorage(quizId, userName) {
-    try {
-        localStorage.setItem(getSubmissionStorageKey(quizId, userName), 'true');
-    } catch (e) {
-        logQuizError('markSubmittedInStorage', e, { quizId, userName });
-    }
-}
-
 // =============================================
 //  استمرارية النتيجة المعلّقة
 // =============================================
 
 /**
- * يحفظ النتيجة محلياً قبل إرسالها للسيرفر.
- * تضمن استمرارية البيانات إذا انقطع الاتصال أثناء الإرسال.
+ * يحفظ النتيجة محلياً قبل إرسالها للسيرفر —
+ * يضمن استمرارية البيانات إذا انقطع الاتصال.
  * @param {string|number} quizId
- * @param {Object} payload — بيانات النتيجة كما تُرسَل للـ API
+ * @param {Object}        payload
  */
 function savePendingScore(quizId, payload) {
     try {
@@ -182,8 +140,7 @@ function clearPendingScore(quizId) {
 
 /**
  * يتحقق شاملاً من سلامة بيانات الاختبار قبل أي عرض أو معالجة.
- * يفحص: البنية العامة، تفرّد المعرّفات، نصوص الأسئلة، سلامة الخيارات.
- * @param {Object} quizData — بيانات الاختبار الكاملة
+ * @param {Object} quizData
  * @returns {{ valid: boolean, errors: string[] }}
  */
 function validateQuizData(quizData) {
@@ -193,7 +150,6 @@ function validateQuizData(quizData) {
         return { valid: false, errors: ['بيانات الاختبار غير موجودة أو ذات تنسيق غير صالح.'] };
     }
 
-    // التحقق من حقل الإعداد
     if (!quizData.config || typeof quizData.config !== 'object') {
         errors.push('حقل الإعداد (config) مفقود أو غير صالح.');
     } else {
@@ -205,7 +161,6 @@ function validateQuizData(quizData) {
         }
     }
 
-    // التحقق من قائمة الأسئلة
     if (!Array.isArray(quizData.questions) || quizData.questions.length === 0) {
         errors.push('قائمة الأسئلة مفقودة أو فارغة.');
         return { valid: false, errors };
@@ -215,43 +170,28 @@ function validateQuizData(quizData) {
 
     quizData.questions.forEach((q, idx) => {
         const prefix = `السؤال ${idx + 1}`;
+        if (!q || typeof q !== 'object') { errors.push(`${prefix}: بيانات السؤال غير صالحة.`); return; }
 
-        if (!q || typeof q !== 'object') {
-            errors.push(`${prefix}: بيانات السؤال غير صالحة.`);
-            return;
-        }
-
-        // فحص تفرّد معرّف السؤال
         if (q.id !== undefined && q.id !== null) {
             const strId = String(q.id);
-            if (seenQuestionIds.has(strId)) {
-                errors.push(`${prefix}: معرّف السؤال (${strId}) مكرر.`);
-            } else {
-                seenQuestionIds.add(strId);
-            }
+            if (seenQuestionIds.has(strId)) errors.push(`${prefix}: معرّف السؤال (${strId}) مكرر.`);
+            else seenQuestionIds.add(strId);
         }
 
-        // فحص نص السؤال
         if (!q.question || typeof q.question !== 'string' || !q.question.trim()) {
             errors.push(`${prefix}: نص السؤال مفقود أو فارغ.`);
         }
 
-        // فحص الخيارات
         if (!Array.isArray(q.answerOptions) || q.answerOptions.length < 2) {
             errors.push(`${prefix}: يجب توفير خيارَين على الأقل ضمن answerOptions.`);
         } else {
             const correctOptions = q.answerOptions.filter(o => o?.isCorrect === true);
-            if (correctOptions.length === 0) {
-                errors.push(`${prefix}: لا يوجد خيار صحيح (isCorrect: true) محدد.`);
-            } else if (correctOptions.length > 1) {
-                errors.push(`${prefix}: تم تحديد ${correctOptions.length} إجابات صحيحة — يُسمح بواحدة فقط.`);
-            }
+            if (correctOptions.length === 0) errors.push(`${prefix}: لا يوجد خيار صحيح (isCorrect: true) محدد.`);
+            else if (correctOptions.length > 1) errors.push(`${prefix}: تم تحديد ${correctOptions.length} إجابات صحيحة — يُسمح بواحدة فقط.`);
+
             q.answerOptions.forEach((opt, oi) => {
-                if (!opt || typeof opt !== 'object') {
-                    errors.push(`${prefix}، الخيار ${oi + 1}: بيانات الخيار غير صالحة.`);
-                } else if (!opt.text || typeof opt.text !== 'string' || !opt.text.trim()) {
-                    errors.push(`${prefix}، الخيار ${oi + 1}: نص الخيار مفقود أو فارغ.`);
-                }
+                if (!opt || typeof opt !== 'object') errors.push(`${prefix}، الخيار ${oi + 1}: بيانات الخيار غير صالحة.`);
+                else if (!opt.text || typeof opt.text !== 'string' || !opt.text.trim()) errors.push(`${prefix}، الخيار ${oi + 1}: نص الخيار مفقود أو فارغ.`);
             });
         }
     });
@@ -264,13 +204,11 @@ function validateQuizData(quizData) {
 // =============================================
 
 /**
- * يُرسِل النتيجة للسيرفر مع إعادة المحاولة التلقائية عند الفشل
- * باستخدام Exponential Backoff لتجنّب إغراق السيرفر.
- * @param {Object} payload — بيانات النتيجة المُرسَلة
+ * يُرسِل النتيجة للسيرفر مع Exponential Backoff.
+ * @param {Object} payload
  * @param {number} [maxRetries=MAX_SCORE_RETRIES]
  * @param {number} [baseDelayMs=SCORE_RETRY_BASE_DELAY_MS]
  * @returns {Promise<Object>}
- * @throws {Error} آخر خطأ إذا فشلت جميع المحاولات
  */
 async function submitScoreWithRetry(payload, maxRetries = MAX_SCORE_RETRIES, baseDelayMs = SCORE_RETRY_BASE_DELAY_MS) {
     let lastError;
@@ -280,9 +218,7 @@ async function submitScoreWithRetry(payload, maxRetries = MAX_SCORE_RETRIES, bas
         } catch (e) {
             lastError = e;
             logQuizError(`submitScoreWithRetry (${attempt}/${maxRetries})`, e, { payload });
-            if (attempt < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, baseDelayMs * attempt));
-            }
+            if (attempt < maxRetries) await new Promise(r => setTimeout(r, baseDelayMs * attempt));
         }
     }
     throw lastError;
@@ -290,13 +226,12 @@ async function submitScoreWithRetry(payload, maxRetries = MAX_SCORE_RETRIES, bas
 
 /**
  * يعرض رسالة خطأ حفظ النتيجة مع زر إعادة محاولة يدوية.
- * يبني العناصر برمجياً لتجنّب أي ثغرات XSS.
- * @param {HTMLElement|null} errorEl — عنصر عرض الخطأ
- * @param {number} numericId — معرّف الاختبار الرقمي
- * @param {Object} scorePayload — بيانات النتيجة
- * @param {string} userName — اسم المستخدم الحالي
+ * @param {HTMLElement|null} errorEl      — عنصر عرض الخطأ
+ * @param {number}           numericId    — معرّف الاختبار الرقمي
+ * @param {Object}           scorePayload — بيانات النتيجة
+ * @param {Function}         [onSuccess]  — callback يُستدعى بعد نجاح إعادة المحاولة
  */
-function showScoreErrorWithRetry(errorEl, numericId, scorePayload, userName) {
+function showScoreErrorWithRetry(errorEl, numericId, scorePayload, onSuccess) {
     if (!errorEl) return;
     errorEl.classList.remove('hidden');
     errorEl.innerHTML = '';
@@ -313,9 +248,13 @@ function showScoreErrorWithRetry(errorEl, numericId, scorePayload, userName) {
         retryBtn.disabled = true;
         retryBtn.textContent = 'جارٍ المحاولة...';
         try {
-            await submitScoreWithRetry(scorePayload);
+            const result = await submitScoreWithRetry(scorePayload);
             clearPendingScore(numericId);
-            markSubmittedInStorage(numericId, userName);
+
+            // تحديث الـ attemptsMap واستدعاء الـ callback عند النجاح
+            if (result?.meta) updateAttemptsMap(numericId, result.meta);
+            onSuccess?.(result);
+
             errorEl.textContent = '✅ تم حفظ نتيجتك بنجاح.';
             errorEl.classList.remove('text-red-700');
             errorEl.classList.add('text-green-700');
@@ -333,7 +272,145 @@ function showScoreErrorWithRetry(errorEl, numericId, scorePayload, userName) {
 }
 
 // =============================================
-//  عناصر DOM — تُعيَّن عند استدعاء initQuizDOM()
+//  ★ إدارة المحاولات — Attempt Tracking ★
+// =============================================
+
+/**
+ * يجلب عدد المحاولات من السيرفر ويُعبِّئ state.attemptsMap.
+ * يُستدعى بعد تسجيل الدخول وبعد كل تسليم ناجح.
+ * @returns {Promise<void>}
+ */
+export async function loadAttemptsMap() {
+    if (!state.currentUser) return;
+    if (!state.attemptsMap) state.attemptsMap = {};
+
+    try {
+        const data = await apiCall('GET', '/api/scores/my/attempts');
+        if (Array.isArray(data)) {
+            data.forEach(({ quizId, attemptCount, hasOfficial }) => {
+                state.attemptsMap[String(quizId)] = { attemptCount, hasOfficial };
+            });
+        }
+        console.log('[AttemptsMap] محُمِّل من السيرفر —', Object.keys(state.attemptsMap).length, 'اختبار');
+    } catch (e) {
+        logQuizError('loadAttemptsMap', e);
+        // Fail-open: نحتفظ بأي بيانات موجودة محلياً
+    }
+}
+
+/**
+ * يُعيد بيانات المحاولات لاختبار معيّن من state.attemptsMap.
+ * يعود بـ { attemptCount: 0, hasOfficial: false } إذا لم توجد محاولات.
+ * @param {string|number|null} quizId
+ * @returns {{ attemptCount: number, hasOfficial: boolean }}
+ */
+function getAttemptInfo(quizId) {
+    if (!quizId) return { attemptCount: 0, hasOfficial: false };
+
+    const key = String(quizId);
+
+    // المصدر الأساسي: attemptsMap (مُحمَّل من السيرفر)
+    if (state.attemptsMap?.[key]) return state.attemptsMap[key];
+
+    // Fallback: عدّ النتائج الموجودة في serverScores
+    if (Array.isArray(state.serverScores)) {
+        const count = state.serverScores.filter(s => s.quizId && String(s.quizId) === key).length;
+        if (count > 0) return { attemptCount: count, hasOfficial: true };
+    }
+
+    return { attemptCount: 0, hasOfficial: false };
+}
+
+/**
+ * يُحدِّث state.attemptsMap بعد كل تسليم ناجح.
+ * @param {string|number}         quizId
+ * @param {{ isOfficial: boolean, attemptNumber: number }|null} meta — من رد السيرفر
+ */
+function updateAttemptsMap(quizId, meta) {
+    if (!quizId) return;
+    if (!state.attemptsMap) state.attemptsMap = {};
+
+    const key     = String(quizId);
+    const current = state.attemptsMap[key] || { attemptCount: 0, hasOfficial: false };
+
+    state.attemptsMap[key] = {
+        attemptCount: current.attemptCount + 1,
+        hasOfficial:  current.hasOfficial || (meta?.isOfficial === true)
+    };
+
+    console.log(`[AttemptsMap] ✓ تحديث — quizId=${quizId}`, state.attemptsMap[key]);
+}
+
+// =============================================
+//  ★ واجهة اللافتات — Attempt Banners ★
+// =============================================
+
+/**
+ * يعرض لافتة توضيحية داخل شاشة الاختبار توضح طبيعة المحاولة.
+ * تُدرَج بعد quiz-subtitle إن وُجد، وإلا تُدرَج في أعلى quiz-container.
+ * @param {number}  attemptCount — عدد المحاولات السابقة (0 = المحاولة الأولى الحالية)
+ */
+function renderAttemptBanner(attemptCount) {
+    const isOfficial     = attemptCount === 0;
+    const attemptNumber  = attemptCount + 1;
+
+    let bannerEl = document.getElementById('quiz-attempt-banner');
+    if (!bannerEl) {
+        bannerEl = document.createElement('div');
+        bannerEl.id = 'quiz-attempt-banner';
+
+        // محاولة إدراج بعد subtitle، وإلا في أعلى quiz-container
+        const subtitleEl     = document.getElementById('quiz-subtitle');
+        const containerEl    = document.getElementById('quiz-container');
+        if (subtitleEl?.parentNode) {
+            subtitleEl.parentNode.insertBefore(bannerEl, subtitleEl.nextSibling);
+        } else if (containerEl) {
+            containerEl.prepend(bannerEl);
+        }
+    }
+
+    bannerEl.className = isOfficial
+        ? 'rounded-xl p-3 my-3 text-sm text-center font-medium bg-blue-50 border border-blue-200 text-blue-800'
+        : 'rounded-xl p-3 my-3 text-sm text-center font-medium bg-amber-50 border border-amber-200 text-amber-800';
+
+    bannerEl.textContent = isOfficial
+        ? '⭐ هذه محاولتك الأولى — ستُحتسب في لوحة الشرف تلقائياً'
+        : `📝 محاولة تدريبية رقم ${attemptNumber} — لن تُحتسب في لوحة الشرف. (فقط المحاولة الأولى تُحتسب)`;
+
+    bannerEl.classList.remove('hidden');
+}
+
+/**
+ * يعرض نتيجة المحاولة في شاشة النتائج مع توضيح الطبيعة الرسمية أو التدريبية.
+ * يُدرَج في أعلى results-screen.
+ * @param {{ isOfficial: boolean, attemptNumber: number }} meta
+ */
+function renderResultsAttemptInfo(meta) {
+    const isOfficial    = meta?.isOfficial    ?? true;
+    const attemptNumber = meta?.attemptNumber ?? 1;
+
+    let infoEl = document.getElementById('results-attempt-info');
+    if (!infoEl) {
+        infoEl = document.createElement('div');
+        infoEl.id = 'results-attempt-info';
+
+        const resultsScreen = document.getElementById('results-screen');
+        if (resultsScreen) resultsScreen.prepend(infoEl);
+    }
+
+    infoEl.className = isOfficial
+        ? 'rounded-xl p-4 mb-4 text-center font-semibold text-sm bg-green-50 border border-green-200 text-green-800'
+        : 'rounded-xl p-4 mb-4 text-center font-semibold text-sm bg-gray-50 border border-gray-200 text-gray-600';
+
+    infoEl.textContent = isOfficial
+        ? '✅ نتيجتك الرسمية — تم احتسابها في لوحة الشرف'
+        : `📝 محاولة تدريبية رقم ${attemptNumber} — لم تُحتسب في لوحة الشرف`;
+
+    infoEl.classList.remove('hidden');
+}
+
+// =============================================
+//  عناصر DOM
 // =============================================
 
 /** @type {HTMLElement|null} */ let questionTextEl = null;
@@ -352,38 +429,39 @@ function showScoreErrorWithRetry(errorEl, numericId, scorePayload, userName) {
 /** @type {HTMLElement|null} */ let submitButton = null;
 
 /**
- * تهيئة عناصر DOM الخاصة بالاختبار — يجب استدعاؤها بعد تحميل الصفحة
+ * تهيئة عناصر DOM الخاصة بالاختبار.
  */
 export function initQuizDOM() {
     logFunctionStatus('initQuizDOM', false);
-    questionTextEl = document.getElementById('question-text');
-    questionHintEl = document.getElementById('question-hint');
-    optionsContainerEl = document.getElementById('options-container');
-    currentQuestionNumberEl = document.getElementById('current-question-number');
-    totalQuestionsEl = document.getElementById('total-questions');
-    scoreDisplayEl = document.getElementById('score-display');
-    timerDisplayEl = document.getElementById('timer-display');
-    progressBarEl = document.getElementById('progress-bar');
-    feedbackBoxEl = document.getElementById('feedback-box');
-    feedbackMessageEl = document.getElementById('feedback-message');
-    rationaleTextEl = document.getElementById('rationale-text');
-    nextButton = document.getElementById('next-btn');
-    previousButton = document.getElementById('previous-btn');
-    submitButton = document.getElementById('submit-btn');
+    questionTextEl         = document.getElementById('question-text');
+    questionHintEl         = document.getElementById('question-hint');
+    optionsContainerEl     = document.getElementById('options-container');
+    currentQuestionNumberEl= document.getElementById('current-question-number');
+    totalQuestionsEl       = document.getElementById('total-questions');
+    scoreDisplayEl         = document.getElementById('score-display');
+    timerDisplayEl         = document.getElementById('timer-display');
+    progressBarEl          = document.getElementById('progress-bar');
+    feedbackBoxEl          = document.getElementById('feedback-box');
+    feedbackMessageEl      = document.getElementById('feedback-message');
+    rationaleTextEl        = document.getElementById('rationale-text');
+    nextButton             = document.getElementById('next-btn');
+    previousButton         = document.getElementById('previous-btn');
+    submitButton           = document.getElementById('submit-btn');
 }
 
 // =============================================
-//  دوال محرك الاختبار
+//  ★ playQuiz — يدعم إعادة المحاولة ★
 // =============================================
 
 /**
- * بدء اختبار من القائمة
+ * بدء اختبار من القائمة.
+ * يتحقق من عدد المحاولات السابقة ويعرض لافتة توضيحية دون حجب إعادة المحاولة.
  * @param {number} index — فهرس الاختبار في allQuizzes
  */
 export function playQuiz(index) {
     logFunctionStatus('playQuiz', false);
 
-    // 1. استدعاء بيانات الاختبار والتحقق من صحتها أولاً
+    // 1. التحقق من صحة البيانات
     const quizData = state.allQuizzes[index];
     const { valid, errors } = validateQuizData(quizData);
     if (!valid) {
@@ -398,38 +476,28 @@ export function playQuiz(index) {
 
     state.currentQuizData = quizData;
 
-    // 2. استخراج المعرّف بشكل موحّد
+    // 2. استخراج المعرّف
     const quizId = getQuizId(state.currentQuizData);
-    const userName = state.currentUser?.fullName ?? null;
     console.log(`[playQuiz] بدء الامتحان — index: ${index}, ID: ${quizId}, العنوان: "${state.currentQuizData.config.title}", أسئلة: ${state.currentQuizData.questions.length}`);
 
-    // 3. التحقق من التسليم المسبق — السيرفر أولاً، ثم المحلي، ثم localStorage
-    const takenServer = state.serverScores.find(
-        s => s.quizId && quizId && String(s.quizId) === String(quizId)
-    );
-    const takenLocal = (!takenServer && userName)
-        ? state.allUserScores.find(
-            s => s.quizTitle === state.currentQuizData.config.title && s.userName === userName
-          )
-        : null;
-    const takenStorage = quizId && userName
-        ? isAlreadySubmittedInStorage(quizId, userName)
-        : false;
+    // 3. تحديد طبيعة المحاولة (رسمية أم تدريبية) بدلاً من حجبها
+    const { attemptCount, hasOfficial } = getAttemptInfo(quizId);
+    const isOfficialAttempt = attemptCount === 0; // الأولى فقط رسمية
 
-    if (takenServer || takenLocal || takenStorage) {
-        showAlert('⚠️ لقد أجبت على هذا الامتحان من قبل. لا يمكن إعادته بنفس الحساب.', 'warning');
-        return;
-    }
+    // حفظ طبيعة المحاولة في state ليستخدمها submitQuiz كاحتياط
+    state.currentAttemptIsOfficial = isOfficialAttempt;
 
-    state.totalQuestions = state.currentQuizData.questions.length;
+    console.log(`[playQuiz] المحاولة رقم ${attemptCount + 1} — ${isOfficialAttempt ? 'رسمية ⭐' : 'تدريبية 📝'}`);
 
     // 4. تصفير العدادات
+    state.totalQuestions       = state.currentQuizData.questions.length;
     state.currentQuestionIndex = 0;
-    state.score = 0;
-    state.streak = 0;
-    state.userAnswers = new Array(state.totalQuestions).fill(null);
-    state.timeRemaining = state.currentQuizData.config.timeLimit;
-    state.quizStarted = false;
+    state.score                = 0;
+    state.streak               = 0;
+    state.userAnswers          = new Array(state.totalQuestions).fill(null);
+    state.timeRemaining        = state.currentQuizData.config.timeLimit;
+    state.quizStarted          = false;
+    state.lastSubmitMeta       = null;
 
     // 5. إدارة الواجهة
     closeBottomSheet();
@@ -438,22 +506,26 @@ export function playQuiz(index) {
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('quiz-main-title').innerText = state.currentQuizData.config.title;
 
-    const subtitleEl = document.getElementById('quiz-subtitle');
-    const timeInMinutes = Math.max(1, Math.round((state.currentQuizData.config.timeLimit || 0) / 60));
+    const subtitleEl       = document.getElementById('quiz-subtitle');
+    const timeInMinutes    = Math.max(1, Math.round((state.currentQuizData.config.timeLimit || 0) / 60));
     subtitleEl.textContent = `${state.currentQuizData.config.description || 'اختبار تفاعلي'} (${state.totalQuestions} سؤالاً في ${timeInMinutes} دقيقة)`;
     timerDisplayEl.textContent = formatTime(state.timeRemaining);
 
     document.getElementById('results-screen').classList.add('hidden');
-
-    // 6. بدء الاختبار
     document.getElementById('quiz-container').classList.remove('hidden');
     _showThemeToggle(false);
+
+    // 6. عرض لافتة المحاولة — توضيح قبل البدء
+    renderAttemptBanner(attemptCount);
+
+    // 7. بدء الاختبار
     initializeQuiz();
 }
 
-/**
- * تهيئة الاختبار — ضبط العدد الكلي وبدء العرض والمؤقت
- */
+// =============================================
+//  تهيئة الاختبار وعرض الأسئلة (unchanged)
+// =============================================
+
 export function initializeQuiz() {
     logFunctionStatus('initializeQuiz', false);
     totalQuestionsEl.textContent = state.totalQuestions;
@@ -464,16 +536,11 @@ export function initializeQuiz() {
     }
 }
 
-/**
- * عرض السؤال الحالي مع الخيارات والتقدم
- */
 export function renderQuestion() {
     logFunctionStatus('renderQuestion', false);
     const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
 
     currentQuestionNumberEl.textContent = state.currentQuestionIndex + 1;
-
-    // XSS: escapeHtml لكل البيانات الواردة من السيرفر قبل innerHTML
     questionTextEl.innerHTML = `${state.currentQuestionIndex + 1}. ${escapeHtml(currentQ.question)}`;
     questionHintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${escapeHtml(currentQ.hint || '')}`;
 
@@ -488,12 +555,11 @@ export function renderQuestion() {
     }
 
     updateProgressBar();
-
     optionsContainerEl.innerHTML = '';
+
     currentQ.answerOptions.forEach((option, index) => {
         const optionEl = document.createElement('div');
         optionEl.className = 'answer-option p-4 border-2 border-gray-300 rounded-xl cursor-pointer transition duration-300 shadow-sm text-gray-800 font-medium text-arabic';
-        // XSS: textContent آمن دائماً لعرض بيانات المستخدم/السيرفر
         optionEl.textContent = option.text;
         optionEl.setAttribute('data-index', index);
         optionEl.onclick = () => selectAnswer(index);
@@ -502,12 +568,8 @@ export function renderQuestion() {
         if (state.userAnswers[state.currentQuestionIndex] !== null) {
             const { selectedIndex, isCorrect } = state.userAnswers[state.currentQuestionIndex];
             disableOptions();
-            if (index === selectedIndex) {
-                optionEl.classList.add('selected', isCorrect ? 'correct-answer' : 'incorrect-answer');
-            }
-            if (option.isCorrect) {
-                optionEl.classList.add('correct-answer');
-            }
+            if (index === selectedIndex) optionEl.classList.add('selected', isCorrect ? 'correct-answer' : 'incorrect-answer');
+            if (option.isCorrect) optionEl.classList.add('correct-answer');
         }
     });
 
@@ -517,35 +579,24 @@ export function renderQuestion() {
     }
 
     nextButton.disabled = state.userAnswers[state.currentQuestionIndex] === null;
-    if (state.userAnswers[state.currentQuestionIndex] === null) {
-        hideFeedback();
-    }
+    if (state.userAnswers[state.currentQuestionIndex] === null) hideFeedback();
 }
 
-/**
- * معالجة اختيار إجابة — تسجيل النقاط، السلسلة، التغذية الراجعة
- * @param {number} selectedIndex — فهرس الخيار المُختار
- */
 export function selectAnswer(selectedIndex) {
     logFunctionStatus('selectAnswer', false);
     if (state.userAnswers[state.currentQuestionIndex] !== null) return;
 
-    const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
-    const isCorrect = currentQ.answerOptions[selectedIndex].isCorrect;
-
-    // XSS: escapeHtml على rationale عند التخزين — مصدره السيرفر
-    const rationale = escapeHtml(
-        currentQ.answerOptions[selectedIndex].rationale || 'لا يوجد تبرير متاح لهذا الخيار.'
-    );
-
+    const currentQ       = state.currentQuizData.questions[state.currentQuestionIndex];
+    const isCorrect      = currentQ.answerOptions[selectedIndex].isCorrect;
+    const rationale      = escapeHtml(currentQ.answerOptions[selectedIndex].rationale || 'لا يوجد تبرير متاح لهذا الخيار.');
     const feedbackConfig = state.currentQuizData?.config?.feedback || {};
-    const correctFeedback = feedbackConfig.correct || {};
+    const correctFeedback   = feedbackConfig.correct   || {};
     const incorrectFeedback = feedbackConfig.incorrect || {};
-    const streakGoal = Number(state.currentQuizData?.config?.streakGoal) || 0;
+    const streakGoal     = Number(state.currentQuizData?.config?.streakGoal) || 0;
 
-    let newStreak = isCorrect ? state.streak + 1 : 0;
-    let feedbackMsg = isCorrect
-        ? escapeHtml(correctFeedback.message || '✅ إجابة صحيحة')
+    let newStreak    = isCorrect ? state.streak + 1 : 0;
+    let feedbackMsg  = isCorrect
+        ? escapeHtml(correctFeedback.message   || '✅ إجابة صحيحة')
         : escapeHtml(incorrectFeedback.message || '❌ إجابة غير صحيحة');
 
     if (isCorrect) {
@@ -569,57 +620,45 @@ export function selectAnswer(selectedIndex) {
         showToastMessage(pickRandom(toastOops), 'error');
     }
 
-    // rationale مُعقَّم مسبقاً بـ escapeHtml أعلاه — آمن للتخزين والعرض
     state.userAnswers[state.currentQuestionIndex] = { selectedIndex, isCorrect, rationale, feedbackMessage: feedbackMsg };
 
     disableOptions();
     showFeedback(isCorrect, rationale, feedbackMsg);
 
-    const optionElements = optionsContainerEl.children;
-    Array.from(optionElements).forEach(el => {
+    Array.from(optionsContainerEl.children).forEach(el => {
         const index = parseInt(el.getAttribute('data-index'));
         el.classList.remove('selected');
         el.onclick = null;
         if (currentQ.answerOptions[index].isCorrect) el.classList.add('correct-answer');
-        if (index === selectedIndex && !isCorrect) el.classList.add('incorrect-answer');
+        if (index === selectedIndex && !isCorrect)   el.classList.add('incorrect-answer');
     });
 
     nextButton.disabled = false;
 }
 
-/**
- * إظهار صندوق التغذية الراجعة
- * @param {boolean} isCorrect
- * @param {string} rationale — مُعقَّم بـ escapeHtml عند التخزين في selectAnswer
- * @param {string} message — مُعقَّم بـ escapeHtml عند البناء في selectAnswer
- */
 export function showFeedback(isCorrect, rationale, message) {
     logFunctionStatus('showFeedback', false);
-    const safeMessage = message || (isCorrect ? 'إجابة صحيحة.' : 'إجابة غير صحيحة.');
+    const safeMessage   = message   || (isCorrect ? 'إجابة صحيحة.'  : 'إجابة غير صحيحة.');
     const safeRationale = rationale || 'لا يوجد تبرير متاح لهذا الخيار.';
 
-    // innerHTML آمن: message مُعقَّم في selectAnswer، rationale عبر textContent
-    feedbackMessageEl.innerHTML = safeMessage;
-    rationaleTextEl.textContent = `التبرير: ${safeRationale}`;
+    feedbackMessageEl.innerHTML  = safeMessage;
+    rationaleTextEl.textContent  = `التبرير: ${safeRationale}`;
 
     feedbackBoxEl.classList.remove('scale-y-0', 'h-0', 'opacity-0');
     feedbackBoxEl.classList.add('scale-y-100', 'h-auto', 'opacity-100', 'p-4');
 
     if (isCorrect) {
-        feedbackBoxEl.classList.replace('incorrect-bg', 'correct-bg') || feedbackBoxEl.classList.add('correct-bg');
+        feedbackBoxEl.classList.replace('incorrect-bg', 'correct-bg')    || feedbackBoxEl.classList.add('correct-bg');
         feedbackMessageEl.classList.replace('text-red-900', 'text-white') || feedbackMessageEl.classList.add('text-white');
-        rationaleTextEl.classList.replace('text-red-900', 'text-white') || rationaleTextEl.classList.add('text-white');
+        rationaleTextEl.classList.replace('text-red-900', 'text-white')   || rationaleTextEl.classList.add('text-white');
     } else {
-        feedbackBoxEl.classList.replace('correct-bg', 'incorrect-bg') || feedbackBoxEl.classList.add('incorrect-bg');
+        feedbackBoxEl.classList.replace('correct-bg', 'incorrect-bg')    || feedbackBoxEl.classList.add('incorrect-bg');
         feedbackMessageEl.classList.replace('text-white', 'text-red-900') || feedbackMessageEl.classList.add('text-red-900');
-        rationaleTextEl.classList.replace('text-white', 'text-red-900') || rationaleTextEl.classList.add('text-red-900');
+        rationaleTextEl.classList.replace('text-white', 'text-red-900')   || rationaleTextEl.classList.add('text-red-900');
     }
     questionHintEl.classList.remove('hidden');
 }
 
-/**
- * إخفاء صندوق التغذية الراجعة
- */
 export function hideFeedback() {
     logFunctionStatus('hideFeedback', false);
     feedbackBoxEl.classList.add('scale-y-0', 'h-0', 'opacity-0');
@@ -627,17 +666,11 @@ export function hideFeedback() {
     questionHintEl.classList.add('hidden');
 }
 
-/**
- * تعطيل جميع الخيارات بعد الإجابة
- */
 export function disableOptions() {
     logFunctionStatus('disableOptions', false);
     Array.from(optionsContainerEl.children).forEach(el => el.onclick = null);
 }
 
-/**
- * الانتقال للسؤال التالي
- */
 export function goToNextQuestion() {
     logFunctionStatus('goToNextQuestion', false);
     if (state.currentQuestionIndex < state.totalQuestions - 1) {
@@ -646,9 +679,6 @@ export function goToNextQuestion() {
     }
 }
 
-/**
- * الانتقال للسؤال السابق
- */
 export function goToPreviousQuestion() {
     logFunctionStatus('goToPreviousQuestion', false);
     if (state.currentQuestionIndex > 0) {
@@ -657,9 +687,6 @@ export function goToPreviousQuestion() {
     }
 }
 
-/**
- * تحديث شريط التقدم
- */
 export function updateProgressBar() {
     logFunctionStatus('updateProgressBar', false);
     const progress = state.totalQuestions > 0
@@ -668,17 +695,12 @@ export function updateProgressBar() {
     progressBarEl.style.width = `${progress}%`;
 }
 
-/**
- * بدء المؤقت التنازلي باستخدام Date.now() لدقة أعلى.
- * يُضيف تحذيرات بصرية متدرّجة: برتقالي (≤5 دقائق)، أحمر نابض (≤60 ثانية).
- */
 export function startTimer() {
     logFunctionStatus('startTimer', false);
     if (state.timerInterval) clearInterval(state.timerInterval);
-    if (timerDisplayEl) {
-        timerDisplayEl.classList.remove('text-orange-500', 'text-red-600', 'animate-pulse');
-    }
-    state.timerStartTime = Date.now();
+    if (timerDisplayEl) timerDisplayEl.classList.remove('text-orange-500', 'text-red-600', 'animate-pulse');
+
+    state.timerStartTime   = Date.now();
     state.timerTotalSeconds = state.timeRemaining;
 
     state.timerInterval = setInterval(() => {
@@ -702,83 +724,97 @@ export function startTimer() {
     }, 1000);
 }
 
+// =============================================
+//  ★ submitQuiz — يدعم المحاولات المتعددة ★
+// =============================================
+
 /**
- * تسليم الاختبار — حفظ النتيجة وعرض شاشة النتائج.
- * محمي من التسليم المزدوج بطبقتين: flag في الذاكرة + localStorage عبر التبويبات.
- * يُرسِل النتيجة مع إعادة المحاولة ويحفظها محلياً حتى تأكيد السيرفر.
+ * تسليم الاختبار — يقبل محاولات غير محدودة.
+ * • المحاولة الأولى: السيرفر يحفظها كرسمية (isOfficial = true) وتُحسب في لوحة الشرف.
+ * • المحاولات التالية: السيرفر يحفظها كتدريبية (isOfficial = false).
+ * • يحدِّث state.attemptsMap بعد كل تسليم ناجح.
+ * • محمي من التسليم المزدوج في نفس التبويب عبر _isSubmitting فقط.
  */
 let _isSubmitting = false;
 export async function submitQuiz() {
     logFunctionStatus('submitQuiz', true);
 
-    // الطبقة الأولى: منع التسليم المزدوج في نفس التبويب (Race Condition مع المؤقت)
+    // الحماية الوحيدة المتبقية: منع Race Condition داخل نفس التبويب
     if (_isSubmitting) return;
-
-    // الطبقة الثانية: منع التسليم عبر التبويبات وإعادة التحميل
-    const quizId = getQuizId(state.currentQuizData);
-    const userName = state.currentUser?.fullName ?? null;
-    if (quizId && userName && isAlreadySubmittedInStorage(quizId, userName)) {
-        showAlert('⚠️ تم تسليم هذا الاختبار مسبقاً من هذا الحساب.', 'warning');
-        return;
-    }
-
     _isSubmitting = true;
 
     try {
         if (state.timeRemaining > 0) {
             const confirmed = await showConfirm('إنهاء الاختبار', 'هل أنت متأكد؟ لا يمكنك العودة بعد التسليم.', '⏱️');
-            if (!confirmed) {
-                _isSubmitting = false;
-                return;
-            }
+            if (!confirmed) { _isSubmitting = false; return; }
         }
         clearInterval(state.timerInterval);
 
-        // === حفظ النتيجة على السيرفر + محلياً ===
+        const quizId    = getQuizId(state.currentQuizData);
+        const numericId = Number(quizId);
+
+        // حفظ النتيجة محلياً (للعرض في لوحة التحكم بدون reload)
         if (state.currentUser) {
-            const resultEntry = {
-                userName: state.currentUser.fullName,
+            state.allUserScores.push({
+                userName:  state.currentUser.fullName,
                 quizTitle: state.currentQuizData.config.title,
-                score: state.score,
-                total: state.totalQuestions,
-                date: new Date().toLocaleDateString('ar-EG')
+                score:     state.score,
+                total:     state.totalQuestions,
+                date:      new Date().toLocaleDateString('ar-EG')
+            });
+        }
+
+        // إرسال النتيجة للسيرفر — السيرفر يحدد isOfficial تلقائياً
+        if (state.currentUser && quizId && Number.isFinite(numericId) && numericId > 0) {
+            const scorePayload = {
+                quizId:    numericId,
+                answers:   state.userAnswers.map((a, i) => ({
+                    questionId:    state.currentQuizData.questions[i]?.id ?? i,
+                    selectedIndex: a ? a.selectedIndex : -1
+                })),
+                timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
             };
-            state.allUserScores.push(resultEntry);
 
-            const numericId = Number(quizId);
-            console.log(`[submitScore] بدء إرسال النتيجة — quizId: ${quizId}, النتيجة: ${state.score}/${state.totalQuestions}`);
+            console.log(`[submitScore] إرسال — quizId: ${quizId}, نتيجة: ${state.score}/${state.totalQuestions}, isOfficial: ${state.currentAttemptIsOfficial}`);
+            savePendingScore(numericId, scorePayload);
 
-            if (quizId && Number.isFinite(numericId) && numericId > 0) {
-                const scorePayload = {
-                    quizId: numericId,
-                    answers: state.userAnswers.map((a, i) => ({
-                        questionId: state.currentQuizData.questions[i]?.id ?? i,
-                        selectedIndex: a ? a.selectedIndex : -1
-                    })),
-                    timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining
+            try {
+                const scoreResult = await submitScoreWithRetry(scorePayload);
+                clearPendingScore(numericId);
+
+                // قراءة meta من رد السيرفر
+                const meta = scoreResult.meta || {
+                    isOfficial:    state.currentAttemptIsOfficial ?? true,
+                    attemptNumber: (getAttemptInfo(quizId).attemptCount + 1)
                 };
 
-                // حفظ النتيجة محلياً قبل الإرسال — ضمان الاستمرارية
-                savePendingScore(numericId, scorePayload);
+                // تحديث عداد المحاولات محلياً
+                updateAttemptsMap(quizId, meta);
 
-                try {
-                    const scoreResult = await submitScoreWithRetry(scorePayload);
-                    console.log(`[submitScore] ✓ تم حفظ النتيجة على السيرفر`, scoreResult.result || scoreResult);
-                    clearPendingScore(numericId);
-                    markSubmittedInStorage(quizId, userName);
-                } catch (e) {
-                    logQuizError('submitQuiz — submitScoreWithRetry', e, { quizId, numericId });
-                    const saveErrEl = document.getElementById('save-score-error');
-                    showScoreErrorWithRetry(saveErrEl, numericId, scorePayload, userName);
-                }
-            } else {
-                console.warn(`[submitScore] ⚠️ الامتحان ليس له ID سيرفر صالح (${quizId}) — النتيجة محفوظة محلياً فقط`);
-                // نُسجِّل التسليم في الـ storage حتى للاختبارات بلا ID سيرفر
-                if (quizId && userName) markSubmittedInStorage(quizId, userName);
+                // حفظ meta لعرضها في شاشة النتائج
+                state.lastSubmitMeta = meta;
+
+                console.log(`[submitScore] ✓ تم — محاولة رقم ${meta.attemptNumber}, ${meta.isOfficial ? 'رسمية ⭐' : 'تدريبية 📝'}`);
+
+            } catch (e) {
+                logQuizError('submitQuiz — submitScoreWithRetry', e, { quizId, numericId });
+                const saveErrEl = document.getElementById('save-score-error');
+                showScoreErrorWithRetry(saveErrEl, numericId, scorePayload, (result) => {
+                    if (result?.meta) {
+                        updateAttemptsMap(quizId, result.meta);
+                        state.lastSubmitMeta = result.meta;
+                        // تحديث لافتة النتائج بعد نجاح إعادة المحاولة
+                        renderResultsAttemptInfo(result.meta);
+                    }
+                });
             }
+        } else {
+            console.warn(`[submitScore] ⚠️ معرّف غير صالح (${quizId}) — النتيجة محلية فقط`);
         }
-        // ========================================
 
+        // ========================
+        //  عرض شاشة النتائج
+        // ========================
         document.getElementById('quiz-container').classList.add('hidden');
         document.getElementById('results-screen').classList.remove('hidden');
 
@@ -789,17 +825,18 @@ export async function submitQuiz() {
             state.currentQuizData.config.closingMessage || 'شكراً لمشاركتك!';
 
         let finalMessage = 'ما شاء الله تبارك الرحمن! نتائجك مُبهرة.';
-        if (percentage < 50) {
-            finalMessage = 'هون عليك! لكل جواد كبوة، والتعلم رحلة مستمرة.';
-        } else if (percentage < 75) {
-            finalMessage = 'مستوى جيد جداً! لديك أساس متين.';
-        } else if (percentage < 90) {
-            finalMessage = 'ممتاز يا بطل! أداؤك قوي.';
-        }
+        if (percentage < 50)      finalMessage = 'هون عليك! لكل جواد كبوة، والتعلم رحلة مستمرة.';
+        else if (percentage < 75) finalMessage = 'مستوى جيد جداً! لديك أساس متين.';
+        else if (percentage < 90) finalMessage = 'ممتاز يا بطل! أداؤك قوي.';
         document.getElementById('final-message').textContent = finalMessage;
 
+        // عرض لافتة الطبيعة الرسمية / التدريبية في النتائج
+        renderResultsAttemptInfo(state.lastSubmitMeta || {
+            isOfficial:    state.currentAttemptIsOfficial ?? true,
+            attemptNumber: getAttemptInfo(quizId).attemptCount  // بعد التحديث
+        });
+
     } catch (unexpectedError) {
-        // أي خطأ غير متوقع في تدفق التسليم
         logQuizError('submitQuiz — unexpected', unexpectedError);
         showAlert('❌ حدث خطأ غير متوقع أثناء تسليم الاختبار. يرجى التواصل مع المسؤول.', 'error');
     } finally {
@@ -807,11 +844,23 @@ export async function submitQuiz() {
     }
 }
 
+// =============================================
+//  العودة للصفحة الرئيسية
+// =============================================
+
 /**
- * العودة إلى الصفحة الرئيسية من شاشة النتائج
- * @param {Function} renderDashboard — دالة إعادة رسم لوحة التحكم
+ * العودة إلى لوحة التحكم من شاشة النتائج.
+ * يُخفي لافتات المحاولة قبل الخروج.
+ * @param {Function} renderDashboard
  */
 export function exitToMain(renderDashboard) {
+    // إخفاء لافتات المحاولة
+    const attemptBanner = document.getElementById('quiz-attempt-banner');
+    if (attemptBanner) attemptBanner.classList.add('hidden');
+
+    const resultsInfo = document.getElementById('results-attempt-info');
+    if (resultsInfo) resultsInfo.classList.add('hidden');
+
     document.getElementById('results-screen').classList.add('hidden');
     document.getElementById('quiz-container').classList.add('hidden');
     document.getElementById('dashboard-view').classList.remove('hidden');

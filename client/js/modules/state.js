@@ -71,8 +71,68 @@ const state = {
     /** @type {number|null} مؤقت تجديد التوكن */
     tokenRefreshTimer: null,
     /** @type {string} معرف Google OAuth */
-    GOOGLE_CLIENT_ID: '124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com'
+    GOOGLE_CLIENT_ID: '124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com',
+
+    /**
+     * @type {Object} عدد محاولات كل طالب لكل اختبار
+     * @description هيكل البيانات: { [studentEmail]: { [quizId]: attemptCount } }
+     * @example
+     * // { "student@example.com": { "quiz_01": 3, "quiz_02": 1 } }
+     */
+    quizAttempts: {}
 };
+
+// ─────────────────────────────────────────────
+//  دوال إدارة عدد المحاولات
+// ─────────────────────────────────────────────
+
+/**
+ * إرجاع عدد محاولات طالب معين لاختبار معين.
+ *
+ * @param {string} email   - البريد الإلكتروني للطالب
+ * @param {string} quizId  - معرّف الاختبار
+ * @returns {number} عدد المحاولات (0 إذا لم توجد سجلات بعد)
+ *
+ * @example
+ * const attempts = getAttemptCount('student@example.com', 'quiz_01');
+ * console.log(attempts); // 2
+ */
+export function getAttemptCount(email, quizId) {
+    if (!email || !quizId) return 0;
+    return state.quizAttempts[email]?.[quizId] ?? 0;
+}
+
+/**
+ * زيادة عدد محاولات طالب معين لاختبار معين بمقدار 1،
+ * مع إنشاء السجل تلقائياً إن لم يكن موجوداً.
+ *
+ * @param {string} email   - البريد الإلكتروني للطالب
+ * @param {string} quizId  - معرّف الاختبار
+ * @returns {number} عدد المحاولات المحدَّث
+ * @throws {Error} إذا كان email أو quizId فارغاً
+ *
+ * @example
+ * updateAttemptCount('student@example.com', 'quiz_01'); // 1
+ * updateAttemptCount('student@example.com', 'quiz_01'); // 2
+ */
+export function updateAttemptCount(email, quizId) {
+    if (!email || !quizId) {
+        throw new Error('updateAttemptCount: يجب توفير email و quizId صالحَين.');
+    }
+
+    // أنشئ مدخل الطالب إن لم يكن موجوداً
+    if (!state.quizAttempts[email]) {
+        state.quizAttempts[email] = {};
+    }
+
+    // أنشئ مدخل الاختبار إن لم يكن موجوداً، ثم زد العداد
+    state.quizAttempts[email][quizId] =
+        (state.quizAttempts[email][quizId] ?? 0) + 1;
+
+    return state.quizAttempts[email][quizId];
+}
+
+// ─────────────────────────────────────────────
 
 /** @constant {string} مفتاح تخزين الثيم */
 export const THEME_KEY = 'app-theme';

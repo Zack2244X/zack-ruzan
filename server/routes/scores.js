@@ -2,7 +2,13 @@
  * @file Score and results routes
  * @description Express router for quiz score submission, retrieval, leaderboard,
  *   admin statistics, and score management. Scores are graded server-side to prevent cheating.
+ *   Supports unlimited retakes — first attempt is official (leaderboard), subsequent are practice only.
  * @module routes/scores
+ *
+ * @requires Score model — يجب إضافة الحقلَين التاليَين في migration:
+ *   • isOfficial   BOOLEAN NOT NULL DEFAULT true
+ *   • attemptNumber INTEGER NOT NULL DEFAULT 1
+ *   وحذف أي UNIQUE CONSTRAINT على (userId, quizId) إن وُجد.
  */
 
 // ============================================
@@ -10,7 +16,7 @@
 //   — Sequelize + TiDB —
 // ============================================
 const router = require('express').Router();
-const { UniqueConstraintError } = require('sequelize');
+const { Op } = require('sequelize');
 const sequelize = require('../models/index');
 const Score = require('../models/Score');
 const Quiz = require('../models/Quiz');
@@ -20,47 +26,58 @@ const { validateSubmitScore, validatePagination, validateIdParam, validateQuizId
 const logger = require('../utils/logger');
 
 // ============================================
+//   resolveAttemptMeta — تحديد رقم المحاولة وطبيعتها
+// ============================================
+/**
+ * يحسب رقم المحاولة الحالية ويحدد إن كانت رسمية أم تدريبية.
+ * المحاولة الأولى دائماً رسمية (isOfficial = true) وتُحتسب في لوحة الشرف.
+ * المحاولات التالية تدريبية (isOfficial = false) ولا تؤثر على الترتيب.
+ *
+ * @param {number} userId  — معرّف المستخدم
+ * @param {number} quizId  — معرّف الاختبار
+ * @returns {Promise<{ attemptNumber: number, isOfficial: boolean }>}
+ */
+async function resolveAttemptMeta(userId, quizId) {
+    const existingCount = await Score.count({ where: { userId, quizId } });
+    const attemptNumber = existingCount + 1;
+    return { attemptNumber, isOfficial: attemptNumber === 1 };
+}
+
+// ============================================
 //   POST /api/scores — تسليم إجابات الامتحان
 //   (السيرفر يحسب الدرجة لمنع الغش)
+//   يقبل محاولات متعددة — الأولى رسمية، التالية تدريبية
 // ============================================
 /**
  * @route POST /api/scores
  * @description Submits a student's quiz answers. The server fetches the quiz, grades each
  *   answer against the stored correct options, and creates a Score record.
- *   Prevents duplicate submissions per user per quiz.
+ *   First attempt per user per quiz is marked isOfficial = true (counts for leaderboard).
+ *   Subsequent attempts are marked isOfficial = false (practice only, no leaderboard effect).
  * @access Private — requires authentication.
- * @param {import('express').Request} req - Express request with `quizId`, `answers`, and optional `timeTaken` in body.
- * @param {import('express').Response} res - Express response with `{ message, result, details }`.
+ * @param {import('express').Request}  req - body: { quizId, answers, timeTaken? }
+ * @param {import('express').Response} res - { message, result, details, meta }
  * @returns {Promise<void>}
  */
 router.post('/', authenticate, validateSubmitScore, async (req, res) => {
     try {
         const { quizId, answers, timeTaken } = req.body;
 
-        // التحقق من أن الطالب لم يجب من قبل
-        const existingScore = await Score.findOne({
-            where: { userId: req.user.id, quizId }
-        });
-        if (existingScore) {
-            return res.status(409).json({
-                error: 'لقد أجبت على هذا الامتحان من قبل.',
-                score: existingScore
-            });
-        }
+        // 1. تحديد رقم المحاولة وطبيعتها (رسمية أم تدريبية)
+        const { attemptNumber, isOfficial } = await resolveAttemptMeta(req.user.id, quizId);
 
-        // جلب الامتحان
+        // 2. جلب الامتحان
         const quiz = await Quiz.findByPk(quizId);
         if (!quiz) {
             return res.status(404).json({ error: 'الامتحان غير موجود.' });
         }
 
-        // === حساب الدرجة في السيرفر (منع الغش) ===
+        // 3. حساب الدرجة في السيرفر (منع الغش)
         let correctCount = 0;
         const gradedAnswers = [];
         const questions = quiz.questions; // JSON array
 
         for (const answer of answers) {
-            // البحث عن السؤال في الـ JSON بالـ id
             const question = questions.find(q => q.id === answer.questionId);
             if (!question) continue;
 
@@ -70,65 +87,82 @@ router.post('/', authenticate, validateSubmitScore, async (req, res) => {
             if (isCorrect) correctCount++;
 
             gradedAnswers.push({
-                questionId: answer.questionId,
+                questionId:    answer.questionId,
                 selectedIndex: answer.selectedIndex,
                 isCorrect
             });
         }
 
-        // إنشاء سجل النتيجة
+        // 4. حفظ السجل مع تمييز الرسمية والتدريبية
         const score = await Score.create({
-            userId: req.user.id,
+            userId:        req.user.id,
             quizId,
-            answers: gradedAnswers,
-            score: correctCount,
-            total: questions.length,
-            timeTaken: timeTaken || 0
+            answers:       gradedAnswers,
+            score:         correctCount,
+            total:         questions.length,
+            timeTaken:     timeTaken || 0,
+            isOfficial,      // true للأولى فقط
+            attemptNumber    // 1، 2، 3، ...
         });
 
-        // إرجاع النتيجة مع التفاصيل
+        logger.info(
+            `[Score] userId=${req.user.id} quizId=${quizId}` +
+            ` attempt=${attemptNumber} isOfficial=${isOfficial}` +
+            ` score=${correctCount}/${questions.length}`
+        );
+
+        // 5. بناء التفاصيل للرد
         const detailedResults = questions.map(q => {
-            const studentAnswer = gradedAnswers.find(
-                a => a.questionId === q.id
-            );
+            const studentAnswer = gradedAnswers.find(a => a.questionId === q.id);
             return {
-                question: q.question,
-                hint: q.hint,
-                options: q.answerOptions,
+                question:      q.question,
+                hint:          q.hint,
+                options:       q.answerOptions,
                 selectedIndex: studentAnswer ? studentAnswer.selectedIndex : -1,
-                isCorrect: studentAnswer ? studentAnswer.isCorrect : false
+                isCorrect:     studentAnswer ? studentAnswer.isCorrect : false
             };
         });
 
         res.status(201).json({
-            message: 'تم تسليم الامتحان بنجاح!',
+            message: isOfficial
+                ? 'تم تسليم الامتحان بنجاح! تم احتساب نتيجتك في لوحة الشرف.'
+                : `تم تسليم المحاولة التدريبية رقم ${attemptNumber} بنجاح. لن تؤثر على لوحة الشرف.`,
             result: {
-                score: correctCount,
-                total: questions.length,
-                percentage: Math.round((correctCount / questions.length) * 100),
+                score:          correctCount,
+                total:          questions.length,
+                percentage:     Math.round((correctCount / questions.length) * 100),
                 closingMessage: quiz.closingMessage
+            },
+            // meta تُستهلك بواسطة quiz.js لعرض لافتة النتائج
+            meta: {
+                isOfficial,
+                attemptNumber
             },
             details: detailedResults
         });
+
     } catch (error) {
-        if (error instanceof UniqueConstraintError) {
-            return res.status(409).json({ error: 'لقد أجبت على هذا الامتحان من قبل.' });
-        }
-        logger.error('خطأ في تسليم الامتحان:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء تسليم الامتحان.' });
+        const dbMsg = error.original?.message || error.message;
+        logger.error('خطأ في تسليم الامتحان:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({
+            error: 'حدث خطأ أثناء تسليم الامتحان.',
+            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
+        });
     }
 });
 
 // ============================================
 //   GET /api/scores/my — درجاتي (الطالب الحالي)
+//   يعيد كل المحاولات (رسمية وتدريبية)
 // ============================================
 /**
  * @route GET /api/scores/my
- * @description Retrieves all scores for the currently authenticated student,
- *   including associated quiz titles and subjects, ordered by most recent.
+ * @description Retrieves all score records for the currently authenticated student,
+ *   including official and practice attempts, with quiz details. Ordered by most recent.
+ *   The client uses `isOfficial` and `attemptNumber` to build state.attemptsMap.
  * @access Private — requires authentication.
- * @param {import('express').Request} req - Express request.
- * @param {import('express').Response} res - Express response with an array of score objects.
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res - Array of score objects with isOfficial, attemptNumber.
  * @returns {Promise<void>}
  */
 router.get('/my', authenticate, async (req, res) => {
@@ -139,24 +173,74 @@ router.get('/my', authenticate, async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        // يُرجع كل الحقول من نموذج Score (بما فيها isOfficial وattemptNumber)
         res.json(scores);
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب الدرجات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
+        res.status(500).json({
+            error: 'حدث خطأ.',
+            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
+        });
+    }
+});
+
+// ============================================
+//   GET /api/scores/my/attempts — عدد محاولاتي لكل اختبار
+//   يُستخدم لتعبئة state.attemptsMap عند تحميل التطبيق
+// ============================================
+/**
+ * @route GET /api/scores/my/attempts
+ * @description Returns attempt counts per quiz for the current user.
+ *   Used by the frontend to populate state.attemptsMap and decide isOfficial before starting.
+ * @access Private — requires authentication.
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res - Array of { quizId, attemptCount, hasOfficial }
+ * @returns {Promise<void>}
+ */
+router.get('/my/attempts', authenticate, async (req, res) => {
+    try {
+        const [rows] = await sequelize.query(
+            `SELECT
+                 quizId,
+                 COUNT(id)                                          AS attemptCount,
+                 MAX(CASE WHEN isOfficial = 1 THEN 1 ELSE 0 END)   AS hasOfficial
+             FROM scores
+             WHERE userId = :userId
+               AND deletedAt IS NULL
+             GROUP BY quizId`,
+            { replacements: { userId: req.user.id } }
+        );
+
+        const result = rows.map(r => ({
+            quizId:       r.quizId,
+            attemptCount: parseInt(r.attemptCount) || 0,
+            hasOfficial:  Boolean(parseInt(r.hasOfficial))
+        }));
+
+        res.json(result);
+    } catch (error) {
+        const dbMsg = error.original?.message || error.message;
+        logger.error('خطأ في جلب عدد المحاولات:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({
+            error: 'حدث خطأ.',
+            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
+        });
     }
 });
 
 // ============================================
 //   GET /api/scores/leaderboard — لوحة الشرف
+//   تعتمد على المحاولات الرسمية فقط (isOfficial = 1)
 // ============================================
 /**
  * @route GET /api/scores/leaderboard
  * @description Returns the top 50 students ranked by average percentage.
+ *   ONLY official scores (first attempt per quiz) are included — practice attempts are excluded.
  *   Aggregates total score, exam count, average percentage, and full-marks count.
  * @access Private — requires authentication.
- * @param {import('express').Request} req - Express request.
- * @param {import('express').Response} res - Express response with an array of leaderboard entries.
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res - Array of leaderboard entries.
  * @returns {Promise<void>}
  */
 router.get('/leaderboard', authenticate, async (req, res) => {
@@ -173,19 +257,22 @@ router.get('/leaderboard', authenticate, async (req, res) => {
                 SUM(CASE WHEN s.score = s.total THEN 1 ELSE 0 END) AS fullMarksCount
             FROM scores s
             INNER JOIN users u ON s.userId = u.id
-            WHERE s.deletedAt IS NULL
-              AND u.deletedAt IS NULL
+            WHERE s.deletedAt  IS NULL
+              AND u.deletedAt  IS NULL
+              AND s.isOfficial = 1
             GROUP BY s.userId, u.fname, u.lname
             ORDER BY fullMarksCount DESC, avgPercentage DESC, totalScore DESC
             LIMIT 50
         `);
 
         const result = rows.map(entry => ({
-            userName: entry.fname ? `${entry.fname} ${entry.lname || ''}`.trim() : 'مستخدم محذوف',
-            totalScore: parseInt(entry.totalScore) || 0,
-            totalMax: parseInt(entry.totalMax) || 0,
-            examsCount: parseInt(entry.examsCount) || 0,
-            avgPercentage: Math.round(parseFloat(entry.avgPercentage) || 0),
+            userName:       entry.fname
+                ? `${entry.fname} ${entry.lname || ''}`.trim()
+                : 'مستخدم محذوف',
+            totalScore:     parseInt(entry.totalScore)    || 0,
+            totalMax:       parseInt(entry.totalMax)      || 0,
+            examsCount:     parseInt(entry.examsCount)    || 0,
+            avgPercentage:  Math.round(parseFloat(entry.avgPercentage) || 0),
             fullMarksCount: parseInt(entry.fullMarksCount) || 0
         }));
 
@@ -193,7 +280,10 @@ router.get('/leaderboard', authenticate, async (req, res) => {
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب لوحة الشرف:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
+        res.status(500).json({
+            error: 'حدث خطأ.',
+            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
+        });
     }
 });
 
@@ -202,11 +292,12 @@ router.get('/leaderboard', authenticate, async (req, res) => {
 // ============================================
 /**
  * @route GET /api/scores/quiz/:quizId
- * @description Retrieves all scores for a specific quiz, sorted by percentage descending.
- *   Includes student names. Requires admin privileges.
+ * @description Retrieves all scores for a specific quiz (official and practice),
+ *   sorted by percentage descending. Includes student names, isOfficial, attemptNumber.
+ *   Requires admin privileges.
  * @access Private — requires authentication + admin role.
- * @param {import('express').Request} req - Express request with `quizId` param.
- * @param {import('express').Response} res - Express response with an array of score result objects.
+ * @param {import('express').Request}  req - `quizId` param
+ * @param {import('express').Response} res - Array of score result objects.
  * @returns {Promise<void>}
  */
 router.get('/quiz/:quizId', authenticate, requireAdmin, validateQuizIdParam, async (req, res) => {
@@ -214,16 +305,22 @@ router.get('/quiz/:quizId', authenticate, requireAdmin, validateQuizIdParam, asy
         const scores = await Score.findAll({
             where: { quizId: req.params.quizId },
             include: [{ model: User, as: 'user', attributes: ['fname', 'lname'] }],
-            order: [['percentage', 'DESC']]
+            order: [
+                ['isOfficial',   'DESC'],   // الرسمية أولاً
+                ['percentage',   'DESC'],
+                ['attemptNumber','ASC']
+            ]
         });
 
         const results = scores.map(s => ({
-            userName: s.user ? `${s.user.fname} ${s.user.lname}` : 'محذوف',
-            score: s.score,
-            total: s.total,
-            percentage: s.percentage,
-            timeTaken: s.timeTaken,
-            date: s.createdAt
+            userName:      s.user ? `${s.user.fname} ${s.user.lname}` : 'محذوف',
+            score:         s.score,
+            total:         s.total,
+            percentage:    s.percentage,
+            timeTaken:     s.timeTaken,
+            isOfficial:    s.isOfficial,
+            attemptNumber: s.attemptNumber,
+            date:          s.createdAt
         }));
 
         res.json(results);
@@ -238,20 +335,29 @@ router.get('/quiz/:quizId', authenticate, requireAdmin, validateQuizIdParam, asy
 // ============================================
 /**
  * @route GET /api/scores/all
- * @description Retrieves a paginated list of all scores across all quizzes.
- *   Includes student names and quiz details. Requires admin privileges.
+ * @description Retrieves a paginated list of all scores (official and practice).
+ *   Includes student names, quiz details, isOfficial, and attemptNumber.
+ *   Requires admin privileges.
  * @access Private — requires authentication + admin role.
- * @param {import('express').Request} req - Express request with optional `page` and `limit` query params.
- * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
+ * @param {import('express').Request}  req - optional `page`, `limit` query params.
+ *   Optional filter: `?officialOnly=true` to return only official attempts.
+ * @param {import('express').Response} res - { data, total, page, totalPages }
  * @returns {Promise<void>}
  */
 router.get('/all', authenticate, requireAdmin, validatePagination, async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
+        const page   = parseInt(req.query.page)  || 1;
+        const limit  = parseInt(req.query.limit) || 50;
         const offset = (page - 1) * limit;
 
+        // فلتر اختياري للأدمن: officialOnly=true
+        const where = {};
+        if (req.query.officialOnly === 'true') {
+            where.isOfficial = true;
+        }
+
         const { count, rows: scores } = await Score.findAndCountAll({
+            where,
             include: [
                 { model: User, as: 'user', attributes: ['fname', 'lname'] },
                 { model: Quiz, as: 'quiz', attributes: ['title', 'subject'] }
@@ -262,20 +368,25 @@ router.get('/all', authenticate, requireAdmin, validatePagination, async (req, r
         });
 
         const results = scores.map(s => ({
-            userName: s.user ? `${s.user.fname} ${s.user.lname}` : 'محذوف',
-            quizTitle: s.quiz ? s.quiz.title : 'محذوف',
-            quizSubject: s.quiz ? s.quiz.subject : '',
-            score: s.score,
-            total: s.total,
-            percentage: s.percentage,
-            date: s.createdAt
+            userName:      s.user ? `${s.user.fname} ${s.user.lname}` : 'محذوف',
+            quizTitle:     s.quiz ? s.quiz.title   : 'محذوف',
+            quizSubject:   s.quiz ? s.quiz.subject : '',
+            score:         s.score,
+            total:         s.total,
+            percentage:    s.percentage,
+            isOfficial:    s.isOfficial,
+            attemptNumber: s.attemptNumber,
+            date:          s.createdAt
         }));
 
         res.json({ data: results, total: count, page, totalPages: Math.ceil(count / limit) });
     } catch (error) {
         const dbMsg = error.original?.message || error.parent?.message || error.message;
         logger.error('خطأ في جلب كل النتائج:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
+        res.status(500).json({
+            error: 'حدث خطأ.',
+            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
+        });
     }
 });
 
@@ -285,20 +396,30 @@ router.get('/all', authenticate, requireAdmin, validatePagination, async (req, r
 /**
  * @route GET /api/scores/stats
  * @description Returns platform-wide statistics: total students, total exams,
- *   total scores submitted, and overall average percentage. Requires admin privileges.
+ *   total official scores, total practice scores, and overall average percentage.
+ *   Requires admin privileges.
  * @access Private — requires authentication + admin role.
- * @param {import('express').Request} req - Express request.
- * @param {import('express').Response} res - Express response with `{ totalStudents, totalExams, totalScores, avgPercentage }`.
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res - stats object
  * @returns {Promise<void>}
  */
 router.get('/stats', authenticate, requireAdmin, async (req, res) => {
     try {
-        const [totalStudents, totalExams, totalScores, avgResult] = await Promise.all([
+        const [
+            totalStudents,
+            totalExams,
+            totalOfficialScores,
+            totalPracticeScores,
+            avgResult
+        ] = await Promise.all([
             User.count({ where: { role: 'student' } }),
             Quiz.count(),
-            Score.count(),
+            Score.count({ where: { isOfficial: true  } }),
+            Score.count({ where: { isOfficial: false } }),
+            // متوسط النسبة يعتمد على المحاولات الرسمية فقط لدقة أعلى
             Score.findAll({
                 attributes: [[sequelize.fn('AVG', sequelize.col('percentage')), 'avg']],
+                where: { isOfficial: true },
                 raw: true
             })
         ]);
@@ -306,8 +427,10 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
         res.json({
             totalStudents,
             totalExams,
-            totalScores,
-            avgPercentage: avgResult[0] && avgResult[0].avg
+            totalOfficialScores,
+            totalPracticeScores,
+            totalScores: totalOfficialScores + totalPracticeScores,
+            avgPercentage: avgResult[0]?.avg
                 ? Math.round(parseFloat(avgResult[0].avg))
                 : 0
         });
@@ -324,8 +447,8 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
  * @route DELETE /api/scores/:id
  * @description Deletes a single score record by its ID. Requires admin privileges.
  * @access Private — requires authentication + admin role.
- * @param {import('express').Request} req - Express request with `id` param.
- * @param {import('express').Response} res - Express response with `{ message }`.
+ * @param {import('express').Request}  req - `id` param
+ * @param {import('express').Response} res - { message }
  * @returns {Promise<void>}
  */
 router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
