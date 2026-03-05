@@ -33,6 +33,8 @@ export function closeAddNoteModal() {
         saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> حفظ في السجل';
     }
     state.editingNoteIndex = -1;
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.remove('hidden');
 }
 
 /**

@@ -37,6 +37,8 @@ export function closeCreateSection() {
     logFunctionStatus('closeCreateSection', false);
     document.getElementById('create-section-modal').classList.add('hidden');
     _showThemeToggle(true);
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.remove('hidden');
 }
 
 /**

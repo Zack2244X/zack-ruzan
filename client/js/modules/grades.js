@@ -53,6 +53,8 @@ export function closeGradesModal() {
     logFunctionStatus('closeGradesModal', false);
     _showThemeToggle(true);
     document.getElementById('grades-modal').classList.add('hidden');
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.remove('hidden');
 }
 
 /**
@@ -200,6 +202,8 @@ export function closeStatsModal() {
     logFunctionStatus('closeStatsModal', false);
     document.getElementById('stats-modal').classList.add('hidden');
     _showThemeToggle(true);
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.remove('hidden');
 }
 
 /**
