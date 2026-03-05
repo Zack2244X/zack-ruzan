@@ -575,9 +575,8 @@ function showCustomExitModal() {
             if (typeof updateDockUI === 'function') updateDockUI('home');
             const btn = document.getElementById('quiz-exit-btn');
             if (btn) btn.remove();
-        };
-    }
-}
+            }
+        }
         const quizContainer = document.getElementById('quiz-container');
         if (quizContainer) quizContainer.appendChild(btn);
     }
