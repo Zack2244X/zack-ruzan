@@ -226,7 +226,8 @@ function measureFPS(durationMs = 500) {
  * const result = await getDevicePerformanceTier();
  * // { tier: 'high', cores: 8, memory: 8, fps: 60, prefersReducedMotion: false }
  */
-export async function getDevicePerformanceTier() {
+export async function getDevicePerformanceTier(options = {}) {
+    const { skipFPSTest = false } = options || {};
     // ── 1. إرادة المستخدم — لها الأولوية القصوى ─────────────────────────────
     const prefersReducedMotion =
         typeof window !== 'undefined' &&
@@ -254,17 +255,21 @@ export async function getDevicePerformanceTier() {
     // القيمة -1 تعني "غير مدعوم" ولن تُحتسب في النقاط
     const memory = navigator.deviceMemory ?? -1;
 
-    // ── 3. قياس FPS الفعلي ───────────────────────────────────────────────────
-    // نقيس على 500ms — وقت قصير بما يكفي لعدم إبطاء التطبيق
-    // وطويل بما يكفي للحصول على متوسط موثوق
-    const fps = await measureFPS(500);
+    // ── 3. قياس FPS الفعلي (تخطي بناءً على الخيار) ───────────────────────────
+    // إذا طُلب تخطي قياس FPS فنرجع قيمة -1 لتدل على "غير مقاسة"
+    let fps = -1;
+    if (!skipFPSTest) {
+        // نقيس على 500ms — وقت قصير بما يكفي لعدم إبطاء التطبيق
+        // وطويل بما يكفي للحصول على متوسط موثوق
+        fps = await measureFPS(500);
+    }
 
     // ── 4. حساب النقاط ───────────────────────────────────────────────────────
     let score = 3; // نبدأ من الأفضل ونطرح
 
     if (cores < 4) score--;          // نوى قليلة → أداء محدود
     if (memory !== -1 && memory < 4) score--; // ذاكرة منخفضة (إن كانت متاحة)
-    if (fps < 50) score--;           // FPS منخفض → GPU/CPU متعب
+    if (fps !== -1 && fps < 50) score--;           // FPS منخفض → GPU/CPU متعب
 
     // ── 5. تحويل النقاط إلى مستوى ────────────────────────────────────────────
     /** @type {PerformanceTier} */
@@ -273,4 +278,26 @@ export async function getDevicePerformanceTier() {
     const result = { tier, cores, memory, fps, prefersReducedMotion: false };
     console.log('[DevicePerf]', result);
     return result;
+}
+
+/**
+ * Quick synchronous device tier heuristic (no async, no FPS test).
+ * Suitable for inline scripts that must bail out synchronously.
+ * @returns {'high'|'medium'|'low'}
+ */
+export function getQuickDeviceTier() {
+    try {
+        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) return 'low';
+
+        const cores = navigator.hardwareConcurrency ?? 1;
+        const memory = navigator.deviceMemory ?? -1;
+
+        let score = 3;
+        if (cores < 4) score--;
+        if (memory !== -1 && memory < 4) score--;
+        return score >= 3 ? 'high' : score === 2 ? 'medium' : 'low';
+    } catch (e) {
+        return 'low';
+    }
 }

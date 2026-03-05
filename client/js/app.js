@@ -9,7 +9,7 @@
 
 // === الوحدات (Modules) ===
 import state from './modules/state.js';
-import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray, logFunctionStatus } from './modules/helpers.js';
+import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray, logFunctionStatus, getQuickDeviceTier } from './modules/helpers.js';
 import { apiCall, loadDataFromServer, fetchLeaderboardFromServer, fetchScoresFromServer } from './modules/api.js';
 import {
     _syncMainInteractionState, _showThemeToggle, updateDockUI,
@@ -148,10 +148,11 @@ window.addEventListener('pagehide', () => {
  *  - 'medium' → حركات مخففة (سرعة مخفضة) + تمرير ناعم بدون scroll-enter
  *  - 'low'    → reduced-motion كامل + تعطيل التمرير الناعم توفيراً للموارد
  */
-async function applyPerformanceBasedAnimationSettings() {
+async function applyPerformanceBasedAnimationSettings(perf) {
     logFunctionStatus('applyPerformanceBasedAnimationSettings', true);
     // getDevicePerformanceTier is async and returns an object { tier, ... }
-    const perf = await getDevicePerformanceTier();
+    // If `perf` provided, reuse it to avoid duplicate measurements.
+    if (!perf) perf = await getDevicePerformanceTier();
     const tier = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
     console.log(`[app] 🖥️ مستوى أداء الجهاز: ${tier}`, perf);
 
@@ -384,6 +385,8 @@ Object.assign(window, {
 
     // Helpers
     escapeHtml, showAlert, showConfirm, showLoading,
+    // Quick perf helper for inline scripts
+    getQuickDeviceTier,
 
     // Animations & Scroll (exposed for use from HTML/other scripts if needed)
     scrollToTop, scrollToElement,
@@ -419,11 +422,21 @@ window.onload = async function () {
     // ── تهيئة وحدات الحركة والتمرير ──────────────────────────────────────────
     // يجب أن تسبق applyPerformanceBasedAnimationSettings() حتى تكون
     // الوحدتان جاهزتين قبل استقبال أوامر الضبط
-    await initAnimations();
+    // ── قياس مستوى الجهاز المبسّط مبكّراً ونشره لوحدات الواجهة ─────────────
+    const perf = await getDevicePerformanceTier({ skipFPSTest: true });
+    try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
+    if (perf && perf.tier === 'low') {
+        document.body.classList.add('reduced-graphics');
+    }
+
+    // تهيئة الحركات — مرّر نتيجة الأداء لتجنّب إعادة القياس
+    await initAnimations(perf);
+
+    // تهيئة التمرير (scroll.js يتحقّق من window.__devicePerf ويمنع Lenis على low-tier)
     initScroll();
 
     // ── ضبط إعدادات الحركة بناءً على أداء الجهاز ────────────────────────────
-    await applyPerformanceBasedAnimationSettings();
+    await applyPerformanceBasedAnimationSettings(perf);
 
     // جلب إعدادات السيرفر (GOOGLE_CLIENT_ID) لإزالة التكرار
     try {

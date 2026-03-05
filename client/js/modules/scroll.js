@@ -113,6 +113,16 @@ function _buildScrollObserver() {
  * initScroll();
  */
 export function initScroll(options = {}) {
+    // خيارات مساعدة: تمكين/تعطيل أو تخطّي التهيئة على الأجهزة منخفضة الأداء
+    const { enabled = true, skipOnLowTier = true } = options || {};
+    if (!enabled) {
+        console.log('[scroll] init skipped via options.enabled=false');
+        return null;
+    }
+    if (skipOnLowTier && typeof window !== 'undefined' && window.__devicePerf?.tier === 'low') {
+        console.log('[scroll] init skipped on low-tier device');
+        return null;
+    }
     // تجنب التهيئة المزدوجة
     if (_lenis) {
         console.warn('[scroll] initScroll() استُدعيت مرة ثانية — تجاهل.');

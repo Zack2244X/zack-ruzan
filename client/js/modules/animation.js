@@ -94,7 +94,7 @@ async function detectAndApplyRefreshRate() {
  *
  * @returns {Promise<void>}
  */
-export async function initAnimations() {
+export async function initAnimations(perfOverride) {
     if (initialized) {
         console.warn('[Animations] ⚠️ تم التهيئة مسبقاً');
         return;
@@ -111,11 +111,11 @@ export async function initAnimations() {
     // ── كشف معدل تحديث الشاشة وضبط الـ ticker ───────────────────────────
     await detectAndApplyRefreshRate();
 
-    // ── كشف أداء الجهاز وضبط التعقيد ────────────────────────────────────
+    // ── كشف أداء الجهاز وضبط التعقيد (يمكن تمرير perfOverride لتجنّب القياس المزدوج)
     try {
-        // استخدام النسخة المتزامنة لتجنب إضافة تأخير كبير في بدء التشغيل
-        // الدالة الكاملة async تُعيد كائنًا { tier, cores, memory, fps }
-        const perf = await getDevicePerformanceTier({ skipFPSTest: true });
+        const perf = perfOverride || await getDevicePerformanceTier({ skipFPSTest: true });
+        // احفظ النتيجة عالمياً لتستخدمها بقية السكربتات إن لزم
+        try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
         // اقبل إما السلسلة المباشرة أو الكائن المُرجَع
         currentTier = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
         applyTierSettings(currentTier);
