@@ -63,7 +63,8 @@ const Quiz = sequelize.define('Quiz', {
     },
     title: {
         type: DataTypes.STRING(255),
-        allowNull: false
+        allowNull: false,
+        unique: true // منع تكرار العنوان
     },
     subject: {
         type: DataTypes.STRING(100),
@@ -114,7 +115,10 @@ const Quiz = sequelize.define('Quiz', {
 }, {
     tableName: 'quizzes',
     timestamps: true,
-    paranoid: true
+    paranoid: true,
+    indexes: [
+        { unique: true, fields: ['title'] }
+    ]
 });
 
 module.exports = Quiz;

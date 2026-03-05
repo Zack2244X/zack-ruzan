@@ -231,6 +231,12 @@ router.post('/', authenticate, requireAdmin, validateCreateQuiz, async (req, res
             closingMessage, streakGoal, feedback, questions
         } = req.body;
 
+        // تحقق من عدم وجود امتحان بنفس العنوان
+        const existingQuiz = await Quiz.findOne({ where: { title } });
+        if (existingQuiz) {
+            return res.status(409).json({ error: 'يوجد بالفعل امتحان بهذا العنوان. يرجى اختيار عنوان مختلف.' });
+        }
+
         // التحقق من صحة كل سؤال + إضافة ID فريد
         const processedQuestions = [];
         for (let i = 0; i < questions.length; i++) {
