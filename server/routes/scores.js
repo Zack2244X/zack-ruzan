@@ -358,7 +358,10 @@ router.get('/leaderboard', authenticate, async (req, res) => {
                 SUM(s.score)      AS totalScore,
                 SUM(s.total)      AS totalMax,
                 COUNT(s.id)       AS examsCount,
-                AVG(s.percentage) AS avgPercentage,
+                -- Compute average percentage from score/total to avoid depending on a
+                -- possibly non-persistent `percentage` column. Use NULLIF to avoid
+                -- division-by-zero; multiply by 100 to express as percent.
+                AVG((s.score / NULLIF(s.total, 0)) * 100) AS avgPercentage,
                 SUM(CASE WHEN s.score = s.total THEN 1 ELSE 0 END) AS fullMarksCount
             FROM scores s
             INNER JOIN users u ON s.userId = u.id
