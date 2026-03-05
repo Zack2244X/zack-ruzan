@@ -572,7 +572,7 @@ export function renderQuestion() {
     const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
 
     currentQuestionNumberEl.textContent = state.currentQuestionIndex + 1;
-    questionTextEl.innerHTML = `<span style="color:#e53935;font-weight:bold;">${state.currentQuestionIndex + 1}. ${escapeHtml(currentQ.question)}</span>`;
+    questionTextEl.innerHTML = `<span style="background: linear-gradient(90deg, #ff1744, #ff9100, #00e676); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:bold;">${state.currentQuestionIndex + 1}. ${escapeHtml(currentQ.question)}</span>`;
     questionHintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${escapeHtml(currentQ.hint || '')}`;
 
     previousButton.disabled = state.currentQuestionIndex === 0 || !state.quizStarted;
