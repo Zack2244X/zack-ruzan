@@ -572,6 +572,33 @@ window.deleteNoteFromHistoryTree = function(noteId, event) {
 }
 
 /**
+ * حذف امتحان من شجرة التعديل (قسم الإدارة) — يظهر فقط للأدمن
+ * @param {string} examId
+ * @param {Event} event
+ */
+window.deleteExamFromEditTree = function(examId, event) {
+    event.stopPropagation();
+    state.examToDelete = examId;
+    // وضع علامة سياق الحذف كي نعيد رسم شجرة التعديل بعد الحذف
+    state._lastDeleteContext = 'edit';
+    document.getElementById('delete-exam-msg').innerText = 'هل أنت متأكد من حذف هذا الامتحان؟ سيتم مسحه نهائياً!';
+    document.getElementById('delete-exam-modal').classList.remove('hidden');
+}
+
+/**
+ * حذف مذكرة من شجرة التعديل (قسم الإدارة) — يظهر فقط للأدمن
+ * @param {string} noteId
+ * @param {Event} event
+ */
+window.deleteNoteFromEditTree = function(noteId, event) {
+    event.stopPropagation();
+    state.noteToDelete = noteId;
+    state._lastDeleteContext = 'edit';
+    document.getElementById('delete-exam-msg').innerText = 'هل أنت متأكد من حذف هذه المذكرة؟ سيتم مسحها نهائياً!';
+    document.getElementById('delete-exam-modal').classList.remove('hidden');
+}
+
+/**
  * إغلاق مودل تأكيد الحذف
  */
 window.closeDeleteExamModal = function() {
@@ -607,6 +634,12 @@ window.confirmDeleteExamOrNote = async function() {
     document.getElementById('delete-exam-modal').classList.add('hidden');
     // إعادة رسم الشجرة بعد الحذف
     if (typeof renderHistoryTree === 'function') renderHistoryTree(playQuiz, forceDownload);
+    // إذا كانت عملية الحذف من واجهة التعديل، أعد رسم شجرة التعديل أيضاً
+    try {
+        if (state._lastDeleteContext === 'edit' && typeof renderEditTree === 'function') renderEditTree();
+    } catch (e) {
+        // لا تفعل شيئاً إن لم تكن الدوال متاحة في هذا السياق
+    }
 }
 
 /* مودل تأكيد حذف الامتحان أو المذكرة */
