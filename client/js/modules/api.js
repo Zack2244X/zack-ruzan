@@ -1,3 +1,7 @@
+// Provide a fetch-like wrapper for dashboard.js compatibility
+export async function apiFetch(url) {
+    return await apiCall('GET', url);
+}
 /**
  * @module api
  * @description دوال الاتصال بالسيرفر — API calls
