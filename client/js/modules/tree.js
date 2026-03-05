@@ -333,26 +333,32 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
 
                 if (state.editTabMode === 'exams') {
                     html += `
-                        <div onclick="loadQuizIntoBuilder(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer group mb-2">
-                            <div class="flex justify-between items-center">
-                                <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
-                                <i class="fas fa-pen text-blue-200 group-hover:text-blue-500 transition"></i>
+                        <div class="relative group mb-2">
+                            <div onclick="loadQuizIntoBuilder(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-400 transition cursor-pointer">
+                                <div class="flex justify-between items-center">
+                                    <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
+                                    <i class="fas fa-pen text-blue-200 group-hover:text-blue-500 transition"></i>
+                                </div>
+                                <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                </div>
                             </div>
-                            <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
-                            </div>
+                            ${state.isAdmin ? `<button onclick="deleteExamFromEditTree('${escapeHtml(config.id)}', event)\" class="absolute top-2 left-2 bg-red-50 hover:bg-red-200 text-red-600 rounded-full p-2 shadow transition\" title="حذف الامتحان"><i class="fas fa-trash"></i></button>` : ''}
                         </div>
                     `;
                 } else {
                     html += `
-                        <div onclick="loadNoteIntoBuilder(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-400 transition cursor-pointer group mb-2">
-                            <div class="flex justify-between items-center">
-                                <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate">${escapeHtml(config.title)}</p>
-                                <i class="fas fa-pen text-orange-200 group-hover:text-orange-500 transition"></i>
+                        <div class="relative group mb-2">
+                            <div onclick="loadNoteIntoBuilder(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-400 transition cursor-pointer">
+                                <div class="flex justify-between items-center">
+                                    <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate">${escapeHtml(config.title)}</p>
+                                    <i class="fas fa-pen text-orange-200 group-hover:text-orange-500 transition"></i>
+                                </div>
+                                <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                    <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                </div>
                             </div>
-                            <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
-                            </div>
+                            ${state.isAdmin ? `<button onclick="deleteNoteFromEditTree('${escapeHtml(config.id)}', event)\" class="absolute top-2 left-2 bg-red-50 hover:bg-red-200 text-red-600 rounded-full p-2 shadow transition\" title="حذف المذكرة"><i class="fas fa-trash"></i></button>` : ''}
                         </div>
                     `;
                 }
