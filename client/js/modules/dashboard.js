@@ -4,46 +4,83 @@
  */
 import state from './state.js';
 import { escapeHtml, logFunctionStatus } from './helpers.js';
-import { getAttempts } from './api.js';
+import { apiFetch } from './api.js'; // ← نستخدم apiFetch المركزية بدلاً من getAttempts الفردية
 
 // ─────────────────────────────────────────────
 //  دوال المساعدة للمحاولات
 // ─────────────────────────────────────────────
 
 /**
- * جلب عدد المحاولات لمجموعة امتحانات مع تخزين مؤقت في state.attemptsMap.
+ * جلب عدد المحاولات لجميع الامتحانات دفعةً واحدة من /api/scores/my/attempts.
  *
- * يتحقق من الكاش أولاً ولا يُرسل طلباً للسيرفر إلا للبيانات الغائبة،
- * ويستخدم Promise.allSettled حتى لا يوقف فشل امتحان واحد بقية الطلبات.
+ * التحسينات المُطبّقة مقارنةً بالنسخة السابقة:
+ *  • طلب واحد بدلاً من N طلب (واحد لكل امتحان).
+ *  • كاش كامل: إذا كانت state.attemptsMap مليئة لا يُرسَل أي طلب.
+ *  • كاش جزئي: إذا كانت المخزّن يغطي كل الامتحانات المطلوبة لا طلب يُرسَل.
+ *  • يُملأ state.attemptsMap بعد كل جلب ليستفيد منه باقي الوحدات.
+ *  • عند خطأ الشبكة يُعيد الـ Map الجزئية الموجودة بدلاً من الإلقاء.
  *
- * @param {Array} quizzes - قائمة الامتحانات المراد جلب محاولاتها
+ * @param {Array}   quizzes   - قائمة الامتحانات المراد التحقق من محاولاتها
+ * @param {boolean} forceRefresh - تجاهل الكاش وإعادة الجلب (مفيد بعد تسليم امتحان)
  * @returns {Promise<Map<string, number>>} خريطة quizId → عدد المحاولات
  */
-async function resolveAttemptsMap(quizzes) {
+async function resolveAttemptsMap(quizzes, forceRefresh = false) {
+    // ── تهيئة الكاش إن لم يوجد ────────────────────────────────────────────
     if (!state.attemptsMap) state.attemptsMap = new Map();
 
-    // نُرسل طلبات فقط للامتحانات الغائبة من الكاش
-    const missing = quizzes.filter(q => !state.attemptsMap.has(String(q.id)));
-    if (missing.length === 0) return state.attemptsMap;
-
-    console.log(`[dashboard] جلب محاولات ${missing.length} امتحان من السيرفر...`);
-
-    const results = await Promise.allSettled(
-        missing.map(q =>
-            getAttempts(String(q.id)).then(count => ({ id: String(q.id), count }))
-        )
-    );
-
-    results.forEach((result, i) => {
-        const id = String(missing[i].id);
-        state.attemptsMap.set(
-            id,
-            result.status === 'fulfilled' ? (result.value.count ?? 0) : 0
-        );
-        if (result.status === 'rejected') {
-            console.warn(`[dashboard] ⚠️ تعذر جلب محاولات الامتحان ${id}:`, result.reason?.message);
+    // ── الكاش الكامل: لا حاجة لأي طلب ──────────────────────────────────
+    // إذا كان الكاش يغطي جميع الامتحانات المطلوبة نعود فوراً
+    if (!forceRefresh) {
+        const allCached = quizzes.every(q => state.attemptsMap.has(String(q.id)));
+        if (allCached && state.attemptsMap.size > 0) {
+            console.log('[dashboard] ✓ attemptsMap من الكاش — لا طلب مُرسَل');
+            return state.attemptsMap;
         }
-    });
+    }
+
+    // ── طلب واحد يجلب كل المحاولات ──────────────────────────────────────
+    console.log('[dashboard] ← جلب /api/scores/my/attempts (طلب واحد)...');
+
+    try {
+        // GET /api/scores/my/attempts → [{ quizId, attemptCount, hasOfficial }, ...]
+        const rows = await apiFetch('/api/scores/my/attempts');
+
+        if (!Array.isArray(rows)) {
+            throw new TypeError(`استجابة غير متوقعة من السيرفر: ${JSON.stringify(rows)}`);
+        }
+
+        // ── تعبئة state.attemptsMap بالبيانات الجديدة ─────────────────────
+        rows.forEach(row => {
+            if (row?.quizId != null) {
+                state.attemptsMap.set(String(row.quizId), Number(row.attemptCount) || 0);
+            }
+        });
+
+        // ── ضمان وجود مدخل لكل امتحان مطلوب (حتى غير الموجود في قاعدة البيانات) ──
+        quizzes.forEach(q => {
+            const key = String(q.id);
+            if (!state.attemptsMap.has(key)) {
+                state.attemptsMap.set(key, 0); // لم يحاول بعد
+            }
+        });
+
+        console.log(`[dashboard] ✓ attemptsMap جاهزة — ${state.attemptsMap.size} اختبار`);
+
+    } catch (err) {
+        // ── معالجة أخطاء الشبكة: نستمر بالكاش الجزئي ────────────────────
+        console.warn('[dashboard] ⚠️ تعذر جلب المحاولات — سيُعرض fallback نصي:', err.message);
+
+        // نضمن أن كل امتحان مطلوب له قيمة (0 أو من الكاش)
+        quizzes.forEach(q => {
+            const key = String(q.id);
+            if (!state.attemptsMap.has(key)) {
+                state.attemptsMap.set(key, null); // null = خطأ في الجلب (يُعرض fallback)
+            }
+        });
+
+        // نخزن حالة الخطأ لإظهار الـ fallback في الواجهة
+        state.attemptsFetchError = true;
+    }
 
     return state.attemptsMap;
 }
@@ -63,12 +100,24 @@ function isNextAttemptPractice(attempts, maxLimit) {
 /**
  * بناء HTML لقسم المحاولات أسفل بطاقة الامتحان.
  * يتضمن عداد المحاولات وشارة التحذير إذا كانت المحاولة القادمة تدريبية.
+ * يعرض fallback نصي إذا كانت قيمة المحاولات null (خطأ شبكة).
  *
- * @param {number}  attempts       - عدد المحاولات السابقة
- * @param {boolean} willBePractice - هل المحاولة القادمة تدريبية؟
+ * @param {number|null} attempts       - عدد المحاولات السابقة، أو null عند خطأ الجلب
+ * @param {boolean}     willBePractice - هل المحاولة القادمة تدريبية؟
  * @returns {string} HTML string
  */
 function buildAttemptsHtml(attempts, willBePractice) {
+    // ── fallback عند خطأ الشبكة ──────────────────────────────────────────
+    if (attempts === null) {
+        return `
+            <div class="mt-3 pt-3 border-t border-gray-100 relative z-10">
+                <div class="flex items-center gap-2 text-xs text-gray-400 italic">
+                    <i class="fas fa-exclamation-circle text-amber-400 shrink-0"></i>
+                    <span>لم يتمكن من جلب عدد المحاولات</span>
+                </div>
+            </div>`;
+    }
+
     const attemptsLabel = attempts === 0
         ? `<span class="text-gray-400 font-semibold">لم تحاول بعد</span>`
         : `<span class="font-black text-blue-600 text-sm">${attempts}</span>`;
@@ -101,12 +150,13 @@ function buildAttemptsHtml(attempts, willBePractice) {
  * Renders the dashboard view with latest exams, notes, and leaderboard.
  * Uses window.playQuiz and window.forceDownload for event handlers.
  *
+ * @param {boolean} forceRefresh - تمريرها true بعد تسليم امتحان لتحديث المحاولات
  * @returns {Promise<void>}
  */
-export async function renderDashboard() {
+export async function renderDashboard(forceRefresh = false) {
     logFunctionStatus('renderDashboard', false);
 
-    // ── حالة التحميل ──
+    // ── حالة التحميل ──────────────────────────────────────────────────────
     if (!state.dataLoaded) {
         console.log('[dashboard] ⏳ البيانات لم تُحمّل بعد...');
         const spinner = `
@@ -123,19 +173,17 @@ export async function renderDashboard() {
         return;
     }
 
-    // ── جلب عدد المحاولات لآخر 4 امتحانات قبل الرسم ──
-    const latestExams = state.allQuizzes.slice(-4).reverse();
+    // ── إعداد متغيرات أساسية ──────────────────────────────────────────────
+    const latestExams        = state.allQuizzes.slice(-4).reverse();
+    const globalMaxOfficial  = state.maxOfficialAttempts ?? null;
 
-    // الحد الأقصى للمحاولات الرسمية: من إعداد الامتحان، أو من الـ state، أو بلا حد
-    const globalMaxOfficial = state.maxOfficialAttempts ?? null;
-
+    // ── جلب المحاولات: طلب واحد للجميع قبل رسم أي بطاقة ─────────────────
+    // إذا المستخدم غير مسجّل أو لا توجد امتحانات نتجاوز الطلب كلياً
     let attemptsMap = new Map();
     if (state.currentUser && latestExams.length > 0) {
-        try {
-            attemptsMap = await resolveAttemptsMap(latestExams);
-        } catch (e) {
-            console.warn('[dashboard] ⚠️ تعذر جلب المحاولات:', e.message);
-        }
+        // نصفّر حالة خطأ الجلب السابقة قبل المحاولة الجديدة
+        state.attemptsFetchError = false;
+        attemptsMap = await resolveAttemptsMap(latestExams, forceRefresh);
     }
 
     // ─────────────────────────────────────────────
@@ -154,15 +202,15 @@ export async function renderDashboard() {
         let examsHtml = '';
 
         latestExams.forEach((q, idx) => {
-            const realIndex    = state.allQuizzes.length - 1 - idx;
-            const safeTitle    = escapeHtml(q.config.title);
-            const safeDesc     = escapeHtml(q.config.description || '');
-            const safeSubject  = escapeHtml(q.config.subject || 'عام');
-
-            // حد المحاولات الرسمية: من إعداد الامتحان أولاً، ثم الإعداد العام
+            const realIndex       = state.allQuizzes.length - 1 - idx;
+            const safeTitle       = escapeHtml(q.config.title);
+            const safeDesc        = escapeHtml(q.config.description || '');
+            const safeSubject     = escapeHtml(q.config.subject || 'عام');
             const quizMaxOfficial = q.config.maxOfficialAttempts ?? globalMaxOfficial;
-            const attempts        = attemptsMap.get(String(q.id)) ?? 0;
-            const willBePractice  = state.currentUser
+
+            // attempts: number → عدد المحاولات | null → خطأ شبكة
+            const attempts       = attemptsMap.get(String(q.id)) ?? 0;
+            const willBePractice = state.currentUser && attempts !== null
                 ? isNextAttemptPractice(attempts, quizMaxOfficial)
                 : false;
 
@@ -226,9 +274,9 @@ export async function renderDashboard() {
     } else {
         let notesHtml = '';
         latestNotes.forEach(n => {
-            const { config } = n;
-            const iconClass  = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500'    : 'fa-file-pdf text-orange-500';
-            const bgClass    = config.type === 'ppt' ? 'from-red-50 to-red-100'             : 'from-orange-50 to-orange-100';
+            const { config }  = n;
+            const iconClass   = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500'  : 'fa-file-pdf text-orange-500';
+            const bgClass     = config.type === 'ppt' ? 'from-red-50 to-red-100'           : 'from-orange-50 to-orange-100';
             const safeTitle   = escapeHtml(config.title);
             const safeDesc    = escapeHtml(config.description || '');
             const safeSubject = escapeHtml(config.subject || 'عام');
@@ -283,13 +331,13 @@ export async function renderDashboard() {
     const leaderboardList = document.getElementById('leaderboard-list');
     leaderboardList.innerHTML = '';
 
-    const totalExams = state.allQuizzes.length || 1;
-    const sourceScores = (state.serverScores?.length > 0) ? state.serverScores : state.allUserScores;
+    const totalExams    = state.allQuizzes.length || 1;
+    const sourceScores  = (state.serverScores?.length > 0) ? state.serverScores : state.allUserScores;
 
     // نُحتسب فقط المحاولات الرسمية في لوحة الشرف
     const scoresByUser = {};
     sourceScores.forEach(entry => {
-        if (entry.isOfficial === false) return;  // تجاهل التدريبية
+        if (entry.isOfficial === false) return;
         const userName = entry.userName || 'طالب';
         const total    = Number(entry.total) || 0;
         const score    = Number(entry.score) || 0;

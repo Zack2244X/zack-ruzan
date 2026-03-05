@@ -230,6 +230,104 @@ router.get('/my/attempts', authenticate, async (req, res) => {
 });
 
 // ============================================
+//   GET /api/attempts — عدد محاولات اختبار محدد
+//   يدعم العميل الحالي مباشرةً بدون تغيير في api.js
+//
+//   ملاحظة: هذا المسار يُعيد { attempts: number } لاختبار واحد بعينه.
+//   في حين يُعيد /api/scores/my/attempts مصفوفة كاملة لجميع الاختبارات.
+//   الأفضل معمارياً هو الاعتماد على /api/scores/my/attempts وتخزين النتائج
+//   مؤقتاً في state.attemptsMap، لتقليل عدد الطلبات إلى السيرفر.
+//
+//   @example استدعاء Curl:
+//     # طالب يجلب محاولاته الخاصة:
+//     curl -X GET "https://api.example.com/api/attempts?quizId=123" \
+//          -H "Cookie: token=<jwt>" \
+//          -H "X-CSRF-Token: <csrf>"
+//
+//     # أدمن يجلب محاولات طالب آخر:
+//     curl -X GET "https://api.example.com/api/attempts?quizId=123&email=student@example.com" \
+//          -H "Cookie: token=<jwt>" \
+//          -H "X-CSRF-Token: <csrf>"
+//
+//   @example استجابة ناجحة:
+//     HTTP 200 — { "attempts": 3 }
+//
+//   @example استجابة خطأ:
+//     HTTP 400 — { "error": "quizId مطلوب." }
+//     HTTP 403 — { "error": "غير مصرح." }
+//     HTTP 404 — { "error": "المستخدم غير موجود." }
+// ============================================
+/**
+ * @route GET /api/attempts
+ * @description Returns the number of attempts a user has made for a specific quiz.
+ *   - إذا كان المستخدم أدمناً ومرّر email، يُحسب العدد لذلك المستخدم.
+ *   - خلاف ذلك يُستخدم req.user.id (الطالب الحالي).
+ *   - يُعيد { attempts: number } متوافقاً مع توقعات دالة getAttempts() في api.js.
+ * @access Private — requires authentication.
+ * @param {import('express').Request}  req - query: { quizId, email? }
+ * @param {import('express').Response} res - { attempts: number }
+ * @returns {Promise<void>}
+ */
+router.get('/', authenticate, async (req, res) => {
+    try {
+        const { quizId, email } = req.query;
+
+        // ── التحقق من quizId ──────────────────────────────────────────────
+        if (!quizId) {
+            return res.status(400).json({ error: 'quizId مطلوب.' });
+        }
+
+        // ── تحديد userId المستهدف ─────────────────────────────────────────
+        let targetUserId = req.user.id;
+
+        if (email) {
+            // فقط الأدمن يمكنه الاستعلام باستخدام email طالب آخر
+            if (req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'غير مصرح. هذه الميزة للأدمن فقط.' });
+            }
+
+            // البحث عن المستخدم بالإيميل
+            const targetUser = await User.findOne({ where: { email } });
+            if (!targetUser) {
+                return res.status(404).json({ error: 'المستخدم غير موجود.' });
+            }
+
+            targetUserId = targetUser.id;
+        }
+
+        // ── عدّ المحاولات باستخدام Score.count ───────────────────────────
+        // نستخدم String() على quizId لضمان التوافق مع أنواع البيانات المختلفة
+        const attempts = await Score.count({
+            where: {
+                userId: targetUserId,
+                quizId: String(quizId)
+            }
+        });
+
+        logger.info(
+            `[GET /api/attempts] userId=${targetUserId}` +
+            ` quizId=${quizId}` +
+            ` requestedBy=${req.user.id}` +
+            ` (${req.user.role})` +
+            ` → ${attempts} محاولة`
+        );
+
+        // ── الرد بالعدد ───────────────────────────────────────────────────
+        // الشكل { attempts: number } متوافق مع ما تتوقعه دالة getAttempts() في api.js:
+        //   const count = Number(data?.attempts) || 0;
+        res.json({ attempts });
+
+    } catch (error) {
+        const dbMsg = error.original?.message || error.message;
+        logger.error('خطأ في GET /api/attempts:', { error: dbMsg, stack: error.stack });
+        res.status(500).json({
+            error: 'حدث خطأ أثناء جلب عدد المحاولات.',
+            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
+        });
+    }
+});
+
+// ============================================
 //   GET /api/scores/leaderboard — لوحة الشرف
 //   تعتمد على المحاولات الرسمية فقط (isOfficial = 1)
 // ============================================
