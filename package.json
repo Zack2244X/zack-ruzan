@@ -17,5 +17,8 @@
   },
   "devDependencies": {
     "tailwindcss": "^3.4.19"
+  },
+  "dependencies": {
+    "@studio-freight/lenis": "^1.0.42"
   }
 }
