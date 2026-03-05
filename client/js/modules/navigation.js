@@ -27,6 +27,9 @@ export function _syncMainInteractionState() {
 
     const t = document.getElementById('theme-toggle');
     if (t) t.style.display = (onHome && !blocked) ? '' : 'none';
+    // تحكم مركزي في ظهور الشريط السفلي: اخفاؤه إذا كانت هناك نوافذ منبثقة
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.toggle('hidden', blocked);
 }
 
 /**
