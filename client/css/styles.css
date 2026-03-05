@@ -73,7 +73,9 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-/* Background overlay image */
+/* Background overlay image
+   — promoted to its own GPU layer via will-change + translateZ
+   — ensures the fixed background never triggers layout recalculation */
 body::before {
     content: "";
     position: fixed;
@@ -86,101 +88,147 @@ body::before {
     z-index: -1;
     pointer-events: none;
     filter: saturate(0.85) brightness(1.05);
+
+    /* GPU acceleration */
     will-change: transform;
     transform: translateZ(0);
 }
 
-/* === Performance Optimization === */
-.sidebar {
+/* ============================================
+   GPU Acceleration — Frequently Animated Elements
+   —————————————————————————————————————————————
+   Rules are grouped by role so the browser can
+   create a single composited layer per element
+   and animate it with the GPU without triggering
+   layout or paint.
+
+   Guidelines used throughout:
+   • will-change: transform, opacity  → promoted composite layer
+   • transform: translateZ(0)         → forces layer creation now
+   • position: relative / fixed       → required for compositing context
+   • Movements use transform (translateX/Y) — never top/left/right/bottom
+   ============================================ */
+
+/* ── Bottom Navigation ─────────────────────────────────────────── */
+/* Slides in/out vertically — always use translateY, not bottom     */
+#ios-bottom-nav {
     will-change: transform, opacity;
     transform: translateZ(0);
 }
 
-/* === Typography === */
-.text-arabic {
-    font-family: 'Amiri', 'Traditional Arabic', serif;
+/* ── Bottom Sheet Overlay ──────────────────────────────────────── */
+/* Fades in/out — only opacity changes, no layout reflow           */
+.bottom-sheet-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+
+    /* GPU layer — opacity-only compositing */
+    will-change: opacity;
+    transform: translateZ(0);
 }
 
-/* === Focus Styles (Accessibility) === */
-:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
+.bottom-sheet-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
 }
 
-button:focus:not(:focus-visible),
-a:focus:not(:focus-visible) {
-    outline: none;
+/* ── Bottom Sheet Content Panel ────────────────────────────────── */
+/* Slides in from the bottom — translateY replaces any top/bottom  */
+/* animation so the GPU can handle it without repainting           */
+.bottom-sheet-content {
+    transform: translateY(100%);   /* start off-screen below       */
+    transition: transform var(--transition-slow);
+
+    /* GPU acceleration */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
-/* === Skip Link (Accessibility) === */
-.skip-link {
-    position: absolute;
-    top: -100%;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    padding: 12px 24px;
-    background: var(--primary);
-    color: white;
-    font-weight: 700;
-    border-radius: var(--radius-md);
-    transition: top var(--transition-fast);
+.bottom-sheet-content.active {
+    transform: translateY(0);      /* slide into view              */
 }
 
-.skip-link:focus {
-    top: 8px;
+/* ── Sidebar ────────────────────────────────────────────────────── */
+/* Slides left/right — translateX replaces left/right positioning   */
+.sidebar {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
 }
 
-/* === Skeleton Loading === */
-.skeleton {
-    background: linear-gradient(90deg, var(--bg-soft) 25%, rgba(255,255,255,0.15) 50%, var(--bg-soft) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-    border-radius: var(--radius-md);
+.sidebar-open          { transform: translateX(0);    opacity: 1; }
+.sidebar-closed-left   { transform: translateX(-120%); opacity: 0; }
+
+/* ── Modal Dialogs ──────────────────────────────────────────────── */
+/* Scale + fade entrance — uses transform: scale(), not width/height */
+[id$="-modal"] > div {
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+
+    /* GPU acceleration */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
-.skeleton-card {
-    min-height: 180px;
+/* Custom confirm dialog — scales from 0.9 → 1.0 */
+.confirm-dialog {
+    background: white;
     border-radius: var(--radius-xl);
+    padding: 32px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow);
+
+    /* Use transform for scale animation instead of changing dimensions */
+    transform: scale(0.9) translateZ(0);
+    transition: transform var(--transition-slow);
+
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
-.skeleton-text {
-    height: 16px;
-    margin-bottom: 8px;
-    border-radius: var(--radius-sm);
+.confirm-overlay.show .confirm-dialog {
+    transform: scale(1) translateZ(0);
 }
 
-.skeleton-text.short { width: 60%; }
-.skeleton-text.medium { width: 80%; }
-.skeleton-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-xl);
-}
-
-@keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-}
-
-/* === Answer Options === */
+/* ── Answer Options ─────────────────────────────────────────────── */
+/* Hover lift uses translateY(-2px), not top                        */
 .answer-option {
     background: var(--card);
     border-color: var(--border);
     color: var(--text);
     touch-action: manipulation;
     min-height: 44px;
+
+    /* GPU layer — hover transform + selection state change */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast),
+                background-color var(--transition-fast),
+                border-color var(--transition-fast);
 }
 
 .answer-option:hover {
-    transform: translateY(-2px);
+    /* translateY replaces any margin/top animation */
+    transform: translateY(-2px) translateZ(0);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .answer-option.selected {
     border-color: #3b82f6;
     background-color: #eff6ff;
+    /* Keep on GPU layer during selection transition */
+    transform: translateZ(0);
 }
 
 .answer-option.correct-answer {
@@ -188,12 +236,14 @@ a:focus:not(:focus-visible) {
     border-color: #10b981 !important;
     box-shadow: 0 0 10px #10b981 !important;
     color: #065f46 !important;
+    transform: translateZ(0);
 }
 
 .answer-option.incorrect-answer {
     background-color: #fee2e2 !important;
     border-color: #ef4444 !important;
     color: #991b1b !important;
+    transform: translateZ(0);
 }
 
 [data-theme="dark"] .answer-option.correct-answer {
@@ -209,16 +259,295 @@ a:focus:not(:focus-visible) {
     color: #fca5a5 !important;
 }
 
-/* === Feedback Backgrounds === */
-.correct-bg { background-color: #10b981; }
-.incorrect-bg { background-color: #ef4444; }
+/* ── Dock Icons ─────────────────────────────────────────────────── */
+/* Scale + vertical lift on active — uses transform, not top/margin  */
+.dock-icon {
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-/* === Progress Bar === */
-#progress-bar {
-    transition: width 0.5s ease-in-out;
+    /* Promote to GPU layer — frequently transforms on tab switches */
+    will-change: transform;
+    transform: translateZ(0);
 }
 
-/* === Editable Mode === */
+.dock-btn.active .dock-icon {
+    /* translateY replaces any position-based nudge */
+    transform: scale(1.2) translateY(-2px);
+}
+
+/* ── Toast Notifications ────────────────────────────────────────── */
+/* Slides in via translateY — starts hidden off the top edge        */
+.toast-float {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    /* Initial position: centered horizontally, slightly up */
+    transform: translate(-50%, -12px);
+    z-index: 400;
+    min-width: 260px;
+    max-width: 90vw;
+    padding: 14px 18px;
+    border-radius: 14px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+    color: #0f172a;
+    font-weight: 800;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-normal), transform var(--transition-normal);
+
+    /* GPU acceleration — slides + fades constantly */
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* ── Theme Toggle Button ────────────────────────────────────────── */
+/* Hover uses translateY — not bottom/margin change                 */
+#theme-toggle {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    z-index: 120;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card-strong);
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    cursor: pointer;
+
+    /* Use transform for hover animation, not top/bottom */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+#theme-toggle:hover {
+    /* translateY + scale replaces any positional shift */
+    transform: translateY(-2px) scale(1.02);
+}
+
+#theme-toggle i { font-size: 18px; }
+
+/* ── Alert Banner ───────────────────────────────────────────────── */
+/* Slides down from top — translateY replaces top animation        */
+.alert-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 500;
+    padding: 12px 20px;
+    font-weight: 700;
+    text-align: center;
+
+    /* GPU-composited slide — transform instead of top */
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+    will-change: transform;
+}
+
+.alert-banner.show  { transform: translateY(0); }
+.alert-banner.alert-success { background: #d1fae5; color: #065f46; }
+.alert-banner.alert-error   { background: #fee2e2; color: #991b1b; }
+.alert-banner.alert-warning { background: #fef3c7; color: #92400e; }
+
+/* ── Progress Bar ───────────────────────────────────────────────── */
+/* Width transition is unavoidable here, but we accelerate the
+   element so the browser can optimise the repaint              */
+#progress-bar {
+    transition: width 0.5s ease-in-out;
+    will-change: width;
+    transform: translateZ(0);
+}
+
+/* ── Card Hover Glows (Dashboard / Exam cards) ──────────────────── */
+/* These elements animate on hover — composited layer saves paint  */
+.exam-card-hover-glow,
+.notes-card-hover-glow {
+    will-change: opacity;
+    transform: translateZ(0);
+    pointer-events: none;
+}
+
+.exam-card-hover-glow {
+    background: radial-gradient(circle at 35% 35%, rgba(96, 165, 250, 0.55), rgba(59, 130, 246, 0.18) 55%, rgba(37, 99, 235, 0.05) 75%, transparent 100%);
+    filter: blur(0.2px);
+}
+
+.notes-card-hover-glow {
+    background: radial-gradient(circle at 35% 35%, rgba(251, 146, 60, 0.62), rgba(249, 115, 22, 0.24) 55%, rgba(234, 88, 12, 0.08) 75%, transparent 100%);
+    filter: blur(0.2px);
+}
+
+/* ── Time Badge (pulsing clock animation) ───────────────────────── */
+/* Runs continuously — must live on its own layer                   */
+.time-badge-anim {
+    animation: pulseTimeBadge 1.8s ease-in-out infinite;
+    transform-origin: center;
+    will-change: transform, box-shadow;
+}
+
+.time-badge-anim i {
+    animation: tickClock 1.2s ease-in-out infinite;
+    display: inline-block;
+    will-change: transform;
+}
+
+/* ── Glass Card System ──────────────────────────────────────────── */
+.glass-card {
+    background: var(--card);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    /* Backdrop-filter always creates a stacking context — assist it */
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+.glass-soft {
+    background: var(--bg-soft);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+/* ── Skeleton Loader ────────────────────────────────────────────── */
+/* Shimmer animation runs on background-position — GPU-friendly    */
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-soft) 25%, rgba(255,255,255,0.15) 50%, var(--bg-soft) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-md);
+    will-change: background-position;
+}
+
+.skeleton-card {
+    min-height: 180px;
+    border-radius: var(--radius-xl);
+}
+
+.skeleton-text {
+    height: 16px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-text.short  { width: 60%; }
+.skeleton-text.medium { width: 80%; }
+.skeleton-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-xl);
+}
+
+/* ── Touch Active Feedback ──────────────────────────────────────── */
+/* Scale uses transform — never changes dimensions                  */
+button:active,
+.cursor-pointer:active {
+    transform: scale(0.96) translateZ(0) !important;
+    transition: transform 0.1s;
+}
+
+/* ============================================
+   Keyframe Animations
+   — All use transform / opacity only (no
+     left/top/width/height changes inside the
+     keyframes) to stay on the compositor thread
+   ============================================ */
+
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+}
+
+/* slideUp: modal entrance on mobile — translateY not top */
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0);   }
+}
+
+/* Toast progress bar drains from full width to zero */
+@keyframes toastProgress {
+    from { width: 100%; }
+    to   { width: 0%;   }
+}
+
+/* Card entrance animation — transform + opacity only */
+@keyframes pulseTimeBadge {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 0 0 rgba(59,130,246,0);
+    }
+    50% {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 0 6px 16px rgba(59,130,246,0.28);
+    }
+}
+
+@keyframes tickClock {
+    0%, 100% { transform: rotate(0deg);  }
+    25%       { transform: rotate(-8deg); }
+    75%       { transform: rotate(8deg);  }
+}
+
+/* ============================================
+   Typography
+   ============================================ */
+.text-arabic {
+    font-family: 'Amiri', 'Traditional Arabic', serif;
+}
+
+/* ============================================
+   Focus Styles (Accessibility)
+   ============================================ */
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ============================================
+   Skip Link (Accessibility)
+   ============================================ */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 50%;
+    /* transform replaces any left/top animation */
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 12px 24px;
+    background: var(--primary);
+    color: white;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    transition: top var(--transition-fast);
+}
+
+.skip-link:focus { top: 8px; }
+
+/* ============================================
+   Feedback Backgrounds (Quiz)
+   ============================================ */
+.correct-bg   { background-color: #10b981; }
+.incorrect-bg { background-color: #ef4444; }
+
+/* ============================================
+   Editable Mode (Quiz Builder)
+   ============================================ */
 .editable-mode [contenteditable="true"] {
     border: 2px dashed #3b82f6 !important;
     background-color: #fefce8 !important;
@@ -238,89 +567,15 @@ a:focus:not(:focus-visible) {
 .editable-mode .answer-option { cursor: text !important; }
 .editable-mode .answer-option:hover { transform: none; }
 
-/* === Sidebar Animations === */
-.sidebar {
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
-}
-
-.sidebar-open { transform: translateX(0); opacity: 1; }
-.sidebar-closed-left { transform: translateX(-120%); opacity: 0; }
-
-/* === Mobile-First: Hide scrollbar on mobile === */
-@media (max-width: 640px) {
-    ::-webkit-scrollbar {
-        width: 0;
-        background: transparent;
-    }
-}
-
-/* === Modal Slide-Up on Mobile === */
-@media (max-width: 640px) {
-    [id$="-modal"] > div {
-        margin-top: auto;
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 0 !important;
-        max-height: 95vh !important;
-        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-}
-
-/* === Touch Interaction === */
-button:active,
-.cursor-pointer:active {
-    transform: scale(0.96) !important;
-    transition: transform 0.1s;
-}
-
-/* Minimum touch target size */
-button,
-[role="button"],
-a,
-input[type="checkbox"],
-input[type="radio"] {
-    min-height: 44px;
-    min-width: 44px;
-}
-
-input[type="text"],
-input[type="number"],
-input[type="email"],
-input[type="url"],
-input[type="date"],
-input[type="time"],
-textarea,
-select {
-    min-height: 44px;
-    font-size: 16px; /* Prevents zoom on iOS */
-}
-
-/* === iOS Safe Area Support === */
-
-/* Bottom nav: sit above home indicator on iPhone */
-
-/* gradient icon colors */
-.dock-btn.active .dock-icon {
-    /* gradient from blue through purple to fiery orange */
-    background: linear-gradient(45deg, #3b82f6, #8b5cf6, #fb923c);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.dock-btn .dock-icon {
-    /* fallback solid color when not active */
-    color: currentColor;
-}
+/* ============================================
+   iOS Safe Area Support
+   ============================================ */
 #ios-bottom-nav {
     bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Bottom sheets: add padding so content clears the bottom nav + home indicator */
+/* Bottom sheets: add padding so content clears bottom nav + home indicator */
 #tree-content,
 #admin-content {
     padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom)));
@@ -329,74 +584,105 @@ select {
     overflow-y: auto;
 }
 
-/* iOS Dock / Bottom Nav */
 .ios-dock {
     padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-.bottom-sheet-overlay {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+/* ============================================
+   Dock Icon Gradient (active state)
+   ============================================ */
+.dock-btn.active .dock-icon {
+    background: linear-gradient(45deg, #3b82f6, #8b5cf6, #fb923c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.bottom-sheet-overlay.active {
+.dock-btn .dock-icon {
+    color: currentColor;
+}
+
+/* ============================================
+   Toast Colour Variants
+   ============================================ */
+.toast-success { background: linear-gradient(135deg, #ecfdf3, #d1fae5); color: #065f46; }
+.toast-error   { background: linear-gradient(135deg, #fff1f2, #ffe4e6); color: #b91c1c; }
+.toast-streak  { background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: #1e1b4b; }
+
+[data-theme="dark"] .toast-success { background: linear-gradient(135deg, #064e3b, #065f46); color: #6ee7b7; }
+[data-theme="dark"] .toast-error   { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; }
+[data-theme="dark"] .toast-streak  { background: linear-gradient(135deg, #312e81, #3730a3); color: #c7d2fe; }
+
+.toast-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: currentColor;
+    opacity: 0.3;
+    border-radius: 0 0 14px 14px;
+    animation: toastProgress linear forwards;
+}
+
+/* ============================================
+   Confirm Overlay
+   ============================================ */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 600;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-normal);
+
+    /* GPU layer for fade */
+    will-change: opacity;
+    transform: translateZ(0);
+}
+
+.confirm-overlay.show {
+    display: flex;
     opacity: 1;
     pointer-events: auto;
 }
 
-.bottom-sheet-content {
-    transform: translateY(100%);
-    transition: transform var(--transition-slow);
+[data-theme="dark"] .confirm-dialog {
+    background: #1e293b;
+    color: var(--text);
 }
 
-.bottom-sheet-content.active {
-    transform: translateY(0);
-}
-
-/* Dock Icons */
-.dock-icon { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.dock-btn.active .dock-icon { transform: scale(1.2) translateY(-2px); }
-
-/* === Glass Card System === */
-.glass-card {
-    background: var(--card);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-}
-
-.glass-soft {
-    background: var(--bg-soft);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-}
-
-/* Modal glass */
-[id$="-modal"] > div {
-    background: var(--card);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-}
-
-/* === CSS Variable Integration with Tailwind overrides === */
-.bg-white { background-color: var(--card) !important; }
-.bg-gray-50 { background-color: var(--bg-soft) !important; }
-.text-gray-800 { color: var(--text) !important; }
-.text-gray-500, .text-gray-600 { color: var(--muted) !important; }
-.border-gray-200, .border-gray-100 { border-color: var(--border) !important; }
-.shadow-sm, .shadow, .shadow-lg, .shadow-xl, .shadow-2xl { box-shadow: var(--shadow) !important; }
+/* ============================================
+   CSS Variable Integration with Tailwind overrides
+   ============================================ */
+.bg-white      { background-color: var(--card)    !important; }
+.bg-gray-50    { background-color: var(--bg-soft) !important; }
+.text-gray-800 { color: var(--text)               !important; }
+.text-gray-500,
+.text-gray-600 { color: var(--muted)              !important; }
+.border-gray-200,
+.border-gray-100 { border-color: var(--border)    !important; }
+.shadow-sm,
+.shadow,
+.shadow-lg,
+.shadow-xl,
+.shadow-2xl { box-shadow: var(--shadow)           !important; }
 
 /* History tree buttons */
 #history-tree button {
     background: var(--card-strong) !important;
-    color: var(--text) !important;
+    color: var(--text)             !important;
     border: 1px solid var(--border) !important;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 
-/* === Dark Mode: Input Fields === */
+/* ============================================
+   Dark Mode: Input Fields
+   ============================================ */
 [data-theme="dark"] input[type="text"],
 [data-theme="dark"] input[type="number"],
 [data-theme="dark"] input[type="email"],
@@ -406,10 +692,12 @@ select {
 [data-theme="dark"] textarea,
 [data-theme="dark"] select {
     background: var(--card-strong) !important;
-    color: var(--text) !important;
+    color: var(--text)             !important;
     border: 1px solid rgba(255,255,255,0.14) !important;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
-    transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+    transition: background var(--transition-fast),
+                border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
 }
 
 [data-theme="dark"] input::placeholder,
@@ -423,20 +711,23 @@ select {
 [data-theme="dark"] input:hover,
 [data-theme="dark"] textarea:hover,
 [data-theme="dark"] select:hover {
-    background: rgba(255,255,255,0.10) !important;
+    background: rgba(255,255,255,0.10)  !important;
     border-color: rgba(255,255,255,0.22) !important;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.18), 0 0 0 4px rgba(96,165,250,0.16);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18),
+                0 0 0 4px rgba(96,165,250,0.16);
     outline: none;
 }
 
-/* === Dark Mode: Cards & Backgrounds === */
+/* ============================================
+   Dark Mode: Cards & Backgrounds
+   ============================================ */
 [data-theme="dark"] .bg-white,
 [data-theme="dark"] .bg-gray-50,
 [data-theme="dark"] .bg-white\/95,
 [data-theme="dark"] .bg-white\/90,
 [data-theme="dark"] .bg-white\/75 {
     background: var(--card) !important;
-    color: var(--text) !important;
+    color: var(--text)      !important;
     border-color: var(--border) !important;
 }
 
@@ -453,7 +744,6 @@ select {
     color: var(--text) !important;
 }
 
-/* Dark mode fixes for colored badges/chips */
 [data-theme="dark"] .bg-blue-50,
 [data-theme="dark"] .bg-green-50,
 [data-theme="dark"] .bg-orange-50,
@@ -481,7 +771,9 @@ select {
 }
 .sheet-handle { background: transparent; }
 
-/* === Bottom Sheet / Admin Sheet sizing === */
+/* ============================================
+   Bottom Sheet / Admin Sheet sizing
+   ============================================ */
 .bottom-sheet-content,
 #admin-content,
 #tree-content {
@@ -489,200 +781,9 @@ select {
     width: 100%;
 }
 
-/* === Fallback for no-blur devices === */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass-card,
-    .glass-soft,
-    [id$="-modal"] > div,
-    #theme-toggle,
-    #ios-bottom-nav,
-    .bottom-sheet-content {
-        background: var(--card);
-        border-color: var(--border);
-        box-shadow: 0 14px 38px rgba(0,0,0,0.28);
-    }
-    body { background: var(--bg); }
-}
-
-/* === Theme Toggle Button === */
-#theme-toggle {
-    position: fixed;
-    bottom: 18px;
-    right: 18px;
-    z-index: 120;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--card-strong);
-    color: var(--text);
-    display: grid;
-    place-items: center;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    cursor: pointer;
-}
-
-#theme-toggle:hover { transform: translateY(-2px) scale(1.02); }
-#theme-toggle i { font-size: 18px; }
-
-@media (max-width: 640px) {
-    #theme-toggle {
-        position: fixed !important;
-        top: calc(env(safe-area-inset-top) + 8px) !important;
-        bottom: auto !important;
-        left: 12px !important;
-        right: auto !important;
-        width: 42px;
-        height: 42px;
-        z-index: 130;
-        transform: translateZ(0);
-    }
-    #theme-toggle i { font-size: 16px; }
-}
-
-/* === Toast Notifications === */
-.toast-float {
-    position: fixed;
-    top: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 400;
-    min-width: 260px;
-    max-width: 90vw;
-    padding: 14px 18px;
-    border-radius: 14px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
-    color: #0f172a;
-    font-weight: 800;
-    text-align: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-normal), transform var(--transition-normal);
-}
-
-.toast-success { background: linear-gradient(135deg, #ecfdf3, #d1fae5); color: #065f46; }
-.toast-error { background: linear-gradient(135deg, #fff1f2, #ffe4e6); color: #b91c1c; }
-.toast-streak { background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: #1e1b4b; }
-
-[data-theme="dark"] .toast-success { background: linear-gradient(135deg, #064e3b, #065f46); color: #6ee7b7; }
-[data-theme="dark"] .toast-error { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; }
-[data-theme="dark"] .toast-streak { background: linear-gradient(135deg, #312e81, #3730a3); color: #c7d2fe; }
-
-/* Toast with progress bar */
-.toast-progress {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background: currentColor;
-    opacity: 0.3;
-    border-radius: 0 0 14px 14px;
-    animation: toastProgress linear forwards;
-}
-
-@keyframes toastProgress {
-    from { width: 100%; }
-    to { width: 0%; }
-}
-
-/* === Alert Banner === */
-.alert-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 500;
-    padding: 12px 20px;
-    font-weight: 700;
-    text-align: center;
-    transform: translateY(-100%);
-    transition: transform 0.3s ease;
-}
-
-.alert-banner.show { transform: translateY(0); }
-.alert-banner.alert-success { background: #d1fae5; color: #065f46; }
-.alert-banner.alert-error { background: #fee2e2; color: #991b1b; }
-.alert-banner.alert-warning { background: #fef3c7; color: #92400e; }
-
-/* === Card Hover Glows === */
-.time-badge-anim {
-    animation: pulseTimeBadge 1.8s ease-in-out infinite;
-    transform-origin: center;
-}
-
-.time-badge-anim i {
-    animation: tickClock 1.2s ease-in-out infinite;
-    display: inline-block;
-}
-
-.exam-card-hover-glow {
-    background: radial-gradient(circle at 35% 35%, rgba(96, 165, 250, 0.55), rgba(59, 130, 246, 0.18) 55%, rgba(37, 99, 235, 0.05) 75%, transparent 100%);
-    filter: blur(0.2px);
-}
-
-.notes-card-hover-glow {
-    background: radial-gradient(circle at 35% 35%, rgba(251, 146, 60, 0.62), rgba(249, 115, 22, 0.24) 55%, rgba(234, 88, 12, 0.08) 75%, transparent 100%);
-    filter: blur(0.2px);
-}
-
-@keyframes pulseTimeBadge {
-    0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 rgba(59,130,246,0); }
-    50% { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 16px rgba(59,130,246,0.28); }
-}
-
-@keyframes tickClock {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-8deg); }
-    75% { transform: rotate(8deg); }
-}
-
-/* === Custom Confirm Modal === */
-.confirm-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 600;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-normal);
-}
-
-.confirm-overlay.show {
-    display: flex;
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.confirm-dialog {
-    background: white;
-    border-radius: var(--radius-xl);
-    padding: 32px;
-    max-width: 400px;
-    width: 100%;
-    text-align: center;
-    box-shadow: var(--shadow);
-    transform: scale(0.9);
-    transition: transform var(--transition-slow);
-}
-
-.confirm-overlay.show .confirm-dialog {
-    transform: scale(1);
-}
-
-[data-theme="dark"] .confirm-dialog {
-    background: #1e293b;
-    color: var(--text);
-}
-
-/* === Empty State === */
+/* ============================================
+   Empty State
+   ============================================ */
 .empty-state {
     text-align: center;
     padding: 48px 24px;
@@ -700,76 +801,152 @@ select {
     font-weight: 600;
 }
 
-/* === Responsive Breakpoints === */
-@media (min-width: 768px) {
-    body { padding: 0 24px; }
+/* ============================================
+   Fallback for no-blur devices
+   ============================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-card,
+    .glass-soft,
+    [id$="-modal"] > div,
+    #theme-toggle,
+    #ios-bottom-nav,
+    .bottom-sheet-content {
+        background: var(--card);
+        border-color: var(--border);
+        box-shadow: 0 14px 38px rgba(0,0,0,0.28);
+    }
+    body { background: var(--bg); }
 }
 
-@media (min-width: 1024px) {
-    body { padding: 0 32px; }
+/* ============================================
+   Minimum Touch Target Sizes
+   ============================================ */
+button,
+[role="button"],
+a,
+input[type="checkbox"],
+input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
 }
 
-/* === Dashboard Cards Mobile Fixes === */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+}
+
+/* ============================================
+   Responsive — Desktop padding
+   ============================================ */
+@media (min-width: 768px)  { body { padding: 0 24px; } }
+@media (min-width: 1024px) { body { padding: 0 32px; } }
+
+/* ============================================
+   Mobile: Hide Scrollbar
+   ============================================ */
 @media (max-width: 640px) {
-    /* Dashboard padding */
+    ::-webkit-scrollbar {
+        width: 0;
+        background: transparent;
+    }
+}
+
+/* ============================================
+   Mobile: Modal Slide-Up
+   ============================================ */
+@media (max-width: 640px) {
+    [id$="-modal"] > div {
+        margin-top: auto;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        max-height: 95vh !important;
+        /* translateY keyframe — no top/bottom animation */
+        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+}
+
+/* ============================================
+   Mobile: Theme Toggle repositioned to top-left
+   ============================================ */
+@media (max-width: 640px) {
+    #theme-toggle {
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top) + 8px) !important;
+        bottom: auto !important;
+        left: 12px !important;
+        right: auto !important;
+        width: 42px;
+        height: 42px;
+        z-index: 130;
+        /* translateZ instead of positional hacks */
+        transform: translateZ(0);
+    }
+    #theme-toggle i { font-size: 16px; }
+}
+
+/* ============================================
+   Mobile: Dashboard Cards
+   ============================================ */
+@media (max-width: 640px) {
     #dashboard-view {
-        padding-left: 0.75rem !important;
+        padding-left: 0.75rem  !important;
         padding-right: 0.75rem !important;
-        padding-top: 0.75rem !important;
+        padding-top: 0.75rem   !important;
     }
-    /* Section headers */
-    #dashboard-view h2 {
-        font-size: 0.95rem !important;
-    }
-    /* Exam / note cards: compact padding */
+    #dashboard-view h2 { font-size: 0.95rem !important; }
+
     #latest-exams-grid > div,
     #latest-notes-grid > div {
-        padding: 1rem !important;
+        padding: 1rem       !important;
         border-radius: 1rem !important;
     }
-    /* Card icon */
+
     #latest-exams-grid .w-14,
     #latest-notes-grid .w-14 {
-        width: 2.5rem !important;
-        height: 2.5rem !important;
+        width: 2.5rem     !important;
+        height: 2.5rem    !important;
         font-size: 1.1rem !important;
     }
-    /* Card title: smaller font */
+
     #latest-exams-grid h3,
     #latest-notes-grid h3 {
         font-size: 0.875rem !important;
         line-height: 1.35;
     }
-    /* Card description */
+
     #latest-exams-grid p,
     #latest-notes-grid p {
         font-size: 0.75rem !important;
         -webkit-line-clamp: 2;
         line-clamp: 2;
     }
-    /* Time badge */
+
     #latest-exams-grid .time-badge-anim,
     #latest-notes-grid span {
         font-size: 0.65rem !important;
-        padding: 2px 6px !important;
+        padding: 2px 6px  !important;
     }
-    /* Welcome header */
-    #welcome-msg {
-        font-size: 1.15rem !important;
-    }
-    /* Leaderboard section */
-    #dashboard-view .rounded-3xl.p-7 {
-        padding: 1rem !important;
-    }
+
+    #welcome-msg { font-size: 1.15rem !important; }
+
+    #dashboard-view .rounded-3xl.p-7 { padding: 1rem !important; }
 }
 
-/* Fix long text overflow in ALL cards (any screen size) */
+/* Fix long text overflow in cards */
 #latest-exams-grid h3,
 #latest-notes-grid h3 {
     overflow-wrap: break-word;
     word-break: break-word;
     white-space: normal;
 }
+
 #latest-exams-grid p.line-clamp-2,
 #latest-notes-grid p.line-clamp-2 {
     overflow: hidden;
@@ -778,31 +955,32 @@ select {
     -webkit-box-orient: vertical;
 }
 
-/* === Mobile: prevent ALL modals from hiding behind bottom nav === */
+/* ============================================
+   Mobile: Modal safe-area clearance
+   ============================================ */
 @media (max-width: 767px) {
-    /* Push all modal overlays up to clear the ~80px fixed bottom nav */
     [id$="-modal"]:not(#confirm-modal-overlay) {
         padding-bottom: max(5.5rem, calc(5rem + env(safe-area-inset-bottom))) !important;
         align-items: flex-end !important;
-        padding-top: 0.5rem !important;
+        padding-top: 0.5rem   !important;
     }
-    /* Inner modal box: fill available height correctly */
+
     [id$="-modal"]:not(#confirm-modal-overlay) > div {
-        max-height: calc(100vh - 5.5rem - env(safe-area-inset-bottom, 0px)) !important;
-        max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px)) !important;
-        height: auto !important;
+        max-height: calc(100vh - 5.5rem - env(safe-area-inset-bottom, 0px))   !important;
+        max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px))  !important;
+        height: auto    !important;
         max-width: 100% !important;
-        width: 100% !important;
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 0 !important;
-        border-top-left-radius: 1.5rem !important;
-        border-top-right-radius: 1.5rem !important;
+        width: 100%     !important;
+        border-bottom-left-radius:  0      !important;
+        border-bottom-right-radius: 0      !important;
+        border-top-left-radius:  1.5rem   !important;
+        border-top-right-radius: 1.5rem   !important;
     }
-    /* Scrollable inner body of modals */
+
     [id$="-modal"] .overflow-y-auto {
         -webkit-overflow-scrolling: touch;
     }
-    /* Small confirmation/alert modals stay centered */
+
     #admin-auth-modal,
     #delete-subject-modal,
     #rename-subject-modal,
@@ -810,88 +988,102 @@ select {
         align-items: center !important;
         padding-bottom: max(5.5rem, calc(5rem + env(safe-area-inset-bottom))) !important;
     }
+
     #admin-auth-modal > div,
     #delete-subject-modal > div,
     #rename-subject-modal > div,
     #student-menu-modal > div {
-        border-radius: 1.5rem !important;
-        max-height: calc(100dvh - 7rem) !important;
-        overflow-y: auto !important;
+        border-radius: 1.5rem              !important;
+        max-height: calc(100dvh - 7rem)   !important;
+        overflow-y: auto                  !important;
     }
 }
+
+/* ============================================
+   Mobile: Quiz Container
+   ============================================ */
 @media (max-width: 640px) {
     #quiz-container {
-        padding: 1rem !important;
-        margin: 0.5rem auto 5rem !important; /* bottom margin clears the dock */
-        border-radius: 1.25rem !important;
+        padding: 1rem                    !important;
+        margin: 0.5rem auto 5rem         !important;
+        border-radius: 1.25rem           !important;
     }
-    #quiz-container header {
-        margin-bottom: 1rem;
-    }
+
+    #quiz-container header { margin-bottom: 1rem; }
+
     #quiz-main-title {
         font-size: 1.1rem !important;
         line-height: 1.4;
     }
-    #quiz-subtitle {
-        font-size: 0.75rem;
-    }
-    /* Score / Timer / Question number row */
+
+    #quiz-subtitle { font-size: 0.75rem; }
+
     #quiz-container header > div:last-of-type {
         flex-direction: column;
         gap: 0.5rem;
         align-items: center;
     }
-    #question-text {
-        font-size: 1rem !important;
-    }
-    /* Navigation buttons */
+
+    #question-text { font-size: 1rem !important; }
+
     #quiz-container .flex.justify-between {
         margin-top: 1.25rem !important;
         gap: 0.5rem;
     }
+
     #previous-btn,
     #next-btn,
     #submit-btn {
         padding: 0.65rem 1rem !important;
-        font-size: 0.82rem !important;
+        font-size: 0.82rem    !important;
         min-width: 0;
     }
-    /* Results screen: full height friendly */
+
     #results-screen > div {
-        padding: 1.5rem !important;
+        padding: 1.5rem    !important;
         margin: 1rem;
         max-height: 90vh;
         overflow-y: auto;
     }
 }
 
-/* Landscape mode on mobile */
+/* ============================================
+   Landscape mode on short screens
+   ============================================ */
 @media (max-height: 500px) and (orientation: landscape) {
     #ios-bottom-nav { display: none !important; }
     .bottom-sheet-content { max-height: 90vh; }
     [id$="-modal"] > div { max-height: 95vh !important; }
 }
 
-/* === Print Styles === */
+/* ============================================
+   Print Styles
+   ============================================ */
 @media print {
     #ios-bottom-nav,
     #theme-toggle,
     .bottom-sheet-overlay,
     .bottom-sheet-content,
-    [id$="-modal"] {
-        display: none !important;
-    }
+    [id$="-modal"] { display: none !important; }
+
     body::before { display: none; }
     body { background: white !important; color: black !important; }
 }
 
-/* === Reduced Motion Preference === */
+/* ============================================
+   Reduced Motion Preference
+   — Overrides all animation/transition durations
+     when the OS accessibility setting is active.
+     will-change properties are not removed here
+     because they still help the GPU composite
+     layers even when animations are instant.
+   ============================================ */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        animation-duration:       0.01ms !important;
+        animation-iteration-count: 1    !important;
+        transition-duration:      0.01ms !important;
     }
 }

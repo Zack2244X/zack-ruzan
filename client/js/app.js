@@ -63,6 +63,21 @@ import {
 } from './modules/grades.js';
 import { renderDashboard as _renderDashboard, deleteQuiz as _deleteQuiz } from './modules/dashboard.js';
 
+// === وحدات الحركة والتمرير ===
+import {
+    initAnimations, playEntranceAnimation, playExitAnimation,
+    animateElement, pauseAllAnimations, resumeAllAnimations,
+    setAnimationSpeed, setReducedMotion
+} from './modules/animation.js';
+import {
+    initScroll, scrollToTop, scrollToElement,
+    enableSmoothScroll, disableSmoothScroll,
+    onScrollEnter, offScrollEnter
+} from './modules/scroll.js';
+
+// === أداة أداء الجهاز ===
+import { getDevicePerformanceTier } from './modules/helpers.js';
+
 // === Global Error Boundary ===
 window.addEventListener('error', (e) => {
     console.error('❌ خطأ غير متوقع:', e.message, e.filename, e.lineno);
@@ -119,6 +134,54 @@ window.addEventListener('pagehide', () => {
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('isAdmin');
 });
+
+// ============================================
+//  ضبط إعدادات الحركة بناءً على أداء الجهاز
+//  — يُستدعى مرة واحدة عند بدء التشغيل
+// ============================================
+
+/**
+ * @description يقرأ مستوى أداء الجهاز ويضبط وحدتَي الحركة والتمرير وفقاً له.
+ *
+ * المستويات المتوقعة من getDevicePerformanceTier():
+ *  - 'high'   → تجربة كاملة: حركات سلسة + تمرير ناعم + scroll-enter callbacks
+ *  - 'medium' → حركات مخففة (سرعة مخفضة) + تمرير ناعم بدون scroll-enter
+ *  - 'low'    → reduced-motion كامل + تعطيل التمرير الناعم توفيراً للموارد
+ */
+async function applyPerformanceBasedAnimationSettings() {
+    logFunctionStatus('applyPerformanceBasedAnimationSettings', true);
+    // getDevicePerformanceTier is async and returns an object { tier, ... }
+    const perf = await getDevicePerformanceTier();
+    const tier = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
+    console.log(`[app] 🖥️ مستوى أداء الجهاز: ${tier}`, perf);
+
+    switch (tier) {
+        case 'high':
+            setReducedMotion(false);
+            setAnimationSpeed(1.0);
+            enableSmoothScroll();
+            onScrollEnter();
+            console.log('[app] ✓ إعدادات الحركة: وضع الأداء العالي');
+            break;
+
+        case 'medium':
+            setReducedMotion(false);
+            setAnimationSpeed(0.75);
+            enableSmoothScroll();
+            offScrollEnter();
+            console.log('[app] ✓ إعدادات الحركة: وضع الأداء المتوسط');
+            break;
+
+        case 'low':
+        default:
+            setReducedMotion(true);
+            setAnimationSpeed(0);
+            disableSmoothScroll();
+            offScrollEnter();
+            console.log('[app] ✓ إعدادات الحركة: وضع الأداء المنخفض (reduced-motion)');
+            break;
+    }
+}
 
 // ============================================
 //  دوال الربط (Bound Functions)
@@ -257,7 +320,7 @@ function loadApp() {
             document.getElementById('ios-bottom-nav').classList.remove('hidden');
 
             const safeName = escapeHtml(state.currentUser.fname || state.currentUser.fullName || 'صديقنا');
-            document.getElementById('welcome-msg').innerText = `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
+            document.getElementById('welcome-msg').innerText = `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
 
             navToHome();
             renderDashboard();
@@ -320,7 +383,12 @@ Object.assign(window, {
     deleteQuiz,
 
     // Helpers
-    escapeHtml, showAlert, showConfirm, showLoading
+    escapeHtml, showAlert, showConfirm, showLoading,
+
+    // Animations & Scroll (exposed for use from HTML/other scripts if needed)
+    scrollToTop, scrollToElement,
+    playEntranceAnimation, playExitAnimation, animateElement,
+    pauseAllAnimations, resumeAllAnimations
 });
 
 // Fallback: addEventListener for login button (in case onclick doesn't fire)
@@ -344,8 +412,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 window.onload = async function () {
     logFunctionStatus('window.onload', false);
+
     // تهيئة الثيم
     initTheme();
+
+    // ── تهيئة وحدات الحركة والتمرير ──────────────────────────────────────────
+    // يجب أن تسبق applyPerformanceBasedAnimationSettings() حتى تكون
+    // الوحدتان جاهزتين قبل استقبال أوامر الضبط
+    await initAnimations();
+    initScroll();
+
+    // ── ضبط إعدادات الحركة بناءً على أداء الجهاز ────────────────────────────
+    await applyPerformanceBasedAnimationSettings();
 
     // جلب إعدادات السيرفر (GOOGLE_CLIENT_ID) لإزالة التكرار
     try {

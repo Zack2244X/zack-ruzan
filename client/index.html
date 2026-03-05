@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- App CSS -->
     <link rel="stylesheet" href="/css/styles.css?v=30">
-    
+
     <!-- Login Page Styles -->
     <style>
     /* ═══ متغيرات صفحة الدخول ═══ */
@@ -37,41 +37,35 @@
       overflow: hidden;
     }
 
-/* استبدل قسم .bg-pattern بهذا الكود */
-/* خلفية الخط العربي */
-.bg-pattern {
-  position: fixed; 
-  inset: 0;
-  /* ملاحظة: يفضل وضع الصورة بجانب ملف HTML واستخدام اسمها فقط */
-  background-image: url('icons/bg.png'); 
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  pointer-events: none; 
-  z-index: 0;
-}
+    .bg-pattern {
+      position: fixed;
+      inset: 0;
+      background-image: url('icons/bg.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-/* طبقة التعتيم الملكية */
-.bg-pattern::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* تعتيم متدرج يبدأ من 85% في المنتصف ويصل لـ 98% عند الأطراف */
-  background: radial-gradient(
-    circle, 
-    rgba(8, 12, 20, 0.85) 0%, 
-    rgba(5, 7, 12, 0.98) 100%
-  );
-}
+    .bg-pattern::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle,
+        rgba(8, 12, 20, 0.85) 0%,
+        rgba(5, 7, 12, 0.98) 100%
+      );
+    }
 
-/* إضافة طبقة تعتيم فوق الصورة لتتماشى مع التصميم الداكن */
-.bg-pattern::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle, rgba(8, 12, 20, 0.7) 0%, rgba(5, 7, 12, 0.95) 100%);
-  /* يمكنك زيادة درجة التعتيم بتغيير الـ 0.95 إلى 0.98 */
-}
+    .bg-pattern::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(8, 12, 20, 0.7) 0%, rgba(5, 7, 12, 0.95) 100%);
+    }
+
     #floor-glow {
       position: absolute;
       width: 420px; height: 280px;
@@ -305,7 +299,7 @@
 </head>
 <body class="p-4 sm:p-8">
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم"><i class="fas fa-moon"></i></button>
-    
+
     <!-- iOS Bottom Nav -->
     <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
         <button onclick="navToHome()" id="dock-home" class="dock-btn active flex flex-col items-center gap-1 w-16 p-1.5 text-blue-600 transition-all">
@@ -326,9 +320,8 @@
         </button>
     </nav>
 
-    <!-- جميع الـ Bottom Sheets والـ Modals الأصلية تبقى كما هي -->
+    <!-- Bottom Sheets & Modals -->
     <div id="tree-bottom-sheet" class="fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
-        <!-- ... المحتوى الأصلي ... -->
         <div id="tree-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
         <div id="tree-content" class="relative w-full md:max-w-md bg-gray-50 rounded-t-3xl h-[85vh] flex flex-col bottom-sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pointer-events-auto">
             <div class="w-full flex justify-center pt-3 pb-2 cursor-pointer sheet-handle" onclick="closeBottomSheet()">
@@ -525,9 +518,7 @@
         </div>
     </div>
 
-    <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- ════════ شاشة تسجيل الدخول الجديدة (المصباح الإسلامي) ════════ -->
-    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="bg-pattern"></div>
         <div id="floor-glow"></div>
@@ -594,46 +585,45 @@
 
             <!-- كارت تسجيل الدخول -->
             <div class="login-card" id="login-card">
-    
-    <div class="logo-wrap">
-        <img src="icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.png" 
-             alt="Logo" 
-             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
-    </div>
+                <div class="logo-wrap">
+                    <img src="icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.png"
+                         alt="Logo"
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                </div>
 
-    <h2 class="card-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
-    <p class="card-college">كُلِّيَّة دَار الْعُلُوم</p>
-    <p class="card-sub">سجِّل دخولك للوصول إلى بوابة<br>الطلاب والاختبارات الإلكترونية</p>
+                <h2 class="card-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
+                <p class="card-college">كُلِّيَّة دَار الْعُلُوم</p>
+                <p class="card-sub">سجِّل دخولك للوصول إلى بوابة<br>الطلاب والاختبارات الإلكترونية</p>
 
-    <div class="divider">
-        <span class="divider-line"></span>
-        <span class="divider-star">✦✦✦✦✦✦✦</span>
-        <span class="divider-line"></span>
-    </div>
+                <div class="divider">
+                    <span class="divider-line"></span>
+                    <span class="divider-star">✦✦✦✦✦✦✦</span>
+                    <span class="divider-line"></span>
+                </div>
 
-    <button class="login-btn-fancy" id="login-btn" onclick="startGoogleRedirectLogin('student')">
-        <span>🎓</span>
-        تسجيل الدخول بـ Google
-    </button>
-    
-    <button class="guest-btn" onclick="openModal()" style="background: transparent; border: none; color: rgba(201, 150, 42, 0.7); margin-top: 15px; cursor: pointer; text-decoration: underline;">
-        الدخول بدون حساب (تجريبي)
-    </button>
+                <button class="login-btn-fancy" id="login-btn" onclick="startGoogleRedirectLogin('student')">
+                    <span>🎓</span>
+                    تسجيل الدخول بـ Google
+                </button>
 
-    <p id="login-error" class="login-error-msg hidden"></p>
-    <p id="login-loading" class="login-loading-msg hidden">
-        <i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...
-    </p>
+                <button class="guest-btn" onclick="openModal()" style="background: transparent; border: none; color: rgba(201, 150, 42, 0.7); margin-top: 15px; cursor: pointer; text-decoration: underline;">
+                    الدخول بدون حساب (تجريبي)
+                </button>
 
-    <p class="lamp-hint">
-        <span>💡</span>
-        <span>اسحب الحبل أو انقر المصباح للتحكم في الإضاءة</span>
-    </p>
+                <p id="login-error" class="login-error-msg hidden"></p>
+                <p id="login-loading" class="login-loading-msg hidden">
+                    <i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...
+                </p>
+
+                <p class="lamp-hint">
+                    <span>💡</span>
+                    <span>اسحب الحبل أو انقر المصباح للتحكم في الإضاءة</span>
+                </p>
             </div>
         </div>
     </div>
 
-    <!-- باقي العناصر الأصلية -->
+    <!-- Dashboard -->
     <div id="dashboard-view" class="hidden container mx-auto px-4 py-6 sm:py-10 pb-24">
         <header class="text-center mb-8 relative mt-12 sm:mt-0">
             <div class="absolute inset-0 -z-10 flex justify-center items-center opacity-40 blur-2xl">
@@ -865,7 +855,30 @@
 
     <div id="toast-container" class="toast-float" role="alert" aria-live="polite"></div>
 
-    <!-- App JS -->
+    <!-- ═══════════════════════════════════════════════════════════════
+         مكتبات الحركة والتمرير — يجب تحميلها قبل app.js
+         GSAP: محرك الأنيميشن | Lenis: التمرير السلس
+    ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- GSAP Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+            integrity="sha512-7eHRwcbYkK4d9d/6tD8gkSqJsFV5oa3bNcVoQvJIBdSMXYRmbBdxjIVjssFfJwrCjZEV7ixKpPCCCXEBEIzg=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+
+    <!-- GSAP ScrollTrigger plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
+            integrity="sha512-onMTRKJBKz8M1TnqqDuGBlowlH0ohFzMXYRNebz+yOcc5TfuHz9foanvVo9yeE+NR1jPHq1UaFrSBaXN3WkJQ=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+
+    <!-- Lenis Smooth Scroll -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lenis/1.1.14/lenis.min.js"
+            integrity="sha512-EWo7KFYuRLZl4oJNimZ3TBFbbXKT0QTG4MX3wnkS2GFcv7xAGNuGMnNnFdKyOJ6e4UrH5Y4pxkiHHYgSGGlA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
+
+    <!-- App JS (ES Module — must come after GSAP & Lenis) -->
     <script type="module" src="/js/app.js?v=30"></script>
 
     <!-- Lamp Animation Script -->
@@ -876,7 +889,7 @@
     (function() {
         const canvas = document.getElementById('rope-canvas');
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         const CW = canvas.width;
         const CH = canvas.height;
