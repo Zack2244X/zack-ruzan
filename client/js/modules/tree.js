@@ -222,12 +222,17 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
                     if (state.currentViewMode === 'exams') {
                         html += `
-                            <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer group mb-2">
-                                <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
-                                ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
-                                <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
-                                    <span class="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
+                            <div class="relative group mb-2">
+                                <button onclick="deleteQuiz(${item.originalIndex})" class="absolute top-2 left-2 text-red-500 hover:text-red-700 z-20 p-1.5 bg-white rounded-full shadow-sm transition" title="حذف الاختبار">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer">
+                                    <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
+                                    ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
+                                    <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                        <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                        <span class="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
+                                    </div>
                                 </div>
                             </div>
                         `;
