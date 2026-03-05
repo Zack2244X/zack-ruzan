@@ -234,6 +234,9 @@ export function openAdminAuthOrPanel() {
         const adminContent = document.getElementById('admin-content');
         document.getElementById('admin-overlay').classList.add('active');
         adminContent.classList.add('active');
+        // إخفاء الشريط السفلي عند فتح لوحة الأدمن
+        const dock = document.getElementById('ios-bottom-nav');
+        if (dock) dock.classList.add('hidden');
         _attachSwipeToClose(adminContent, closeAdminSheet);
     } else {
         document.getElementById('student-menu-modal').classList.remove('hidden');

@@ -15,6 +15,8 @@ export function openCreateSection() {
     closeAdminSheet();
     closeBottomSheet();
     _showThemeToggle(false);
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.add('hidden');
     document.getElementById('create-section-modal').classList.remove('hidden');
 
     // تصفير الواجهة للخطوة 1

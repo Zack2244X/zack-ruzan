@@ -13,6 +13,8 @@ import { _showThemeToggle } from './navigation.js';
 export function openAddNoteModal() {
     logFunctionStatus('openAddNoteModal', false);
     _showThemeToggle(false);
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.add('hidden');
     document.getElementById('new-n-title').value = '';
     document.getElementById('new-n-subject').value = '';
     document.getElementById('new-n-link').value = '';
