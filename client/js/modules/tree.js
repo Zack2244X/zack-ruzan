@@ -433,6 +433,12 @@ export async function executeRenameSubject(renderSubjectFiltersFn, renderHistory
         } catch (e) {
             showAlert('⚠️ تعذر تحديث قائمة الامتحانات بعد تعديل اسم المادة: ' + e.message, 'warning');
         }
+        // إذا كان اسم المادة جزءاً من المواد الافتراضية، نحدّثه هناك أيضاً
+        const defIndex = DEFAULT_SUBJECTS.indexOf(state.subjectToRename);
+        if (defIndex !== -1) {
+            DEFAULT_SUBJECTS[defIndex] = newName;
+        }
+
         if (state.currentSubjectFilter === state.subjectToRename) state.currentSubjectFilter = newName;
         if (state.editSubjectFilter === state.subjectToRename) state.editSubjectFilter = newName;
         closeRenameModal();
