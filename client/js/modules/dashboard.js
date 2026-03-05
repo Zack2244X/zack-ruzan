@@ -465,13 +465,13 @@ if (latestExams.length === 0) {
                 ? `🌟 ${entry.fullMarksCount}/${totalExams} درجة نهائية`
                 : `${entry.examsCount}/${totalExams} امتحان`;
 
-            examsHtml += `
+            lbHtml += `
                 <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
-                            cursor-pointer border border-gray-100 hover:border-blue-400 group
-                            relative overflow-hidden flex flex-col">
-                    <div onclick="playQuiz(${realIndex})" class="h-full w-full">
-                    ...existing code...
-                    ${state.currentUser ? buildAttemptsHtml(attempts, willBePractice) : ''}
+                            border ${colors[i] || colors[2]} flex items-center gap-4 mb-3">
+                    <span class="text-2xl">${medals[i] || '🏅'}</span>
+                    <div class="flex-1">
+                        <div class="font-extrabold text-lg">${safeName}</div>
+                        <div class="text-xs font-bold text-gray-500">${rankNames[i] || 'متميز'} • ${fullMarkLabel}</div>
                     </div>
                 </div>`;
         });
