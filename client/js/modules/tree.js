@@ -414,10 +414,22 @@ export async function executeRenameSubject(renderSubjectFiltersFn, renderHistory
             console.error(`[renameSubject] ✗ فشل:`, e.message);
             showAlert('⚠️ تعذر تعديل اسم المادة على السيرفر: ' + e.message, 'warning');
         }
-        // إعادة تحميل الامتحانات من السيرفر لضمان تحديث كل الواجهات
+        // إعادة تحميل الامتحانات من السيرفر وضبط الصيغة الداخلية
         try {
-            const quizzes = await apiCall('GET', '/api/quizzes');
-            state.allQuizzes = quizzes.data || [];
+            const res = await apiCall('GET', '/api/quizzes');
+            const raw = Array.isArray(res) ? res : (res?.data || []);
+            state.allQuizzes = raw.map(q => ({
+                id: q.id,
+                config: {
+                    id: q.id,
+                    title: q.title,
+                    subject: q.subject,
+                    description: q.description || '',
+                    timeLimit: q.timeLimit || 1500,
+                    closingMessage: q.closingMessage || 'شكراً لمشاركتك!'
+                },
+                questions: q.questions || []
+            }));
         } catch (e) {
             showAlert('⚠️ تعذر تحديث قائمة الامتحانات بعد تعديل اسم المادة: ' + e.message, 'warning');
         }
