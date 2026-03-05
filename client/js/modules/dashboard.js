@@ -4,7 +4,7 @@
  */
 import state from './state.js';
 import { escapeHtml, logFunctionStatus } from './helpers.js';
-import { apiFetch } from './api.js'; // ← نستخدم apiFetch المركزية بدلاً من getAttempts الفردية
+import { apiCall } from './api.js'; // use apiCall wrapper from api.js
 
 // ─────────────────────────────────────────────
 //  دوال المساعدة للمحاولات
@@ -43,7 +43,7 @@ async function resolveAttemptsMap(quizzes, forceRefresh = false) {
 
     try {
         // GET /api/scores/my/attempts → [{ quizId, attemptCount, hasOfficial }, ...]
-        const rows = await apiFetch('/api/scores/my/attempts');
+        const rows = await apiCall('GET', '/api/scores/my/attempts');
 
         if (!Array.isArray(rows)) {
             throw new TypeError(`استجابة غير متوقعة من السيرفر: ${JSON.stringify(rows)}`);
