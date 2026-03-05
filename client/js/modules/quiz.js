@@ -529,59 +529,94 @@ export function playQuiz(index) {
 export function initializeQuiz() {
     logFunctionStatus('initializeQuiz', false);
     totalQuestionsEl.textContent = state.totalQuestions;
+
     if (state.totalQuestions > 0) {
         renderQuestion();
         startTimer();
         state.quizStarted = true;
-        addQuizExitButton();
+
         // إخفاء الشريط السفلي أثناء الاختبار
         const dockBar = document.getElementById('ios-bottom-nav');
-			if (dockBar) dockBar.classList.remove('hidden');
-        btn.onclick = async () => {
-            showCustomExitModal();
-        };
-        const quizContainer = document.getElementById('quiz-container');
-        if (quizContainer) quizContainer.appendChild(btn);
+        if (dockBar) dockBar.classList.add('hidden');  // ✅ add وليس remove
+
+        addQuizExitButton();
     }
 }
 
-// مودل تأكيد الخروج المخصص
+function addQuizExitButton() {
+    // إزالة الزر إن وُجد مسبقاً
+    const existing = document.getElementById('quiz-exit-btn');
+    if (existing) existing.remove();
+
+    const btn = document.createElement('button');
+    btn.id = 'quiz-exit-btn';
+    btn.textContent = 'خروج';
+    // أضف className حسب تصميمك
+    btn.className = 'fixed top-4 left-4 z-50 px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow';
+
+    btn.onclick = () => {
+        showCustomExitModal();
+    };
+
+    const quizContainer = document.getElementById('quiz-container');
+    if (quizContainer) quizContainer.appendChild(btn);
+}
+
 function showCustomExitModal() {
-    let modal = document.getElementById('quiz-exit-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'quiz-exit-modal';
-        modal.className = 'fixed inset-0 flex items-center justify-center z-50';
-        modal.innerHTML = `
-            <div style="background: #222b; border-radius: 18px; box-shadow: 0 8px 32px #0005; padding: 2.5rem 2rem; min-width:320px; max-width:90vw; text-align:center;">
-                <div style="font-size:1.2rem; color:#fff; margin-bottom:1.5rem; font-weight:bold;">هل أنت متأكد أنك تريد الخروج من الاختبار؟<br><span style='font-size:0.95rem; color:#ff9100;'>سيتم فقدان التقدم الحالي.</span></div>
-                <div style="display:flex; gap:1rem; justify-content:center;">
-                    <button id="exit-cancel-btn" style="padding:0.7rem 2.2rem; background:#fff; color:#222; border-radius:10px; font-weight:bold; font-size:1rem; border:none; box-shadow:0 2px 8px #0002;">إلغاء</button>
-                    <button id="exit-ok-btn" style="padding:0.7rem 2.2rem; background:#ff1744; color:#fff; border-radius:10px; font-weight:bold; font-size:1rem; border:none; box-shadow:0 2px 8px #0002;">خروج</button>
-                </div>
+    // منع التكرار
+    if (document.getElementById('quiz-exit-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'quiz-exit-modal';
+    modal.className = 'fixed inset-0 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div style="background:#222b;border-radius:18px;box-shadow:0 8px 32px #0005;
+                    padding:2.5rem 2rem;min-width:320px;max-width:90vw;text-align:center;">
+            <div style="font-size:1.2rem;color:#fff;margin-bottom:1.5rem;font-weight:bold;">
+                هل أنت متأكد أنك تريد الخروج من الاختبار؟<br>
+                <span style="font-size:0.95rem;color:#ff9100;">سيتم فقدان التقدم الحالي.</span>
             </div>
-        `;
-        document.body.appendChild(modal);
-        document.getElementById('exit-cancel-btn').onclick = () => {
-            modal.remove();
-        };
-        document.getElementById('exit-ok-btn').onclick = () => {
-            modal.remove();
-            state.quizStarted = false;
-            document.getElementById('quiz-container').classList.add('hidden');
-            document.getElementById('dashboard-view').classList.remove('hidden');
-            const dockBar = document.getElementById('ios-bottom-nav');
-            if (dockBar) dockBar.classList.remove('hidden');
-            if (typeof updateDockUI === 'function') updateDockUI('home');
-            const btn = document.getElementById('quiz-exit-btn');
-            if (btn) btn.remove();
-            }
-        }
-        const quizContainer = document.getElementById('quiz-container');
-        if (quizContainer) quizContainer.appendChild(btn);
-    }
+            <div style="display:flex;gap:1rem;justify-content:center;">
+                <button id="exit-cancel-btn"
+                    style="padding:0.7rem 2.2rem;background:#fff;color:#222;
+                           border-radius:10px;font-weight:bold;font-size:1rem;
+                           border:none;box-shadow:0 2px 8px #0002;">
+                    إلغاء
+                </button>
+                <button id="exit-ok-btn"
+                    style="padding:0.7rem 2.2rem;background:#ff1744;color:#fff;
+                           border-radius:10px;font-weight:bold;font-size:1rem;
+                           border:none;box-shadow:0 2px 8px #0002;">
+                    خروج
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('exit-cancel-btn').onclick = () => {
+        modal.remove();
+    };
+
+    document.getElementById('exit-ok-btn').onclick = () => {
+        modal.remove();
+        clearInterval(state.timerInterval);  // ✅ إيقاف التايمر عند الخروج
+        state.quizStarted = false;
+
+        document.getElementById('quiz-container').classList.add('hidden');
+        document.getElementById('dashboard-view').classList.remove('hidden');
+
+        const dockBar = document.getElementById('ios-bottom-nav');
+        if (dockBar) dockBar.classList.remove('hidden');
+
+        const exitBtn = document.getElementById('quiz-exit-btn');
+        if (exitBtn) exitBtn.remove();
+
+        _showThemeToggle(true);
+    };
 }
-}
+
 
 export function renderQuestion() {
     logFunctionStatus('renderQuestion', false);
