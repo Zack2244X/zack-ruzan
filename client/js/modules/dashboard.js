@@ -332,29 +332,32 @@ export async function renderDashboard(forceRefresh = false) {
     leaderboardList.innerHTML = '';
 
     const totalExams    = state.allQuizzes.length || 1;
-    const sourceScores  = (state.serverScores?.length > 0) ? state.serverScores : state.allUserScores;
-
-    // نُحتسب فقط المحاولات الرسمية في لوحة الشرف
-    const scoresByUser = {};
-    sourceScores.forEach(entry => {
-        if (entry.isOfficial === false) return;
-        const userName = entry.userName || 'طالب';
-        const total    = Number(entry.total) || 0;
-        const score    = Number(entry.score) || 0;
-        if (total <= 0) return;
-        if (!scoresByUser[userName]) {
-            scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
-        }
-        scoresByUser[userName].totalScore    += score;
-        scoresByUser[userName].totalMax      += total;
-        scoresByUser[userName].examsCount    += 1;
-        if (score === total) scoresByUser[userName].fullMarksCount += 1;
-    });
-
-    const sourceLeaderboard = Object.values(scoresByUser).map(u => ({
-        ...u,
-        avgPercentage: u.totalMax > 0 ? Math.round((u.totalScore / u.totalMax) * 100) : 0
-    }));
+    // Prefer leaderboard from server if available (always includes names)
+    const sourceLeaderboard = Array.isArray(state.serverLeaderboard) && state.serverLeaderboard.length > 0
+        ? state.serverLeaderboard
+        : (() => {
+            // fallback: calculate locally from scores (may lack names for students)
+            const scoresByUser = {};
+            const sourceScores = (state.serverScores?.length > 0) ? state.serverScores : state.allUserScores;
+            sourceScores.forEach(entry => {
+                if (entry.isOfficial === false) return;
+                const userName = entry.userName || 'طالب';
+                const total    = Number(entry.total) || 0;
+                const score    = Number(entry.score) || 0;
+                if (total <= 0) return;
+                if (!scoresByUser[userName]) {
+                    scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
+                }
+                scoresByUser[userName].totalScore    += score;
+                scoresByUser[userName].totalMax      += total;
+                scoresByUser[userName].examsCount    += 1;
+                if (score === total) scoresByUser[userName].fullMarksCount += 1;
+            });
+            return Object.values(scoresByUser).map(u => ({
+                ...u,
+                avgPercentage: u.totalMax > 0 ? Math.round((u.totalScore / u.totalMax) * 100) : 0
+            }));
+        })();
 
     const ranked = sourceLeaderboard
         .filter(item => item.totalScore > 0)
