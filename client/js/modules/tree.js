@@ -222,7 +222,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
                     if (state.currentViewMode === 'exams') {
                         html += `
-                            <div class="relative group mb-2">
+                            <div class="group mb-2">
                                 <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer">
                                     <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
                                     ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
@@ -231,14 +231,13 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                                         <span class="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
                                     </div>
                                 </div>
-                                ${state.isAdmin ? `<button onclick="deleteExamFromHistoryTree('${escapeHtml(config.id)}', event)" class="absolute top-2 left-2 bg-red-50 hover:bg-red-200 text-red-600 rounded-full p-2 shadow transition" title="حذف الامتحان"><i class="fas fa-trash"></i></button>` : ''}
                             </div>
                         `;
                     } else {
                         const iconClass = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500' : 'fa-file-pdf text-orange-500';
                         const safeLink = encodeURI(config.link || '');
                         html += `
-                            <div class="relative group mb-2">
+                            <div class="group mb-2">
                                 <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-300 transition cursor-pointer">
                                     <div class="flex justify-between items-start">
                                         <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
@@ -250,7 +249,6 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                                         <span class="bg-orange-50 px-2 py-1 rounded text-orange-700 font-bold hover:bg-orange-100 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
                                     </div>
                                 </div>
-                                ${state.isAdmin ? `<button onclick="deleteNoteFromHistoryTree('${escapeHtml(config.id)}', event)" class="absolute top-2 left-2 bg-red-50 hover:bg-red-200 text-red-600 rounded-full p-2 shadow transition" title="حذف المذكرة"><i class="fas fa-trash"></i></button>` : ''}
                             </div>
                         `;
                     }
