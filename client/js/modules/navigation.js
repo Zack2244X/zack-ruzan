@@ -14,7 +14,7 @@ export function _syncMainInteractionState() {
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
 
-    const anyOpen = ['create-section-modal','add-note-modal','edit-selection-modal','grades-modal','stats-modal','admin-auth-modal','delete-subject-modal','rename-subject-modal','student-menu-modal']
+    const anyOpen = ['create-section-modal','add-note-modal','edit-selection-modal','grades-modal','stats-modal','admin-auth-modal','delete-subject-modal','rename-subject-modal','student-menu-modal','login-screen']
         .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active') || document.getElementById('admin-content')?.classList.contains('active');
     const blocked = anyOpen || sheetOpen;
