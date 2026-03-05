@@ -1,3 +1,23 @@
+// تحديث دوري للوحة الشرف كل دقيقة
+let leaderboardRefreshTimer = null;
+
+export function startLeaderboardAutoRefresh() {
+    if (leaderboardRefreshTimer) clearInterval(leaderboardRefreshTimer);
+    leaderboardRefreshTimer = setInterval(() => {
+        // إعادة تحميل لوحة الشرف من السيرفر وتحديث العرض
+        if (typeof renderDashboard === 'function') {
+            // forceRefresh=true لتجاوز الكاش
+            renderDashboard(true);
+        }
+    }, 60000); // كل 60 ثانية
+}
+
+export function stopLeaderboardAutoRefresh() {
+    if (leaderboardRefreshTimer) {
+        clearInterval(leaderboardRefreshTimer);
+        leaderboardRefreshTimer = null;
+    }
+}
 /**
  * @module dashboard
  * @description وحدة لوحة التحكم الرئيسية — عرض آخر الامتحانات والمذكرات ولوحة الشرف

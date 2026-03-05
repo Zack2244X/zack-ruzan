@@ -6,6 +6,7 @@ import state from './state.js';
 import { showAlert, logFunctionStatus } from './helpers.js';
 import { apiCall, loadDataFromServer } from './api.js';
 import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
+import { startLeaderboardAutoRefresh } from './dashboard.js';
 
 /**
  * بدء تسجيل دخول Google عبر Redirect
@@ -298,3 +299,6 @@ export function startTokenRefresh() {
         } catch (e) { console.error('[auth] ✗ فشل تجديد التوكن:', e.message); }
     }, 6 * 60 * 60 * 1000);
 }
+
+// بعد تسجيل الدخول أو تحميل الصفحة الرئيسية
+if (typeof startLeaderboardAutoRefresh === 'function') startLeaderboardAutoRefresh();
