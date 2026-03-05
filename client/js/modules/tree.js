@@ -414,9 +414,13 @@ export async function executeRenameSubject(renderSubjectFiltersFn, renderHistory
             console.error(`[renameSubject] ✗ فشل:`, e.message);
             showAlert('⚠️ تعذر تعديل اسم المادة على السيرفر: ' + e.message, 'warning');
         }
-        state.allQuizzes.forEach(q => {
-            if (q.config.subject === state.subjectToRename) q.config.subject = newName;
-        });
+        // إعادة تحميل الامتحانات من السيرفر لضمان تحديث كل الواجهات
+        try {
+            const quizzes = await apiCall('GET', '/api/quizzes');
+            state.allQuizzes = quizzes.data || [];
+        } catch (e) {
+            showAlert('⚠️ تعذر تحديث قائمة الامتحانات بعد تعديل اسم المادة: ' + e.message, 'warning');
+        }
         if (state.currentSubjectFilter === state.subjectToRename) state.currentSubjectFilter = newName;
         if (state.editSubjectFilter === state.subjectToRename) state.editSubjectFilter = newName;
         closeRenameModal();
