@@ -222,7 +222,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
                     if (state.currentViewMode === 'exams') {
                         html += `
-                            <div class="group mb-2">
+                            <div class="relative group mb-2">
                                 <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer">
                                     <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
                                     ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
@@ -231,22 +231,26 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                                         <span class="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
                                     </div>
                                 </div>
+                                ${state.isAdmin ? `<button onclick="deleteExamFromHistoryTree('${escapeHtml(config.id)}', event)" class="absolute top-2 left-2 bg-red-50 hover:bg-red-200 text-red-600 rounded-full p-2 shadow transition" title="حذف الامتحان"><i class="fas fa-trash"></i></button>` : ''}
                             </div>
                         `;
                     } else {
                         const iconClass = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500' : 'fa-file-pdf text-orange-500';
                         const safeLink = encodeURI(config.link || '');
                         html += `
-                            <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-300 transition cursor-pointer group mb-2">
-                                <div class="flex justify-between items-start">
-                                    <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
-                                    <i class="fas ${iconClass} text-lg"></i>
+                            <div class="relative group mb-2">
+                                <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-300 transition cursor-pointer">
+                                    <div class="flex justify-between items-start">
+                                        <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
+                                        <i class="fas ${iconClass} text-lg"></i>
+                                    </div>
+                                    ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
+                                    <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
+                                        <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                        <span class="bg-orange-50 px-2 py-1 rounded text-orange-700 font-bold hover:bg-orange-100 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
+                                    </div>
                                 </div>
-                                ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
-                                <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                    <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
-                                    <span class="bg-orange-50 px-2 py-1 rounded text-orange-700 font-bold hover:bg-orange-100 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
-                                </div>
+                                ${state.isAdmin ? `<button onclick="deleteNoteFromHistoryTree('${escapeHtml(config.id)}', event)" class="absolute top-2 left-2 bg-red-50 hover:bg-red-200 text-red-600 rounded-full p-2 shadow transition" title="حذف المذكرة"><i class="fas fa-trash"></i></button>` : ''}
                             </div>
                         `;
                     }
@@ -500,3 +504,79 @@ export async function executeDeleteSubject(renderSubjectFiltersFn, renderHistory
         if (renderDashboardFn) renderDashboardFn();
     }
 }
+
+/**
+ * حذف امتحان من شجرة التاريخ مع تأكيد
+ * @param {string} examId
+ * @param {Event} event
+ */
+window.deleteExamFromHistoryTree = function(examId, event) {
+    event.stopPropagation();
+    state.examToDelete = examId;
+    document.getElementById('delete-exam-msg').innerText = 'هل أنت متأكد من حذف هذا الامتحان؟ سيتم مسحه نهائياً!';
+    document.getElementById('delete-exam-modal').classList.remove('hidden');
+}
+
+/**
+ * حذف مذكرة من شجرة التاريخ مع تأكيد
+ * @param {string} noteId
+ * @param {Event} event
+ */
+window.deleteNoteFromHistoryTree = function(noteId, event) {
+    event.stopPropagation();
+    state.noteToDelete = noteId;
+    document.getElementById('delete-exam-msg').innerText = 'هل أنت متأكد من حذف هذه المذكرة؟ سيتم مسحها نهائياً!';
+    document.getElementById('delete-exam-modal').classList.remove('hidden');
+}
+
+/**
+ * إغلاق مودل تأكيد الحذف
+ */
+window.closeDeleteExamModal = function() {
+    state.examToDelete = null;
+    state.noteToDelete = null;
+    document.getElementById('delete-exam-modal').classList.add('hidden');
+}
+
+/**
+ * تنفيذ الحذف بعد التأكيد
+ */
+window.confirmDeleteExamOrNote = async function() {
+    if (state.examToDelete) {
+        try {
+            await apiCall('DELETE', '/api/quizzes/' + encodeURIComponent(state.examToDelete));
+            state.allQuizzes = state.allQuizzes.filter(q => q.config.id !== state.examToDelete);
+            showAlert('✓ تم حذف الامتحان بنجاح', 'success');
+        } catch (e) {
+            showAlert('⚠️ فشل حذف الامتحان: ' + e.message, 'warning');
+        }
+        state.examToDelete = null;
+    }
+    if (state.noteToDelete) {
+        try {
+            await apiCall('DELETE', '/api/notes/' + encodeURIComponent(state.noteToDelete));
+            state.allNotes = state.allNotes.filter(n => n.config.id !== state.noteToDelete);
+            showAlert('✓ تم حذف المذكرة بنجاح', 'success');
+        } catch (e) {
+            showAlert('⚠️ فشل حذف المذكرة: ' + e.message, 'warning');
+        }
+        state.noteToDelete = null;
+    }
+    document.getElementById('delete-exam-modal').classList.add('hidden');
+    // إعادة رسم الشجرة بعد الحذف
+    if (typeof renderHistoryTree === 'function') renderHistoryTree(playQuiz, forceDownload);
+}
+
+/* مودل تأكيد حذف الامتحان أو المذكرة */
+// أضف هذا الكود في ملف index.html أو في المكان المناسب داخل الصفحة:
+/*
+<div id="delete-exam-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 hidden">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xs text-center">
+    <p id="delete-exam-msg" class="mb-4 text-gray-700 font-bold"></p>
+    <div class="flex gap-3 justify-center">
+      <button onclick="confirmDeleteExamOrNote()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 transition">تأكيد الحذف</button>
+      <button onclick="closeDeleteExamModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded font-bold hover:bg-gray-300 transition">إلغاء</button>
+    </div>
+  </div>
+</div>
+*/
