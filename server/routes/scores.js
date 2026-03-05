@@ -350,6 +350,7 @@ router.get('/', authenticate, async (req, res) => {
  */
 router.get('/leaderboard', authenticate, async (req, res) => {
     try {
+        // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار
         const [rows] = await sequelize.query(`
             SELECT
                 s.userId,
@@ -358,16 +359,20 @@ router.get('/leaderboard', authenticate, async (req, res) => {
                 SUM(s.score)      AS totalScore,
                 SUM(s.total)      AS totalMax,
                 COUNT(s.id)       AS examsCount,
-                -- Compute average percentage as (SUM(score) / SUM(total)) * 100
-                -- to avoid per-row division inside AVG which can behave oddly
-                -- on some SQL engines when totals are zero or NULL.
                 (SUM(s.score) / NULLIF(SUM(s.total), 0)) * 100 AS avgPercentage,
                 SUM(CASE WHEN s.score = s.total THEN 1 ELSE 0 END) AS fullMarksCount
-            FROM scores s
-            INNER JOIN users u ON s.userId = u.id
-            WHERE s.deletedAt  IS NULL
-              AND u.deletedAt  IS NULL
-              AND s.isOfficial = 1
+            FROM (
+                SELECT s.*
+                FROM scores s
+                INNER JOIN (
+                    SELECT userId, quizId, MIN(attemptNumber) AS minAttempt
+                    FROM scores
+                    WHERE isOfficial = 1 AND deletedAt IS NULL
+                    GROUP BY userId, quizId
+                ) first_attempt ON s.userId = first_attempt.userId AND s.quizId = first_attempt.quizId AND s.attemptNumber = first_attempt.minAttempt
+                WHERE s.isOfficial = 1 AND s.deletedAt IS NULL
+            ) s
+            INNER JOIN users u ON s.userId = u.id AND u.deletedAt IS NULL
             GROUP BY s.userId, u.fname, u.lname
             ORDER BY fullMarksCount DESC, avgPercentage DESC, totalScore DESC
             LIMIT 50
