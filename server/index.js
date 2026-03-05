@@ -62,6 +62,7 @@ const authRoutes = require('./routes/auth');
 const quizRoutes = require('./routes/quizzes');
 const scoreRoutes = require('./routes/scores');
 const noteRoutes = require('./routes/notes');
+const attemptsRoutes = require('./routes/attempts');
 
 /**
  * Express application instance.
@@ -289,6 +290,7 @@ app.use('/api', (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/scores', scoreRoutes);
+app.use('/api/attempts', attemptsRoutes);
 app.use('/api/notes', noteRoutes);
 
 // --- SPA Fallback ---

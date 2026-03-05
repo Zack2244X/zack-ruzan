@@ -74,74 +74,12 @@ router.post('/', authenticate, validateSubmitScore, async (req, res) => {
 
         // 3. حساب الدرجة في السيرفر (منع الغش)
         let correctCount = 0;
-    //   GET/POST /api/attempts — compatibility endpoints
-    //   - GET  /api/attempts?quizId=...(&email=...)  => { attempts }
-    //   - POST /api/attempts { quizId, email? }      => creates lightweight attempt record, returns { attempts }
-    //   These endpoints provide compatibility for older client builds that call /api/attempts.
-    // ============================================
-
-    router.get('/attempts', authenticate, async (req, res) => {
-        try {
-            const quizId = req.query.quizId;
-            const email  = req.query.email;
-            if (!quizId) return res.status(400).json({ error: 'quizId مطلوب' });
-
-            // If email provided, only allow admins to query other users
-            let userId = req.user.id;
-            if (email) {
-                if (!req.user || !req.user.isAdmin) {
-                    return res.status(403).json({ error: 'غير مصرح' });
-                }
-                const u = await User.findOne({ where: { email } });
-                if (!u) return res.status(404).json({ error: 'المستخدم غير موجود' });
-                userId = u.id;
-            }
-
-            const count = await Score.count({ where: { userId, quizId } });
-            res.json({ attempts: Number(count) });
-        } catch (error) {
-            logger.error('خطأ في GET /api/attempts:', { error: error.message });
-            res.status(500).json({ error: 'حدث خطأ.' });
-        }
-    });
-
-    router.post('/attempts', authenticate, async (req, res) => {
-        try {
-            const { quizId, email } = req.body || {};
-            if (!quizId) return res.status(400).json({ error: 'quizId مطلوب' });
-
-            // Determine target userId (admins can specify email)
-            let userId = req.user.id;
-            if (email) {
-                if (!req.user || !req.user.isAdmin) return res.status(403).json({ error: 'غير مصرح' });
-                const u = await User.findOne({ where: { email } });
-                if (!u) return res.status(404).json({ error: 'المستخدم غير موجود' });
-                userId = u.id;
-            }
-
-            // Compute attempt meta
-            const { attemptNumber, isOfficial } = await resolveAttemptMeta(userId, quizId);
-
-            // Create a lightweight Score record to represent the attempt (practice by default)
-            const placeholder = await Score.create({
-                userId,
-                quizId,
-                answers: [],
-                score: 0,
-                total: 0,
-                timeTaken: 0,
-                isOfficial,
-                attemptNumber
-            });
-
-            const updatedCount = await Score.count({ where: { userId, quizId } });
-            logger.info(`[Attempt] recorded placeholder for userId=${userId} quizId=${quizId} attempt=${attemptNumber}`);
-            res.status(201).json({ attempts: Number(updatedCount) });
-        } catch (error) {
-            logger.error('خطأ في POST /api/attempts:', { error: error.message });
-            res.status(500).json({ error: 'حدث خطأ.' });
-        }
-    });
+    // NOTE: compatibility endpoints for /api/attempts were removed from here
+    // and implemented in a dedicated router at /server/routes/attempts.js which
+    // is mounted at /api/attempts. Keeping these handlers inside the POST
+    // /api/scores function caused incorrect routing (they were being attached
+    // under /api/scores/*). See server/routes/attempts.js for the correct
+    // implementation.
 
         const gradedAnswers = [];
         const questions = quiz.questions; // JSON array
