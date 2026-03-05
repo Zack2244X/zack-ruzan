@@ -12,6 +12,7 @@ import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, upd
  * @param {'student'|'admin'} mode — وضع التسجيل
  */
 export function startGoogleRedirectLogin(mode) {
+    window.startGoogleRedirectLogin = startGoogleRedirectLogin;
     try {
         logFunctionStatus('startGoogleRedirectLogin', false);
         const redirectMode = mode === 'admin' ? 'admin' : 'student';
