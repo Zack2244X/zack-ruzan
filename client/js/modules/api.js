@@ -1,13 +1,18 @@
+
+// 1. الاستيرادات أولاً في أعلى الملف
+import state from './state.js';
+import { logFunctionStatus } from './helpers.js';
+
+// 2. تعريف الدوال والتصدير
 // Provide a fetch-like wrapper for dashboard.js compatibility
 export async function apiFetch(url) {
     return await apiCall('GET', url);
 }
+
 /**
  * @module api
  * @description دوال الاتصال بالسيرفر — API calls
  */
-import state from './state.js';
-import { logFunctionStatus } from './helpers.js';
 
 /**
  * قراءة csrf_token من الكوكيز (يضعه السيرفر بعد تسجيل الدخول)
