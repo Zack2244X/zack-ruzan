@@ -1,3 +1,31 @@
+// زر تحديث يدوي للامتحانات
+export function addManualRefreshButton() {
+    const refreshBtnId = 'dashboard-refresh-btn';
+    let btn = document.getElementById(refreshBtnId);
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = refreshBtnId;
+        btn.className = 'absolute top-2 right-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow hover:bg-blue-700 z-20';
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i> تحديث الامتحانات';
+        btn.onclick = async () => {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحديث...';
+            await window.forceDashboardRefresh();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> تحديث الامتحانات';
+        };
+        const dashboard = document.getElementById('dashboard-view');
+        if (dashboard) dashboard.appendChild(btn);
+    }
+}
+
+// دالة عالمية لإجبار التحديث الكامل من السيرفر
+window.forceDashboardRefresh = async function() {
+    if (typeof loadDataFromServer === 'function') {
+        await loadDataFromServer();
+        if (typeof renderDashboard === 'function') renderDashboard(true);
+    }
+}
 // تحديث دوري للوحة الشرف كل دقيقة
 let leaderboardRefreshTimer = null;
 
