@@ -112,6 +112,8 @@ function _attachSwipeToClose(el, closeFn) {
 export function openBottomSheet() {
     logFunctionStatus('openBottomSheet', false);
     const content = document.getElementById('tree-content');
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.add('hidden');
     document.getElementById('tree-overlay').classList.add('active');
     content.classList.add('active');
     _attachSwipeToClose(content, closeBottomSheet);
@@ -124,6 +126,8 @@ export function closeBottomSheet() {
     logFunctionStatus('closeBottomSheet', false);
     document.getElementById('tree-overlay').classList.remove('active');
     document.getElementById('tree-content').classList.remove('active');
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.remove('hidden');
     if (state.currentViewMode) updateDockUI('home');
     _showThemeToggle(true);
 }
