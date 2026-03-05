@@ -201,6 +201,27 @@ function buildAttemptsHtml(attempts, willBePractice) {
  * @param {boolean} forceRefresh - تمريرها true بعد تسليم امتحان لتحديث المحاولات
  * @returns {Promise<void>}
  */
+
+export async function deleteQuiz(index, renderDashboardFn) {
+    logFunctionStatus('deleteQuiz', true);
+    const quiz = state.allQuizzes[index];
+    if (!quiz) {
+        showAlert('⚠️ الاختبار غير موجود.');
+        return;
+    }
+    const confirmed = await showConfirm('حذف الاختبار', 'هل أنت متأكد من حذف هذا الاختبار؟ لا يمكن التراجع.', '🗑️');
+    if (!confirmed) return;
+    try {
+        await apiCall('DELETE', `/api/quizzes/${quiz.id}`);
+        state.allQuizzes.splice(index, 1);
+        if (typeof renderDashboardFn === 'function') renderDashboardFn(true);
+        showToastMessage('✅ تم حذف الاختبار.', 2000);
+    } catch (e) {
+        console.error('[deleteQuiz] ✗', e.message);
+        showAlert('⚠️ فشل حذف الاختبار: ' + e.message, 'warning');
+    }
+}
+
 export async function renderDashboard(forceRefresh = false) {
     logFunctionStatus('renderDashboard', false);
 
@@ -269,10 +290,16 @@ export async function renderDashboard(forceRefresh = false) {
                 : false;
 
             examsHtml += `
-                <div onclick="playQuiz(${realIndex})"
-                     class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
+                <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
                             cursor-pointer border border-gray-100 hover:border-blue-400 group
                             relative overflow-hidden flex flex-col">
+                    <!-- delete button -->
+                    <button onclick="deleteQuiz(${realIndex})"
+                            class="absolute top-3 right-3 text-red-500 hover:text-red-700 z-20 p-1.5 bg-white rounded-full shadow-sm transition"
+                            title="حذف الاختبار">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <div onclick="playQuiz(${realIndex})" class="h-full w-full">
 
                     <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
                                 opacity-0 group-hover:opacity-100 transition duration-500"></div>

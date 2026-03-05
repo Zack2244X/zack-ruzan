@@ -61,7 +61,7 @@ import {
     openStatsModal, closeStatsModal, renderStatsContent,
     openEditSelectionModal, switchEditTab as _switchEditTab
 } from './modules/grades.js';
-import { renderDashboard as _renderDashboard } from './modules/dashboard.js';
+import { renderDashboard as _renderDashboard, deleteQuiz as _deleteQuiz } from './modules/dashboard.js';
 
 // === Global Error Boundary ===
 window.addEventListener('error', (e) => {
@@ -143,6 +143,11 @@ function renderEditTree() {
 /** @private رسم لوحة القيادة مع ربط الدوال */
 function renderDashboard() {
     _renderDashboard(playQuiz, forceDownload);
+}
+
+/** @private حذف امتحان */
+function deleteQuiz(index) {
+    _deleteQuiz(index, renderDashboard);
 }
 
 /** @private تبديل فلتر المادة الرئيسية */
@@ -312,6 +317,7 @@ Object.assign(window, {
 
     // Dashboard
     renderDashboard,
+    deleteQuiz,
 
     // Helpers
     escapeHtml, showAlert, showConfirm, showLoading
