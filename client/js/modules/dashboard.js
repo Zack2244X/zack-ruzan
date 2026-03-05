@@ -363,20 +363,14 @@ export async function renderDashboard(forceRefresh = false) {
             const safeDesc    = escapeHtml(config.description || '');
             const safeSubject = escapeHtml(config.subject || 'عام');
 
-            notesHtml += `
-                <div onclick="forceDownload('${escapeHtml(config.link)}')"
-                     class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
-                            cursor-pointer border border-gray-100 hover:border-orange-400 group
-                            relative overflow-hidden">
-
-                    <div class="absolute -left-6 -top-6 w-24 h-24 notes-card-hover-glow rounded-full
+            examsHtml += `
+                <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
+                            cursor-pointer border border-gray-100 hover:border-blue-400 group
+                            relative overflow-hidden flex flex-col">
+                    <div onclick="playQuiz(${realIndex})" class="h-full w-full">
+                        <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
                                 opacity-0 group-hover:opacity-100 transition duration-500"></div>
-
                     <div class="flex justify-between items-start mb-5 relative z-10">
-                        <div class="w-14 h-14 bg-gradient-to-br ${bgClass} rounded-2xl flex items-center
-                                    justify-center text-3xl shadow-inner group-hover:scale-110
-                                    transition duration-300">
-                            <i class="fas ${iconClass}"></i>
                         </div>
                         <span class="text-xs bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg
                                      font-bold flex items-center gap-1 group-hover:bg-orange-600
