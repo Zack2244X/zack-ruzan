@@ -533,7 +533,32 @@ export function initializeQuiz() {
         renderQuestion();
         startTimer();
         state.quizStarted = true;
+        addQuizExitButton();
     }
+
+// زر خروج منفصل في الاختبار
+function addQuizExitButton() {
+    const btnId = 'quiz-exit-btn';
+    let btn = document.getElementById(btnId);
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = btnId;
+        btn.className = 'absolute top-2 left-2 px-4 py-2 bg-red-600 text-white rounded-xl shadow hover:bg-red-700 z-20';
+        btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> خروج من الاختبار';
+        btn.onclick = async () => {
+            const confirmExit = window.confirm('هل أنت متأكد أنك تريد الخروج من الاختبار؟ سيتم فقدان التقدم الحالي.');
+            if (confirmExit) {
+                state.quizStarted = false;
+                document.getElementById('quiz-container').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                if (typeof updateDockUI === 'function') updateDockUI('home');
+                btn.remove();
+            }
+        };
+        const quizContainer = document.getElementById('quiz-container');
+        if (quizContainer) quizContainer.appendChild(btn);
+    }
+}
 }
 
 export function renderQuestion() {
