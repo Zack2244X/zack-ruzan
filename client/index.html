@@ -866,8 +866,8 @@
         <!-- GSAP ScrollTrigger plugin (CDN) -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
-        <!-- Lenis Smooth Scroll (jsDelivr) - cdnjs lacked this file for the used version; using jsDelivr instead -->
-        <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.1.14/bundled/lenis.min.js"></script>
+        <!-- Lenis Smooth Scroll — served locally to satisfy CSP 'self' -->
+        <script src="/js/vendor/lenis.min.js"></script>
 
     <!-- App JS (ES Module — must come after GSAP & Lenis) -->
     <script type="module" src="/js/app.js?v=30"></script>
