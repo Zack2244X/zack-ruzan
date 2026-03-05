@@ -7,7 +7,6 @@ import { showAlert, logFunctionStatus } from './helpers.js';
 import { apiCall, loadDataFromServer } from './api.js';
 import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
 import { startLeaderboardAutoRefresh } from './dashboard.js';
-import { addManualRefreshButton } from './dashboard.js';
 
 /**
  * بدء تسجيل دخول Google عبر Redirect
@@ -305,4 +304,4 @@ export function startTokenRefresh() {
 if (typeof startLeaderboardAutoRefresh === 'function') startLeaderboardAutoRefresh();
 
 // بعد تحميل الصفحة الرئيسية أو تسجيل الدخول
-if (typeof addManualRefreshButton === 'function') addManualRefreshButton();
+// manual refresh button removed — dashboard auto-refresh handles updates
