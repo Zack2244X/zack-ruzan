@@ -302,6 +302,19 @@ select {
 /* === iOS Safe Area Support === */
 
 /* Bottom nav: sit above home indicator on iPhone */
+
+/* gradient icon colors */
+.dock-btn.active .dock-icon {
+    /* gradient from blue through purple to fiery orange */
+    background: linear-gradient(45deg, #3b82f6, #8b5cf6, #fb923c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.dock-btn .dock-icon {
+    /* fallback solid color when not active */
+    color: currentColor;
+}
 #ios-bottom-nav {
     bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
     padding-bottom: env(safe-area-inset-bottom, 0px);
