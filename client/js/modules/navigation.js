@@ -48,19 +48,30 @@ export function _showThemeToggle(show) {
 export function updateDockUI(activeId) {
     logFunctionStatus('updateDockUI', false);
     const allBtns = document.querySelectorAll('.dock-btn');
-    allBtns.forEach(btn => {
-        btn.classList.remove('active', 'text-blue-600', 'text-orange-600', 'text-purple-600');
-        btn.classList.add('text-gray-400');
-    });
-    const activeBtn = document.getElementById('dock-' + activeId);
-    if (activeBtn) {
-        activeBtn.classList.remove('text-gray-400');
-        activeBtn.classList.add('active');
-        if (activeId === 'exams') activeBtn.classList.add('text-blue-600');
-        else if (activeId === 'notes') activeBtn.classList.add('text-orange-600');
-        else if (activeId === 'settings') activeBtn.classList.add('text-purple-600');
-        else activeBtn.classList.add('text-blue-600');
-    }
+        // إذا كان الاختبار نشطًا، عطل جميع أزرار الشريط السفلي
+        if (state.quizStarted) {
+            allBtns.forEach(btn => {
+                btn.setAttribute('disabled', 'disabled');
+                btn.classList.add('pointer-events-none', 'opacity-50');
+            });
+            return;
+        }
+        // تفعيل الأزرار إذا لم يكن هناك اختبار نشط
+        allBtns.forEach(btn => {
+            btn.removeAttribute('disabled');
+            btn.classList.remove('pointer-events-none', 'opacity-50');
+            btn.classList.remove('active', 'text-blue-600', 'text-orange-600', 'text-purple-600');
+            btn.classList.add('text-gray-400');
+        });
+        const activeBtn = document.getElementById('dock-' + activeId);
+        if (activeBtn) {
+            activeBtn.classList.remove('text-gray-400');
+            activeBtn.classList.add('active');
+            if (activeId === 'exams') activeBtn.classList.add('text-blue-600');
+            else if (activeId === 'notes') activeBtn.classList.add('text-orange-600');
+            else if (activeId === 'settings') activeBtn.classList.add('text-purple-600');
+            else activeBtn.classList.add('text-blue-600');
+        }
 }
 
 /**
