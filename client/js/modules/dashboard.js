@@ -301,7 +301,7 @@ export async function renderDashboard(forceRefresh = false) {
                     </button>
                     <div onclick="playQuiz(${realIndex})" class="h-full w-full">
 
-                    <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
+                        <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
                                 opacity-0 group-hover:opacity-100 transition duration-500"></div>
 
                     <div class="flex justify-between items-start mb-5 relative z-10">
@@ -333,6 +333,7 @@ export async function renderDashboard(forceRefresh = false) {
                     </div>
 
                     ${state.currentUser ? buildAttemptsHtml(attempts, willBePractice) : ''}
+                    </div>
                 </div>`;
         });
 
