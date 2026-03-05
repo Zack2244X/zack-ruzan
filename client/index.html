@@ -37,13 +37,41 @@
       overflow: hidden;
     }
 
-    #login-screen .bg-pattern {
-      position: absolute; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cg fill='none' stroke='%23c9962a' stroke-width='0.4' opacity='0.10'%3E%3Cpolygon points='50,5 61,35 95,35 68,57 79,91 50,70 21,91 32,57 5,35 39,35'/%3E%3Ccircle cx='50' cy='50' r='22'/%3E%3Cline x1='50' y1='5' x2='50' y2='95'/%3E%3Cline x1='5' y1='50' x2='95' y2='50'/%3E%3Cline x1='18' y1='18' x2='82' y2='82'/%3E%3Cline x1='82' y1='18' x2='18' y2='82'/%3E%3C/g%3E%3C/svg%3E");
-      background-size: 100px 100px;
-      pointer-events: none; z-index: 0;
-    }
+/* استبدل قسم .bg-pattern بهذا الكود */
+/* خلفية الخط العربي */
+.bg-pattern {
+  position: fixed; 
+  inset: 0;
+  /* ملاحظة: يفضل وضع الصورة بجانب ملف HTML واستخدام اسمها فقط */
+  background-image: url('icons/bg.png'); 
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none; 
+  z-index: 0;
+}
 
+/* طبقة التعتيم الملكية */
+.bg-pattern::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* تعتيم متدرج يبدأ من 85% في المنتصف ويصل لـ 98% عند الأطراف */
+  background: radial-gradient(
+    circle, 
+    rgba(8, 12, 20, 0.85) 0%, 
+    rgba(5, 7, 12, 0.98) 100%
+  );
+}
+
+/* إضافة طبقة تعتيم فوق الصورة لتتماشى مع التصميم الداكن */
+.bg-pattern::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(8, 12, 20, 0.7) 0%, rgba(5, 7, 12, 0.95) 100%);
+  /* يمكنك زيادة درجة التعتيم بتغيير الـ 0.95 إلى 0.98 */
+}
     #floor-glow {
       position: absolute;
       width: 420px; height: 280px;
