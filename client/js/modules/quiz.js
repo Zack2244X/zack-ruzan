@@ -536,18 +536,7 @@ export function initializeQuiz() {
         addQuizExitButton();
         // إخفاء الشريط السفلي أثناء الاختبار
         const dockBar = document.getElementById('ios-bottom-nav');
-        if (dockBar) dockBar.classList.add('hidden');
-    }
-
-// زر خروج منفصل في الاختبار
-function addQuizExitButton() {
-    const btnId = 'quiz-exit-btn';
-    let btn = document.getElementById(btnId);
-    if (!btn) {
-        btn = document.createElement('button');
-        btn.id = btnId;
-        btn.className = 'absolute top-2 left-2 px-4 py-2 bg-red-600 text-white rounded-xl shadow hover:bg-red-700 z-20';
-        btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> خروج من الاختبار';
+			if (dockBar) dockBar.classList.remove('hidden');
         btn.onclick = async () => {
             showCustomExitModal();
         };
