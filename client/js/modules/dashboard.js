@@ -222,7 +222,13 @@ export async function renderDashboard(forceRefresh = false) {
     }
 
     // ── إعداد متغيرات أساسية ──────────────────────────────────────────────
-    const latestExams        = state.allQuizzes.slice(-4).reverse();
+    // ترتيب الامتحانات حسب تاريخ الإضافة (الأحدث أولاً)
+    const sortedQuizzes = [...state.allQuizzes].sort((a, b) => {
+        const aDate = new Date(a.config.createdAt || a.createdAt || 0);
+        const bDate = new Date(b.config.createdAt || b.createdAt || 0);
+        return bDate - aDate;
+    });
+    const latestExams = sortedQuizzes.slice(0, 4);
     const globalMaxOfficial  = state.maxOfficialAttempts ?? null;
 
     // ── جلب المحاولات: طلب واحد للجميع قبل رسم أي بطاقة ─────────────────
