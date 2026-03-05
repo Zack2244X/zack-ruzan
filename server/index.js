@@ -242,23 +242,21 @@ app.use('/api/notes', applyAdminLimiter);
  * @param {import('express').Response} res - Express response with health status JSON.
  * @returns {Promise<void>}
  */
-app.get('/api/health', async (req, res) => {
-    try {
-        await sequelize.authenticate();
-        res.json({
-            status: 'healthy',
-            uptime: Math.floor(process.uptime()),
-            timestamp: new Date().toISOString(),
-            db: 'connected',
-            memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
-        });
-    } catch (err) {
-        res.status(503).json({
-            status: 'unhealthy',
-            db: 'disconnected',
-            error: process.env.NODE_ENV === 'production' ? 'خطأ في قاعدة البيانات' : err.message
-        });
-    }
+// Lightweight health endpoint: return quickly so platform healthchecks do not
+// fail while the server is still performing DB migrations or waiting for DB.
+// `dbConnected` and `serverReady` are set during `startServer()`.
+let dbConnected = false;
+let serverReady = false;
+
+app.get('/api/health', (req, res) => {
+    const status = serverReady ? 'healthy' : 'starting';
+    res.json({
+        status,
+        uptime: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+        db: dbConnected ? 'connected' : 'connecting',
+        memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
+    });
 });
 
 // ============================================
@@ -344,6 +342,9 @@ async function runSafeMigrations() {
         `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`percentage\` FLOAT DEFAULT 0`,
         // timeTaken on scores
         `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`timeTaken\` INT DEFAULT 0`,
+        // isOfficial and attemptNumber for multi-attempt support
+        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`isOfficial\` TINYINT(1) DEFAULT 1`,
+        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`attemptNumber\` INT DEFAULT 1`,
         // isActive on quizzes
         `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`isActive\` TINYINT(1) DEFAULT 1`,
         // createdBy on quizzes

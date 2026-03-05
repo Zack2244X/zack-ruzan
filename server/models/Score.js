@@ -72,6 +72,16 @@ const Score = sequelize.define('Score', {
     timeTaken: {
         type: DataTypes.INTEGER,  // بالثواني
         defaultValue: 0
+    },
+    isOfficial: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    },
+    attemptNumber: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1
     }
 }, {
     tableName: 'scores',
