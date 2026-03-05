@@ -471,19 +471,13 @@ export async function renderDashboard(forceRefresh = false) {
                 ? `🌟 ${entry.fullMarksCount}/${totalExams} درجة نهائية`
                 : `${entry.examsCount}/${totalExams} امتحان`;
 
-            lbHtml += `
-                <div class="flex items-center justify-between p-4 rounded-2xl border
-                            ${colors[i] || 'bg-gray-50'} shadow-sm">
-                    <div class="flex items-center gap-4">
-                        <span class="text-3xl drop-shadow-sm">${medals[i]}</span>
-                        <div>
-                            <p class="font-black text-gray-800 text-lg">${safeName}</p>
-                            <p class="text-xs font-bold opacity-80 mt-0.5">${rankNames[i]}</p>
-                        </div>
-                    </div>
-                    <div class="px-4 py-2 rounded-xl bg-white border border-white shadow-sm text-center">
-                        <span class="font-black text-base">${fullMarkLabel}</span>
-                        <p class="text-[11px] text-gray-500 font-bold mt-0.5">متوسط ${entry.avgPercentage}%</p>
+            examsHtml += `
+                <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
+                            cursor-pointer border border-gray-100 hover:border-blue-400 group
+                            relative overflow-hidden flex flex-col">
+                    <div onclick="playQuiz(${realIndex})" class="h-full w-full">
+                    ...existing code...
+                    ${state.currentUser ? buildAttemptsHtml(attempts, willBePractice) : ''}
                     </div>
                 </div>`;
         });
