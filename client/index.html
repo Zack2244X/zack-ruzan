@@ -860,23 +860,14 @@
          GSAP: محرك الأنيميشن | Lenis: التمرير السلس
     ═══════════════════════════════════════════════════════════════ -->
 
-    <!-- GSAP Core -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
-            integrity="sha512-7eHRwcbYkK4d9d/6tD8gkSqJsFV5oa3bNcVoQvJIBdSMXYRmbBdxjIVjssFfJwrCjZEV7ixKpPCCCXEBEIzg=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"></script>
+        <!-- GSAP Core (CDN) - SRI removed to avoid blocking when CDN file changes. Consider bundling via npm for production. -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-    <!-- GSAP ScrollTrigger plugin -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
-            integrity="sha512-onMTRKJBKz8M1TnqqDuGBlowlH0ohFzMXYRNebz+yOcc5TfuHz9foanvVo9yeE+NR1jPHq1UaFrSBaXN3WkJQ=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"></script>
+        <!-- GSAP ScrollTrigger plugin (CDN) -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
-    <!-- Lenis Smooth Scroll -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lenis/1.1.14/lenis.min.js"
-            integrity="sha512-EWo7KFYuRLZl4oJNimZ3TBFbbXKT0QTG4MX3wnkS2GFcv7xAGNuGMnNnFdKyOJ6e4UrH5Y4pxkiHHYgSGGlA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"></script>
+        <!-- Lenis Smooth Scroll (jsDelivr) - cdnjs lacked this file for the used version; using jsDelivr instead -->
+        <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.1.14/bundled/lenis.min.js"></script>
 
     <!-- App JS (ES Module — must come after GSAP & Lenis) -->
     <script type="module" src="/js/app.js?v=30"></script>
