@@ -12,14 +12,273 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- App CSS -->
     <link rel="stylesheet" href="/css/styles.css?v=30">
+    
+    <!-- Login Page Styles -->
+    <style>
+    /* ═══ متغيرات صفحة الدخول ═══ */
+    :root {
+      --gold: #c9962a;
+      --gold-light: #e8b84b;
+      --gold-pale: #f5d98b;
+      --gold-deep: #8a6d3b;
+      --royal-blue: #1a4a7a;
+      --royal-dark: #0d2d50;
+      --login-bg: #080c14;
+    }
+
+    /* ═══ صفحة تسجيل الدخول ═══ */
+    #login-screen {
+      background: var(--login-bg);
+      overflow: hidden;
+    }
+
+    #login-screen .bg-pattern {
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cg fill='none' stroke='%23c9962a' stroke-width='0.4' opacity='0.10'%3E%3Cpolygon points='50,5 61,35 95,35 68,57 79,91 50,70 21,91 32,57 5,35 39,35'/%3E%3Ccircle cx='50' cy='50' r='22'/%3E%3Cline x1='50' y1='5' x2='50' y2='95'/%3E%3Cline x1='5' y1='50' x2='95' y2='50'/%3E%3Cline x1='18' y1='18' x2='82' y2='82'/%3E%3Cline x1='82' y1='18' x2='18' y2='82'/%3E%3C/g%3E%3C/svg%3E");
+      background-size: 100px 100px;
+      pointer-events: none; z-index: 0;
+    }
+
+    #floor-glow {
+      position: absolute;
+      width: 420px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(201,150,42,0.15) 0%, rgba(201,150,42,0.06) 45%, transparent 72%);
+      pointer-events: none;
+      transition: opacity 0.7s;
+      z-index: 1;
+      top: 58%; left: 30%;
+      transform: translate(-50%,-50%);
+    }
+    #floor-glow.off { opacity: 0; }
+
+    .login-scene {
+      position: relative; z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 55px;
+      padding: 24px 16px;
+      width: 100%;
+      max-width: 880px;
+    }
+
+    /* ═══ المصباح ═══ */
+    .lamp-wrapper {
+      position: relative;
+      width: 180px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #lamp-svg {
+      overflow: visible;
+      cursor: pointer;
+      position: relative; z-index: 3;
+      filter: drop-shadow(0 0 24px rgba(201,150,42,0.55));
+      transition: filter 0.6s;
+    }
+    #lamp-svg.off { filter: drop-shadow(0 0 0 transparent); }
+
+    .light-cone {
+      position: absolute;
+      top: 122px; left: 50%;
+      transform: translateX(-50%);
+      width: 210px; height: 320px;
+      background: linear-gradient(to bottom, rgba(232,184,75,0.30) 0%, rgba(201,150,42,0.14) 35%, rgba(180,130,30,0.05) 65%, transparent 100%);
+      clip-path: polygon(22% 0%, 78% 0%, 100% 100%, 0% 100%);
+      pointer-events: none;
+      transition: opacity 0.7s; z-index: 2;
+    }
+    .light-cone.off { opacity: 0; }
+
+    #rope-canvas {
+      position: absolute;
+      top: 122px; left: 50%;
+      transform: translateX(-50%);
+      cursor: grab; z-index: 10;
+      touch-action: none;
+    }
+    #rope-canvas:active { cursor: grabbing; }
+
+    /* ═══ كارت تسجيل الدخول ═══ */
+    .login-card {
+      position: relative;
+      width: 420px;
+      min-height: 580px;
+      background: linear-gradient(145deg, rgba(26, 74, 122, 0.25) 0%, rgba(8, 12, 20, 0.95) 100%);
+      border: 1px solid rgba(201, 150, 42, 0.4);
+      border-radius: 32px;
+      padding: 50px 35px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 80px rgba(0, 0, 0, 0.5);
+      transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .login-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 32px;
+      background: linear-gradient(135deg, rgba(201,150,42,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .login-card.off {
+      opacity: 0;
+      transform: scale(0.86) translateY(30px);
+      filter: blur(8px);
+      box-shadow: none;
+      pointer-events: none;
+    }
+    .login-card.appear {
+      animation: cardAppear 0.85s cubic-bezier(0.34,1.52,0.64,1) forwards;
+    }
+    @keyframes cardAppear {
+      0%   { opacity:0; transform:scale(0.78) translateY(45px); filter:blur(10px); }
+      55%  { opacity:1; filter:blur(0); }
+      80%  { transform:scale(1.03) translateY(-4px); }
+      100% { transform:scale(1) translateY(0); opacity:1; filter:blur(0); }
+    }
+
+    .logo-wrap {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      margin: 0 auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--royal-blue), var(--royal-dark));
+      border: 3px solid var(--gold);
+      box-shadow: 0 0 0 6px rgba(201,150,42,0.15), 0 0 50px rgba(201,150,42,0.75), 0 0 120px rgba(201,150,42,0.40);
+      animation: logoPulse 3s ease-in-out infinite;
+      overflow: hidden;
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { box-shadow: 0 0 0 6px rgba(201,150,42,0.15), 0 0 50px rgba(201,150,42,0.75), 0 0 120px rgba(201,150,42,0.40); }
+      50% { box-shadow: 0 0 0 12px rgba(201,150,42,0.35), 0 0 80px rgba(201,150,42,1.0), 0 0 160px rgba(201,150,42,0.60); }
+    }
+
+    .logo-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .card-title {
+      font-family: 'Amiri', serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--gold-pale);
+      margin-bottom: 8px;
+      text-shadow: 0 0 20px rgba(201,150,42,0.5);
+    }
+
+    .card-college {
+      font-size: 1.1rem;
+      color: var(--gold);
+      margin-bottom: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .card-sub {
+      font-size: 0.95rem;
+      color: rgba(200, 205, 225, 0.8);
+      margin-bottom: 30px;
+      line-height: 1.8;
+    }
+
+    .divider {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px; width: 100%;
+    }
+    .divider-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(to right, transparent, rgba(201,150,42,0.40), transparent);
+    }
+    .divider-star { color: var(--gold); font-size: 0.70rem; opacity: 0.7; }
+
+    .login-btn-fancy {
+      width: 100%; padding: 14px 20px;
+      border: none; border-radius: 16px;
+      background: linear-gradient(120deg, #8a6d3b 0%, #c9962a 25%, #e8b84b 50%, #f5d98b 65%, #e8b84b 80%, #8a6d3b 100%);
+      background-size: 220% auto;
+      color: #1a0e00;
+      font-family: 'Cairo', sans-serif;
+      font-size: 1.2rem; font-weight: 900;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 4px 22px rgba(201,150,42,0.48), 0 0 0 1px rgba(201,150,42,0.32);
+      transition: background-position 0.55s, transform 0.2s, box-shadow 0.3s;
+      position: relative; overflow: hidden;
+    }
+    .login-btn-fancy::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.20) 0%, transparent 55%);
+      border-radius: 16px; pointer-events: none;
+    }
+    .login-btn-fancy:hover {
+      background-position: right center;
+      transform: translateY(-3px);
+      box-shadow: 0 10px 32px rgba(201,150,42,0.68), 0 0 0 1px rgba(201,150,42,0.55);
+    }
+    .login-btn-fancy:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .lamp-hint {
+      margin-top: 18px; font-size: 0.72rem;
+      color: rgba(201,150,42,0.48);
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+
+    .login-error-msg {
+      color: #ff6b6b;
+      font-size: 0.9rem;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(255,100,100,0.1);
+      border-radius: 10px;
+      border: 1px solid rgba(255,100,100,0.3);
+    }
+
+    .login-loading-msg {
+      color: var(--gold-light);
+      font-size: 0.9rem;
+      margin-top: 12px;
+    }
+
+    /* ═══ Responsive ═══ */
+    @media (max-width: 780px) {
+      .login-scene { flex-direction: column; gap: 20px; padding: 16px 12px; }
+      .lamp-wrapper { width: 140px; }
+      #lamp-svg { width: 130px; height: 200px; }
+      .light-cone { top: 100px; width: 180px; height: 260px; }
+      #rope-canvas { top: 100px; }
+    }
+    @media (max-width: 480px) {
+      .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
+      .logo-wrap { width: 140px; height: 140px; }
+      .card-title { font-size: 1.8rem; }
+    }
+    </style>
 </head>
 <body class="p-4 sm:p-8">
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم"><i class="fas fa-moon"></i></button>
+    
+    <!-- iOS Bottom Nav -->
     <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
         <button onclick="navToHome()" id="dock-home" class="dock-btn active flex flex-col items-center gap-1 w-16 p-1.5 text-blue-600 transition-all">
             <i class="fas fa-home text-xl dock-icon"></i>
@@ -39,7 +298,9 @@
         </button>
     </nav>
 
+    <!-- جميع الـ Bottom Sheets والـ Modals الأصلية تبقى كما هي -->
     <div id="tree-bottom-sheet" class="fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
+        <!-- ... المحتوى الأصلي ... -->
         <div id="tree-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
         <div id="tree-content" class="relative w-full md:max-w-md bg-gray-50 rounded-t-3xl h-[85vh] flex flex-col bottom-sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pointer-events-auto">
             <div class="w-full flex justify-center pt-3 pb-2 cursor-pointer sheet-handle" onclick="closeBottomSheet()">
@@ -79,14 +340,14 @@
                 <button onclick="openEditSelectionModal(); closeAdminSheet();" class="w-full p-4 bg-gradient-to-l from-blue-50 to-white border border-blue-100 text-blue-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
                     <span class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center ml-4"><i class="fas fa-pen"></i></span> تعديل المحتوى
                 </button>
-                            <button onclick="logoutUser()" class="w-full p-4 bg-gradient-to-l from-red-50 to-white border border-red-100 text-red-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
-                <span class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center ml-4"><i class="fas fa-sign-out-alt"></i></span> تسجيل الخروج
-            </button>
+                <button onclick="logoutUser()" class="w-full p-4 bg-gradient-to-l from-red-50 to-white border border-red-100 text-red-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
+                    <span class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center ml-4"><i class="fas fa-sign-out-alt"></i></span> تسجيل الخروج
+                </button>
             </div>
         </div>
     </div>
 
-<div id="admin-auth-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 transition-opacity">
+    <div id="admin-auth-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
             <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                 <i class="fas fa-lock"></i>
@@ -101,9 +362,9 @@
             <button onclick="closeAdminAuth()" class="py-3 px-6 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إلغاء</button>
         </div>
     </div>
-<div id="add-note-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 sm:p-8">
+
+    <div id="add-note-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 sm:p-8">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-3xl h-auto max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative">
-            
             <div class="bg-gradient-to-r from-orange-50 to-white p-6 border-b flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-extrabold text-orange-700 flex items-center"><i class="fas fa-file-upload ml-2"></i> إضافة ملف / مذكرة</h2>
@@ -113,25 +374,20 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
-                    
                     <div class="mb-6">
                         <label class="block font-bold text-gray-700 mb-2">عنوان المذكرة <span class="text-red-500">*</span></label>
                         <input type="text" id="new-n-title" placeholder="مثال: مراجعة ليلة الامتحان" class="w-full p-4 border-2 border-gray-200 rounded-xl text-lg focus:border-orange-500 outline-none transition">
                     </div>
-
                     <div class="mb-6">
                         <label class="block font-bold text-gray-700 mb-2">المادة <span class="text-red-500">*</span></label>
                         <input type="text" id="new-n-subject" list="subjects-list" placeholder="اختر من القائمة أو اكتب مادة جديدة..." class="w-full p-4 border-2 border-gray-200 rounded-xl text-lg focus:border-orange-500 outline-none transition bg-white">
                     </div>
-
                     <div class="mb-6">
                         <label class="block font-bold text-gray-700 mb-2">رابط الملف (OneDrive أو Drive) <span class="text-red-500">*</span></label>
                         <input type="url" id="new-n-link" dir="ltr" placeholder="https://..." class="w-full p-4 border-2 border-gray-200 rounded-xl text-left focus:border-orange-500 outline-none transition">
                     </div>
-
                     <div class="flex flex-col sm:flex-row gap-4">
                         <div class="w-full sm:w-1/2">
                             <label class="block font-bold text-gray-700 mb-2">نوع الملف</label>
@@ -148,7 +404,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="p-5 border-t bg-white flex justify-end">
                 <button id="save-note-btn" onclick="saveNote()" class="px-8 py-3 bg-orange-600 text-white font-bold rounded-xl shadow-lg hover:bg-orange-700 transition flex items-center">
                     <i class="fas fa-save ml-2"></i> حفظ في السجل
@@ -156,9 +411,9 @@
             </div>
         </div>
     </div>
+
     <div id="create-section-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] flex items-center justify-center p-4 sm:p-8">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-5xl h-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative">
-            
             <div class="bg-gradient-to-r from-green-50 to-white p-6 border-b flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-extrabold text-green-700 flex items-center"><i class="fas fa-plus-circle ml-2"></i> إنشاء امتحان جديد</h2>
@@ -168,15 +423,12 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            
             <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
-                
                 <div id="builder-step-1" class="block bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-2xl mx-auto mt-4">
                     <div class="mb-6">
                         <label class="block font-bold text-gray-700 mb-2">عنوان الامتحان <span class="text-red-500">*</span></label>
                         <input type="text" id="new-q-title" placeholder="مثال: اختبار الوحدة الأولى" class="w-full p-4 border-2 border-gray-200 rounded-xl text-lg focus:border-green-500 outline-none transition">
                     </div>
-                  <!-- === الإضافة الجديدة: خانة رسالة الختام === -->
                     <div class="mb-6">
                         <label class="block font-bold text-gray-700 mb-2">رسالة الختام (تظهر للطالب عند الانتهاء)</label>
                         <textarea id="new-q-closing-msg" rows="2" placeholder="مثال: أحسنت! أداؤك رائع، واصل التقدم." class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none transition"></textarea>
@@ -184,8 +436,7 @@
                     <div class="mb-6">
                         <label class="block font-bold text-gray-700 mb-2">المادة <span class="text-red-500">*</span></label>
                         <input type="text" id="new-q-subject" list="subjects-list" placeholder="اختر من القائمة أو اكتب مادة جديدة..." class="w-full p-4 border-2 border-gray-200 rounded-xl text-lg focus:border-green-500 outline-none transition bg-white">
-                        <datalist id="subjects-list">
-                            </datalist>
+                        <datalist id="subjects-list"></datalist>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-4">
                         <div class="w-full sm:w-1/2">
@@ -197,7 +448,6 @@
                             <input type="text" id="new-q-desc" placeholder="اختياري..." class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none transition">
                         </div>
                     </div>
-
                     <div class="mt-6 p-4 border-2 border-dashed border-green-200 rounded-xl bg-green-50/60">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
@@ -213,7 +463,6 @@
                         <p class="text-xs text-green-700 mt-2">نضمن ألا يتكرر نفس حرف الإجابة الصحيحة أكثر من مرتين متتاليتين.</p>
                     </div>
                 </div>
-
                 <div id="builder-step-2" class="hidden h-full flex flex-col max-w-4xl mx-auto">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-gray-700 text-lg"><i class="fas fa-edit text-blue-500 ml-1"></i> محرر الأسئلة</h3>
@@ -221,31 +470,22 @@
                             سؤال <span id="b-current-num">1</span> من <span id="b-total-num">1</span>
                         </div>
                     </div>
-
                     <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 flex-1 flex flex-col">
                         <textarea id="b-question-text" rows="2" placeholder="اكتب نص السؤال هنا..." class="w-full text-xl font-bold text-gray-800 border-b-2 border-dashed border-gray-300 pb-3 mb-3 focus:border-blue-500 outline-none text-arabic resize-none" onblur="updateBuilderData()"></textarea>
                         <input type="text" id="b-question-hint" placeholder="تلميح لمساعدة الطالب (اختياري)..." class="w-full text-sm text-gray-500 bg-gray-50 p-3 rounded-xl mb-6 outline-none border border-gray-100" onblur="updateBuilderData()">
-
                         <h4 class="text-sm font-extrabold text-gray-500 mb-3 flex items-center"><i class="fas fa-check-circle text-green-500 ml-2"></i> الخيارات (حدد الدائرة للإجابة الصحيحة):</h4>
-                        
-                        <div id="b-options-container" class="space-y-3 mb-6 overflow-y-auto max-h-[30vh] pr-2">
-                            </div>
-                        
+                        <div id="b-options-container" class="space-y-3 mb-6 overflow-y-auto max-h-[30vh] pr-2"></div>
                         <button onclick="addBuilderOption()" class="mt-auto w-full py-3 border-2 border-dashed border-blue-300 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition flex items-center justify-center">
                             <i class="fas fa-plus ml-2"></i> إضافة خيار آخر
                         </button>
                     </div>
-
                     <div class="flex justify-between items-center mt-6">
                         <button onclick="navBuilderQuestion(-1)" id="b-prev-btn" class="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 disabled:opacity-50 transition"><i class="fas fa-arrow-right ml-2"></i> السابق</button>
-                        
                         <button onclick="addBuilderQuestion()" class="px-6 py-3 bg-purple-100 text-purple-700 font-extrabold rounded-xl hover:bg-purple-200 border border-purple-200 shadow-sm transition"><i class="fas fa-plus-circle ml-2"></i> سؤال جديد</button>
-                        
                         <button onclick="navBuilderQuestion(1)" id="b-next-btn" class="px-6 py-3 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 disabled:opacity-50 transition">التالي <i class="fas fa-arrow-left mr-2"></i></button>
                     </div>
                 </div>
             </div>
-            
             <div class="p-5 border-t bg-white flex justify-end gap-3">
                 <button id="btn-to-step-2" onclick="goToBuilderStep2()" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition flex items-center">
                     التالي: كتابة الأسئلة <i class="fas fa-arrow-left mr-2"></i>
@@ -256,31 +496,116 @@
             </div>
         </div>
     </div>
-        <!-- ========== شاشة تسجيل الدخول بالجيميل ========== -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ════════ شاشة تسجيل الدخول الجديدة (المصباح الإسلامي) ════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl text-center border border-white/50">
-            <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-white text-4xl shadow-lg">
-                <i class="fab fa-google"></i>
+        <div class="bg-pattern"></div>
+        <div id="floor-glow"></div>
+
+        <div class="login-scene">
+            <!-- المصباح -->
+            <div class="lamp-wrapper">
+                <div class="light-cone" id="light-cone"></div>
+
+                <svg id="lamp-svg" width="170" height="260" viewBox="0 0 170 260">
+                    <defs>
+                        <pattern id="arabicPattern" x="0" y="0" width="18" height="18" patternUnits="userSpaceOnUse">
+                            <g fill="none" stroke="rgba(255,220,120,0.18)" stroke-width="0.7">
+                                <polygon points="9,1 12,6 17,6 13,10 15,15 9,12 3,15 5,10 1,6 6,6"/>
+                                <circle cx="9" cy="8" r="3"/>
+                            </g>
+                        </pattern>
+                        <linearGradient id="shadeOn" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#b8860b"/>
+                            <stop offset="40%" stop-color="#cd9a2e"/>
+                            <stop offset="70%" stop-color="#a0722a"/>
+                            <stop offset="100%" stop-color="#6b4c1e"/>
+                        </linearGradient>
+                        <linearGradient id="shadeOff" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#2a2218"/>
+                            <stop offset="100%" stop-color="#1a1510"/>
+                        </linearGradient>
+                        <radialGradient id="innerGlow" cx="50%" cy="100%" r="80%">
+                            <stop offset="0%" stop-color="rgba(255,220,120,0.95)"/>
+                            <stop offset="50%" stop-color="rgba(220,170,60,0.55)"/>
+                            <stop offset="100%" stop-color="rgba(180,130,30,0)"/>
+                        </radialGradient>
+                        <linearGradient id="poleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#5a4520"/>
+                            <stop offset="40%" stop-color="#c9962a"/>
+                            <stop offset="100%" stop-color="#4a3518"/>
+                        </linearGradient>
+                        <linearGradient id="baseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#d4a43a"/>
+                            <stop offset="100%" stop-color="#7a5820"/>
+                        </linearGradient>
+                        <clipPath id="shadeClip">
+                            <path d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z"/>
+                        </clipPath>
+                    </defs>
+                    <path id="shade-body" d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#shadeOn)"/>
+                    <path d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#arabicPattern)" clip-path="url(#shadeClip)" opacity="1"/>
+                    <path d="M 44,46 Q 50,24 85,24 Q 120,24 126,46" fill="none" stroke="rgba(201,150,42,0.6)" stroke-width="2.5"/>
+                    <path id="shade-rim" d="M 22,118 Q 85,130 148,118 L 146,122 Q 85,134 24,122 Z" fill="#7a5820"/>
+                    <ellipse id="inner-light" cx="85" cy="120" rx="56" ry="10" fill="url(#innerGlow)" opacity="1"/>
+                    <ellipse id="eye-l" cx="68" cy="85" rx="5.5" ry="5.5" fill="#1a0e00"/>
+                    <circle cx="66.5" cy="83.5" r="1.5" fill="rgba(255,255,255,0.35)"/>
+                    <ellipse id="eye-r" cx="102" cy="85" rx="5.5" ry="5.5" fill="#1a0e00"/>
+                    <circle cx="100.5" cy="83.5" r="1.5" fill="rgba(255,255,255,0.35)"/>
+                    <path id="mouth" d="M 76 97 Q 85 108 94 97" stroke="#1a0e00" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+                    <rect x="81" y="124" width="8" height="96" rx="4" fill="url(#poleGrad)"/>
+                    <ellipse cx="85" cy="222" rx="38" ry="8" fill="url(#baseGrad)"/>
+                    <path d="M 47,222 L 47,230 Q 85,242 123,230 L 123,222 Z" fill="#6b4c1e"/>
+                    <path d="M 52,225 Q 85,232 118,225" fill="none" stroke="rgba(255,220,120,0.3)" stroke-width="1.2"/>
+                </svg>
+
+                <canvas id="rope-canvas" width="130" height="110"></canvas>
             </div>
-            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">مرحباً بك في منصتنا</h1>
-            <p class="text-gray-500 mb-6">سجل دخولك بحساب Google لبدء الاختبارات</p>
-            <button id="login-btn" onclick="startGoogleRedirectLogin('student')" class="w-full py-4 bg-blue-600 text-white text-lg font-bold rounded-xl shadow-lg hover:bg-blue-700 transition mb-2">
-                <i class="fab fa-google ml-2"></i> تسجيل الدخول باستخدام Google
-            </button>
-            <p id="login-error" class="text-red-500 text-sm font-bold hidden mb-2"></p>
-            <p id="login-loading" class="text-blue-500 text-sm font-bold hidden mb-2"><i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...</p>
+
+            <!-- كارت تسجيل الدخول -->
+            <div class="login-card" id="login-card">
+                <div class="logo-wrap">
+                    <img src="/icons/logo.png" alt="Logo" onerror="this.style.display='none'">
+                </div>
+
+                <h2 class="card-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
+                <p class="card-college">كُلِّيَّة دَار الْعُلُوم</p>
+                <p class="card-sub">سجِّل دخولك للوصول إلى بوابة<br>الطلاب والاختبارات الإلكترونية</p>
+
+                <div class="divider">
+                    <span class="divider-line"></span>
+                    <span class="divider-star">✦✦✦✦✦✦✦</span>
+                    <span class="divider-line"></span>
+                </div>
+
+                <button class="login-btn-fancy" id="login-btn" onclick="startGoogleRedirectLogin('student')">
+                    <span>🎓</span>
+                    تسجيل الدخول بـ Google
+                </button>
+
+                <p id="login-error" class="login-error-msg hidden"></p>
+                <p id="login-loading" class="login-loading-msg hidden"><i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...</p>
+
+                <p class="lamp-hint">
+                    <span>💡</span>
+                    <span>اسحب الحبل أو انقر المصباح للتحكم في الإضاءة</span>
+                </p>
+            </div>
         </div>
     </div>
+
+    <!-- باقي العناصر الأصلية -->
     <div id="dashboard-view" class="hidden container mx-auto px-4 py-6 sm:py-10 pb-24">
-        <header class="text-center mb-8 relative mt-12 sm:mt-0"> 
+        <header class="text-center mb-8 relative mt-12 sm:mt-0">
             <div class="absolute inset-0 -z-10 flex justify-center items-center opacity-40 blur-2xl">
                 <div class="w-40 h-12 bg-blue-300 rounded-full"></div>
             </div>
-            <h1 id="welcome-msg" class="text-2xl sm:text-4xl font-extrabold text-gray-800 mb-2 tracking-tight">مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ </h1>
+            <h1 id="welcome-msg" class="text-2xl sm:text-4xl font-extrabold text-gray-800 mb-2 tracking-tight">مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ </h1>
             <p class="font-arabic-stylish text-lg sm:text-xl text-gray-600 mb-2">"بسم الله الرحمن الرحيم"</p>
             <p class="font-arabic-stylish text-xs sm:text-sm text-green-600 bg-green-50 inline-block px-3 py-1 rounded-full font-bold">اللهم علمنا ما ينفعنا وانفعنا بما علمتنا</p>
         </header>
-
         <section class="mb-10">
             <div class="flex justify-between items-end mb-4">
                 <h2 class="text-lg sm:text-xl font-black text-gray-800 flex items-center">
@@ -288,10 +613,8 @@
                     أحدث الامتحانات
                 </h2>
             </div>
-            <div id="latest-exams-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                </div>
+            <div id="latest-exams-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
         </section>
-
         <section class="mb-10">
             <div class="flex justify-between items-end mb-4">
                 <h2 class="text-lg sm:text-xl font-black text-gray-800 flex items-center">
@@ -299,10 +622,8 @@
                     أحدث المذكرات والملفات
                 </h2>
             </div>
-            <div id="latest-notes-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                </div>
+            <div id="latest-notes-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
         </section>
-
         <section class="grid grid-cols-1 gap-8">
             <div class="bg-white rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-200"></div>
@@ -311,10 +632,8 @@
             </div>
         </section>
     </div>
-    <!-- حاوية الاختبار الرئيسية -->
+
     <div id="quiz-container" class="hidden max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl p-6 sm:p-10 border border-gray-100 my-8">
-        
-        <!-- العنوان والمؤقت والنتيجة -->
         <header class="mb-8 border-b pb-4">
             <h1 id="quiz-main-title" class="text-3xl font-extrabold text-center text-gray-800 mb-2">اضغط لاختيار اختبار أو إنشاء جديد</h1>
             <p id="quiz-subtitle" class="text-center text-gray-500 text-sm mb-4">اختبار تفاعلي (0 سؤال في 0 دقيقة)</p>
@@ -332,39 +651,26 @@
                     السؤال <span id="current-question-number">1</span> / <span id="total-questions">30</span>
                 </div>
             </div>
-            <!-- شريط التقدم -->
             <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
                 <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div>
             </div>
         </header>
-
-        <!-- منطقة السؤال والإجابات -->
         <div id="question-area">
-            <!-- نص السؤال -->
             <div class="mb-6 p-4 bg-gray-50 rounded-lg shadow-inner border-r-4 border-blue-500">
                 <p id="question-text" class="text-xl font-semibold text-gray-900 text-arabic"></p>
                 <p id="question-hint" class="text-sm text-gray-500 mt-2 p-2 bg-gray-100 rounded-md hidden"></p>
             </div>
-            
-            <!-- خيارات الإجابة -->
-            <div id="options-container" class="space-y-4">
-                <!-- يتم ملؤها بواسطة JavaScript -->
-            </div>
-
-            <!-- رسالة التغذية الراجعة والنتيجة الفورية -->
+            <div id="options-container" class="space-y-4"></div>
             <div id="feedback-box" class="mt-8 p-4 rounded-xl shadow-lg transition duration-300 transform scale-y-0 origin-top h-0 overflow-hidden" style="transition: all 0.5s ease; opacity: 0;">
                 <p id="feedback-message" class="text-xl font-bold text-center"></p>
                 <p id="rationale-text" class="text-sm text-center mt-2 text-gray-700"></p>
             </div>
         </div>
-        
-        <!-- أزرار التحكم -->
         <div class="flex justify-between mt-10 pt-4 border-t">
             <button id="previous-btn" onclick="goToPreviousQuestion()" class="flex items-center px-4 py-2 bg-gray-300 text-gray-700 font-bold rounded-lg shadow-md hover:bg-gray-400 transition duration-300" disabled>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" /></svg>
                 السابق
             </button>
-
             <button id="next-btn" onclick="goToNextQuestion()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-extrabold rounded-xl shadow-xl hover:bg-blue-700 transition duration-300 transform hover:scale-105" disabled>
                 التالي
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L6.414 10l5.889 5.889a1 1 0 010 1.414z" clip-rule="evenodd" transform="scale(-1, 1)"/></svg>
@@ -373,59 +679,43 @@
                 إنهاء الاختبار
             </button>
         </div>
-
     </div>
 
-    <!-- شاشة نهاية الاختبار -->
     <div id="results-screen" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white/90 backdrop-blur-lg rounded-3xl p-8 sm:p-12 max-w-lg w-full text-center shadow-2xl">
             <h2 class="text-4xl font-extrabold text-blue-600 mb-4">تبارك الرحمن!</h2>
             <p id="final-message" class="text-xl text-gray-700 mb-6 font-semibold"></p>
-            
             <div class="text-4xl font-black mb-8 p-4 rounded-xl correct-bg text-white">
                 نقاطك: <span id="final-score">0</span> / <span id="final-total">0</span>
             </div>
-            
-            <!-- هنا ستظهر الرسالة التي كتبتها أنت -->
             <p id="custom-closing-text" class="text-md text-gray-600 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100"></p>
-
-            <!-- رسالة خطأ حفظ النتيجة عند انقطاع الإنترنت -->
             <p id="save-score-error" class="hidden text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4"></p>
-            
             <button onclick="exitToMain()" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition duration-300">
                 الخروج للشاشة الرئيسية
             </button>
         </div>
     </div>
-      <!-- مودل متابعة الدرجات المتقدم -->
+
     <div id="grades-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
-            
-            <!-- الهيدر -->
             <div class="bg-gradient-to-r from-purple-50 to-white p-6 border-b flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-extrabold text-purple-700 flex items-center"><i class="fas fa-chart-line ml-2"></i> متابعة أداء الطلاب</h2>
                     <p class="text-gray-500 text-sm mt-1">تحليل شامل لنتائج الامتحانات</p>
                 </div>
                 <div class="flex gap-2 items-center">
-                    <!-- زرار الإحصائيات الجديد -->
                     <button onclick="openStatsModal()" title="لوحة الشرف والإحصائيات" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition shadow-sm flex items-center justify-center text-xl">
                         <i class="fas fa-trophy"></i>
                     </button>
-                    <!-- زرار الإغلاق -->
                     <button onclick="closeGradesModal()" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             </div>
-
-            <!-- محتوى القائمة -->
-            <div id="grades-list-container" class="flex-1 overflow-y-auto p-6 space-y-4">
-                <!-- هنا هيتم وضع كارتات الطلاب بواسطة JavaScript -->
-            </div>
+            <div id="grades-list-container" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
         </div>
     </div>
-    <!-- مودل الإحصائيات والجوائز (مستقل عن مودل الدرجات) -->
+
     <div id="stats-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
             <div class="bg-gradient-to-r from-yellow-50 to-white p-6 border-b flex justify-between items-center">
@@ -440,7 +730,7 @@
             <div id="stats-list-container" class="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </div>
     </div>
-    <!-- مودل إعدادات الطالب -->
+
     <div id="student-menu-modal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
             <div class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-user-cog"></i></div>
@@ -450,9 +740,9 @@
             <button onclick="closeStudentMenu()" class="w-full py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إغلاق</button>
         </div>
     </div>
-  <div id="edit-selection-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] flex items-center justify-center p-4 sm:p-8">
+
+    <div id="edit-selection-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] flex items-center justify-center p-4 sm:p-8">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative">
-            
             <div class="bg-gradient-to-r from-blue-50 to-white p-6 flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-extrabold text-blue-700 flex items-center"><i class="fas fa-edit ml-2"></i> إدارة وتعديل المحتوى</h2>
@@ -462,7 +752,6 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-
             <div class="flex border-b border-gray-200 bg-gray-50">
                 <button id="edit-tab-exams" onclick="switchEditTab('exams')" class="flex-1 py-4 font-bold text-blue-600 border-b-4 border-blue-600 bg-blue-50/50 transition flex justify-center items-center gap-2">
                     <i class="fas fa-file-alt"></i> الامتحانات
@@ -471,13 +760,13 @@
                     <i class="fas fa-file-pdf"></i> المذكرات والمراجعات
                 </button>
             </div>
-            
             <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
                 <div id="edit-subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
                 <div id="edit-history-tree" class="space-y-2"></div>
             </div>
         </div>
     </div>
+
     <div id="delete-subject-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center border-t-8 border-red-500">
             <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
@@ -485,7 +774,6 @@
             </div>
             <h2 class="text-2xl font-extrabold text-gray-800 mb-2">تأكيد الحذف</h2>
             <p class="text-gray-500 mb-8 font-medium" id="delete-subject-msg">هل أنت متأكد من حذف المجلد؟ سيتم مسح جميع الامتحانات بداخله!</p>
-            
             <div class="flex gap-3 flex-row-reverse">
                 <button onclick="closeDeleteModal()" class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-red-50 hover:text-red-600 transition flex justify-center items-center gap-2">
                     <i class="fas fa-times text-lg"></i> إلغاء
@@ -496,6 +784,7 @@
             </div>
         </div>
     </div>
+
     <div id="rename-subject-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center border-t-8 border-purple-500">
             <div class="w-16 h-16 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
@@ -503,9 +792,7 @@
             </div>
             <h2 class="text-2xl font-extrabold text-gray-800 mb-2">تعديل اسم المجلد</h2>
             <p class="text-gray-500 mb-6 text-sm">أدخل الاسم الجديد للمادة لتحديث جميع الامتحانات:</p>
-            
             <input type="text" id="rename-subject-input" class="w-full p-4 border-2 border-gray-200 rounded-xl mb-6 text-center text-xl font-bold text-gray-800 focus:border-purple-500 outline-none transition" placeholder="اكتب الاسم الجديد هنا...">
-
             <div class="flex gap-3 flex-row-reverse">
                 <button onclick="closeRenameModal()" class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-red-50 hover:text-red-600 transition flex justify-center items-center gap-2">
                     <i class="fas fa-times text-lg"></i> إلغاء
@@ -516,7 +803,7 @@
             </div>
         </div>
     </div>
-    <!-- Confirm Modal (custom replacement for native confirm) -->
+
     <div id="confirm-modal-overlay" class="confirm-overlay hidden" role="dialog" aria-modal="true">
         <div class="confirm-dialog">
             <div id="confirm-icon" class="text-4xl mb-4">⚠️</div>
@@ -529,20 +816,270 @@
         </div>
     </div>
 
-        <!-- Delete Exam/Note Modal -->
-        <div id="delete-exam-modal" class="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-30 hidden">
-            <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xs text-center">
-                <p id="delete-exam-msg" class="mb-4 text-gray-700 font-bold"></p>
-                <div class="flex gap-3 justify-center">
-                    <button onclick="confirmDeleteExamOrNote()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 transition">تأكيد الحذف</button>
-                    <button onclick="closeDeleteExamModal()" class="bg-gradient-to-r from-purple-500 to-orange-500 text-white px-4 py-2 rounded font-bold hover:from-purple-600 hover:to-orange-600 transition shadow-md">إلغاء</button>
-                </div>
+    <div id="delete-exam-modal" class="fixed inset-0 z-[110] flex items-center justify-center bg-black bg-opacity-30 hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-xs text-center">
+            <p id="delete-exam-msg" class="mb-4 text-gray-700 font-bold"></p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="confirmDeleteExamOrNote()" class="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 transition">تأكيد الحذف</button>
+                <button onclick="closeDeleteExamModal()" class="bg-gradient-to-r from-purple-500 to-orange-500 text-white px-4 py-2 rounded font-bold hover:from-purple-600 hover:to-orange-600 transition shadow-md">إلغاء</button>
             </div>
         </div>
+    </div>
 
-        <!-- Toast container -->
-        <div id="toast-container" class="toast-float" role="alert" aria-live="polite"></div>
-        <!-- App JS -->
-        <script type="module" src="/js/app.js?v=30"></script>
+    <div id="toast-container" class="toast-float" role="alert" aria-live="polite"></div>
+
+    <!-- App JS -->
+    <script type="module" src="/js/app.js?v=30"></script>
+
+    <!-- Lamp Animation Script -->
+    <script>
+    /* ═══════════════════════════════════════════
+       فيزياء الحبل — Verlet Integration
+    ═══════════════════════════════════════════ */
+    (function() {
+        const canvas = document.getElementById('rope-canvas');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const CW = canvas.width;
+        const CH = canvas.height;
+
+        const SEG = 12;
+        const GRAVITY = 0.40;
+        const DAMP = 0.980;
+        const ITER = 22;
+
+        let pts = [];
+        for (let i = 0; i <= SEG; i++) {
+            const y = i * (CH / SEG);
+            pts.push({ x: CW/2, y, ox: CW/2, oy: y, pin: i === 0 });
+        }
+        const segLen = CH / SEG;
+
+        let dragging = -1;
+        let pullCounter = 0;
+
+        function getXY(e) {
+            const r = canvas.getBoundingClientRect();
+            const s = e.touches ? e.touches[0] : e;
+            return { x: s.clientX - r.left, y: s.clientY - r.top };
+        }
+
+        function nearest(mx, my) {
+            let best = -1, bd = 40;
+            pts.forEach((p, i) => {
+                if (p.pin) return;
+                const d = Math.hypot(p.x - mx, p.y - my);
+                if (d < bd) { bd = d; best = i; }
+            });
+            return best;
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            const p = getXY(e);
+            dragging = nearest(p.x, p.y);
+            if (dragging >= 0) pullCounter = 0;
+        });
+        canvas.addEventListener('mousemove', e => {
+            if (dragging < 0) return;
+            const p = getXY(e);
+            pts[dragging].x = Math.max(4, Math.min(CW-4, p.x));
+            pts[dragging].y = Math.max(2, Math.min(CH-4, p.y));
+            pts[dragging].ox = pts[dragging].x;
+            pts[dragging].oy = pts[dragging].y;
+            pullCounter++;
+        });
+        canvas.addEventListener('mouseup', () => {
+            if (dragging >= 0 && pullCounter > 4) checkToggle();
+            dragging = -1; pullCounter = 0;
+        });
+        canvas.addEventListener('mouseleave', () => { dragging = -1; });
+
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const p = getXY(e);
+            dragging = nearest(p.x, p.y);
+            if (dragging >= 0) pullCounter = 0;
+        }, { passive: false });
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (dragging < 0) return;
+            const p = getXY(e);
+            pts[dragging].x = Math.max(4, Math.min(CW-4, p.x));
+            pts[dragging].y = Math.max(2, Math.min(CH-4, p.y));
+            pts[dragging].ox = pts[dragging].x;
+            pts[dragging].oy = pts[dragging].y;
+            pullCounter++;
+        }, { passive: false });
+        canvas.addEventListener('touchend', () => {
+            if (dragging >= 0 && pullCounter > 3) checkToggle();
+            dragging = -1; pullCounter = 0;
+        });
+
+        function checkToggle() {
+            const last = pts.length - 1;
+            if (dragging >= last - 3) toggleLamp();
+        }
+
+        function update() {
+            for (const p of pts) {
+                if (p.pin) continue;
+                const vx = (p.x - p.ox) * DAMP;
+                const vy = (p.y - p.oy) * DAMP;
+                p.ox = p.x; p.oy = p.y;
+                p.x += vx; p.y += vy + GRAVITY;
+                if (p.x < 4) { p.x = 4; p.ox = p.x; }
+                if (p.x > CW-4) { p.x = CW-4; p.ox = p.x; }
+                if (p.y > CH-4) { p.y = CH-4; p.oy = p.y; }
+                if (p.y < 2) { p.y = 2; p.oy = p.y; }
+            }
+            for (let it = 0; it < ITER; it++) {
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const a = pts[i], b = pts[i+1];
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const dist = Math.hypot(dx, dy) || 0.001;
+                    const diff = (dist - segLen) / dist * 0.5;
+                    if (!a.pin) { a.x += dx*diff; a.y += dy*diff; }
+                    if (!b.pin) { b.x -= dx*diff; b.y -= dy*diff; }
+                }
+                pts[0].x = CW / 2; pts[0].y = 0;
+            }
+        }
+
+        function drawRope() {
+            ctx.clearRect(0, 0, CW, CH);
+
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x + 1.5, pts[0].y + 1.5);
+            for (let i = 1; i < pts.length - 1; i++) {
+                const mx = (pts[i].x + pts[i+1].x) / 2 + 1.5;
+                const my = (pts[i].y + pts[i+1].y) / 2 + 1.5;
+                ctx.quadraticCurveTo(pts[i].x + 1.5, pts[i].y + 1.5, mx, my);
+            }
+            ctx.lineTo(pts[pts.length-1].x + 1.5, pts[pts.length-1].y + 1.5);
+            ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+            ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length - 1; i++) {
+                const mx = (pts[i].x + pts[i+1].x) / 2;
+                const my = (pts[i].y + pts[i+1].y) / 2;
+                ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+            }
+            ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+
+            const grad = ctx.createLinearGradient(0, 0, 0, CH);
+            grad.addColorStop(0, '#8a6d3b');
+            grad.addColorStop(0.5, '#c9962a');
+            grad.addColorStop(1, '#8a6d3b');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 2.8;
+            ctx.shadowColor = 'rgba(201,150,42,0.4)';
+            ctx.shadowBlur = 4;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            const tip = pts[pts.length - 1];
+            const g = ctx.createRadialGradient(tip.x-2, tip.y-2, 1, tip.x, tip.y, 8);
+            g.addColorStop(0, '#fff8e0');
+            g.addColorStop(0.5, '#e8b84b');
+            g.addColorStop(1, '#7a5010');
+            ctx.beginPath();
+            ctx.arc(tip.x, tip.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = g;
+            ctx.strokeStyle = '#5a3a08';
+            ctx.lineWidth = 1.2;
+            ctx.shadowColor = 'rgba(201,150,42,0.6)';
+            ctx.shadowBlur = 6;
+            ctx.fill(); ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            ctx.beginPath();
+            ctx.arc(CW/2, 0, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#8a6d3b';
+            ctx.strokeStyle = '#c9962a';
+            ctx.lineWidth = 1;
+            ctx.fill(); ctx.stroke();
+        }
+
+        (function loop() { update(); drawRope(); requestAnimationFrame(loop); })();
+
+        /* ═══ تبديل الإضاءة ═══ */
+        let isOn = true;
+
+        window.toggleLamp = function() { isOn = !isOn; applyState(); };
+
+        const lampSvg = document.getElementById('lamp-svg');
+        if (lampSvg) lampSvg.addEventListener('click', toggleLamp);
+
+        function applyState() {
+            const shade = document.getElementById('shade-body');
+            const rim = document.getElementById('shade-rim');
+            const innerLight = document.getElementById('inner-light');
+            const eyeL = document.getElementById('eye-l');
+            const eyeR = document.getElementById('eye-r');
+            const mouth = document.getElementById('mouth');
+            const svg = document.getElementById('lamp-svg');
+            const cone = document.getElementById('light-cone');
+            const glow = document.getElementById('floor-glow');
+            const card = document.getElementById('login-card');
+
+            if (isOn) {
+                shade.setAttribute('fill', 'url(#shadeOn)');
+                rim.setAttribute('fill', '#7a5820');
+                innerLight.setAttribute('opacity', '1');
+                svg.classList.remove('off');
+
+                eyeL.setAttribute('rx', '5.5'); eyeL.setAttribute('ry', '5.5');
+                eyeR.setAttribute('rx', '5.5'); eyeR.setAttribute('ry', '5.5');
+                eyeL.setAttribute('fill', '#1a0e00');
+                eyeR.setAttribute('fill', '#1a0e00');
+                mouth.setAttribute('d', 'M 76 97 Q 85 108 94 97');
+
+                cone.classList.remove('off');
+                glow.classList.remove('off');
+                card.classList.remove('off');
+                card.classList.add('appear');
+                setTimeout(() => card.classList.remove('appear'), 900);
+
+            } else {
+                shade.setAttribute('fill', 'url(#shadeOff)');
+                rim.setAttribute('fill', '#1a1510');
+                innerLight.setAttribute('opacity', '0');
+                svg.classList.add('off');
+
+                eyeL.setAttribute('rx', '5.5'); eyeL.setAttribute('ry', '1.5');
+                eyeR.setAttribute('rx', '5.5'); eyeR.setAttribute('ry', '1.5');
+                eyeL.setAttribute('fill', '#444');
+                eyeR.setAttribute('fill', '#444');
+                mouth.setAttribute('d', 'M 76 100 Q 85 95 94 100');
+
+                cone.classList.add('off');
+                glow.classList.add('off');
+                card.classList.add('off');
+            }
+        }
+
+        /* ═══ الرمش التلقائي ═══ */
+        function blinkEyes() {
+            if (!isOn) return;
+            const eyeL = document.getElementById('eye-l');
+            const eyeR = document.getElementById('eye-r');
+            eyeL.setAttribute('ry', '1'); eyeR.setAttribute('ry', '1');
+            setTimeout(() => {
+                if (!isOn) return;
+                eyeL.setAttribute('ry', '5.5'); eyeR.setAttribute('ry', '5.5');
+            }, 130);
+        }
+
+        function scheduleBlink() {
+            const t = Math.random() * 4500 + 2000;
+            setTimeout(() => { blinkEyes(); scheduleBlink(); }, t);
+        }
+        scheduleBlink();
+    })();
+    </script>
 </body>
 </html>
