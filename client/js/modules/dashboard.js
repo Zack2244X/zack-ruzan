@@ -261,48 +261,42 @@ export async function renderDashboard(forceRefresh = false) {
         attemptsMap = await resolveAttemptsMap(latestExams, forceRefresh);
     }
 
-    // ─────────────────────────────────────────────
-    //  1. آخر 4 امتحانات
-    // ─────────────────────────────────────────────
-    const latestExamsGrid = document.getElementById('latest-exams-grid');
-    latestExamsGrid.innerHTML = '';
+// ─────────────────────────────────────────────
+//  1. آخر 4 امتحانات
+// ─────────────────────────────────────────────
+const latestExamsGrid = document.getElementById('latest-exams-grid');
+latestExamsGrid.innerHTML = '';
 
-    if (latestExams.length === 0) {
-        latestExamsGrid.innerHTML = `
-            <div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed
-                        border-gray-200 text-center text-gray-400 font-medium">
-                لا توجد امتحانات مضافة حتى الآن.
-            </div>`;
-    } else {
-        let examsHtml = '';
+if (latestExams.length === 0) {
+    latestExamsGrid.innerHTML = `
+        <div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed
+                    border-gray-200 text-center text-gray-400 font-medium">
+            لا توجد امتحانات مضافة حتى الآن.
+        </div>`;
+} else {
+    let examsHtml = '';
 
-        latestExams.forEach((q, idx) => {
-            const realIndex       = state.allQuizzes.length - 1 - idx;
-            const safeTitle       = escapeHtml(q.config.title);
-            const safeDesc        = escapeHtml(q.config.description || '');
-            const safeSubject     = escapeHtml(q.config.subject || 'عام');
-            const quizMaxOfficial = q.config.maxOfficialAttempts ?? globalMaxOfficial;
+    latestExams.forEach((q, idx) => {
+        const realIndex       = state.allQuizzes.length - 1 - idx;
+        const safeTitle       = escapeHtml(q.config.title);
+        const safeDesc        = escapeHtml(q.config.description || '');
+        const safeSubject     = escapeHtml(q.config.subject || 'عام');
+        const quizMaxOfficial = q.config.maxOfficialAttempts ?? globalMaxOfficial;
 
-            // attempts: number → عدد المحاولات | null → خطأ شبكة
-            const attempts       = attemptsMap.get(String(q.id)) ?? 0;
-            const willBePractice = state.currentUser && attempts !== null
-                ? isNextAttemptPractice(attempts, quizMaxOfficial)
-                : false;
+        // attempts: number → عدد المحاولات | null → خطأ شبكة
+        const attempts       = attemptsMap.get(String(q.id)) ?? 0;
+        const willBePractice = state.currentUser && attempts !== null
+            ? isNextAttemptPractice(attempts, quizMaxOfficial)
+            : false;
 
-            examsHtml += `
-                <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
-                            cursor-pointer border border-gray-100 hover:border-blue-400 group
-                            relative overflow-hidden flex flex-col">
-                    <!-- delete button -->
-                    <button onclick="deleteQuiz(${realIndex})"
-                            class="absolute top-3 right-3 text-red-500 hover:text-red-700 z-20 p-1.5 bg-white rounded-full shadow-sm transition"
-                            title="حذف الاختبار">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                    <div onclick="playQuiz(${realIndex})" class="h-full w-full">
+        examsHtml += `
+            <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
+                        cursor-pointer border border-gray-100 hover:border-blue-400 group
+                        relative overflow-hidden flex flex-col">
+                <div onclick="playQuiz(${realIndex})" class="h-full w-full">
 
-                        <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
-                                opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                    <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
+                            opacity-0 group-hover:opacity-100 transition duration-500"></div>
 
                     <div class="flex justify-between items-start mb-5 relative z-10">
                         <div class="w-14 h-14 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600
@@ -333,12 +327,12 @@ export async function renderDashboard(forceRefresh = false) {
                     </div>
 
                     ${state.currentUser ? buildAttemptsHtml(attempts, willBePractice) : ''}
-                    </div>
-                </div>`;
-        });
+                </div>
+            </div>`;
+    });
 
-        latestExamsGrid.innerHTML = examsHtml;
-    }
+    latestExamsGrid.innerHTML = examsHtml;
+}
 
     // ─────────────────────────────────────────────
     //  2. آخر 3 مذكرات
