@@ -534,6 +534,9 @@ export function initializeQuiz() {
         startTimer();
         state.quizStarted = true;
         addQuizExitButton();
+        // إخفاء الشريط السفلي أثناء الاختبار
+        const dockBar = document.getElementById('ios-bottom-nav');
+        if (dockBar) dockBar.classList.add('hidden');
     }
 
 // زر خروج منفصل في الاختبار
@@ -551,6 +554,9 @@ function addQuizExitButton() {
                 state.quizStarted = false;
                 document.getElementById('quiz-container').classList.add('hidden');
                 document.getElementById('dashboard-view').classList.remove('hidden');
+                // إظهار الشريط السفلي بعد الخروج من الاختبار
+                const dockBar = document.getElementById('ios-bottom-nav');
+                if (dockBar) dockBar.classList.remove('hidden');
                 if (typeof updateDockUI === 'function') updateDockUI('home');
                 btn.remove();
             }
