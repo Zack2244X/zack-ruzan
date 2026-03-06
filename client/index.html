@@ -565,7 +565,8 @@
                         </clipPath>
                     </defs>
                     <path id="shade-body" d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#shadeOn)"/>
-                    <path d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46" fill="none" stroke="rgba(201,150,42,0.6)" stroke-width="2.5"/>
+                    <path d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#arabicPattern)" clip-path="url(#shadeClip)" opacity="1"/>
+                    <path d="M 44,46 Q 50,24 85,24 Q 120,24 126,46" fill="none" stroke="rgba(201,150,42,0.6)" stroke-width="2.5"/>
                     <path id="shade-rim" d="M 22,118 Q 85,130 148,118 L 146,122 Q 85,134 24,122 Z" fill="#7a5820"/>
                     <ellipse id="inner-light" cx="85" cy="120" rx="56" ry="10" fill="url(#innerGlow)" opacity="1"/>
                     <ellipse id="eye-l" cx="68" cy="85" rx="5.5" ry="5.5" fill="#1a0e00"/>
@@ -585,12 +586,10 @@
             <!-- كارت تسجيل الدخول -->
             <div class="login-card" id="login-card">
                 <div class="logo-wrap">
-                    <img src="icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
+                    <img src="icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.png"
                          alt="Logo"
                          loading="lazy" decoding="async"
-                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
-                         srcset="icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x"
-                         type="image/webp">
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 </div>
 
                 <h2 class="card-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
@@ -702,7 +701,7 @@
             </button>
             <button id="next-btn" onclick="goToNextQuestion()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-extrabold rounded-xl shadow-xl hover:bg-blue-700 transition duration-300 transform hover:scale-105" disabled>
                 التالي
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L6.414 9l5.889 5.889a1 1 0 010 1.414z" clip-rule="evenodd" transform="scale(-1, 1)"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L6.414 10l5.889 5.889a1 1 0 010 1.414z" clip-rule="evenodd" transform="scale(-1, 1)"/></svg>
             </button>
             <button id="submit-btn" onclick="submitQuiz()" class="hidden px-6 py-3 bg-green-600 text-white font-extrabold rounded-xl shadow-xl hover:bg-green-700 transition duration-300 transform hover:scale-105">
                 إنهاء الاختبار
@@ -774,7 +773,7 @@
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative">
             <div class="bg-gradient-to-r from-blue-50 to-white p-6 flex justify-between items-center">
                 <div>
-                    <h2 class="text-2xl font-extrabold text-blue-700 flex items-center"><i class="fas fa-edit ml-2"></i> إدارة و تعديل المحتوى</h2>
+                    <h2 class="text-2xl font-extrabold text-blue-700 flex items-center"><i class="fas fa-edit ml-2"></i> إدارة وتعديل المحتوى</h2>
                     <p class="text-gray-500 text-sm mt-1">اختر القسم ثم اضغط على الكارت لتعديله</p>
                 </div>
                 <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden'); window._showThemeToggle(true); document.getElementById('ios-bottom-nav').classList.remove('hidden');" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
