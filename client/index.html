@@ -334,7 +334,7 @@
                     <i id="sheet-icon" class="fas fa-bolt text-blue-500 bg-blue-50 p-2 rounded-xl ml-3 text-lg"></i>
                     <h2 id="sheet-title" class="text-2xl font-black text-gray-800 tracking-tight">سجل الامتحانات</h2>
                 </div>
-                <button onclick="closeBottomSheet()" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition"><i class="fas fa-times"></i></button>
+                <button onclick="closeBottomSheet()" aria-label="إغلاق سجل الامتحانات" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
             <div class="p-6 overflow-y-auto flex-1 pb-24">
                 <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
@@ -393,8 +393,8 @@
                     <h2 class="text-2xl font-extrabold text-orange-700 flex items-center"><i class="fas fa-file-upload ml-2"></i> إضافة ملف / مذكرة</h2>
                     <p class="text-gray-500 text-sm mt-1">اربط ملفات OneDrive أو Drive لتظهر للطلاب</p>
                 </div>
-                <button onclick="closeAddNoteModal()" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
-                    <i class="fas fa-times"></i>
+                <button onclick="closeAddNoteModal()" aria-label="إغلاق إضافة مذكرة" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
@@ -442,8 +442,8 @@
                     <h2 class="text-2xl font-extrabold text-green-700 flex items-center"><i class="fas fa-plus-circle ml-2"></i> إنشاء امتحان جديد</h2>
                     <p id="builder-subtitle" class="text-gray-500 text-sm mt-1">الخطوة 1: الإعدادات الأساسية</p>
                 </div>
-                <button onclick="closeCreateSection()" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
-                    <i class="fas fa-times"></i>
+                <button onclick="closeCreateSection()" aria-label="إغلاق إنشاء امتحان" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div class="p-6 overflow-y-auto flex-1 bg-gray-50">
@@ -738,8 +738,8 @@
                     <button onclick="openStatsModal()" title="لوحة الشرف والإحصائيات" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition shadow-sm flex items-center justify-center text-xl">
                         <i class="fas fa-trophy"></i>
                     </button>
-                    <button onclick="closeGradesModal()" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
-                        <i class="fas fa-times"></i>
+                    <button onclick="closeGradesModal()" aria-label="إغلاق متابعة الأداء" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -754,8 +754,8 @@
                     <h2 class="text-2xl font-extrabold text-yellow-700 flex items-center"><i class="fas fa-award ml-2"></i> لوحة الشرف والتميز</h2>
                     <p class="text-gray-500 text-sm mt-1">أبرز الطلاب والمتميزين</p>
                 </div>
-                <button onclick="closeStatsModal()" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
-                    <i class="fas fa-times"></i>
+                <button onclick="closeStatsModal()" aria-label="إغلاق لوحة الشرف" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div id="stats-list-container" class="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-6"></div>
@@ -779,8 +779,8 @@
                     <h2 class="text-2xl font-extrabold text-blue-700 flex items-center"><i class="fas fa-edit ml-2"></i> إدارة وتعديل المحتوى</h2>
                     <p class="text-gray-500 text-sm mt-1">اختر القسم ثم اضغط على الكارت لتعديله</p>
                 </div>
-                <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden'); window._showThemeToggle(true); document.getElementById('ios-bottom-nav').classList.remove('hidden');" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
-                    <i class="fas fa-times"></i>
+                <button onclick="document.getElementById('edit-selection-modal').classList.add('hidden'); window._showThemeToggle(true); document.getElementById('ios-bottom-nav').classList.remove('hidden');" aria-label="إغلاق تعديل المحتوى" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             <div class="flex border-b border-gray-200 bg-gray-50">
