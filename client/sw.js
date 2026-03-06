@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
     '/css/styles.css',
     '/css/tailwind.css',
     '/manifest.json',
-    '/icons/bg.png'
+    '/icons/bg.webp'
 ];
 
 // Install — cache static assets only (CDN loaded by browser directly)
