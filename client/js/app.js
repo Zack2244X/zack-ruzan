@@ -425,9 +425,6 @@ window.onload = async function () {
     // ── قياس مستوى الجهاز المبسّط مبكّراً ونشره لوحدات الواجهة ─────────────
     const perf = await getDevicePerformanceTier({ skipFPSTest: true });
     try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
-    if (perf && perf.tier === 'low') {
-        document.body.classList.add('reduced-graphics');
-    }
 
     // تهيئة الحركات — مرّر نتيجة الأداء لتجنّب إعادة القياس
     await initAnimations(perf);
