@@ -586,10 +586,11 @@
             <!-- كارت تسجيل الدخول -->
             <div class="login-card" id="login-card">
                 <div class="logo-wrap">
-                    <img src="icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.png"
+                    <img src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
                          alt="Logo"
                          loading="lazy" decoding="async"
-                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                         srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x">
                 </div>
 
                 <h2 class="card-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
@@ -884,19 +885,14 @@
 
         // Quick synchronous bail-out for low-end devices or users who prefer reduced motion.
         try {
-            let quickTier = null;
-            if (typeof window !== 'undefined' && typeof window.getQuickDeviceTier === 'function') {
-                quickTier = window.getQuickDeviceTier();
-            } else {
-                // fallback heuristic
-                if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 3) quickTier = 'low';
-                if (navigator.deviceMemory && navigator.deviceMemory < 2) quickTier = 'low';
-            }
-
-            if (quickTier === 'low' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-                console.log('[Lamp] skipping heavy lamp animation on low-tier/reduced-motion');
+            // Respect user's reduced-motion preference only. Do not auto-skip on heuristic low-tier devices;
+            // we want the rope to render unless the user explicitly requests reduced motion.
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                console.log('[Lamp] skipping heavy lamp animation due to prefers-reduced-motion');
                 return;
             }
+            // keep going otherwise
+        
         } catch (e) {
             // detection failed — continue with caution
         }
