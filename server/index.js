@@ -291,6 +291,15 @@ app.get('/api/config', (req, res) => {
     });
 });
 
+// Serve a small JS snippet with public config to avoid an extra XHR on page load
+app.get('/config.js', (req, res) => {
+    const cfg = { googleClientId: process.env.GOOGLE_CLIENT_ID || '' };
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    // short cache — can be longer if you version deployments
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(`window.__PUBLIC_CONFIG = ${JSON.stringify(cfg)};`);
+});
+
 
 // ============================================
 //              ربط المسارات

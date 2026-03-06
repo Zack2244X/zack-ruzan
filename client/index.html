@@ -870,8 +870,11 @@
         <!-- GSAP ScrollTrigger plugin (CDN) -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
 
-        <!-- Lenis Smooth Scroll — served locally to satisfy CSP 'self' -->
-        <script src="/js/vendor/lenis.min.js"></script>
+        <!-- Lenis Smooth Scroll — served locally to satisfy CSP 'self' (deferred) -->
+        <script src="/js/vendor/lenis.min.js" defer></script>
+
+    <!-- Public config (inlined via small JS endpoint) - avoids /api/config XHR -->
+    <script src="/config.js" defer></script>
 
     <!-- App JS (bundled + minified to reduce requests and parse time) -->
     <script type="module" src="/js/app.bundle.min.js?v=30"></script>
