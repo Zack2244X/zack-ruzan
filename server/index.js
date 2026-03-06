@@ -295,8 +295,8 @@ app.get('/api/config', (req, res) => {
 app.get('/config.js', (req, res) => {
     const cfg = { googleClientId: process.env.GOOGLE_CLIENT_ID || '' };
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    // short cache — can be longer if you version deployments
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    // cache for 1 day — safe for public config and reduces repeat requests
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(`window.__PUBLIC_CONFIG = ${JSON.stringify(cfg)};`);
 });
 
