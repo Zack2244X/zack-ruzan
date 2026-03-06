@@ -169,10 +169,28 @@ app.use(express.static(path.join(__dirname, '../client'), {
         // HTML & SW: always revalidate
         if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
             res.setHeader('Cache-Control', 'no-cache');
+            return;
         }
-        // JS modules: short cache so updates arrive quickly
-        if (filePath.endsWith('.js') && !filePath.endsWith('sw.js')) {
+
+        // Long-term cache for immutable assets (minified, versioned, or vendor/static assets)
+        // These can be cached aggressively and served with `immutable` to speed repeat visits.
+        if (filePath.match(/\.min\.(js|css)$/) || filePath.includes(`${path.sep}icons${path.sep}`) || filePath.includes(`${path.sep}fonts${path.sep}`) || filePath.includes(`${path.sep}js${path.sep}vendor${path.sep}`)) {
+            // 30 days
+            res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+            return;
+        }
+
+        // Default: short cache for JS modules and other assets that may change
+        if (filePath.endsWith('.js')) {
+            // 1 hour
             res.setHeader('Cache-Control', 'public, max-age=3600');
+            return;
+        }
+
+        // Images/CSS: moderate cache (1 day) unless matched above
+        if (filePath.match(/\.(?:css|png|jpg|jpeg|webp|svg)$/)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return;
         }
     }
 }));
