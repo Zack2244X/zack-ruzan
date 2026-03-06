@@ -174,7 +174,7 @@ app.use(express.static(path.join(__dirname, '../client'), {
 
         // Long-term cache for immutable assets (minified, versioned, or vendor/static assets)
         // These can be cached aggressively and served with `immutable` to speed repeat visits.
-        if (filePath.match(/\.min\.(js|css)$/) || filePath.includes(`${path.sep}icons${path.sep}`) || filePath.includes(`${path.sep}fonts${path.sep}`) || filePath.includes(`${path.sep}js${path.sep}vendor${path.sep}`)) {
+        if (filePath.match(/\.min\.(js|css)$/) || filePath.includes(`${path.sep}icons${path.sep}`) || filePath.includes(`${path.sep}fonts${path.sep}`) || filePath.includes(`${path.sep}js${path.sep}vendor${path.sep}`) || filePath.endsWith(`${path.sep}css${path.sep}tailwind.css`)) {
             // 30 days
             res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
             return;
