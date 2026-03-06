@@ -37,16 +37,16 @@
       overflow: hidden;
     }
 
-    .bg-pattern {
-      position: fixed;
-      inset: 0;
-      background-image: url('icons/bg.png');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      pointer-events: none;
-      z-index: 0;
-    }
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            background-image: url('/icons/bg.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 0;
+        }
 
     .bg-pattern::after {
       content: '';
@@ -100,13 +100,13 @@
       align-items: center;
     }
 
-    #lamp-svg {
-      overflow: visible;
-      cursor: pointer;
-      position: relative; z-index: 3;
-      filter: drop-shadow(0 0 24px rgba(201,150,42,0.55));
-      transition: filter 0.6s;
-    }
+        #lamp-svg {
+            overflow: visible;
+            cursor: pointer;
+            position: relative; z-index: 20;
+            filter: drop-shadow(0 0 24px rgba(201,150,42,0.55));
+            transition: filter 0.6s;
+        }
     #lamp-svg.off { filter: drop-shadow(0 0 0 transparent); }
 
     .light-cone {
@@ -121,13 +121,13 @@
     }
     .light-cone.off { opacity: 0; }
 
-    #rope-canvas {
-      position: absolute;
-      top: 122px; left: 50%;
-      transform: translateX(-50%);
-      cursor: grab; z-index: 10;
-      touch-action: none;
-    }
+        #rope-canvas {
+            position: absolute;
+            top: 122px; left: 50%;
+            transform: translateX(-50%);
+            cursor: grab; z-index: 1;
+            touch-action: none;
+        }
     #rope-canvas:active { cursor: grabbing; }
 
     /* ═══ كارت تسجيل الدخول ═══ */

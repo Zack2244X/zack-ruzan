@@ -41,7 +41,7 @@ body.reduced-graphics .lamp-wrapper {
     box-shadow: none !important;
     filter: none !important;
 }
-body.reduced-graphics #rope-canvas { display: none !important; }
+
 
 
 /* === Dark Theme Variables === */
