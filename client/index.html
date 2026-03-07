@@ -99,22 +99,28 @@
         transform: translateY(100%);
         transition: transform 320ms cubic-bezier(.2,.9,.2,1);
         will-change: transform;
-        min-height: 420px;
+        min-height: 440px;
         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
-        /* Prevent metric shifts */
         box-sizing: border-box;
+        padding-bottom: 24px;
+        border-radius: 24px;
+        border: 1px solid #e5e7eb;
     }
     .bottom-sheet-content.active { transform: translateY(0); }
 
     .bottom-sheet-content *, #history-tree {
         font-family: inherit !important;
+        box-sizing: border-box;
     }
 
     /* Make handle and header stable dimensions */
     .sheet-handle .w-12 { width: 48px; height: 6px; }
-    .sheet-header { min-height: 56px; }
+    .sheet-header { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
+    .sheet-header .flex { min-height: 40px; }
     /* Fix content area min-height to avoid jump */
-    .bottom-sheet-content .p-6 { min-height: 180px; }
+    .bottom-sheet-content .p-6 { min-height: 220px; }
+    #history-tree { min-height: 60px; }
+    #subject-filters-container { min-height: 32px; }
     </style>
 
     <!-- Font Awesome will be loaded lazily by the bootstrap loader to avoid unused CSS on first paint -->
