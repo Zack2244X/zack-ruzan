@@ -53,9 +53,10 @@
                 document.head.appendChild(faLink);
             }
         } catch (e) { /* ignore */ }
-        // prefer loading the ES module source app (smaller initial transfer for anonymous users)
-        const path = '/js/app.js';
-        import(path).then(mod => {
+        // prefer loading the minified bundled app to avoid many module requests
+        const primary = '/js/app.bundle.min.js?v=31';
+        const fallback = '/js/app.js';
+        import(primary).then(mod => {
             // if module exports startApp, call it
             if (mod && typeof mod.startApp === 'function') {
                 mod.startApp().catch(err => console.error('startApp failed', err));
@@ -71,19 +72,12 @@
                 }
             }
         }).catch(err => {
-            console.error('Failed to dynamically import app.js, falling back to bundled app:', err);
-            // try fallback bundled module
-            import('/js/app.bundle.min.js?v=31').then(fmod => {
-                if (fmod && typeof fmod.startApp === 'function') fmod.startApp().catch(()=>{});
-                window.__appLoading = false;
-                while (window.__lazyCalls.length) {
-                    const call = window.__lazyCalls.shift();
-                    try { if (typeof window[call.name] === 'function') window[call.name].apply(null, call.args || []); } catch(e){}
-                }
+            console.warn('Failed to import primary bundle, falling back to app.js:', err);
+            import(fallback).then(mod => {
+                if (mod && typeof mod.startApp === 'function') mod.startApp().catch(()=>{});
             }).catch(err2 => {
-                console.error('Fallback bundle load failed:', err2);
-                window.__appLoading = false;
-            });
+                console.error('Both bundle and app.js failed to load:', err2);
+            }).finally(()=>{ window.__appLoading = false; });
         });
     }
 
