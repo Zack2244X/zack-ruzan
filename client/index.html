@@ -3,109 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <!-- Professional 'Force Desktop' helper: enables users (on mobile) to view desktop layout.
-                 Adds `force-desktop` class on <html> and overrides the viewport meta when enabled.
-                 Use `toggleDesktopSite()` from the console or the UI button to toggle. -->
+        <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom -->
         <script>
         (function(){
-            const KEY = 'force_desktop_site_v1';
-            // stored: 'on' | 'off' | null
-            const stored = (function(){ try { return localStorage.getItem(KEY); } catch(e){ return null } })();
-
-            // Expose toggle function for console/UI. Accepts true/false to set explicit state
-            // - set 'on' to force desktop
-            // - set 'off' to opt-out (disable) even on mobile
-            // - calling without args toggles between 'on' and 'off'
-            window.toggleDesktopSite = function(force){
-                try {
-                    if (typeof force === 'boolean') {
-                        localStorage.setItem(KEY, force ? 'on' : 'off');
-                    } else {
-                        const cur = localStorage.getItem(KEY);
-                        localStorage.setItem(KEY, cur === 'on' ? 'off' : 'on');
-                    }
-                } catch(e) { /* ignore */ }
-                window.location.reload();
-            };
-
-            function applyOverride(){
-                try {
-                    const meta = document.querySelector('meta[name="viewport"]');
-                    if (meta) {
-                        // store original for restore on disable (session-only)
-                        try { sessionStorage.setItem('viewport_original', meta.content); } catch(e){}
-                        meta.content = 'width=1200, initial-scale=0.35, viewport-fit=cover';
-                    } else {
-                        const m = document.createElement('meta');
-                        m.name = 'viewport';
-                        m.content = 'width=1200, initial-scale=0.35, viewport-fit=cover';
-                        document.head.prepend(m);
-                    }
-                    document.documentElement.classList.add('force-desktop');
-                    // optional flag for CSS hooks
-                    document.documentElement.setAttribute('data-force-desktop', '1');
-                } catch(e) { console.warn('force-desktop apply failed', e); }
-            }
-
-            function restoreOriginal(){
-                try {
-                    const orig = sessionStorage.getItem('viewport_original');
-                    const meta = document.querySelector('meta[name="viewport"]');
-                    if (meta && orig) meta.content = orig;
-                    document.documentElement.classList.remove('force-desktop');
-                    document.documentElement.removeAttribute('data-force-desktop');
-                } catch(e) { /* ignore */ }
-            }
-
-            // Auto-apply by default on mobile UA unless user explicitly opted-out ('off').
             const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
-            if (stored === 'on') {
-                applyOverride();
-            } else if (stored === 'off') {
-                restoreOriginal();
-            } else if (isMobileUA) {
-                // default: mobile visitors see desktop layout
-                applyOverride();
-            } else {
-                restoreOriginal();
-            }
+            if (!isMobileUA) return; // only enforce for mobile devices
+            try {
+                const meta = document.querySelector('meta[name="viewport"]');
+                try { sessionStorage.setItem('viewport_original', meta ? meta.content : ''); } catch(e){}
+                const content = 'width=1200, initial-scale=0.35, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+                if (meta) meta.content = content;
+                else { const m = document.createElement('meta'); m.name = 'viewport'; m.content = content; document.head.prepend(m); }
+                document.documentElement.classList.add('force-desktop');
+                document.documentElement.setAttribute('data-force-desktop','1');
+            } catch(e) { console.warn('force-desktop apply failed', e); }
+
+            // CSS hook: keep vertical pan, allow interactive controls to behave normally
+            try {
+                const style = document.createElement('style');
+                style.id = '__force_desktop_css';
+                style.textContent = 'html.force-desktop{touch-action:pan-y;-ms-touch-action:pan-y;-webkit-text-size-adjust:100%;} html.force-desktop input, html.force-desktop textarea, html.force-desktop select, html.force-desktop button, html.force-desktop [contenteditable]{touch-action:auto;}';
+                document.head.appendChild(style);
+            } catch(e) {}
+
+            // Prevent pinch & double-tap zoom
+            try {
+                let lastTouch = 0;
+                function onTouchStart(e){ if (e.touches && e.touches.length > 1) e.preventDefault(); }
+                function onGestureStart(e){ e.preventDefault(); }
+                function onTouchEnd(e){ const now = Date.now(); if (now - lastTouch < 300) { e.preventDefault(); } lastTouch = now; }
+                document.addEventListener('touchstart', onTouchStart, { passive:false });
+                document.addEventListener('gesturestart', onGestureStart, { passive:false });
+                document.addEventListener('touchend', onTouchEnd, { passive:false });
+                window.__restoreZoomGlobal = function(){ try{ const orig = sessionStorage.getItem('viewport_original'); const m = document.querySelector('meta[name="viewport"]'); if (m && orig) m.content = orig; }catch(e){} try{ document.removeEventListener('touchstart', onTouchStart); document.removeEventListener('gesturestart', onGestureStart); document.removeEventListener('touchend', onTouchEnd); }catch(e){} };
+                window.__zoomLocked = true;
+            } catch(e) { console.warn('force-desktop zoom handlers failed', e); }
         })();
-                </script>
-
-        <!-- Global Zoom Lock: prevent pinch and double-tap zooming across the site.
-                 NOTE: this disables browser zoom; ensure accessibility alternatives (larger UI)
-                 are provided. Use `window.__restoreZoomGlobal()` to re-enable zooming. -->
-        <style>
-            /* Prevent pinch/zoom gestures on the page while keeping inputs usable */
-            html { touch-action: pan-y; -ms-touch-action: pan-y; -webkit-text-size-adjust: 100%; }
-            input, textarea, select, button, [contenteditable] { touch-action: auto; }
-        </style>
-        <script>
-            (function(){
-                try {
-                    const meta = document.querySelector('meta[name="viewport"]') || document.createElement('meta');
-                    try { sessionStorage.setItem('viewport_original', meta.content || ''); } catch(e){}
-                    meta.name = 'viewport';
-                    meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-                    if (!document.querySelector('meta[name="viewport"]')) document.head.prepend(meta);
-                } catch(e) { console.warn('zoom-lock: failed to set viewport', e); }
-
-                try {
-                    let lastTouch = 0;
-                    function onTouchStart(e){ if (e.touches && e.touches.length > 1) e.preventDefault(); }
-                    function onGestureStart(e){ e.preventDefault(); }
-                    function onTouchEnd(e){ const now = Date.now(); if (now - lastTouch < 300) { e.preventDefault(); } lastTouch = now; }
-                    document.addEventListener('touchstart', onTouchStart, { passive: false });
-                    document.addEventListener('gesturestart', onGestureStart, { passive: false });
-                    document.addEventListener('touchend', onTouchEnd, { passive: false });
-                    window.__restoreZoomGlobal = function(){
-                        try { const orig = sessionStorage.getItem('viewport_original'); const m = document.querySelector('meta[name="viewport"]'); if (m && orig) m.content = orig; } catch(e){}
-                        try { document.removeEventListener('touchstart', onTouchStart); document.removeEventListener('gesturestart', onGestureStart); document.removeEventListener('touchend', onTouchEnd); } catch(e){}
-                        try { delete window.__restoreZoomGlobal; delete window.__zoomLocked; } catch(e){}
-                    };
-                    window.__zoomLocked = true;
-                } catch(e) { console.warn('zoom-lock: handlers failed', e); }
-            })();
         </script>
 
         <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
@@ -465,20 +398,7 @@
 <body class="p-4 sm:p-8">
     <div class="inline-flex items-center gap-2">
         <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم" aria-label="تبديل الثيم" class="icon-btn"><i class="fas fa-moon"></i></button>
-        <button id="desktop-toggle" onclick="toggleDesktopSite()" title="عرض نسخة سطح المكتب" aria-label="تبديل لنسخة سطح المكتب" class="icon-btn" aria-pressed="false"><i class="fas fa-desktop"></i></button>
     </div>
-    <script>
-    (function(){
-        // Reflect current applied state into the toggle button for accessibility
-        try {
-            var btn = document.getElementById('desktop-toggle');
-            if (!btn) return;
-            var applied = document.documentElement.hasAttribute('data-force-desktop');
-            btn.setAttribute('aria-pressed', applied ? 'true' : 'false');
-            btn.title = applied ? 'نسخة سطح المكتب مفعّلة' : 'عرض نسخة سطح المكتب';
-        } catch(e) { /* ignore */ }
-    })();
-    </script>
 
     <!-- iOS Bottom Nav -->
     <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
