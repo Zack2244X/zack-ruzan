@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 //  نقطة البداية
 // ============================================
-window.onload = async function () {
+export async function startApp() {
     logFunctionStatus('window.onload', false);
 
     // تهيئة الثيم
@@ -466,4 +466,4 @@ window.onload = async function () {
     if (!handledRedirect) {
         loadApp();
     }
-};
+}

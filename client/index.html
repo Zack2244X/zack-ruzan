@@ -22,14 +22,10 @@
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" as="style" onload="this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet"></noscript>
 
-    <!-- Font Awesome: preload stylesheet then apply to avoid render-blocking (noscript fallback) -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
-    <!-- Preload Font Awesome woff2 to reduce FOIT and improve FCP -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- Font Awesome will be loaded lazily by the bootstrap loader to avoid unused CSS on first paint -->
 
-    <!-- Preload module bundle to reduce critical-path latency -->
-    <link rel="modulepreload" href="/js/app.bundle.min.js?v=31">
+    <!-- Preload small bootstrap module to reduce initial JS payload -->
+    <link rel="modulepreload" href="/js/bootstrap.js">
 
     <!-- Login Page Styles -->
     <style>
@@ -924,8 +920,8 @@
         if (!window.ScrollTrigger) window.ScrollTrigger = null;
     </script>
 
-    <!-- App JS (bundled + minified to reduce requests and parse time) -->
-    <script type="module" src="/js/app.bundle.min.js?v=31"></script>
+    <!-- Lightweight bootstrap that lazy-loads the full app when needed -->
+    <script type="module" src="/js/bootstrap.js"></script>
 
     <!-- Lamp Animation Script -->
     <script>
