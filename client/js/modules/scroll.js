@@ -129,6 +129,11 @@ export function initScroll(options = {}) {
         return _lenis;
     }
 
+    // Default wrapper: attach Lenis to `body` (not `html`) to avoid HTML class toggles
+    try {
+        if (typeof document !== 'undefined' && !options.wrapper) options.wrapper = document.body;
+    } catch (e) { /* ignore */ }
+
     // تحقق من توافر Lenis (CDN أو import)
     const LenisClass =
         (typeof window !== 'undefined' && window.Lenis) || // CDN
