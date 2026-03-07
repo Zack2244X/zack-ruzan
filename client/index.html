@@ -29,6 +29,10 @@
 
     <!-- Login Page Styles -->
     <style>
+    /* Prevent layout shifts caused by scrollbar appearing/disappearing */
+    html { overflow-y: scroll; }
+    body { min-height: 100vh; }
+
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
       --gold: #c9962a;
@@ -49,12 +53,16 @@
         .bg-pattern {
             position: fixed;
             inset: 0;
+            width: 100vw;
+            height: 100vh;
             background-image: url('/icons/bg.webp');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             pointer-events: none;
             z-index: 0;
+            contain: paint;
+            will-change: opacity, transform;
         }
 
     .bg-pattern::after {
@@ -205,6 +213,13 @@
       object-fit: cover;
       border-radius: 50%;
     }
+
+        /* Reserve space for the sheet title to avoid small CLS when webfonts load */
+        #sheet-title {
+            min-height: 2rem; /* matches expected text-2xl height */
+            line-height: 1.05;
+            display: block;
+        }
 
     .card-title {
       font-family: 'Amiri', serif;
