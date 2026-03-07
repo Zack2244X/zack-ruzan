@@ -105,6 +105,10 @@
         padding-bottom: 24px;
         border-radius: 24px;
         border: 1px solid #e5e7eb;
+        /* Pin height for CLS */
+        height: 85vh;
+        max-width: 480px;
+        margin: 0 auto;
     }
     .bottom-sheet-content.active { transform: translateY(0); }
 
@@ -121,6 +125,8 @@
     .bottom-sheet-content .p-6 { min-height: 220px; }
     #history-tree { min-height: 60px; }
     #subject-filters-container { min-height: 32px; }
+    /* Pin min-height for sheet overlay */
+    #tree-bottom-sheet { min-height: 440px; }
     </style>
 
     <!-- Font Awesome will be loaded lazily by the bootstrap loader to avoid unused CSS on first paint -->
