@@ -29,7 +29,7 @@
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- Preload module bundle to reduce critical-path latency -->
-    <link rel="modulepreload" href="/js/app.bundle.min.js?v=30">
+    <link rel="modulepreload" href="/js/app.bundle.min.js?v=31">
 
     <!-- Login Page Styles -->
     <style>
@@ -909,8 +909,23 @@
     <!-- Public config (inlined via small JS endpoint) - avoids /api/config XHR -->
     <script src="/config.js" defer></script>
 
+    <!-- Small safe stub to prevent early GSAP console errors while libs load deferred -->
+    <script>
+        // Minimal safe stub so older bundle checks don't log an error before GSAP loads.
+        if (!window.gsap) {
+            window.gsap = {
+                registerPlugin: function() {},
+                ticker: { fps: function(){}, lagSmoothing: function(){} },
+                defaults: function(){},
+                config: function(){},
+                globalTimeline: { timeScale: function(){} }
+            };
+        }
+        if (!window.ScrollTrigger) window.ScrollTrigger = null;
+    </script>
+
     <!-- App JS (bundled + minified to reduce requests and parse time) -->
-    <script type="module" src="/js/app.bundle.min.js?v=30"></script>
+    <script type="module" src="/js/app.bundle.min.js?v=31"></script>
 
     <!-- Lamp Animation Script -->
     <script>
