@@ -875,13 +875,36 @@
          GSAP: محرك الأنيميشن | Lenis: التمرير السلس
     ═══════════════════════════════════════════════════════════════ -->
 
-        <!-- GSAP Core + ScrollTrigger — load from cdnjs (allowed by CSP) -->
-        <!-- Deferred so they don't block parsing; animation init is deferred to idle in app bundle. -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+        <!-- Load animation libs during idle to avoid forced reflows -->
+        <script>
+        (function(){
+            function insertScripts(){
+                var s1 = document.createElement('script');
+                s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js';
+                s1.crossOrigin = 'anonymous';
+                s1.onload = function(){
+                    try{
+                        var s2 = document.createElement('script');
+                        s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js';
+                        s2.crossOrigin = 'anonymous';
+                        s2.onload = function(){
+                            console.log('[GSAP] loaded (idle)');
+                            try{ if(window.gsap && window.ScrollTrigger && window.gsap.registerPlugin) window.gsap.registerPlugin(window.ScrollTrigger); }catch(e){}
+                        };
+                        document.head.appendChild(s2);
+                    }catch(e){console.warn('[GSAP] inject error', e)}
+                };
+                document.head.appendChild(s1);
 
-        <!-- Lenis Smooth Scroll — served locally to satisfy CSP 'self' (deferred) -->
-        <script src="/js/vendor/lenis.min.js" defer></script>
+                var ln = document.createElement('script');
+                ln.src = '/js/vendor/lenis.min.js';
+                ln.defer = true;
+                document.head.appendChild(ln);
+            }
+            if ('requestIdleCallback' in window) requestIdleCallback(insertScripts, {timeout:3000});
+            else window.addEventListener('load', function(){setTimeout(insertScripts, 700);});
+        })();
+        </script>
 
     <!-- Public config (inlined via small JS endpoint) - avoids /api/config XHR -->
     <script src="/config.js" defer></script>
