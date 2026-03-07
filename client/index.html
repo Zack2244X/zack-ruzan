@@ -9,16 +9,22 @@
         <script>
         (function(){
             const KEY = 'force_desktop_site_v1';
-            const ENABLED = (() => { try { return localStorage.getItem(KEY) === 'true'; } catch(e){ return false } })();
+            // stored: 'on' | 'off' | null
+            const stored = (function(){ try { return localStorage.getItem(KEY); } catch(e){ return null } })();
 
-            // Expose toggle function for console/UI. Accepts true/false to set explicit state.
+            // Expose toggle function for console/UI. Accepts true/false to set explicit state
+            // - set 'on' to force desktop
+            // - set 'off' to opt-out (disable) even on mobile
+            // - calling without args toggles between 'on' and 'off'
             window.toggleDesktopSite = function(force){
                 try {
-                    const cur = localStorage.getItem(KEY) === 'true';
-                    const next = typeof force === 'boolean' ? force : !cur;
-                    if (next) localStorage.setItem(KEY, 'true'); else localStorage.removeItem(KEY);
+                    if (typeof force === 'boolean') {
+                        localStorage.setItem(KEY, force ? 'on' : 'off');
+                    } else {
+                        const cur = localStorage.getItem(KEY);
+                        localStorage.setItem(KEY, cur === 'on' ? 'off' : 'on');
+                    }
                 } catch(e) { /* ignore */ }
-                // reload to apply viewport/meta and CSS media-query evaluation freshly
                 window.location.reload();
             };
 
@@ -51,10 +57,18 @@
                 } catch(e) { /* ignore */ }
             }
 
-            // Auto-apply only when user previously enabled it and this is a mobile-sized UA.
+            // Auto-apply by default on mobile UA unless user explicitly opted-out ('off').
             const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
-            if (ENABLED && isMobileUA) applyOverride();
-            else if (!ENABLED) restoreOriginal();
+            if (stored === 'on') {
+                applyOverride();
+            } else if (stored === 'off') {
+                restoreOriginal();
+            } else if (isMobileUA) {
+                // default: mobile visitors see desktop layout
+                applyOverride();
+            } else {
+                restoreOriginal();
+            }
         })();
         </script>
     <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
@@ -416,6 +430,18 @@
         <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم" aria-label="تبديل الثيم" class="icon-btn"><i class="fas fa-moon"></i></button>
         <button id="desktop-toggle" onclick="toggleDesktopSite()" title="عرض نسخة سطح المكتب" aria-label="تبديل لنسخة سطح المكتب" class="icon-btn" aria-pressed="false"><i class="fas fa-desktop"></i></button>
     </div>
+    <script>
+    (function(){
+        // Reflect current applied state into the toggle button for accessibility
+        try {
+            var btn = document.getElementById('desktop-toggle');
+            if (!btn) return;
+            var applied = document.documentElement.hasAttribute('data-force-desktop');
+            btn.setAttribute('aria-pressed', applied ? 'true' : 'false');
+            btn.title = applied ? 'نسخة سطح المكتب مفعّلة' : 'عرض نسخة سطح المكتب';
+        } catch(e) { /* ignore */ }
+    })();
+    </script>
 
     <!-- iOS Bottom Nav -->
     <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
