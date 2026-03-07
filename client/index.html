@@ -30,7 +30,8 @@
     <!-- Login Page Styles -->
     <style>
     /* Prevent layout shifts caused by scrollbar appearing/disappearing */
-    html { overflow-y: scroll; }
+    html { overflow-y: scroll; scrollbar-gutter: stable; }
+    body { scrollbar-gutter: stable; }
     body { min-height: 100vh; }
 
     /* ═══ متغيرات صفحة الدخول ═══ */
@@ -900,7 +901,15 @@
                         s2.crossOrigin = 'anonymous';
                         s2.onload = function(){
                             console.log('[GSAP] loaded (idle)');
-                            try{ if(window.gsap && window.ScrollTrigger && window.gsap.registerPlugin) window.gsap.registerPlugin(window.ScrollTrigger); }catch(e){}
+                            try{
+                                // Disable ScrollTrigger auto-refresh to avoid forced reflows on load.
+                                if (window.ScrollTrigger && typeof window.ScrollTrigger.config === 'function') {
+                                    window.ScrollTrigger.config({ autoRefreshEvents: '' });
+                                }
+                                if(window.gsap && window.ScrollTrigger && window.gsap.registerPlugin) {
+                                    window.gsap.registerPlugin(window.ScrollTrigger);
+                                }
+                            }catch(e){ console.warn('[GSAP] register/config error', e); }
                         };
                         document.head.appendChild(s2);
                     }catch(e){console.warn('[GSAP] inject error', e)}
