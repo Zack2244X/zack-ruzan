@@ -128,6 +128,21 @@ body::before {
 #ios-bottom-nav {
     will-change: transform, opacity;
     transform: translateZ(0);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    min-height: 64px;
+    font-size: 1.2rem;
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 /* ── Bottom Sheet Overlay ──────────────────────────────────────── */
