@@ -27,15 +27,19 @@ export function _syncMainInteractionState() {
     // compensate for the scrollbar width by adding equivalent padding-right.
     try {
         const body = document.body;
+        const bodyOverflowY = getComputedStyle(body).overflowY;
         if (blocked) {
-            // store original inline padding-right once
+            // Only compensate for scrollbar if overflow-y is not already scroll
             if (!body.hasAttribute('data-orig-pr')) body.setAttribute('data-orig-pr', body.style.paddingRight || '');
             const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
-            if (scrollbarWidth > 0) {
+            if (scrollbarWidth > 0 && bodyOverflowY !== 'scroll') {
                 const computed = parseFloat(getComputedStyle(body).paddingRight) || 0;
                 body.style.paddingRight = (computed + scrollbarWidth) + 'px';
             }
-            body.style.overflow = 'hidden';
+            // Only set overflow if not already scroll
+            if (bodyOverflowY !== 'scroll') {
+                body.style.overflow = 'hidden';
+            }
         } else {
             const orig = body.getAttribute('data-orig-pr');
             if (orig !== null) {
@@ -44,10 +48,15 @@ export function _syncMainInteractionState() {
             } else {
                 body.style.paddingRight = '';
             }
-            body.style.overflow = '';
+            // Restore overflow only if it was changed
+            if (bodyOverflowY !== 'scroll') {
+                body.style.overflow = '';
+            }
         }
     } catch (e) {
-        document.body.style.overflow = blocked ? 'hidden' : '';
+        if (getComputedStyle(document.body).overflowY !== 'scroll') {
+            document.body.style.overflow = blocked ? 'hidden' : '';
+        }
     }
 
     const t = document.getElementById('theme-toggle');
