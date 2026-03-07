@@ -9,14 +9,43 @@
 import { getDevicePerformanceTier } from './helpers.js';
 
 // ============================================
-//  الحصول على GSAP من النطاق العام
-//  (محمّل عبر CDN — لا يُستورد كـ module)
+//  الحصول على GSAP من النطاق العام (ديناميكي)
+//  ننتظر تحميله عند الحاجة بدلاً من طباعة خطأ فوري
 // ============================================
-const gsap = window.gsap;
-const ScrollTrigger = window.ScrollTrigger;
+let gsap = window.gsap;
+let ScrollTrigger = window.ScrollTrigger;
 
-if (!gsap) {
-    console.error('[Animations] ❌ GSAP غير موجود — تأكد من تحميله قبل app.js في index.html');
+/**
+ * Ensure `window.gsap` is available, waiting up to `timeout` ms.
+ * If found, updates module-scoped `gsap` and `ScrollTrigger` bindings.
+ * @param {number} timeout
+ * @returns {Promise<boolean>} true if loaded, false otherwise
+ */
+function ensureGsapLoaded(timeout = 3000) {
+    if (window.gsap) {
+        gsap = window.gsap;
+        ScrollTrigger = window.ScrollTrigger;
+        return Promise.resolve(true);
+    }
+
+    return new Promise((resolve) => {
+        const interval = 100;
+        let waited = 0;
+        const iv = setInterval(() => {
+            if (window.gsap) {
+                clearInterval(iv);
+                gsap = window.gsap;
+                ScrollTrigger = window.ScrollTrigger;
+                resolve(true);
+                return;
+            }
+            waited += interval;
+            if (waited >= timeout) {
+                clearInterval(iv);
+                resolve(false);
+            }
+        }, interval);
+    });
 }
 
 // ============================================
@@ -100,7 +129,12 @@ export async function initAnimations(perfOverride) {
         return;
     }
 
-    if (!gsap) return;
+    // Ensure GSAP is available. We may be running before the deferred loader finishes.
+    const gsapAvailable = await ensureGsapLoaded(3000);
+    if (!gsapAvailable) {
+        console.warn('[Animations] ❌ GSAP غير موجود بعد الانتظار — إلغاء تهيئة الأنيميشن');
+        return;
+    }
 
     // ── تسجيل ScrollTrigger وكشف معدل التحديث بعد أول رسم (لتجنب forced reflows)
     await new Promise((resolve) => {
