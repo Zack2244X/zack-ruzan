@@ -166,6 +166,12 @@ app.use(express.static(path.join(__dirname, '../client'), {
     etag: true,
     lastModified: true,
     setHeaders: (res, filePath) => {
+        // /config.js: long immutable cache (we version via querystring on the client)
+        if (filePath.endsWith(`${path.sep}config.js`) || filePath.endsWith('/config.js')) {
+            res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+            return;
+        }
+
         // HTML & SW: always revalidate
         if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
             res.setHeader('Cache-Control', 'no-cache');
@@ -295,8 +301,8 @@ app.get('/api/config', (req, res) => {
 app.get('/config.js', (req, res) => {
     const cfg = { googleClientId: process.env.GOOGLE_CLIENT_ID || '' };
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    // cache for 1 day — safe for public config and reduces repeat requests
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // cache for 30 days — safe because config is versioned at deploy and reduces repeat requests
+    res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
     res.send(`window.__PUBLIC_CONFIG = ${JSON.stringify(cfg)};`);
 });
 
