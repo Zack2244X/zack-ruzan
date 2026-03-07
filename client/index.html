@@ -70,8 +70,45 @@
                 restoreOriginal();
             }
         })();
+                </script>
+
+        <!-- Global Zoom Lock: prevent pinch and double-tap zooming across the site.
+                 NOTE: this disables browser zoom; ensure accessibility alternatives (larger UI)
+                 are provided. Use `window.__restoreZoomGlobal()` to re-enable zooming. -->
+        <style>
+            /* Prevent pinch/zoom gestures on the page while keeping inputs usable */
+            html { touch-action: pan-y; -ms-touch-action: pan-y; -webkit-text-size-adjust: 100%; }
+            input, textarea, select, button, [contenteditable] { touch-action: auto; }
+        </style>
+        <script>
+            (function(){
+                try {
+                    const meta = document.querySelector('meta[name="viewport"]') || document.createElement('meta');
+                    try { sessionStorage.setItem('viewport_original', meta.content || ''); } catch(e){}
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+                    if (!document.querySelector('meta[name="viewport"]')) document.head.prepend(meta);
+                } catch(e) { console.warn('zoom-lock: failed to set viewport', e); }
+
+                try {
+                    let lastTouch = 0;
+                    function onTouchStart(e){ if (e.touches && e.touches.length > 1) e.preventDefault(); }
+                    function onGestureStart(e){ e.preventDefault(); }
+                    function onTouchEnd(e){ const now = Date.now(); if (now - lastTouch < 300) { e.preventDefault(); } lastTouch = now; }
+                    document.addEventListener('touchstart', onTouchStart, { passive: false });
+                    document.addEventListener('gesturestart', onGestureStart, { passive: false });
+                    document.addEventListener('touchend', onTouchEnd, { passive: false });
+                    window.__restoreZoomGlobal = function(){
+                        try { const orig = sessionStorage.getItem('viewport_original'); const m = document.querySelector('meta[name="viewport"]'); if (m && orig) m.content = orig; } catch(e){}
+                        try { document.removeEventListener('touchstart', onTouchStart); document.removeEventListener('gesturestart', onGestureStart); document.removeEventListener('touchend', onTouchEnd); } catch(e){}
+                        try { delete window.__restoreZoomGlobal; delete window.__zoomLocked; } catch(e){}
+                    };
+                    window.__zoomLocked = true;
+                } catch(e) { console.warn('zoom-lock: handlers failed', e); }
+            })();
         </script>
-    <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
+
+        <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
     <title>Zack Exam</title>
