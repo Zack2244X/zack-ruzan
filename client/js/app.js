@@ -438,15 +438,15 @@ window.onload = async function () {
     // ── ضبط إعدادات الحركة بناءً على أداء الجهاز ────────────────────────────
     await applyPerformanceBasedAnimationSettings(perf);
 
-    // جلب إعدادات السيرفر (GOOGLE_CLIENT_ID) لإزالة التكرار
+    // اقرَأ الإعدادات العامة المضمّنة بواسطة /config.js (يُحمّل غير حابس في index.html)
     try {
-        const configRes = await fetch('/api/config');
-        if (configRes.ok) {
-            const configData = await configRes.json();
-            if (configData.googleClientId) state.GOOGLE_CLIENT_ID = configData.googleClientId;
+        const cfg = (typeof window !== 'undefined' && window.__PUBLIC_CONFIG) ? window.__PUBLIC_CONFIG : null;
+        if (cfg && cfg.googleClientId) {
+            state.GOOGLE_CLIENT_ID = cfg.googleClientId;
         }
     } catch (e) {
-        console.warn('⚠️ تعذر جلب إعدادات السيرفر، استخدام القيم الافتراضية.');
+        // لا نفشل التحميل إذا لم تتوفر الإعدادات — نترك القيم الافتراضية
+        console.warn('⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:', e);
     }
 
     // تهيئة عناصر DOM للاختبار
