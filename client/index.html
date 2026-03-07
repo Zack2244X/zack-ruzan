@@ -86,8 +86,9 @@
     }
     </script>
 
-    <!-- Preload LCP background image to make it discoverable quickly -->
+    <!-- Preload LCP logo and background image to make them discoverable quickly -->
     <link rel="preload" as="image" href="/icons/bg.webp" fetchpriority="high">
+    <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp" fetchpriority="high">
 
     <!-- Bottom-sheet and CLS mitigations: use transform for show/hide and system fonts for sheet content until webfonts load -->
     <style>
@@ -750,10 +751,10 @@
             <div class="login-card" id="login-card">
                 <div class="logo-wrap">
                     <img src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
-                         alt="Logo"
-                         loading="lazy" decoding="async"
-                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
-                         srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x">
+                        alt="Logo"
+                        fetchpriority="high" decoding="async"
+                        style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                        srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x">
                 </div>
 
                 <h2 class="card-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
