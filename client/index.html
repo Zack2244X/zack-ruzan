@@ -95,15 +95,26 @@
     .bottom-sheet-overlay { opacity: 0; transition: opacity 260ms ease; pointer-events: none; }
     .bottom-sheet-overlay.active { opacity: 1; pointer-events: auto; }
 
-    .bottom-sheet-content { transform: translateY(100%); transition: transform 320ms cubic-bezier(.2,.9,.2,1); will-change: transform; }
+    .bottom-sheet-content {
+        transform: translateY(100%);
+        transition: transform 320ms cubic-bezier(.2,.9,.2,1);
+        will-change: transform;
+        min-height: 420px;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+        /* Prevent metric shifts */
+        box-sizing: border-box;
+    }
     .bottom-sheet-content.active { transform: translateY(0); }
 
-    /* Avoid webfont swapping in sheet content (reduce CLS) by using system fonts until fonts finish loading */
-    .bottom-sheet-content, .bottom-sheet-content * , #history-tree { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important; }
+    .bottom-sheet-content *, #history-tree {
+        font-family: inherit !important;
+    }
 
     /* Make handle and header stable dimensions */
     .sheet-handle .w-12 { width: 48px; height: 6px; }
     .sheet-header { min-height: 56px; }
+    /* Fix content area min-height to avoid jump */
+    .bottom-sheet-content .p-6 { min-height: 180px; }
     </style>
 
     <!-- Font Awesome will be loaded lazily by the bootstrap loader to avoid unused CSS on first paint -->
