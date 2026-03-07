@@ -102,14 +102,33 @@ export async function initAnimations(perfOverride) {
 
     if (!gsap) return;
 
-    // ── تسجيل ScrollTrigger ──────────────────────────────────────────────
-    if (ScrollTrigger) {
-        gsap.registerPlugin(ScrollTrigger);
-        console.log('[Animations] ✓ ScrollTrigger مسجّل');
-    }
+    // ── تسجيل ScrollTrigger وكشف معدل التحديث بعد أول رسم (لتجنب forced reflows)
+    await new Promise((resolve) => {
+        // Run registration after first paint to avoid measuring while styles are still loading
+        const runAfterPaint = () => {
+            try {
+                if (ScrollTrigger) {
+                    gsap.registerPlugin(ScrollTrigger);
+                    console.log('[Animations] ✓ ScrollTrigger مسجّل (delayed init)');
+                }
+            } catch (e) {
+                console.warn('[Animations] failed to register ScrollTrigger:', e);
+            }
 
-    // ── كشف معدل تحديث الشاشة وضبط الـ ticker ───────────────────────────
-    await detectAndApplyRefreshRate();
+            // Detect and apply refresh rate, but let it run off the critical path
+            detectAndApplyRefreshRate().then(() => {
+                // Allow the browser to finish paint/layout work before we proceed
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => resolve());
+                } else {
+                    setTimeout(() => requestAnimationFrame(() => resolve()), 50);
+                }
+            }).catch(() => resolve());
+        };
+
+        // Prefer rAF so we run right after the browser paints
+        requestAnimationFrame(runAfterPaint);
+    });
 
     // ── كشف أداء الجهاز وضبط التعقيد (يمكن تمرير perfOverride لتجنّب القياس المزدوج)
     try {
