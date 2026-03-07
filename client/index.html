@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
         <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom
              Improved: compute a scale so a 1200px desktop layout fits the device width. -->
         <script>
@@ -495,7 +496,7 @@
     </div>
 
     <!-- iOS Bottom Nav -->
-    <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
+    <nav id="ios-bottom-nav" class="fixed bottom-0 left-0 w-full bg-white/85 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-t-2xl z-[100] flex justify-around items-center py-4 px-2 ios-dock transition-transform duration-300">
         <button onclick="navToHome()" id="dock-home" class="dock-btn active flex flex-col items-center gap-1 w-16 p-1.5 text-blue-600 transition-all">
             <i class="fas fa-home text-xl dock-icon"></i>
             <span class="text-[10px] font-bold">الرئيسية</span>
