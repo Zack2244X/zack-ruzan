@@ -872,25 +872,10 @@
          GSAP: محرك الأنيميشن | Lenis: التمرير السلس
     ═══════════════════════════════════════════════════════════════ -->
 
-        <!-- GSAP: load deferred via dynamic idle-loader (prevents forced reflows from CDN execution) -->
-        <!-- The loader imports GSAP + ScrollTrigger during idle and exposes them as window.gsap / window.ScrollTrigger -->
-        <script>
-        (function(){
-            const loadGSAP = async () => {
-                try {
-                    const gsapMod = await import('https://cdn.skypack.dev/gsap@3.12.5');
-                    const stMod = await import('https://cdn.skypack.dev/gsap@3.12.5/ScrollTrigger');
-                    window.gsap = gsapMod && gsapMod.default ? gsapMod.default : gsapMod;
-                    window.ScrollTrigger = stMod && stMod.default ? stMod.default : stMod;
-                    console.log('[GSAP] deferred loader: gsap + ScrollTrigger loaded');
-                } catch (err) { console.warn('[GSAP] deferred loader failed', err); }
-            };
-            requestAnimationFrame(()=>{
-                if ('requestIdleCallback' in window) requestIdleCallback(loadGSAP, {timeout: 2000});
-                else setTimeout(loadGSAP, 1500);
-            });
-        })();
-        </script>
+        <!-- GSAP Core + ScrollTrigger — load from cdnjs (allowed by CSP) -->
+        <!-- Deferred so they don't block parsing; animation init is deferred to idle in app bundle. -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
 
         <!-- Lenis Smooth Scroll — served locally to satisfy CSP 'self' (deferred) -->
         <script src="/js/vendor/lenis.min.js" defer></script>
