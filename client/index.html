@@ -3,15 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom -->
+        <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom
+             Improved: compute a scale so a 1200px desktop layout fits the device width. -->
         <script>
         (function(){
             const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
-            if (!isMobileUA) return; // only enforce for mobile devices
+            if (!isMobileUA) return;
             try {
+                const targetWidth = 1200;
+                // Use innerWidth (layout viewport) when available; fall back to screen width.
+                const vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+                // Compute scale such that targetWidth * scale ~= device width
+                const rawScale = vw / targetWidth;
+                // Clamp to sensible range to avoid over/underflow on odd devices
+                const clampedScale = Math.max(0.12, Math.min(1, rawScale));
                 const meta = document.querySelector('meta[name="viewport"]');
                 try { sessionStorage.setItem('viewport_original', meta ? meta.content : ''); } catch(e){}
-                const content = 'width=1200, initial-scale=0.35, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+                const content = `width=${targetWidth}, initial-scale=${clampedScale}, maximum-scale=${clampedScale}, user-scalable=no, viewport-fit=cover`;
                 if (meta) meta.content = content;
                 else { const m = document.createElement('meta'); m.name = 'viewport'; m.content = content; document.head.prepend(m); }
                 document.documentElement.classList.add('force-desktop');
