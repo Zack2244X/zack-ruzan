@@ -140,41 +140,37 @@ export async function initAnimations(perfOverride) {
     await new Promise((resolve) => {
         // Run registration after first paint to avoid measuring while styles are still loading
         const runAfterPaint = () => {
-            try {
-                if (ScrollTrigger) {
-                    gsap.registerPlugin(ScrollTrigger);
-                    console.log('[Animations] ✓ ScrollTrigger مسجّل (delayed init)');
+            // Move heavy registration to idle time to avoid layout reads on the critical path
+            const registerDuringIdle = () => {
+                try {
+                    if (ScrollTrigger) {
+                        try {
+                            if (typeof ScrollTrigger.config === 'function') {
+                                ScrollTrigger.config({ autoRefreshEvents: '' });
+                            }
+                        } catch (e) { /* ignore */ }
 
-                    // Reduce automatic refreshes that may trigger layout reads during load.
-                    // Disable auto-refresh events and schedule a single refresh during idle.
-                    try {
-                        if (typeof ScrollTrigger.config === 'function') {
-                            ScrollTrigger.config({ autoRefreshEvents: '' });
-                        }
+                        gsap.registerPlugin(ScrollTrigger);
+                        console.log('[Animations] ✓ ScrollTrigger registered (idle)');
+
                         const doRefresh = () => {
-                            try {
-                                ScrollTrigger.refresh();
-                                console.log('[Animations] ScrollTrigger.refresh() executed (deferred)');
-                            } catch (e) { /* ignore */ }
+                            try { ScrollTrigger.refresh(); console.log('[Animations] ScrollTrigger.refresh() executed (deferred)'); } catch(e) {}
                         };
-                        if ('requestIdleCallback' in window) requestIdleCallback(doRefresh, {timeout:1000});
-                        else setTimeout(doRefresh, 200);
-                    } catch (e) {
-                        // if config isn't available, ignore and continue
+                        if ('requestIdleCallback' in window) requestIdleCallback(doRefresh, { timeout: 2000 });
+                        else setTimeout(doRefresh, 500);
                     }
+                } catch (e) {
+                    console.warn('[Animations] failed to register ScrollTrigger:', e);
                 }
-            } catch (e) {
-                console.warn('[Animations] failed to register ScrollTrigger:', e);
-            }
+            };
 
-            // Detect and apply refresh rate, but let it run off the critical path
+            if ('requestIdleCallback' in window) requestIdleCallback(registerDuringIdle, { timeout: 2000 });
+            else setTimeout(registerDuringIdle, 500);
+
+            // Detect and apply refresh rate off the critical path
             detectAndApplyRefreshRate().then(() => {
-                // Allow the browser to finish paint/layout work before we proceed
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(() => resolve());
-                } else {
-                    setTimeout(() => requestAnimationFrame(() => resolve()), 50);
-                }
+                if ('requestIdleCallback' in window) requestIdleCallback(() => resolve());
+                else setTimeout(() => requestAnimationFrame(() => resolve()), 50);
             }).catch(() => resolve());
         };
 
