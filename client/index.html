@@ -347,6 +347,15 @@
             -webkit-text-size-adjust: 100%;
         }
         </style>
+        <!-- Reduce CLS: use system fonts for above-the-fold elements to avoid metric shifts -->
+        <style>
+        /* Keep the login screen and sheet title stable during webfont load */
+        #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        </style>
 </head>
 <body class="p-4 sm:p-8">
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم"><i class="fas fa-moon"></i></button>
