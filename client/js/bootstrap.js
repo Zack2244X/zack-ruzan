@@ -56,7 +56,7 @@
         // Prefer the unbundled `app.js` here so runtime startup behavior (deferred scroll init)
         // from the source entrypoint is respected. If that fails, fall back to the minified bundle.
         const primary = '/js/app.js';
-        const fallback = '/js/app.bundle.min.js?v=31';
+        const fallback = '/js/app.bundle.js';
         import(primary).then(mod => {
             // if module exports startApp, call it
             if (mod && typeof mod.startApp === 'function') {
