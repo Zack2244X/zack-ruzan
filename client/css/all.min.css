@@ -3,6 +3,11 @@
    pages or third-party links don't receive HTML and trigger
    MIME-type errors. */
 @charset "UTF-8";
+/* Load Font Awesome first so icons are available on initial render.
+   Kept as an @import here because this file is used as a compatibility shim
+   referenced in legacy HTML. If you prefer local hosting, replace the URL
+   with a local path and add font files under /fonts/. */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 @import url('/css/styles.min.css');
 
 /* Fallback minimal rules in case import is blocked */
