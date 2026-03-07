@@ -321,6 +321,32 @@
       .card-title { font-size: 1.8rem; }
     }
     </style>
+        <!-- Improve font loading behavior to avoid invisible text and layout shifts -->
+        <style>
+        /* Prioritize swap for Font Awesome fonts served from CDN */
+        @font-face {
+            font-family: 'Font Awesome 6 Free';
+            font-style: normal;
+            font-weight: 900;
+            font-display: swap;
+            src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2') format('woff2');
+        }
+        @font-face {
+            font-family: 'Font Awesome 6 Brands';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2') format('woff2');
+        }
+
+        /* Make Lenis class additions layout-stable */
+        html.lenis, html.lenis-smooth {
+            scrollbar-gutter: stable;
+            overflow-y: scroll !important;
+            -webkit-font-smoothing: antialiased;
+            -webkit-text-size-adjust: 100%;
+        }
+        </style>
 </head>
 <body class="p-4 sm:p-8">
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم"><i class="fas fa-moon"></i></button>

@@ -188,7 +188,13 @@ app.use(express.static(path.join(__dirname, '../client'), {
 
         // Default: short cache for JS modules and other assets that may change
         if (filePath.endsWith('.js')) {
-            // 1 hour
+            // Make module files and app source cacheable longer in production if they are under /js/modules or are the app entry.
+            if (process.env.NODE_ENV === 'production' && (filePath.includes(`${path.sep}js${path.sep}modules${path.sep}`) || filePath.endsWith(`${path.sep}js${path.sep}app.js`) || filePath.endsWith(`${path.sep}js${path.sep}bootstrap.js`))) {
+                // 30 days — these are effectively versioned by deploys / querystrings in our workflow
+                res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+                return;
+            }
+            // 1 hour default for other JS in dev or unversioned assets
             res.setHeader('Cache-Control', 'public, max-age=3600');
             return;
         }
