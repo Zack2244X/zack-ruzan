@@ -3,6 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <!-- Professional 'Force Desktop' helper: enables users (on mobile) to view desktop layout.
+                 Adds `force-desktop` class on <html> and overrides the viewport meta when enabled.
+                 Use `toggleDesktopSite()` from the console or the UI button to toggle. -->
+        <script>
+        (function(){
+            const KEY = 'force_desktop_site_v1';
+            const ENABLED = (() => { try { return localStorage.getItem(KEY) === 'true'; } catch(e){ return false } })();
+
+            // Expose toggle function for console/UI. Accepts true/false to set explicit state.
+            window.toggleDesktopSite = function(force){
+                try {
+                    const cur = localStorage.getItem(KEY) === 'true';
+                    const next = typeof force === 'boolean' ? force : !cur;
+                    if (next) localStorage.setItem(KEY, 'true'); else localStorage.removeItem(KEY);
+                } catch(e) { /* ignore */ }
+                // reload to apply viewport/meta and CSS media-query evaluation freshly
+                window.location.reload();
+            };
+
+            function applyOverride(){
+                try {
+                    const meta = document.querySelector('meta[name="viewport"]');
+                    if (meta) {
+                        // store original for restore on disable (session-only)
+                        try { sessionStorage.setItem('viewport_original', meta.content); } catch(e){}
+                        meta.content = 'width=1200, initial-scale=0.35, viewport-fit=cover';
+                    } else {
+                        const m = document.createElement('meta');
+                        m.name = 'viewport';
+                        m.content = 'width=1200, initial-scale=0.35, viewport-fit=cover';
+                        document.head.prepend(m);
+                    }
+                    document.documentElement.classList.add('force-desktop');
+                    // optional flag for CSS hooks
+                    document.documentElement.setAttribute('data-force-desktop', '1');
+                } catch(e) { console.warn('force-desktop apply failed', e); }
+            }
+
+            function restoreOriginal(){
+                try {
+                    const orig = sessionStorage.getItem('viewport_original');
+                    const meta = document.querySelector('meta[name="viewport"]');
+                    if (meta && orig) meta.content = orig;
+                    document.documentElement.classList.remove('force-desktop');
+                    document.documentElement.removeAttribute('data-force-desktop');
+                } catch(e) { /* ignore */ }
+            }
+
+            // Auto-apply only when user previously enabled it and this is a mobile-sized UA.
+            const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
+            if (ENABLED && isMobileUA) applyOverride();
+            else if (!ENABLED) restoreOriginal();
+        })();
+        </script>
     <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
@@ -358,7 +412,10 @@
         </style>
 </head>
 <body class="p-4 sm:p-8">
-    <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم"><i class="fas fa-moon"></i></button>
+    <div class="inline-flex items-center gap-2">
+        <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم" aria-label="تبديل الثيم" class="icon-btn"><i class="fas fa-moon"></i></button>
+        <button id="desktop-toggle" onclick="toggleDesktopSite()" title="عرض نسخة سطح المكتب" aria-label="تبديل لنسخة سطح المكتب" class="icon-btn" aria-pressed="false"><i class="fas fa-desktop"></i></button>
+    </div>
 
     <!-- iOS Bottom Nav -->
     <nav id="ios-bottom-nav" class="fixed bottom-4 left-4 right-4 bg-white/75 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-full z-[90] flex justify-around items-center p-2 ios-dock md:max-w-md md:mx-auto transition-transform duration-300 hidden">
