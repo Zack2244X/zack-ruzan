@@ -1,0 +1,9 @@
+/* Compatibility shim for legacy references to /css/all.min.css
+   This file forwards to the canonical styles.min.css so older
+   pages or third-party links don't receive HTML and trigger
+   MIME-type errors. */
+@charset "UTF-8";
+@import url('/css/styles.min.css');
+
+/* Fallback minimal rules in case import is blocked */
+html,body{background:transparent}
