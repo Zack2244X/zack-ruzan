@@ -110,6 +110,24 @@ export async function initAnimations(perfOverride) {
                 if (ScrollTrigger) {
                     gsap.registerPlugin(ScrollTrigger);
                     console.log('[Animations] ✓ ScrollTrigger مسجّل (delayed init)');
+
+                    // Reduce automatic refreshes that may trigger layout reads during load.
+                    // Disable auto-refresh events and schedule a single refresh during idle.
+                    try {
+                        if (typeof ScrollTrigger.config === 'function') {
+                            ScrollTrigger.config({ autoRefreshEvents: '' });
+                        }
+                        const doRefresh = () => {
+                            try {
+                                ScrollTrigger.refresh();
+                                console.log('[Animations] ScrollTrigger.refresh() executed (deferred)');
+                            } catch (e) { /* ignore */ }
+                        };
+                        if ('requestIdleCallback' in window) requestIdleCallback(doRefresh, {timeout:1000});
+                        else setTimeout(doRefresh, 200);
+                    } catch (e) {
+                        // if config isn't available, ignore and continue
+                    }
                 }
             } catch (e) {
                 console.warn('[Animations] failed to register ScrollTrigger:', e);
