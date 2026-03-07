@@ -48,6 +48,32 @@ function ensureGsapLoaded(timeout = 3000) {
     });
 }
 
+/**
+ * Ensure ScrollTrigger script is loaded. We inject it on demand and wait for
+ * `window.ScrollTrigger` to become available. This avoids it running during
+ * initial page load and causing layout measurements.
+ */
+function ensureScrollTriggerLoaded(timeout = 3000) {
+    if (window.ScrollTrigger) return Promise.resolve(true);
+    return new Promise((resolve) => {
+        const src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js';
+        const s = document.createElement('script');
+        s.src = src;
+        s.crossOrigin = 'anonymous';
+        s.onload = function() {
+            // wait a tick for the global to settle
+            requestAnimationFrame(() => { resolve(!!window.ScrollTrigger); });
+        };
+        s.onerror = function() { resolve(false); };
+        // inject during idle where possible
+        if ('requestIdleCallback' in window) requestIdleCallback(() => document.head.appendChild(s), { timeout: 2000 });
+        else setTimeout(() => document.head.appendChild(s), 600);
+
+        // fallback timeout
+        setTimeout(() => resolve(!!window.ScrollTrigger), timeout);
+    });
+}
+
 // ============================================
 //  الحالة الداخلية
 // ============================================
@@ -141,23 +167,22 @@ export async function initAnimations(perfOverride) {
         // Run registration after first paint to avoid measuring while styles are still loading
         const runAfterPaint = () => {
             // Move heavy registration to idle time to avoid layout reads on the critical path
-            const registerDuringIdle = () => {
+            const registerDuringIdle = async () => {
                 try {
-                    if (ScrollTrigger) {
-                        try {
-                            if (typeof ScrollTrigger.config === 'function') {
-                                ScrollTrigger.config({ autoRefreshEvents: '' });
-                            }
-                        } catch (e) { /* ignore */ }
+                    // Ensure ScrollTrigger file is loaded on demand
+                    const loaded = await ensureScrollTriggerLoaded(3000);
+                    if (loaded && window.ScrollTrigger && typeof window.ScrollTrigger.config === 'function') {
+                        try { window.ScrollTrigger.config({ autoRefreshEvents: '' }); } catch(e){}
+                        // Register plugin with gsap now that both are present
+                        if (gsap && window.ScrollTrigger && typeof gsap.registerPlugin === 'function') {
+                            gsap.registerPlugin(window.ScrollTrigger);
+                            console.log('[Animations] ✓ ScrollTrigger loaded & registered (idle)');
+                        }
 
-                        gsap.registerPlugin(ScrollTrigger);
-                        console.log('[Animations] ✓ ScrollTrigger registered (idle)');
-
-                        const doRefresh = () => {
-                            try { ScrollTrigger.refresh(); console.log('[Animations] ScrollTrigger.refresh() executed (deferred)'); } catch(e) {}
-                        };
+                        // Defer refresh to idle after registration to avoid forced reflows
+                        const doRefresh = () => { try { window.ScrollTrigger.refresh(); console.log('[Animations] ScrollTrigger.refresh() executed (deferred)'); } catch(e){} };
                         if ('requestIdleCallback' in window) requestIdleCallback(doRefresh, { timeout: 2000 });
-                        else setTimeout(doRefresh, 500);
+                        else setTimeout(doRefresh, 800);
                     }
                 } catch (e) {
                     console.warn('[Animations] failed to register ScrollTrigger:', e);
@@ -165,7 +190,7 @@ export async function initAnimations(perfOverride) {
             };
 
             if ('requestIdleCallback' in window) requestIdleCallback(registerDuringIdle, { timeout: 2000 });
-            else setTimeout(registerDuringIdle, 500);
+            else setTimeout(registerDuringIdle, 700);
 
             // Detect and apply refresh rate off the critical path
             detectAndApplyRefreshRate().then(() => {

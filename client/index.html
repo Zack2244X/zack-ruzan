@@ -433,8 +433,8 @@
         </style>
         <!-- Reduce CLS: use system fonts for above-the-fold elements to avoid metric shifts -->
         <style>
-        /* Keep the login screen and sheet title stable during webfont load */
-        html:not(.fonts-ready) #login-screen, html:not(.fonts-ready) .login-card, html:not(.fonts-ready) .login-scene, html:not(.fonts-ready) .card-title, html:not(.fonts-ready) #sheet-title, html:not(.fonts-ready) #ios-bottom-nav {
+        /* Keep the login screen and sheet title stable: use system fonts for these critical UI pieces to avoid CLS from webfont swaps */
+        #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -1017,22 +1017,10 @@
                 s1.crossOrigin = 'anonymous';
                 s1.onload = function(){
                     try{
-                        var s2 = document.createElement('script');
-                        s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js';
-                        s2.crossOrigin = 'anonymous';
-                        s2.onload = function(){
-                            console.log('[GSAP] loaded (idle)');
-                            try{
-                                // Disable ScrollTrigger auto-refresh to avoid forced reflows on load.
-                                if (window.ScrollTrigger && typeof window.ScrollTrigger.config === 'function') {
-                                    window.ScrollTrigger.config({ autoRefreshEvents: '' });
-                                }
-                                if(window.gsap && window.ScrollTrigger && window.gsap.registerPlugin) {
-                                    window.gsap.registerPlugin(window.ScrollTrigger);
-                                }
-                            }catch(e){ console.warn('[GSAP] register/config error', e); }
-                        };
-                        document.head.appendChild(s2);
+                        // Intentionally DO NOT inject ScrollTrigger here to avoid its
+                        // automatic layout measurements on load. ScrollTrigger will be
+                        // loaded and registered later by the animations module when
+                        // the app is ready and the page is stable.
                     }catch(e){console.warn('[GSAP] inject error', e)}
                 };
                 document.head.appendChild(s1);
