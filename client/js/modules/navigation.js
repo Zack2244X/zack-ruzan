@@ -23,7 +23,32 @@ export function _syncMainInteractionState() {
         dashboard.classList.toggle('pointer-events-none', blocked);
         dashboard.classList.toggle('select-none', blocked);
     }
-    document.body.style.overflow = blocked ? 'hidden' : '';
+    // Avoid layout shift from scrollbar removal: when blocking, lock scroll and
+    // compensate for the scrollbar width by adding equivalent padding-right.
+    try {
+        const body = document.body;
+        if (blocked) {
+            // store original inline padding-right once
+            if (!body.hasAttribute('data-orig-pr')) body.setAttribute('data-orig-pr', body.style.paddingRight || '');
+            const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+            if (scrollbarWidth > 0) {
+                const computed = parseFloat(getComputedStyle(body).paddingRight) || 0;
+                body.style.paddingRight = (computed + scrollbarWidth) + 'px';
+            }
+            body.style.overflow = 'hidden';
+        } else {
+            const orig = body.getAttribute('data-orig-pr');
+            if (orig !== null) {
+                body.style.paddingRight = orig || '';
+                body.removeAttribute('data-orig-pr');
+            } else {
+                body.style.paddingRight = '';
+            }
+            body.style.overflow = '';
+        }
+    } catch (e) {
+        document.body.style.overflow = blocked ? 'hidden' : '';
+    }
 
     const t = document.getElementById('theme-toggle');
     if (t) t.style.display = (onHome && !blocked) ? '' : 'none';

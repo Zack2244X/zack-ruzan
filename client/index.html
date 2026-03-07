@@ -67,6 +67,24 @@
     <!-- Load Google Fonts non-blocking -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" as="style" onload="this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet"></noscript>
+    <script>
+    // Mark font-loading state to avoid CLS from swapping webfonts on critical UI
+    document.documentElement.classList.add('fonts-loading');
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function(){
+            document.documentElement.classList.add('fonts-ready');
+            document.documentElement.classList.remove('fonts-loading');
+        }).catch(function(){
+            document.documentElement.classList.add('fonts-ready');
+            document.documentElement.classList.remove('fonts-loading');
+        });
+    } else {
+        window.addEventListener('load', function(){
+            document.documentElement.classList.add('fonts-ready');
+            document.documentElement.classList.remove('fonts-loading');
+        });
+    }
+    </script>
 
     <!-- Preload LCP background image to make it discoverable quickly -->
     <link rel="preload" as="image" href="/icons/bg.webp" fetchpriority="high">
@@ -416,7 +434,7 @@
         <!-- Reduce CLS: use system fonts for above-the-fold elements to avoid metric shifts -->
         <style>
         /* Keep the login screen and sheet title stable during webfont load */
-        #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
+        html:not(.fonts-ready) #login-screen, html:not(.fonts-ready) .login-card, html:not(.fonts-ready) .login-scene, html:not(.fonts-ready) .card-title, html:not(.fonts-ready) #sheet-title, html:not(.fonts-ready) #ios-bottom-nav {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
