@@ -61,14 +61,13 @@
             <link rel="stylesheet" href="/css/styles.min.css?v=30">
         </noscript>
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Load Google Fonts non-blocking (display=optional to avoid font-swap CLS) -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=optional" as="style" onload="this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet"></noscript>
+    <!-- Preload local Cairo and Amiri fonts -->
+    <link rel="preload" href="/fonts/Cairo-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/Cairo-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/Amiri-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/Amiri-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- Mark font-loading state for local fonts -->
     <script>
-    // Mark font-loading state to avoid CLS from swapping webfonts on critical UI
     document.documentElement.classList.add('fonts-loading');
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(function(){
@@ -449,11 +448,34 @@
             -webkit-text-size-adjust: 100%;
         }
         </style>
-        <!-- Reduce CLS: use system fonts for above-the-fold elements to avoid metric shifts -->
+        <!-- Use local Cairo and Amiri fonts for critical UI -->
         <style>
-        /* Keep the login screen and sheet title stable: use system fonts for these critical UI pieces to avoid CLS from webfont swaps */
+        @font-face {
+            font-family: 'Cairo';
+            src: url('/fonts/Cairo-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Cairo';
+            src: url('/fonts/Cairo-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Amiri';
+            src: url('/fonts/Amiri-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Amiri';
+            src: url('/fonts/Amiri-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-display: swap;
+        }
         #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+            font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
