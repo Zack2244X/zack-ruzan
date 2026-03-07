@@ -7,12 +7,13 @@
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
     <title>Zack Exam</title>
-    <!-- Inline critical CSS: Tailwind + app styles to avoid render-blocking -->
-    <style>
-/* Inline critical CSS via imports (safe fallback to avoid syntax errors). */
-@import url('/css/tailwind.css?v=30');
-@import url('/css/styles.min.css?v=30');
-    </style>
+        <!-- Load Tailwind and app CSS non-blocking to avoid render-blocking -->
+        <link rel="preload" href="/css/tailwind.css?v=30" as="style" onload="this.rel='stylesheet'">
+        <link rel="preload" href="/css/styles.min.css?v=30" as="style" onload="this.rel='stylesheet'">
+        <noscript>
+            <link rel="stylesheet" href="/css/tailwind.css?v=30">
+            <link rel="stylesheet" href="/css/styles.min.css?v=30">
+        </noscript>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
