@@ -434,6 +434,7 @@ async function startServer(retries = 3) {
         logger.info(`✅ تم مزامنة الجداول${enableAlter ? ' (alter: true)' : ''}.`);
     } catch (syncErr) {
         logger.warn('⚠️ sync alter فشل، محاولة بدون alter:', syncErr.message);
+        logger.warn('تفاصيل الخطأ:', syncErr);
         try {
             await sequelize.sync({ alter: false });
             logger.info('✅ تم مزامنة الجداول (alter: false fallback).');
