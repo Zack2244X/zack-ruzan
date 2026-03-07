@@ -53,9 +53,10 @@
                 document.head.appendChild(faLink);
             }
         } catch (e) { /* ignore */ }
-        // prefer loading the minified bundled app to avoid many module requests
-        const primary = '/js/app.bundle.min.js?v=31';
-        const fallback = '/js/app.js';
+        // Prefer the unbundled `app.js` here so runtime startup behavior (deferred scroll init)
+        // from the source entrypoint is respected. If that fails, fall back to the minified bundle.
+        const primary = '/js/app.js';
+        const fallback = '/js/app.bundle.min.js?v=31';
         import(primary).then(mod => {
             // if module exports startApp, call it
             if (mod && typeof mod.startApp === 'function') {
@@ -72,11 +73,11 @@
                 }
             }
         }).catch(err => {
-            console.warn('Failed to import primary bundle, falling back to app.js:', err);
+            console.warn('Failed to import primary app.js, falling back to bundle:', err);
             import(fallback).then(mod => {
                 if (mod && typeof mod.startApp === 'function') mod.startApp().catch(()=>{});
             }).catch(err2 => {
-                console.error('Both bundle and app.js failed to load:', err2);
+                console.error('Both app.js and bundle failed to load:', err2);
             }).finally(()=>{ window.__appLoading = false; });
         });
     }

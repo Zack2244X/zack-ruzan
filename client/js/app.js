@@ -432,8 +432,36 @@ export async function startApp() {
     // تهيئة الحركات — مرّر نتيجة الأداء لتجنّب إعادة القياس
     await initAnimations(perf);
 
-    // تهيئة التمرير (scroll.js يتحقّق من window.__devicePerf ويمنع Lenis على low-tier)
-    initScroll();
+    // تهيئة التمرير: نؤجل تهيئة Lenis حتى تكون الخطوط محمّلة أو يكون المتصفح في حالة خمول
+    // هذا يمنع أي تبديل للـ classes على `<html>` أثناء الطلاء الأولي مما يسبب CLS
+    (function deferInitScroll() {
+        const run = async () => {
+            try {
+                if (document && document.fonts) {
+                    // انتظر حتى تكون الخطوط جاهزة أو أقصر من 1s حتى لا نؤخر التجربة كثيراً
+                    const fontsReady = document.fonts.ready;
+                    const timeout = new Promise((res) => setTimeout(res, 1000));
+                    await Promise.race([fontsReady, timeout]);
+                }
+            } catch (e) { /* ignore */ }
+
+            const start = () => {
+                try {
+                    initScroll();
+                } catch (err) {
+                    console.warn('[scroll] deferred init failed:', err);
+                }
+            };
+
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(start, { timeout: 2000 });
+            } else {
+                // fallback صغير إذا لم تتوفر requestIdleCallback
+                setTimeout(start, 700);
+            }
+        };
+        run();
+    })();
 
     // ── ضبط إعدادات الحركة بناءً على أداء الجهاز ────────────────────────────
     await applyPerformanceBasedAnimationSettings(perf);
