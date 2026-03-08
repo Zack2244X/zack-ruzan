@@ -18,6 +18,36 @@
             } catch(e) {}
         })();
         </script>
+        <!-- Force desktop viewport for the login screen on mobile devices (apply early) -->
+        <script>
+        (function(){
+            try {
+                // detect mobile-ish devices
+                var isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
+                // Only apply when login screen exists in the HTML (we're on the main page)
+                if (!isMobile || !document.getElementById || !document.getElementById('login-screen')) return;
+
+                var meta = document.querySelector('meta[name="viewport"]');
+                if (!meta) return;
+
+                // preserve original viewport so navigation module can restore it later
+                if (!document.documentElement.hasAttribute('data-orig-viewport')) {
+                    try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
+                }
+
+                // compute scale so 1200px layout fits the device
+                var desktopWidth = 1200;
+                var deviceW = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+                var scale = Math.max(0.12, Math.min(1, deviceW / desktopWidth));
+                meta.content = 'width=' + desktopWidth + ', initial-scale=' + scale + ', maximum-scale=' + scale + ', user-scalable=no, viewport-fit=cover';
+
+                document.documentElement.classList.add('force-desktop');
+                document.documentElement.setAttribute('data-force-desktop', '1');
+            } catch (e) {
+                console.warn('applyLoginDesktopViewport failed', e);
+            }
+        })();
+        </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom
