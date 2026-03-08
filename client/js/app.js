@@ -16,6 +16,7 @@ import {
     openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
     applyTheme, toggleTheme, initTheme, navToHome,
     navToSection as _navToSection, openAdminAuthOrPanel,
+    showLoginScreenWithDesktop,
     closeStudentMenu, showLoginScreen, toggleTreeNode
 } from './modules/navigation.js';
 import {
