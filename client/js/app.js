@@ -433,22 +433,30 @@ export async function startApp() {
         }
     }
 
-    // Observe login visibility to toggle layout
+    // Observe login visibility to toggle layout (force-desktop ONLY for login page)
     function observeLoginLayout() {
         const login = document.getElementById('login-screen');
         if (!login) return;
+        const root = document.documentElement;
         const observer = new MutationObserver(() => {
             if (!isMobileUA) return;
             if (!login.classList.contains('hidden')) {
-                setDesktopLayout(true);
+                root.classList.add('force-desktop');
+                root.setAttribute('data-force-desktop','1');
             } else {
-                setDesktopLayout(false);
+                root.classList.remove('force-desktop');
+                root.removeAttribute('data-force-desktop');
             }
         });
         observer.observe(login, { attributes: true, attributeFilter: ['class'] });
         // Initial state
-        if (!login.classList.contains('hidden')) setDesktopLayout(true);
-        else setDesktopLayout(false);
+        if (!login.classList.contains('hidden')) {
+            root.classList.add('force-desktop');
+            root.setAttribute('data-force-desktop','1');
+        } else {
+            root.classList.remove('force-desktop');
+            root.removeAttribute('data-force-desktop');
+        }
     }
     document.addEventListener('DOMContentLoaded', observeLoginLayout);
 
