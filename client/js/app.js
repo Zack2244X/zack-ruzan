@@ -419,7 +419,7 @@ export async function startApp() {
     // تهيئة الثيم
     initTheme();
 
-    // Layout switching: login page desktop, rest mobile (on mobile devices)
+    // Layout switching: ONLY login page uses desktop layout on mobile
     const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
     function setDesktopLayout(force) {
         if (!isMobileUA) return;
@@ -433,26 +433,24 @@ export async function startApp() {
         }
     }
 
-    // Observe login/dashboard visibility to toggle layout
-    function observeLayoutSwitch() {
+    // Observe login visibility to toggle layout
+    function observeLoginLayout() {
         const login = document.getElementById('login-screen');
-        const dash = document.getElementById('dashboard-view');
-        if (!login || !dash) return;
+        if (!login) return;
         const observer = new MutationObserver(() => {
             if (!isMobileUA) return;
             if (!login.classList.contains('hidden')) {
                 setDesktopLayout(true);
-            } else if (!dash.classList.contains('hidden')) {
+            } else {
                 setDesktopLayout(false);
             }
         });
         observer.observe(login, { attributes: true, attributeFilter: ['class'] });
-        observer.observe(dash, { attributes: true, attributeFilter: ['class'] });
         // Initial state
         if (!login.classList.contains('hidden')) setDesktopLayout(true);
-        else if (!dash.classList.contains('hidden')) setDesktopLayout(false);
+        else setDesktopLayout(false);
     }
-    document.addEventListener('DOMContentLoaded', observeLayoutSwitch);
+    document.addEventListener('DOMContentLoaded', observeLoginLayout);
 
     // ── تهيئة وحدات الحركة والتمرير ──────────────────────────────────────────
     // يجب أن تسبق applyPerformanceBasedAnimationSettings() حتى تكون
