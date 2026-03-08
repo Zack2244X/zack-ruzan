@@ -10,6 +10,7 @@ import { logFunctionStatus } from './helpers.js';
  */
 export function _syncMainInteractionState() {
     logFunctionStatus('_syncMainInteractionState', false);
+    try { console.debug('[diag] _syncMainInteractionState — checking overlays (login/dashboard/ios-bottom-nav)'); } catch(e){}
     const dashboard = document.getElementById('dashboard-view');
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
@@ -403,6 +404,7 @@ export function closeStudentMenu() {
 /** عرض شاشة تسجيل الدخول */
 export function showLoginScreen() {
     logFunctionStatus('showLoginScreen', false);
+    console.log('[diag] showLoginScreen — removing hidden from login-screen');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('ios-bottom-nav').classList.add('hidden');
@@ -413,8 +415,10 @@ export function showLoginScreen() {
 
 /** Ensure login page enforces desktop layout on mobile */
 export function showLoginScreenWithDesktop() {
+    console.log('[diag] showLoginScreenWithDesktop invoked; login-screen before=', document.getElementById('login-screen')?.className);
     showLoginScreen();
     try { _applyLoginDesktopViewport(); } catch (e) { console.warn('showLoginScreenWithDesktop failed', e); }
+    try { console.log('[diag] showLoginScreenWithDesktop after -> login-screen now=', document.getElementById('login-screen')?.className); } catch(e){}
 }
 
 /** طي/فتح فروع الشجرة */

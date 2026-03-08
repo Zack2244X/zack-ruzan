@@ -337,6 +337,9 @@ function loadApp() {
             return;
         }
         console.log('[app] لا يوجد مستخدم مسجّل — عرض شاشة الدخول');
+        try {
+            console.log('[diag] loadApp -> calling showLoginScreenWithDesktop; login-screen classes=', document.getElementById('login-screen')?.className);
+        } catch (e) { console.warn('[diag] loadApp log failed', e); }
         showLoginScreenWithDesktop();
     } catch (e) {
         console.warn("تعذر الوصول للذاكرة المحلية:", e);
