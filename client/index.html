@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" class="lenis lenis-smooth">
 <head>
+        <!-- Fix: Apply theme from localStorage immediately on page load -->
+        <script>
+        (function(){
+            try {
+                var theme = localStorage.getItem('app-theme');
+                if (theme) {
+                    document.documentElement.setAttribute('data-theme', theme);
+                }
+            } catch(e) {}
+        })();
+        </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom
