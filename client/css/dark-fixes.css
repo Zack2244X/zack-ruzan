@@ -77,6 +77,11 @@
 
 /* End of dark fixes */
 
+/* Desktop-only login styles */
+.desktop-login-only { display: block !important; }
+.mobile-after-login { display: none !important; }
+body.after-login .desktop-login-only { display: none !important; }
+body.after-login .mobile-after-login { display: block !important; }
 /* --- Login screen specific tweaks to match provided mock --- */
 .dark #login-screen, [data-theme="dark"] #login-screen {
   background-image: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.02), transparent 20%), url('/fonts/../icons/placeholder.png');
