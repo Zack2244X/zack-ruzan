@@ -1,0 +1,21 @@
+/* Font Awesome local fallback (6.4.0) */
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/fonts/fa-solid-900.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Font Awesome 6 Brands';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/fa-brands-400.woff2') format('woff2');
+}
+.fa, .fas, .far, .fal, .fab {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+  font-weight: 900 !important;
+  speak: none;
+}
+.fab { font-family: "Font Awesome 6 Brands" !important; font-weight: 400 !important; }
