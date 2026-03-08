@@ -72,6 +72,8 @@
                     console.error('Error invoking queued call', call.name, e);
                 }
             }
+            // wrap functions to surface errors in logs
+            try{ if (typeof wrapRegisteredFunctions === 'function') wrapRegisteredFunctions(); }catch(e){}
         }).catch(err => {
             console.warn('Failed to import primary app.js, falling back to bundle:', err);
             // Many bundles are produced as classic scripts (non-ESM). Dynamic `import()` will
@@ -100,6 +102,7 @@
                             console.error('Error invoking queued call', call.name, e);
                         }
                     }
+                    try{ if (typeof wrapRegisteredFunctions === 'function') wrapRegisteredFunctions(); }catch(e){}
                 };
                 script.onerror = function(e){
                     console.error('Failed to load fallback bundle script', e);
@@ -111,13 +114,40 @@
                 window.__appLoading = false;
             }
         });
-        });
+
+        // Wrap real functions once the app has attached them so we log invocations/errors
+        function wrapRegisteredFunctions(){
+            try{
+                lazyNames.forEach(name => {
+                    try{
+                        const fn = window[name];
+                        if (typeof fn === 'function' && !fn.__wrapped_by_bootstrap){
+                            const original = fn;
+                            const wrapped = function(...a){
+                                console.info('[LAZY_CALL] invoking', name, a);
+                                try{
+                                    const res = original.apply(this,a);
+                                    return res;
+                                }catch(err){
+                                    console.error('[LAZY_CALL_ERROR]', name, err);
+                                    throw err;
+                                }
+                            };
+                            wrapped.__wrapped_by_bootstrap = true;
+                            window[name] = wrapped;
+                        }
+                    }catch(e){/* ignore per-function errors */}
+                });
+            }catch(e){}
+        }
+
     }
 
     // create stub functions that queue the call and trigger app load
     lazyNames.forEach(name => {
         if (window[name]) return;
         window[name] = function(...args) {
+            try{ console.info('[LAZY_CALL_QUEUE] queued', name, args); }catch(e){}
             window.__lazyCalls.push({name, args});
             // start loading app on first user interaction
             triggerAppLoad();
