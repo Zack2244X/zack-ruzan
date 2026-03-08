@@ -151,3 +151,11 @@
 
 /* Make sure the card border radius shadow doesn't get clipped */
 .dark .login-card * { z-index: 2; }
+
+/* Ensure Font Awesome icons keep their font-family when parent rules use !important */
+.fa, .fas, .far, .fal, .fab {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+  font-weight: 900 !important;
+  speak: none;
+}
+.fab { font-family: "Font Awesome 6 Brands" !important; font-weight: 400 !important; }
