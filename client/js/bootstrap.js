@@ -56,7 +56,7 @@
         // Prefer the unbundled `app.js` here so runtime startup behavior (deferred scroll init)
         // from the source entrypoint is respected. If that fails, fall back to the minified bundle.
         const primary = '/js/app.js';
-        const fallback = '/js/app.bundle.js';
+        const fallback = '/js/app.bundle.min.js?v=31';
         import(primary).then(mod => {
             // if module exports startApp, call it
             if (mod && typeof mod.startApp === 'function') {
@@ -74,11 +74,43 @@
             }
         }).catch(err => {
             console.warn('Failed to import primary app.js, falling back to bundle:', err);
-            import(fallback).then(mod => {
-                if (mod && typeof mod.startApp === 'function') mod.startApp().catch(()=>{});
-            }).catch(err2 => {
-                console.error('Both app.js and bundle failed to load:', err2);
-            }).finally(()=>{ window.__appLoading = false; });
+            // Many bundles are produced as classic scripts (non-ESM). Dynamic `import()` will
+            // fail for those with strict MIME checks. Inject a classic script tag as a
+            // robust fallback and call `window.startApp()` if the bundle exposes it.
+            try {
+                const script = document.createElement('script');
+                script.src = fallback;
+                script.async = true;
+                script.onload = function() {
+                    try {
+                        if (typeof window.startApp === 'function') {
+                            // bundle may attach startApp to window
+                            Promise.resolve(window.startApp()).catch(()=>{});
+                        }
+                    } catch (e) {
+                        console.error('Error while invoking startApp from fallback bundle', e);
+                    }
+                    // flush queued calls if bundle attached functions to window
+                    window.__appLoading = false;
+                    while (window.__lazyCalls && window.__lazyCalls.length) {
+                        const call = window.__lazyCalls.shift();
+                        try {
+                            if (typeof window[call.name] === 'function') window[call.name].apply(null, call.args || []);
+                        } catch (e) {
+                            console.error('Error invoking queued call', call.name, e);
+                        }
+                    }
+                };
+                script.onerror = function(e){
+                    console.error('Failed to load fallback bundle script', e);
+                    window.__appLoading = false;
+                };
+                document.head.appendChild(script);
+            } catch (e) {
+                console.error('Both app.js and bundle failed to load (fallback injection error):', e);
+                window.__appLoading = false;
+            }
+        });
         });
     }
 
