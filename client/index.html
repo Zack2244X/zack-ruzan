@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" class="lenis lenis-smooth">
 <head>
-        <!-- Fix: Apply theme from localStorage immediately on page load -->
+        <!-- Fix: Apply theme from localStorage or system preference immediately on page load -->
         <script>
         (function(){
             try {
                 var theme = localStorage.getItem('app-theme');
-                if (theme) {
-                    document.documentElement.setAttribute('data-theme', theme);
+                if (!theme) {
+                    // fallback to system preference
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        theme = 'dark';
+                    } else {
+                        theme = 'light';
+                    }
                 }
+                document.documentElement.setAttribute('data-theme', theme);
             } catch(e) {}
         })();
         </script>
