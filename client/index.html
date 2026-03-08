@@ -1205,6 +1205,8 @@
     <!-- Ensure login-screen always enforces desktop viewport on mobile while visible -->
     <script>
     (function(){
+        var __preventZoomHandlers = null;
+
         function setDesktopViewport() {
             try {
                 var meta = document.querySelector('meta[name="viewport"]');
@@ -1215,9 +1217,25 @@
                 var target = 1200;
                 var vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
                 var scale = Math.max(0.12, Math.min(1, vw / target));
-                meta.content = 'width=' + target + ', initial-scale=' + scale + ', maximum-scale=' + scale + ', user-scalable=no, viewport-fit=cover';
+                // set viewport and prevent zooming by disabling user scaling
+                meta.content = 'width=' + target + ', initial-scale=' + scale + ', maximum-scale=' + scale + ', minimum-scale=' + scale + ', user-scalable=no, viewport-fit=cover';
                 document.documentElement.classList.add('force-desktop');
                 document.documentElement.setAttribute('data-force-desktop','1');
+                // install handlers to block pinch and gesture zoom on some browsers
+                if (!__preventZoomHandlers) {
+                    var touchStartHandler = function(e){ if (e.touches && e.touches.length > 1) e.preventDefault(); };
+                    var gestureStartHandler = function(e){ e.preventDefault && e.preventDefault(); };
+                    var dblTapTime = 0;
+                    var touchEndHandler = function(e){
+                        var now = Date.now();
+                        if (now - dblTapTime < 300) { e.preventDefault && e.preventDefault(); }
+                        dblTapTime = now;
+                    };
+                    window.addEventListener('touchstart', touchStartHandler, { passive:false });
+                    window.addEventListener('gesturestart', gestureStartHandler, { passive:false });
+                    window.addEventListener('touchend', touchEndHandler, { passive:false });
+                    __preventZoomHandlers = { touchStartHandler, gestureStartHandler, touchEndHandler };
+                }
             } catch (e) { console.warn('setDesktopViewport failed', e); }
         }
 
@@ -1232,6 +1250,13 @@
                 }
                 document.documentElement.classList.remove('force-desktop');
                 document.documentElement.removeAttribute('data-force-desktop');
+                // remove zoom prevention handlers
+                if (__preventZoomHandlers) {
+                    window.removeEventListener('touchstart', __preventZoomHandlers.touchStartHandler);
+                    window.removeEventListener('gesturestart', __preventZoomHandlers.gestureStartHandler);
+                    window.removeEventListener('touchend', __preventZoomHandlers.touchEndHandler);
+                    __preventZoomHandlers = null;
+                }
             } catch (e) { console.warn('restoreViewport failed', e); }
         }
 
@@ -1248,6 +1273,8 @@
             if (!loginEl.classList.contains('hidden')) setDesktopViewport();
             // restore on pagehide
             window.addEventListener('pagehide', restoreViewport);
+            // provide a global fallback in case other inline scripts call this before modules initialize
+            try { window.showLoginScreenWithDesktop = function(){ loginEl.classList.remove('hidden'); document.getElementById('dashboard-view')?.classList.add('hidden'); document.getElementById('ios-bottom-nav')?.classList.add('hidden'); setDesktopViewport(); }; } catch(e){}
         }
 
         var login = document.getElementById('login-screen');
