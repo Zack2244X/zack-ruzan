@@ -438,24 +438,37 @@ export async function startApp() {
         const login = document.getElementById('login-screen');
         if (!login) return;
         const root = document.documentElement;
+        const meta = document.querySelector('meta[name="viewport"]');
+        let originalViewport = meta ? meta.content : '';
+        function applyDesktopViewport() {
+            const targetWidth = 1200;
+            const vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+            const rawScale = vw / targetWidth;
+            const clampedScale = Math.max(0.12, Math.min(1, rawScale));
+            const content = `width=${targetWidth}, initial-scale=${clampedScale}, maximum-scale=${clampedScale}, user-scalable=no, viewport-fit=cover`;
+            if (meta) meta.content = content;
+            root.classList.add('force-desktop');
+            root.setAttribute('data-force-desktop','1');
+        }
+        function restoreViewport() {
+            if (meta && originalViewport) meta.content = originalViewport;
+            root.classList.remove('force-desktop');
+            root.removeAttribute('data-force-desktop');
+        }
         const observer = new MutationObserver(() => {
             if (!isMobileUA) return;
             if (!login.classList.contains('hidden')) {
-                root.classList.add('force-desktop');
-                root.setAttribute('data-force-desktop','1');
+                applyDesktopViewport();
             } else {
-                root.classList.remove('force-desktop');
-                root.removeAttribute('data-force-desktop');
+                restoreViewport();
             }
         });
         observer.observe(login, { attributes: true, attributeFilter: ['class'] });
         // Initial state
         if (!login.classList.contains('hidden')) {
-            root.classList.add('force-desktop');
-            root.setAttribute('data-force-desktop','1');
+            applyDesktopViewport();
         } else {
-            root.classList.remove('force-desktop');
-            root.removeAttribute('data-force-desktop');
+            restoreViewport();
         }
     }
     document.addEventListener('DOMContentLoaded', observeLoginLayout);
