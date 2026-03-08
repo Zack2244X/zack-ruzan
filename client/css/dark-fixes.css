@@ -76,3 +76,78 @@
 .dark i.fas, .dark i.far { color: #cbd5e1 !important; }
 
 /* End of dark fixes */
+
+/* --- Login screen specific tweaks to match provided mock --- */
+.dark #login-screen, [data-theme="dark"] #login-screen {
+  background-image: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.02), transparent 20%), url('/fonts/../icons/placeholder.png');
+  background-size: cover;
+}
+
+.dark .login-card, [data-theme="dark"] .login-card {
+  max-width: 460px !important;
+  border-radius: 1.25rem !important;
+  padding: 2.25rem 2rem !important;
+  background: linear-gradient(180deg, rgba(11,17,26,0.62), rgba(6,10,16,0.6)) !important;
+  border: 1px solid rgba(212,170,76,0.12) !important; /* subtle gold border */
+  box-shadow: 0 30px 80px rgba(3,6,12,0.7), inset 0 1px 0 rgba(255,255,255,0.02) !important;
+}
+
+/* Logo round with golden halo */
+.dark .logo-wrap, [data-theme="dark"] .logo-wrap {
+  width: 120px !important;
+  height: 120px !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto 1.25rem !important;
+  background: radial-gradient(circle at 50% 35%, rgba(255,230,150,0.18), rgba(0,0,0,0.0) 45%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 6px solid rgba(255,235,170,0.14) !important; /* inner ring */
+  box-shadow: 0 6px 30px rgba(255,190,60,0.18), 0 0 30px rgba(255,200,80,0.08) !important;
+}
+
+.dark .logo-wrap img, [data-theme="dark"] .logo-wrap img {
+  width: 74px !important;
+  height: 74px !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.6) inset;
+}
+
+/* Title in warm gold */
+.dark .login-card h1, [data-theme="dark"] .login-card h1 {
+  color: #f5d07a !important;
+  text-shadow: 0 6px 30px rgba(35,22,10,0.55);
+  font-weight: 800 !important;
+}
+
+/* Big gold CTA */
+.dark .login-card .btn-primary, .dark .login-card .google-btn, [data-theme="dark"] .login-card .btn-primary, [data-theme="dark"] .login-card .google-btn {
+  background: linear-gradient(180deg,#f6c94a,#e7a83a) !important;
+  color: #1b1720 !important;
+  padding: 0.9rem 1.25rem !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 18px 40px rgba(233,150,36,0.18), 0 6px 14px rgba(0,0,0,0.45) !important;
+  border: 1px solid rgba(255,230,150,0.16) !important;
+}
+
+/* Subtle inner card divider and muted links */
+.dark .login-card p, .dark .login-card small, [data-theme="dark"] .login-card p, [data-theme="dark"] .login-card small {
+  color: #bfc9d4 !important;
+}
+
+/* Lamp: glow and cone */
+.dark .lamp-wrapper, [data-theme="dark"] .lamp-wrapper {
+  filter: drop-shadow(0 50px 80px rgba(40,22,6,0.55));
+}
+.dark .lamp-wrapper .lamp-body, [data-theme="dark"] .lamp-wrapper .lamp-body {
+  background: linear-gradient(180deg,#f2c86d,#e0a43a) !important;
+  box-shadow: 0 18px 60px rgba(232,150,40,0.14) inset, 0 30px 120px rgba(232,150,40,0.14) !important;
+}
+.dark .lamp-wrapper .lamp-light, [data-theme="dark"] .lamp-wrapper .lamp-light {
+  background: radial-gradient(ellipse at center, rgba(255,220,120,0.85) 0%, rgba(255,200,80,0.25) 40%, rgba(255,200,80,0.06) 70%, transparent 100%) !important;
+  filter: blur(18px) !important;
+  opacity: 0.95 !important;
+}
+
+/* Make sure the card border radius shadow doesn't get clipped */
+.dark .login-card * { z-index: 2; }
