@@ -1202,6 +1202,67 @@
     <!-- Lightweight bootstrap that lazy-loads the full app when needed -->
     <script type="module" src="/js/bootstrap.js"></script>
 
+    <!-- Ensure login-screen always enforces desktop viewport on mobile while visible -->
+    <script>
+    (function(){
+        function setDesktopViewport() {
+            try {
+                var meta = document.querySelector('meta[name="viewport"]');
+                if (!meta) return;
+                if (!document.documentElement.hasAttribute('data-orig-viewport')) {
+                    try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
+                }
+                var target = 1200;
+                var vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+                var scale = Math.max(0.12, Math.min(1, vw / target));
+                meta.content = 'width=' + target + ', initial-scale=' + scale + ', maximum-scale=' + scale + ', user-scalable=no, viewport-fit=cover';
+                document.documentElement.classList.add('force-desktop');
+                document.documentElement.setAttribute('data-force-desktop','1');
+            } catch (e) { console.warn('setDesktopViewport failed', e); }
+        }
+
+        function restoreViewport() {
+            try {
+                var meta = document.querySelector('meta[name="viewport"]');
+                if (!meta) return;
+                var orig = document.documentElement.getAttribute('data-orig-viewport');
+                if (orig !== null && orig !== undefined) {
+                    meta.content = orig || 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+                    document.documentElement.removeAttribute('data-orig-viewport');
+                }
+                document.documentElement.classList.remove('force-desktop');
+                document.documentElement.removeAttribute('data-force-desktop');
+            } catch (e) { console.warn('restoreViewport failed', e); }
+        }
+
+        function attachToLogin(loginEl) {
+            if (!loginEl) return;
+            var mo = new MutationObserver(function(){
+                try {
+                    if (!loginEl.classList.contains('hidden')) setDesktopViewport();
+                    else restoreViewport();
+                } catch(e) {}
+            });
+            mo.observe(loginEl, { attributes: true, attributeFilter: ['class'] });
+            // apply now if visible
+            if (!loginEl.classList.contains('hidden')) setDesktopViewport();
+            // restore on pagehide
+            window.addEventListener('pagehide', restoreViewport);
+        }
+
+        var login = document.getElementById('login-screen');
+        if (login) attachToLogin(login);
+        else {
+            // wait for login element to be added later
+            var dmo = new MutationObserver(function(m){
+                var ln = document.getElementById('login-screen');
+                if (ln) { dmo.disconnect(); attachToLogin(ln); }
+            });
+            dmo.observe(document.documentElement, { childList: true, subtree: true });
+        }
+    })();
+    </script>
+
     <!-- Lamp Animation Script -->
     <script>
     /* ═══════════════════════════════════════════
