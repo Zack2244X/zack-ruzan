@@ -123,7 +123,7 @@ window.addEventListener('storage', (e) => {
         state.isAdmin = false;
         sessionStorage.removeItem('currentUser');
         sessionStorage.removeItem('isAdmin');
-        showLoginScreen();
+        showLoginScreenWithDesktop();
     }
 });
 
@@ -336,10 +336,10 @@ function loadApp() {
             return;
         }
         console.log('[app] لا يوجد مستخدم مسجّل — عرض شاشة الدخول');
-        showLoginScreen();
+        showLoginScreenWithDesktop();
     } catch (e) {
         console.warn("تعذر الوصول للذاكرة المحلية:", e);
-        showLoginScreen();
+        showLoginScreenWithDesktop();
     }
 }
 

@@ -298,6 +298,41 @@ export function openAdminAuthOrPanel() {
     _syncMainInteractionState();
 }
 
+// Ensure login page uses desktop layout on mobile devices.
+function _applyLoginDesktopViewport() {
+    try {
+        const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
+        if (!isMobileUA) return;
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        // Save original viewport if not saved
+        if (!document.documentElement.hasAttribute('data-orig-viewport')) {
+            try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
+        }
+        const targetWidth = 1200;
+        const vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+        const rawScale = vw / targetWidth;
+        const clampedScale = Math.max(0.12, Math.min(1, rawScale));
+        meta.content = `width=${targetWidth}, initial-scale=${clampedScale}, maximum-scale=${clampedScale}, user-scalable=no, viewport-fit=cover`;
+        document.documentElement.classList.add('force-desktop');
+        document.documentElement.setAttribute('data-force-desktop','1');
+    } catch (e) { console.warn('applyLoginDesktopViewport failed', e); }
+}
+
+function _restoreViewportFromLogin() {
+    try {
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) return;
+        const orig = document.documentElement.getAttribute('data-orig-viewport');
+        if (orig !== null && orig !== undefined) {
+            meta.content = orig || 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+            document.documentElement.removeAttribute('data-orig-viewport');
+        }
+        document.documentElement.classList.remove('force-desktop');
+        document.documentElement.removeAttribute('data-force-desktop');
+    } catch (e) { console.warn('restoreViewportFromLogin failed', e); }
+}
+
 /** إغلاق قائمة الطالب */
 export function closeStudentMenu() {
     logFunctionStatus('closeStudentMenu', false);
@@ -315,6 +350,12 @@ export function showLoginScreen() {
     state.googleLoginMode = 'student';
     _showThemeToggle(false);
     _syncMainInteractionState();
+}
+
+/** Ensure login page enforces desktop layout on mobile */
+export function showLoginScreenWithDesktop() {
+    showLoginScreen();
+    try { _applyLoginDesktopViewport(); } catch (e) { console.warn('showLoginScreenWithDesktop failed', e); }
 }
 
 /** طي/فتح فروع الشجرة */
