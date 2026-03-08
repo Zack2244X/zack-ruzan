@@ -207,6 +207,18 @@ export function applyTheme(theme) {
     root.setAttribute('data-theme', finalTheme);
     localStorage.setItem(THEME_KEY, finalTheme);
     if (icon) icon.className = finalTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    // Ensure compatibility with Tailwind's `dark` class mode and other CSS relying on `.dark`
+    try {
+        if (finalTheme === 'dark') {
+            root.classList.add('dark');
+            document.body.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+            document.body.classList.remove('dark');
+        }
+    } catch (err) {
+        console.warn('applyTheme: failed to toggle .dark class', err);
+    }
 }
 
 /** تبديل الثيم بين فاتح وداكن */
