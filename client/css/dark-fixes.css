@@ -1,0 +1,78 @@
+/* Dark-mode overrides for utility classes used in JS templates
+   These rules target common Tailwind utility classes and adjust
+   colors when the page is in `.dark` mode. We use !important to
+   ensure runtime-generated class strings are overridden without
+   changing many template files. */
+
+:root.dark, .dark, [data-theme="dark"] {
+  color-scheme: dark;
+}
+
+.dark body, .dark html, [data-theme="dark"] body {
+  color: #e6eef8;
+}
+
+/* Cards and panels that use bg-white */
+.dark .bg-white {
+  background-color: rgba(17,24,39,0.62) !important; /* deep translucent */
+  -webkit-backdrop-filter: blur(6px) saturate(1.05) !important;
+  backdrop-filter: blur(6px) saturate(1.05) !important;
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+.dark .rounded-3xl, .dark .rounded-xl, .dark .rounded-2xl {
+  background-clip: padding-box;
+}
+
+/* Lighter gray backgrounds */
+.dark .bg-gray-50, .dark .bg-gray-50\/50 {
+  background-color: rgba(255,255,255,0.02) !important;
+}
+
+/* Borders and dividers */
+.dark .border-gray-100, .dark .border-gray-200 {
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+/* Text colors */
+.dark .text-gray-800, .dark .text-gray-900 {
+  color: #e6eef8 !important;
+}
+.dark .text-gray-500, .dark .text-gray-400, .dark .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+/* Accent badges and chips */
+.dark .bg-blue-50 { background-color: rgba(59,130,246,0.06) !important; }
+.dark .text-blue-600 { color: #93c5fd !important; }
+.dark .bg-orange-50 { background-color: rgba(249,115,22,0.04) !important; }
+.dark .text-orange-600 { color: #fdba74 !important; }
+.dark .bg-amber-50 { background-color: rgba(245,158,11,0.04) !important; }
+.dark .text-amber-700 { color: #fbbf24 !important; }
+.dark .bg-green-50 { background-color: rgba(16,185,129,0.04) !important; }
+
+/* Badge/chips shadow & contrast adjustments */
+.dark .shadow-sm { box-shadow: 0 6px 18px rgba(2,6,23,0.6) !important; }
+
+/* Input / builder option text colors */
+.dark .text-arabic, .dark .text-lg, .dark input, .dark textarea, .dark select {
+  color: #e6eef8 !important;
+}
+
+/* Ensure small UI badges remain readable */
+.dark .time-badge-anim, .dark .text-xs { color: #cbd5e1 !important; }
+
+/* Utility: reduce harsh hover borders in dark */
+.dark .hover\:border-blue-400:hover { border-color: rgba(99,102,241,0.18) !important; }
+.dark .hover\:border-orange-400:hover { border-color: rgba(249,115,22,0.14) !important; }
+
+/* Fallback for elements built via JS that mix classes in runtime */
+.dark [class*="bg-"] { transition: background-color 160ms ease; }
+
+/* Keep contrast for small text within cards */
+.dark .line-clamp-2, .dark p, .dark span { color: #cbd5e1 !important; }
+
+/* Slightly dim icons where appropriate */
+.dark i.fas, .dark i.far { color: #cbd5e1 !important; }
+
+/* End of dark fixes */
