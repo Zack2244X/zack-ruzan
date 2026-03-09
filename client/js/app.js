@@ -546,6 +546,17 @@ export async function startApp() {
         });
     }
 
+    // Patch: Inject guest-mode header for score submission
+    const originalSubmitScore = window.submitScore;
+    window.submitScore = function(data) {
+        const isGuest = localStorage.getItem('guest-mode') === 'true' || sessionStorage.getItem('guest-mode') === 'true';
+        if (isGuest) {
+            if (!data.headers) data.headers = {};
+            data.headers['x-guest-mode'] = 'true';
+        }
+        return originalSubmitScore ? originalSubmitScore(data) : null;
+    };
+
     // معالجة Google redirect أو تحميل التطبيق
     const handledRedirect = handleGoogleRedirectToken();
     initGoogleSignIn();

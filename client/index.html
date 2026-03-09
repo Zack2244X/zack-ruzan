@@ -961,8 +961,13 @@
             window.startGuestLogin = function() {
                 // تفعيل وضع الضيف
                 document.body.classList.add('guest-mode');
-                // تحويل المستخدم مباشرة إلى لوحة الطالب أو الصفحة الرئيسية بدون أي alert
+                try {
+                    localStorage.setItem('guest-mode', 'true');
+                    sessionStorage.setItem('guest-mode', 'true');
+                } catch(e){}
+                // تحويل المستخدم مباشرة إلى لوحة الطالب كضيف
                 window.location.href = '/dashboard-view';
+            }
             }
             </script>
             </style>

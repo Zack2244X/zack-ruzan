@@ -63,6 +63,17 @@ router.post('/', authenticate, validateSubmitScore, async (req, res) => {
     try {
         const { quizId, answers, timeTaken } = req.body;
 
+        // تحقق من وضع الضيف (guest-mode)
+        const isGuest = req.headers['x-guest-mode'] === 'true';
+        if (isGuest) {
+            return res.status(200).json({
+                message: 'تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.',
+                result: null,
+                meta: { isOfficial: false, attemptNumber: 0 },
+                details: []
+            });
+        }
+
         // 1. تحديد رقم المحاولة وطبيعتها (رسمية أم تدريبية)
         const { attemptNumber, isOfficial } = await resolveAttemptMeta(req.user.id, quizId);
 
@@ -74,13 +85,6 @@ router.post('/', authenticate, validateSubmitScore, async (req, res) => {
 
         // 3. حساب الدرجة في السيرفر (منع الغش)
         let correctCount = 0;
-    // NOTE: compatibility endpoints for /api/attempts were removed from here
-    // and implemented in a dedicated router at /server/routes/attempts.js which
-    // is mounted at /api/attempts. Keeping these handlers inside the POST
-    // /api/scores function caused incorrect routing (they were being attached
-    // under /api/scores/*). See server/routes/attempts.js for the correct
-    // implementation.
-
         const gradedAnswers = [];
         const questions = quiz.questions; // JSON array
 
