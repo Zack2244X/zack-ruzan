@@ -376,9 +376,10 @@
       100% { transform:scale(1) translateY(0); opacity:1; filter:blur(0); }
     }
 
-    .logo-wrap {
-      width: 180px;
-      height: 180px;
+        .logo-wrap {
+            /* increased 50% to make the logo larger and fill the circle */
+            width: 270px;
+            height: 270px;
       border-radius: 50%;
       margin: 0 auto 30px;
       display: flex;
@@ -504,7 +505,8 @@
     }
     @media (max-width: 480px) {
       .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
-      .logo-wrap { width: 140px; height: 140px; }
+            /* mobile: scale 140 -> 210 (50% larger) */
+            .logo-wrap { width: 210px; height: 210px; }
       .card-title { font-size: 1.8rem; }
     }
     </style>
