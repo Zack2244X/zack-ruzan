@@ -10,31 +10,26 @@
                     // fallback to system preference
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                         theme = 'dark';
-                    } else {
-                        theme = 'light';
-                    }
-                }
-                document.documentElement.setAttribute('data-theme', theme);
-            } catch(e) {}
-        })();
-        </script>
-        <!-- Force desktop viewport for the login screen on mobile devices (apply early) -->
-        <script>
-        (function(){
-            try {
-                // detect mobile-ish devices
-                var isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
-                // Only apply when login screen exists in the HTML (we're on the main page)
-                if (!isMobile || !document.getElementById || !document.getElementById('login-screen')) return;
-
-                var meta = document.querySelector('meta[name="viewport"]');
-                if (!meta) return;
-
-                // preserve original viewport so navigation module can restore it later
-                if (!document.documentElement.hasAttribute('data-orig-viewport')) {
-                    try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
-                }
-
+                    <script>
+                    window.showGuestModal = function() {
+                        document.getElementById('guest-modal').style.display = 'block';
+                    };
+                    window.closeGuestModal = function() {
+                        document.getElementById('guest-modal').style.display = 'none';
+                    };
+                    window.agreeGuestLogin = function() {
+                        window.closeGuestModal();
+                        window.startGuestLogin && window.startGuestLogin();
+                    };
+                    window.startGuestLogin = function() {
+                        document.body.classList.add('guest-mode');
+                        try {
+                            localStorage.setItem('guest-mode', 'true');
+                            sessionStorage.setItem('guest-mode', 'true');
+                        } catch(e){}
+                        window.location.href = '/dashboard-view';
+                    };
+                    </script>
                 // compute scale so 1200px layout fits the device
                 var desktopWidth = 1200;
                 var deviceW = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
