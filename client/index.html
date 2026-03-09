@@ -577,6 +577,13 @@
                     opacity: 0.95;
                 }
                 .logo-wrap img { box-shadow: inset 0 0 0 5px rgba(0,0,0,0.12); }
+                /* Enlarge the logo image inside the circle by 20% and crop it to the circle */
+                .logo-wrap { overflow: hidden; }
+                .logo-wrap img {
+                    transform: scale(1.20);
+                    transform-origin: center center;
+                    transition: transform 280ms cubic-bezier(.2,.9,.2,1);
+                }
             .card-title { font-size: 1.8rem; }
         }
     </style>
