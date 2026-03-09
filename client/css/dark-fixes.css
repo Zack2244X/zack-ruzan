@@ -99,8 +99,8 @@ body.after-login .mobile-after-login { display: block !important; }
 
 /* Logo round with golden halo */
 .dark .logo-wrap, [data-theme="dark"] .logo-wrap {
-  width: 120px !important;
-  height: 120px !important;
+  /* allow the page-local `.logo-wrap` sizing to take effect
+     (don't force a fixed 120px size here). Keep visual accents. */
   border-radius: 9999px !important;
   display: flex !important;
   align-items: center !important;
@@ -109,13 +109,19 @@ body.after-login .mobile-after-login { display: block !important; }
   background: radial-gradient(circle at 50% 35%, rgba(255,230,150,0.18), rgba(0,0,0,0.0) 45%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border: 6px solid rgba(255,235,170,0.14) !important; /* inner ring */
   box-shadow: 0 6px 30px rgba(255,190,60,0.18), 0 0 30px rgba(255,200,80,0.08) !important;
+  padding: 0 !important;
+  /* do not set width/height here so the component-local CSS can control sizing */
 }
 
 .dark .logo-wrap img, [data-theme="dark"] .logo-wrap img {
-  width: 74px !important;
-  height: 74px !important;
+  /* Fill the wrapper circle completely */
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
   border-radius: 9999px !important;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.6) inset;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 /* Title in warm gold */
