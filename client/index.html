@@ -10,14 +10,7 @@
                     // fallback to system preference
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                         theme = 'dark';
-                    <script>
-                    window.showGuestModal = function() {
-                        document.getElementById('guest-modal').style.display = 'block';
-                    };
-                    window.closeGuestModal = function() {
-                        document.getElementById('guest-modal').style.display = 'none';
-                    };
-                    window.agreeGuestLogin = function() {
+                    }
                         window.closeGuestModal();
                         window.startGuestLogin && window.startGuestLogin();
                     };
@@ -28,8 +21,7 @@
                             sessionStorage.setItem('guest-mode', 'true');
                         } catch(e){}
                         window.location.href = '/dashboard-view';
-                    };
-                    </script>
+                    }
                 // compute scale so 1200px layout fits the device
                 var desktopWidth = 1200;
                 var deviceW = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
@@ -42,6 +34,26 @@
                 console.warn('applyLoginDesktopViewport failed', e);
             }
         })();
+        </script>
+        <script>
+        window.showGuestModal = function() {
+            document.getElementById('guest-modal').style.display = 'block';
+        };
+        window.closeGuestModal = function() {
+            document.getElementById('guest-modal').style.display = 'none';
+        };
+        window.agreeGuestLogin = function() {
+            window.closeGuestModal();
+            window.startGuestLogin && window.startGuestLogin();
+        };
+        window.startGuestLogin = function() {
+            document.body.classList.add('guest-mode');
+            try {
+                localStorage.setItem('guest-mode', 'true');
+                sessionStorage.setItem('guest-mode', 'true');
+            } catch(e){}
+            window.location.href = '/dashboard-view';
+        };
         </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -963,7 +975,26 @@
                 // تحويل المستخدم مباشرة إلى لوحة الطالب كضيف
                 window.location.href = '/dashboard-view';
             }
-            }
+            </script>
+            <script>
+            window.showGuestModal = function() {
+                document.getElementById('guest-modal').style.display = 'block';
+            };
+            window.closeGuestModal = function() {
+                document.getElementById('guest-modal').style.display = 'none';
+            };
+            window.agreeGuestLogin = function() {
+                window.closeGuestModal();
+                window.startGuestLogin && window.startGuestLogin();
+            };
+            window.startGuestLogin = function() {
+                document.body.classList.add('guest-mode');
+                try {
+                    localStorage.setItem('guest-mode', 'true');
+                    sessionStorage.setItem('guest-mode', 'true');
+                } catch(e){}
+                window.location.href = '/dashboard-view';
+            };
             </script>
             </style>
         </div>
