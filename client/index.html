@@ -1559,7 +1559,8 @@
         (function loop() { update(); drawRope(); requestAnimationFrame(loop); })();
 
         /* ═══ تبديل الإضاءة ═══ */
-        let isOn = true;
+        // Default to off so the lamp is off on first load and after refresh
+        let isOn = false;
 
         window.toggleLamp = function() { isOn = !isOn; applyState(); };
 
@@ -1613,6 +1614,8 @@
                 card.classList.add('off');
             }
         }
+        // Ensure UI reflects initial state on page load/refresh
+        try { applyState(); } catch(e){}
 
         /* ═══ الرمش التلقائي ═══ */
         function blinkEyes() {
