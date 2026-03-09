@@ -377,20 +377,24 @@
     }
 
         .logo-wrap {
-            /* increased 50% to make the logo larger and fill the circle */
-            width: 270px;
-            height: 270px;
-      border-radius: 50%;
-      margin: 0 auto 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, var(--royal-blue), var(--royal-dark));
-      border: 3px solid var(--gold);
-      box-shadow: 0 0 0 6px rgba(201,150,42,0.15), 0 0 50px rgba(201,150,42,0.75), 0 0 120px rgba(201,150,42,0.40);
-      animation: logoPulse 3s ease-in-out infinite;
-      overflow: hidden;
-    }
+            /* Only show the logo image and a soft outer halo.
+                 Size increased 50% (from previous 270px -> 405px). */
+            width: 405px;
+            height: 405px;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* remove inner gradient/border so only the image and halo remain */
+            background: transparent;
+            border: none;
+            /* outer soft halo only */
+            box-shadow: 0 0 140px rgba(201,150,42,0.45);
+            animation: logoPulse 3s ease-in-out infinite;
+            overflow: hidden;
+            padding: 0;
+        }
 
     @keyframes logoPulse {
       0%, 100% { box-shadow: 0 0 0 6px rgba(201,150,42,0.15), 0 0 50px rgba(201,150,42,0.75), 0 0 120px rgba(201,150,42,0.40); }
@@ -503,12 +507,12 @@
       .light-cone { top: 100px; width: 180px; height: 260px; }
       #rope-canvas { top: 100px; }
     }
-    @media (max-width: 480px) {
-      .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
-            /* mobile: scale 140 -> 210 (50% larger) */
-            .logo-wrap { width: 210px; height: 210px; }
-      .card-title { font-size: 1.8rem; }
-    }
+        @media (max-width: 480px) {
+            .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
+            /* mobile: increase previous 210 -> 315 (50% larger) */
+            .logo-wrap { width: 315px; height: 315px; }
+            .card-title { font-size: 1.8rem; }
+        }
     </style>
         <!-- Improve font loading behavior to avoid invisible text and layout shifts -->
         <style>

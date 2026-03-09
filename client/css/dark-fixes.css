@@ -99,22 +99,20 @@ body.after-login .mobile-after-login { display: block !important; }
 
 /* Logo round with golden halo */
 .dark .logo-wrap, [data-theme="dark"] .logo-wrap {
-  /* allow the page-local `.logo-wrap` sizing to take effect
-     (don't force a fixed 120px size here). Keep visual accents. */
+  /* Keep only an outer halo and allow the component to control size */
   border-radius: 9999px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   margin: 0 auto 1.25rem !important;
-  background: radial-gradient(circle at 50% 35%, rgba(255,230,150,0.18), rgba(0,0,0,0.0) 45%), linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: 6px solid rgba(255,235,170,0.14) !important; /* inner ring */
-  box-shadow: 0 6px 30px rgba(255,190,60,0.18), 0 0 30px rgba(255,200,80,0.08) !important;
+  background: transparent !important;
+  border: none !important;
+  /* strong outer halo only */
+  box-shadow: 0 0 160px rgba(255,200,80,0.28) !important;
   padding: 0 !important;
-  /* do not set width/height here so the component-local CSS can control sizing */
 }
 
 .dark .logo-wrap img, [data-theme="dark"] .logo-wrap img {
-  /* Fill the wrapper circle completely */
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
