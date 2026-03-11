@@ -191,11 +191,52 @@ function _initWithClass(LenisClass, options) {
     // ابدأ حلقة RAF
     _rafId = requestAnimationFrame(_rafLoop);
 
-    console.log('[scroll] ✓ Lenis مُهيَّأ — التمرير الناعم يعمل');
+    // ── ربط Lenis بـ GSAP ScrollTrigger ─────────────────────────────────────
+    // Lenis يُحرِّك موضع التمرير بشكل مستقل عبر RAF.
+    // ScrollTrigger بالمقابل يقرأ window.scrollY مباشرةً.
+    // بدون هذا الربط: scroll-triggered animations تتأخر فريمَين عن الحركة الفعلية
+    // → جانك ظاهر بوضوح على الأجهزة البطيئة (Adreno/Mali mid-range).
+    // الحل: عند كل تحديث Lenis نُخبر ScrollTrigger بإعادة حساب مواضعه.
+    _lenis.on('scroll', () => {
+        try { window.ScrollTrigger?.update?.(); } catch (e) { /* ignore */ }
+    });
+
+    console.log('[scroll] ✓ Lenis مُهيَّأ — التمرير الناعم يعمل + ScrollTrigger مرتبط');
     return _lenis;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * يضبط سلوك Lenis بناءً على مستوى أداء الجهاز.
+ * يُستدعى من app.js بعد اكتمال getDevicePerformanceTier().
+ *
+ * المنطق:
+ *  - high    → مدة 1.2s (افتراضي) — أقصى سلاسة
+ *  - medium / موبايل → مدة أقصر + touchMultiplier أقل = استجابة أسرع
+ *  - low     → تعطيل smoothWheel (native فقط)
+ *
+ * @param {'high'|'medium'|'low'} tier
+ * @param {boolean} [isMobile=false]
+ */
+export function setScrollTierOptions(tier, isMobile = false) {
+    if (!_lenis) return;
+    try {
+        if (tier === 'low') {
+            // موارد منخفضة — اترك التمرير native تماماً
+            if (_lenis.options) _lenis.options.smoothWheel = false;
+        } else if (tier === 'medium' || isMobile) {
+            // موبايل متوسط: مدة أقصر = شعور أكثر مباشرة، أقل مقاومة
+            if (_lenis.options) {
+                _lenis.options.duration       = isMobile ? 0.8 : 1.0;
+                _lenis.options.touchMultiplier = isMobile ? 1.0 : 1.5;
+            }
+        }
+        console.log(`[scroll] tier=${tier} mobile=${isMobile} → Lenis options updated`);
+    } catch (e) {
+        // بعض إصدارات Lenis لا تكشف options مباشرة
+    }
+}
 
 /**
  * تمرير الصفحة إلى الأعلى بانسيابية.

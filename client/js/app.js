@@ -73,7 +73,8 @@ import {
 import {
     initScroll, scrollToTop, scrollToElement,
     enableSmoothScroll, disableSmoothScroll,
-    onScrollEnter, offScrollEnter
+    onScrollEnter, offScrollEnter,
+    setScrollTierOptions
 } from './modules/scroll.js';
 
 // === أداة أداء الجهاز ===
@@ -177,6 +178,11 @@ async function applyPerformanceBasedAnimationSettings(perf) {
     document.body.classList.remove('gpu-high', 'gpu-medium', 'gpu-low');
     document.body.classList.add(`gpu-${gpu?.tier || tier}`);
     if (tier === 'low') document.body.classList.add('reduced-graphics');
+
+    // ── ضبط Lenis بناءً على tier والجهاز ──────────────────────────────────────
+    const _isMobile = navigator.maxTouchPoints > 1 &&
+                      !!window.matchMedia?.('(hover: none)').matches;
+    setScrollTierOptions(tier, _isMobile);
 
     switch (tier) {
         case 'high':
@@ -547,7 +553,20 @@ export async function startApp() {
 
             const start = () => {
                 try {
-                    initScroll();
+                    const _p = window.__devicePerf;
+                    const _t = _p?.tier || 'high';
+                    const _m = navigator.maxTouchPoints > 1 &&
+                               !!window.matchMedia?.('(hover: none)').matches;
+                    // تمرير مدة مناسبة للجهاز عند إنشاء Lenis
+                    const scrollOpts = {};
+                    if (_t === 'low') {
+                        scrollOpts.smoothWheel = false;
+                        scrollOpts.duration    = 0;
+                    } else if (_t === 'medium' || _m) {
+                        scrollOpts.duration        = _m ? 0.8 : 1.0;
+                        scrollOpts.touchMultiplier = _m ? 1.0 : 1.5;
+                    }
+                    initScroll(scrollOpts);
                 } catch (err) {
                     console.warn('[scroll] deferred init failed:', err);
                 }

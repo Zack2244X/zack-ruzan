@@ -132,6 +132,68 @@ body.gpu-medium #ios-bottom-nav {
 /* لا حاجة لقواعد خاصة — styles الافتراضي يطبق كل شيء */
 
 
+/* ============================================
+   GPU Vendor Classes — تحسينات محدّدة لكل معالج رسوميات
+   ─────────────────────────────────────────────
+   يُطبَّق بناءً على نتيجة probeGPU() في helpers.js →
+   document.body.classList.add('vendor-XXXX')
+
+   المنطق: كل معالج له خصائص تقنية تختلف —
+   • Adreno (Qualcomm): TBDR معالجة بـ tiles، ضعيف في multi-pass effects
+     (backdrop-filter يُشغِّل pass ثانٍ على كل tile = بطء حاد)
+   • Mali (ARM): أفضل من Adreno في البلور لكنه يتأثر بـ overdraw الشديد
+     (عناصر شفافة متداخلة كثيرة = fill rate يُستنزَف)
+   ============================================ */
+
+/* ── Adreno: تعطيل backdrop-filter تماماً ────────────────────────────────
+   Qualcomm Adreno 5xx/6xx: حتى blur(6px) يُشغِّل offscreen render pass
+   على كل tile الشاشة (TBDR). على هاتف 1080×2340 = آلاف الـ tiles.
+   النتيجة: يُستبدَل بـ خلفية صلبة شبه شفافة — نفس الجماليات بلا تكلفة.
+   ─────────────────────────────────────────────────────────────────────── */
+body.vendor-adreno .glass-card,
+body.vendor-adreno .glass-soft,
+body.vendor-adreno .bottom-sheet-content,
+body.vendor-adreno #ios-bottom-nav,
+body.vendor-adreno #theme-toggle,
+body.vendor-adreno [id$="-modal"] > div {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    /* بديل: خلفية صلبة تحافظ على تصميم الـ glass بدون تكلفة GPU */
+    background: color-mix(in srgb, var(--card-strong) 95%, transparent) !important;
+    border: 1px solid var(--border) !important;
+}
+
+/* ── Mali: تقليل blur لأدنى حد مقبول ────────────────────────────────────
+   ARM Mali-G5x/G6x: يتعامل مع blur بشكل أفضل من Adreno لكنه يتضرر
+   بشكل خاص من overdraw (طبقات شفافة متعددة فوق بعضها في نفس البقعة).
+   نُقلل الblur لتخفيف عدد passes وزيادة opacity لتقليل blend cost.
+   ─────────────────────────────────────────────────────────────────────── */
+body.vendor-mali .glass-card {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    --glass-blur: 4px;
+}
+body.vendor-mali .glass-soft {
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+}
+body.vendor-mali .bottom-sheet-content,
+body.vendor-mali #ios-bottom-nav {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+}
+
+/* ── PowerVR (iPhone 4-era / budget Android): مثل Adreno ────────────── */
+body.vendor-powervr .glass-card,
+body.vendor-powervr .glass-soft,
+body.vendor-powervr .bottom-sheet-content,
+body.vendor-powervr #ios-bottom-nav {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--card-strong) !important;
+}
+
+
 
 /* === Dark Theme Variables === */
 [data-theme="dark"] {
@@ -174,6 +236,19 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+
+    /* ── Scroll Performance ──────────────────────────────────────────────────
+       overscroll-behavior: contain
+         • يمنع Chrome من تشغيل "rubber-band" scroll عند الوصول لنهاية الصفحة
+         • بدونه: Chrome يحسب bounce animation على كل frame حتى بعد التوقف
+         • يُقلل CPU load بشكل واضح على Adreno/Mali أثناء scroll الحدود
+       touch-action: pan-y
+         • يُخبر المتصفح مباشرةً أن هذا العنصر يدعم التمرير العمودي فقط
+         • يُلغي تأخر 300ms للتعرف على الإيماءة + يُعطي Chrome صلاحية
+           تسليم أحداث اللمس لـ GPU compositor thread مباشرةً دون JS thread
+       ──────────────────────────────────────────────────────────────────── */
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 /* Background overlay image
@@ -553,10 +628,30 @@ body::before {
 
 /* ── Section Containment — عزل الأقسام لمنع reflow متسلسل ──────────────
    contain: layout style → أي reflow داخل القسم لا يتسرب للأقسام الأخرى
+   touch-action: pan-y → يُخبر Chrome compositor مباشرةً بنوع الإيماءة:
+     يبدأ scroll على GPU compositor thread بدون انتظار JS main thread.
    ────────────────────────────────────────────────────── */
 #dashboard-view,
 #quiz-container {
     contain: layout style;
+    touch-action: pan-y;
+}
+
+/* ── Content Visibility — تأجيل رسم الأقسام خارج المنظور ─────────────
+   content-visibility: auto → المتصفح يتخطى layout+paint لهذا القسم
+   حتى يقترب من المنظور (viewport margin افتراضياً = 50% ارتفاع الشاشة)
+
+   مثال عملي على Y9 Prime (6.59", 1080×2340, ~120dpi DPR≈2.36):
+   الصفحة الرئيسية تحتوي 3 أقسام — على الهاتف يظهر القسم الأول فقط.
+   بدون content-visibility: المتصفح يرسم الـ 3 أقسام دفعة واحدة.
+   معها: يرسم القسم الأول فقط ← FCP أسرع + أول scroll أكثر سلاسة.
+
+   contain-intrinsic-block-size: auto 400px
+   auto = يحفظ الارتفاع الحقيقي بعد أول رسم لمنع scrollbar jump
+   ─────────────────────────────────────────────────────────── */
+#dashboard-view > section {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 400px;
 }
 
 /* ── Time Badge (pulsing clock animation) ───────────────────────── */

@@ -218,6 +218,30 @@ function probeGPU() {
         const renderer = (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '').toLowerCase();
         const vendor   = (dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL)   : '').toLowerCase();
 
+        // ── تعيين vendor class على body مبكراً ─────────────────────────────
+        // يُتيح CSS vendor-specific rules (Adreno/Mali) بدون انتظار كامل التهيئة
+        // مبكر بشكل مقصود: يُطبَّق قبل رسم أي frame كثيف
+        try {
+            const b = document?.body?.classList;
+            if (b) {
+                if (/adreno/i.test(renderer) || /qualcomm/i.test(vendor)) {
+                    b.add('vendor-adreno');
+                } else if (/mali/i.test(renderer) || /\barm\b/i.test(vendor)) {
+                    b.add('vendor-mali');
+                } else if (/apple/i.test(renderer) || /apple/i.test(vendor)) {
+                    b.add('vendor-apple');
+                } else if (/nvidia|geforce|rtx|gtx/i.test(renderer)) {
+                    b.add('vendor-nvidia');
+                } else if (/amd|radeon/i.test(renderer)) {
+                    b.add('vendor-amd');
+                } else if (/intel/i.test(renderer)) {
+                    b.add('vendor-intel');
+                } else if (/powervr/i.test(renderer)) {
+                    b.add('vendor-powervr');
+                }
+            }
+        } catch (e) { /* document قد لا يكون متاحاً في بعض البيئات */ }
+
         const maxTexSize      = gl.getParameter(gl.MAX_TEXTURE_SIZE)              || 0;
         const maxVertUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS)    || 0;
         const maxFragUniforms = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)  || 0;
