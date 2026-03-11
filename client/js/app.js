@@ -17,7 +17,8 @@ import {
     applyTheme, toggleTheme, initTheme, navToHome,
     navToSection as _navToSection, openAdminAuthOrPanel,
     showLoginScreenWithDesktop,
-    closeStudentMenu, showLoginScreen, toggleTreeNode
+    closeStudentMenu, showLoginScreen, toggleTreeNode,
+    initOverlayScrollLock
 } from './modules/navigation.js';
 import {
     startGoogleRedirectLogin, handleGoogleRedirectToken, initGoogleSignIn,
@@ -524,6 +525,14 @@ export async function startApp() {
         }
     }
     document.addEventListener('DOMContentLoaded', observeLoginLayout);
+
+    // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
+    // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initOverlayScrollLock());
+    } else {
+        initOverlayScrollLock();
+    }
 
     // ── تهيئة وحدات الحركة والتمرير ──────────────────────────────────────────
     // يجب أن تسبق applyPerformanceBasedAnimationSettings() حتى تكون

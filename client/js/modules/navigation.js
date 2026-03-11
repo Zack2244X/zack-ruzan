@@ -4,6 +4,7 @@
  */
 import state, { THEME_KEY } from './state.js';
 import { logFunctionStatus } from './helpers.js';
+import { getLenisInstance } from './scroll.js';
 
 /**
  * مزامنة حالة التفاعل مع العناصر الرئيسية (منع التفاعل عند فتح نوافذ)
@@ -15,10 +16,22 @@ export function _syncMainInteractionState() {
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
 
-    const anyOpen = ['create-section-modal','add-note-modal','edit-selection-modal','grades-modal','stats-modal','admin-auth-modal','delete-subject-modal','rename-subject-modal','student-menu-modal','login-screen']
-        .some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
-    const sheetOpen = document.getElementById('tree-content')?.classList.contains('active') || document.getElementById('admin-content')?.classList.contains('active');
-    const blocked = anyOpen || sheetOpen;
+    // قائمة كاملة بكل العناصر التي تظهر فوق الشاشة الرئيسية:
+    // — تشمل results-screen (نتيجة الاختبار) و confirm-modal-overlay (مربع التأكيد)
+    const anyOpen = [
+        'create-section-modal', 'add-note-modal', 'edit-selection-modal',
+        'grades-modal', 'stats-modal', 'admin-auth-modal',
+        'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
+        'results-screen', 'confirm-modal-overlay'
+    ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+    const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
+                   || document.getElementById('admin-content')?.classList.contains('active');
+    // guest-modal يستخدم display:none/block بدل hidden class
+    const guestModalOpen = (() => {
+        const gm = document.getElementById('guest-modal');
+        return gm ? gm.style.display !== 'none' && gm.style.display !== '' && gm.offsetParent !== null : false;
+    })();
+    const blocked = anyOpen || sheetOpen || guestModalOpen;
 
     if (dashboard) {
         dashboard.classList.toggle('pointer-events-none', blocked);
@@ -41,6 +54,9 @@ export function _syncMainInteractionState() {
             if (bodyOverflowY !== 'scroll') {
                 body.style.overflow = 'hidden';
             }
+            // وقف Lenis: overflow:hidden لا يكفي — Lenis يستمر عبر RAF
+            // ويتجاهل CSS overflow ويُحرِّك الصفحة خلف المودال
+            try { getLenisInstance()?.stop?.(); } catch (e) {}
         } else {
             const orig = body.getAttribute('data-orig-pr');
             if (orig !== null) {
@@ -53,6 +69,8 @@ export function _syncMainInteractionState() {
             if (bodyOverflowY !== 'scroll') {
                 body.style.overflow = '';
             }
+            // استئناف Lenis بعد إغلاق المودال
+            try { getLenisInstance()?.start?.(); } catch (e) {}
         }
     } catch (e) {
         if (getComputedStyle(document.body).overflowY !== 'scroll') {
@@ -77,6 +95,47 @@ export function _showThemeToggle(show) {
     if (!t) return;
     if (!show) { t.style.display = 'none'; return; }
     _syncMainInteractionState();
+}
+
+/**
+ * مراقبة مركزية بـ MutationObserver لكل الطبقات التي تظهر فوق الصفحة الرئيسية.
+ *
+ * المشكلة: بعض المودالز (درجات، إحصائيات، نتيجة الاختبار، مربع التأكيد) تفتح مباشرةً
+ * بدون تمرير دالة الفتح بـ _syncMainInteractionState → Lenis/overflow لم يُقف.
+ *
+ * الحل: Observer يراقب class+style لكل مودال → عند أي تغيير ينادي
+ * _syncMainInteractionState() التي تحدد بنفسها إن كان هناك شيء مفتوح.
+ *
+ * يُستدعى مرة واحدة بعد DOMContentLoaded من startApp في app.js.
+ */
+export function initOverlayScrollLock() {
+    // كل العناصر التي يمكن أن تظهر فوق الصفحة الرئيسية
+    const OVERLAY_IDS = [
+        'grades-modal', 'stats-modal', 'edit-selection-modal',
+        'add-note-modal', 'create-section-modal',
+        'admin-auth-modal', 'student-menu-modal',
+        'delete-subject-modal', 'rename-subject-modal',
+        'results-screen', 'confirm-modal-overlay',
+        'guest-modal'
+    ];
+    const SHEET_IDS = ['tree-content', 'admin-content'];
+
+    if (typeof MutationObserver === 'undefined') return;
+
+    const observer = new MutationObserver(() => {
+        // تأجيل frame واحد حتى تكتمل تغييرات الـ class، ثم نزامن مع DOM
+        requestAnimationFrame(() => _syncMainInteractionState());
+    });
+
+    const observeEl = (id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    };
+
+    [...OVERLAY_IDS, ...SHEET_IDS].forEach(observeEl);
+
+    console.log('[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على '
+        + (OVERLAY_IDS.length + SHEET_IDS.length) + ' عنصر');
 }
 
 /**
