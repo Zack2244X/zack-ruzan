@@ -950,15 +950,31 @@
                     sessionStorage.setItem('isAdmin', 'false');
                     localStorage.setItem('guest-mode', 'true');
                     sessionStorage.setItem('guest-mode', 'true');
-                } catch(e){}
-                // استدعاء loadApp مباشرة بدون redirect لتجنب مسح sessionStorage
-                if (typeof window.loadApp === 'function') {
-                    window.loadApp();
-                } else {
-                    // fallback: إذا لم يتهيأ app.js بعد، انتظر ثم استدعه
-                    window.addEventListener('load', function() {
-                        if (typeof window.loadApp === 'function') window.loadApp();
-                    }, { once: true });
+                } catch(e) { console.error('[guest] failed to save session', e); return; }
+
+                // ── التلاعب المباشر بالـ DOM بدون الاعتماد على app.js ──
+                var loginScreen    = document.getElementById('login-screen');
+                var dashboardView  = document.getElementById('dashboard-view');
+                var bottomNav      = document.getElementById('ios-bottom-nav');
+                var quizContainer  = document.getElementById('quiz-container');
+                var welcomeMsg     = document.getElementById('welcome-msg');
+
+                if (loginScreen)   loginScreen.classList.add('hidden');
+                if (dashboardView) dashboardView.classList.remove('hidden');
+                if (bottomNav)     bottomNav.classList.remove('hidden');
+                if (quizContainer) quizContainer.classList.add('hidden');
+                // تفعيل تمرير الصفحة في حال أُغلق من قبل
+                document.body.style.overflow = '';
+                if (welcomeMsg) welcomeMsg.innerText = 'مَرْحَبًا بِكَ يَا ضَيْفَنَا الكَرِيم — الدخول تجريبي ولن تُحفظ الدرجات';
+
+                console.log('[guest] ✓ تم الدخول كضيف — عرض لوحة القيادة');
+
+                // استدعاء دوال التطبيق إن كانت متاحة (لعرض محتوى الـ dashboard)
+                if (typeof window.navToHome === 'function') {
+                    try { window.navToHome(); } catch(e) { console.warn('[guest] navToHome failed', e); }
+                }
+                if (typeof window.renderDashboard === 'function') {
+                    try { window.renderDashboard(); } catch(e) { console.warn('[guest] renderDashboard failed', e); }
                 }
             };
             </script>
