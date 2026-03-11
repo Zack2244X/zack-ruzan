@@ -129,15 +129,20 @@ window.addEventListener('storage', (e) => {
 });
 
 // ─── مسح الجلسة قبل أي reload/إغلاق للتبويب ───
-// pagehide يُطلَق قبل أن تبدأ الصفحة الجديدة بالتحميل
-// يضمن أن loadApp() سيجد sessionStorage فارغاً دائماً عند كل تحميل
-// استثناء: جلسة الضيف تُحفظ في localStorage فقط، لا داعي لمسح sessionStorage لها
+// pagehide يُطلَق قبل أن تبدأ الصفحة الجديدة بالتحميل.
+// نمسح sessionStorage دائماً — لجلسة الضيف والمستخدم العادي على حدٍّ سواء.
+// sessionStorage تبقى عند F5/Ctrl+R (reload)، فلو لم نمسحها سيدخل المستخدم
+// مباشرةً للداشبورد دون المرور بشاشة تسجيل الدخول.
+// كذلك نمسح guest-mode من localStorage لأنها لا تُعيَّن من جديد إلا بعد
+// الموافقة الصريحة من المستخدم في نافذة "الدخول كضيف".
 window.addEventListener('pagehide', () => {
-    const isGuestSession = localStorage.getItem('guest-mode') === 'true';
-    if (!isGuestSession) {
-        sessionStorage.removeItem('currentUser');
-        sessionStorage.removeItem('isAdmin');
-    }
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('isAdmin');
+    sessionStorage.removeItem('guest-mode');
+    // مسح guest-mode من localStorage أيضاً حتى لا يبقى الوضع
+    // معلقاً بعد الريفريش أو إغلاق التاب
+    localStorage.removeItem('guest-mode');
+    document.body.classList.remove('guest-mode');
 });
 
 // ============================================
