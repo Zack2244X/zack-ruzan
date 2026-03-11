@@ -131,9 +131,13 @@ window.addEventListener('storage', (e) => {
 // ─── مسح الجلسة قبل أي reload/إغلاق للتبويب ───
 // pagehide يُطلَق قبل أن تبدأ الصفحة الجديدة بالتحميل
 // يضمن أن loadApp() سيجد sessionStorage فارغاً دائماً عند كل تحميل
+// استثناء: جلسة الضيف تُحفظ في localStorage فقط، لا داعي لمسح sessionStorage لها
 window.addEventListener('pagehide', () => {
-    sessionStorage.removeItem('currentUser');
-    sessionStorage.removeItem('isAdmin');
+    const isGuestSession = localStorage.getItem('guest-mode') === 'true';
+    if (!isGuestSession) {
+        sessionStorage.removeItem('currentUser');
+        sessionStorage.removeItem('isAdmin');
+    }
 });
 
 // ============================================
@@ -315,17 +319,26 @@ function loadApp() {
         if (savedUser) {
             state.currentUser = JSON.parse(savedUser);
             state.isAdmin = sessionStorage.getItem('isAdmin') === 'true';
-            // Token is managed via httpOnly cookie; adminToken set on fresh login only
 
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('dashboard-view').classList.remove('hidden');
             document.getElementById('ios-bottom-nav').classList.remove('hidden');
 
+            const isGuest = state.currentUser.role === 'guest';
             const safeName = escapeHtml(state.currentUser.fname || state.currentUser.fullName || 'صديقنا');
-            document.getElementById('welcome-msg').innerText = `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
+            document.getElementById('welcome-msg').innerText = isGuest
+                ? 'مَرْحَبًا بِكَ يَا ضَيْفَنَا الكَرِيم — الدخول تجريبي ولن تُحفظ الدرجات'
+                : `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
 
             navToHome();
             renderDashboard();
+
+            if (isGuest) {
+                // وضع الضيف: لا توكن، لا تجديد، لا بيانات من السيرفر
+                console.log('[app] ✓ وضع الضيف — تحميل بدون بيانات');
+                return;
+            }
+
             startTokenRefresh();
             loadDataFromServer().then(() => {
                 state.dataLoaded = true;
@@ -357,7 +370,7 @@ Object.assign(window, {
     toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle,
 
     // Auth
-    startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin,
+    startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,
 
     // Quiz
     playQuiz, selectAnswer, goToNextQuestion, goToPreviousQuestion,

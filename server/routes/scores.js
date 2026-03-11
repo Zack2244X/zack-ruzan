@@ -59,20 +59,22 @@ async function resolveAttemptMeta(userId, quizId) {
  * @param {import('express').Response} res - { message, result, details, meta }
  * @returns {Promise<void>}
  */
-router.post('/', authenticate, validateSubmitScore, async (req, res) => {
+// middleware لمعالجة الضيف قبل التحقق من التوكن
+const handleGuestMode = (req, res, next) => {
+    if (req.headers['x-guest-mode'] === 'true') {
+        return res.status(200).json({
+            message: 'تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.',
+            result: null,
+            meta: { isOfficial: false, attemptNumber: 0 },
+            details: []
+        });
+    }
+    next();
+};
+
+router.post('/', handleGuestMode, authenticate, validateSubmitScore, async (req, res) => {
     try {
         const { quizId, answers, timeTaken } = req.body;
-
-        // تحقق من وضع الضيف (guest-mode)
-        const isGuest = req.headers['x-guest-mode'] === 'true';
-        if (isGuest) {
-            return res.status(200).json({
-                message: 'تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.',
-                result: null,
-                meta: { isOfficial: false, attemptNumber: 0 },
-                details: []
-            });
-        }
 
         // 1. تحديد رقم المحاولة وطبيعتها (رسمية أم تدريبية)
         const { attemptNumber, isOfficial } = await resolveAttemptMeta(req.user.id, quizId);

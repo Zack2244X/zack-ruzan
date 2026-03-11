@@ -210,12 +210,13 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             const parts = fullName.trim().split(/\s+/);
             fname = parts[0] || '';
             lname = parts.slice(1).join(' ') || '';
-            if (fname && lname) {
+            if (fname) {
+                // إرسال الاسم حتى لو lname فارغة (أسماء أحادية)
                 await fetch('/api/auth/complete-profile', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ fname, lname })
+                    body: JSON.stringify({ fname, lname: lname || '' })
                 }).catch(() => { });
             }
         }
@@ -270,14 +271,22 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
 export async function logoutUser() {
     logFunctionStatus('logoutUser', true);
     console.log('[auth] بدء تسجيل الخروج...');
-    try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
+    const isGuest = state.currentUser?.role === 'guest' || localStorage.getItem('guest-mode') === 'true';
+    if (!isGuest) {
+        try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
+    }
     state.currentUser = null;
     state.isAdmin = false;
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('isAdmin');
-    // Signal other tabs to logout
-    localStorage.setItem('logout_event', Date.now().toString());
-    localStorage.removeItem('logout_event');
+    sessionStorage.removeItem('guest-mode');
+    localStorage.removeItem('guest-mode');
+    document.body.classList.remove('guest-mode');
+    // Signal other tabs to logout (non-guest only)
+    if (!isGuest) {
+        localStorage.setItem('logout_event', Date.now().toString());
+        localStorage.removeItem('logout_event');
+    }
     console.log('[auth] ✓ تم تسجيل الخروج');
     location.reload();
 }
@@ -300,8 +309,5 @@ export function startTokenRefresh() {
     }, 6 * 60 * 60 * 1000);
 }
 
-// بعد تسجيل الدخول أو تحميل الصفحة الرئيسية
-if (typeof startLeaderboardAutoRefresh === 'function') startLeaderboardAutoRefresh();
-
-// بعد تحميل الصفحة الرئيسية أو تسجيل الدخول
-// manual refresh button removed — dashboard auto-refresh handles updates
+// ملاحظة: startLeaderboardAutoRefresh تُستدعى من dashboard.js بعد تسجيل الدخول فعلياً
+// لا تستدعِها هنا عند تحميل الموديول تجنباً للـ polling قبل وجود جلسة

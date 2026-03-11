@@ -54,8 +54,9 @@ const validateCompleteProfile = [
         .matches(/^[\u0600-\u06FFa-zA-Z\s]+$/).withMessage('الاسم يحتوي على حروف فقط.'),
     body('lname')
         .trim()
-        .isLength({ min: 2, max: 50 }).withMessage('الاسم الثاني يجب أن يكون بين 2-50 حرف.')
-        .matches(/^[\u0600-\u06FFa-zA-Z\s]+$/).withMessage('الاسم يحتوي على حروف فقط.'),
+        .isLength({ min: 0, max: 50 }).withMessage('الاسم الثاني (اختياري) حتى 50 حرف.')
+        .optional({ checkFalsy: true })
+        .matches(/^[\u0600-\u06FFa-zA-Z\s]*$/).withMessage('الاسم يحتوي على حروف فقط.'),
     validate
 ];
 

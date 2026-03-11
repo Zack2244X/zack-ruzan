@@ -11,17 +11,7 @@
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                         theme = 'dark';
                     }
-                        window.closeGuestModal();
-                        window.startGuestLogin && window.startGuestLogin();
-                    };
-                    window.startGuestLogin = function() {
-                        document.body.classList.add('guest-mode');
-                        try {
-                            localStorage.setItem('guest-mode', 'true');
-                            sessionStorage.setItem('guest-mode', 'true');
-                        } catch(e){}
-                        window.location.href = '/dashboard-view';
-                    }
+                }
                 // compute scale so 1200px layout fits the device
                 var desktopWidth = 1200;
                 var deviceW = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
@@ -37,26 +27,6 @@
                 console.warn('applyLoginDesktopViewport failed', e);
             }
         })();
-        </script>
-        <script>
-        window.showGuestModal = function() {
-            document.getElementById('guest-modal').style.display = 'block';
-        };
-        window.closeGuestModal = function() {
-            document.getElementById('guest-modal').style.display = 'none';
-        };
-        window.agreeGuestLogin = function() {
-            window.closeGuestModal();
-            window.startGuestLogin && window.startGuestLogin();
-        };
-        window.startGuestLogin = function() {
-            document.body.classList.add('guest-mode');
-            try {
-                localStorage.setItem('guestMode', 'true');
-                sessionStorage.setItem('guestMode', 'true');
-            } catch(e){}
-            window.location.href = '/dashboard-view';
-        };
         </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -955,48 +925,6 @@
             }
             </style>
             <script>
-            function showGuestModal() {
-                document.getElementById('guest-modal').style.display = 'block';
-            }
-            function closeGuestModal() {
-                document.getElementById('guest-modal').style.display = 'none';
-            }
-            function agreeGuestLogin() {
-                closeGuestModal();
-                // هنا يتم تفعيل الدخول كضيف بدون حفظ بيانات أو درجات
-                // يمكنك وضع أي كود إضافي هنا مثل تحويل الصفحة أو تفعيل وضع الضيف
-                window.startGuestLogin && window.startGuestLogin();
-            }
-            // مثال: تفعيل وضع الضيف (يمكنك تعديل الكود حسب النظام)
-            window.startGuestLogin = function() {
-                // تفعيل وضع الضيف
-                document.body.classList.add('guest-mode');
-                // إنشاء مستخدم وهمي guest
-                var guestUser = {
-                    fname: 'ضيف',
-                    lname: '',
-                    fullName: 'ضيف',
-                    avatar: '',
-                    role: 'guest',
-                    email: ''
-                };
-                // حفظ في state إذا كان متاحاً
-                if (window.state) {
-                    window.state.currentUser = guestUser;
-                    window.state.isAdmin = false;
-                }
-                // حفظ في التخزين
-                try {
-                    sessionStorage.setItem('currentUser', JSON.stringify(guestUser));
-                    sessionStorage.setItem('isAdmin', 'false');
-                    localStorage.setItem('guest-mode', 'true');
-                    sessionStorage.setItem('guest-mode', 'true');
-                } catch(e){}
-                // تحويل المستخدم مباشرة إلى لوحة الطالب كضيف
-                window.location.href = '/dashboard-view';
-            }
-            </script>
-            <script>
             window.showGuestModal = function() {
                 document.getElementById('guest-modal').style.display = 'block';
             };
@@ -1009,14 +937,31 @@
             };
             window.startGuestLogin = function() {
                 document.body.classList.add('guest-mode');
+                var guestUser = {
+                    fname: 'ضيف',
+                    lname: '',
+                    fullName: 'ضيف',
+                    avatar: '',
+                    role: 'guest',
+                    email: ''
+                };
                 try {
+                    sessionStorage.setItem('currentUser', JSON.stringify(guestUser));
+                    sessionStorage.setItem('isAdmin', 'false');
                     localStorage.setItem('guest-mode', 'true');
                     sessionStorage.setItem('guest-mode', 'true');
                 } catch(e){}
-                window.location.href = '/dashboard-view';
+                // استدعاء loadApp مباشرة بدون redirect لتجنب مسح sessionStorage
+                if (typeof window.loadApp === 'function') {
+                    window.loadApp();
+                } else {
+                    // fallback: إذا لم يتهيأ app.js بعد، انتظر ثم استدعه
+                    window.addEventListener('load', function() {
+                        if (typeof window.loadApp === 'function') window.loadApp();
+                    }, { once: true });
+                }
             };
             </script>
-            </style>
         </div>
     </div>
 
