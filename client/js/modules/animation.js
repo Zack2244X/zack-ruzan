@@ -98,41 +98,55 @@ const activeAnimations = new Map();
 // ============================================
 
 /**
- * يقيس معدل تحديث الشاشة ويضبط GSAP ticker ليتوافق معه.
- * يمنع إهدار دورات CPU على شاشات 120hz+ بينما التطبيق يعمل على 60hz فعلي.
- * @returns {Promise<number>} معدل الإطارات المكتشف
+ * يقيس معدل تحديث الشاشة الفعلي ويُسجّله للتشخيص.
+ * يؤجّل القياس حتى يصبح المتصفح خاملاً (requestIdleCallback)
+ * لضمان دقة القراءة — خاصةً على شاشات 90/120Hz.
+ * @returns {Promise<number>} معدل الشاشة المكتشف (Hz)
  */
 async function detectAndApplyRefreshRate() {
     return new Promise((resolve) => {
-        let frames = 0;
-        let lastTime = performance.now();
-        const SAMPLE_MS = 500; // عينة نصف ثانية
+        const startMeasurement = () => {
+            let frames = 0;
+            let lastTime = performance.now();
+            const SAMPLE_MS = 1500; // عينة 1.5 ثانية — أدق بعد استقرار الصفحة
 
-        function countFrame(now) {
-            frames++;
-            if (now - lastTime < SAMPLE_MS) {
-                requestAnimationFrame(countFrame);
-            } else {
-                const fps = Math.round(frames / ((now - lastTime) / 1000));
+            function countFrame(now) {
+                frames++;
+                if (now - lastTime < SAMPLE_MS) {
+                    requestAnimationFrame(countFrame);
+                } else {
+                    const fps = Math.round(frames / ((now - lastTime) / 1000));
 
-                // تقريب للقيم الشائعة: 30, 60, 90, 120, 144
-                let targetFPS;
-                if (fps <= 35)       targetFPS = 30;
-                else if (fps <= 70)  targetFPS = 60;
-                else if (fps <= 100) targetFPS = 90;
-                else if (fps <= 130) targetFPS = 120;
-                else                 targetFPS = 144;
+                    // تحديد معدل الشاشة الفعلي
+                    let nativeHz;
+                    if (fps <= 35)       nativeHz = 30;
+                    else if (fps <= 70)  nativeHz = 60;
+                    else if (fps <= 100) nativeHz = 90;
+                    else if (fps <= 130) nativeHz = 120;
+                    else                 nativeHz = 144;
 
-                if (gsap) {
-                    gsap.ticker.fps(targetFPS);
-                    console.log(`[Animations] 🖥️ معدل تحديث الشاشة: ${fps}fps → GSAP ticker: ${targetFPS}fps`);
+                    console.log(`[Animations] 🖥️ معدل تحديث الشاشة: ${fps}fps → Native: ${nativeHz}Hz`);
+
+                    // الـ ticker مُضبوط على 0 (uncapped) في applyTierSettings للـ high/medium.
+                    // نتدخل فقط على الأجهزة الضعيفة يحدد سقف الـ 30fps
+                    if (gsap && currentTier === 'low') {
+                        gsap.ticker.fps(30);
+                        console.log('[Animations] 📉 Low tier → ticker: 30fps (توفير موارد)');
+                    }
+
+                    resolve(nativeHz);
                 }
-
-                resolve(targetFPS);
             }
-        }
 
-        requestAnimationFrame(countFrame);
+            requestAnimationFrame(countFrame);
+        };
+
+        // تأجيل حتى idle لضمان أن الـ CPU فاضي والقياس دقيق
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(startMeasurement, { timeout: 2500 });
+        } else {
+            setTimeout(startMeasurement, 1200);
+        }
     });
 }
 
@@ -224,8 +238,13 @@ export async function initAnimations(perfOverride) {
     // ── defaults لجميع الحركات ───────────────────────────────────────────
     gsap.defaults({
         ease: 'power2.out',
-        duration: 0.4 * speedMultiplier
+        duration: 0.4 * speedMultiplier,
+        // force3D: true — يُجبر GSAP على استخدام translate3d بدل translate2d
+        // هذا يضمن إنشاء GPU compositing layer لكل حركة تلقائياً
+        force3D: true
     });
+    // تفعيل RAF mode صراحةً — يضمن مزامنة الحركات مع vsync المتصفح
+    if (gsap.ticker?.useRAF) gsap.ticker.useRAF(true);
 
     initialized = true;
     console.log(`[Animations] ✓ تهيئة كاملة — tier:${currentTier} speed:${speedMultiplier} reducedMotion:${reducedMotion}`);
@@ -240,25 +259,36 @@ function applyTierSettings(tier) {
         case 'high':
             speedMultiplier = 1.0;
             reducedMotion = false;
-            // تفعيل lagSmoothing لشاشات 120hz+
-            if (gsap?.ticker) gsap.ticker.lagSmoothing(500, 33);
-            console.log('[Animations] ⚡ High tier — حركات كاملة');
+            if (gsap?.ticker) {
+                // تعطيل lagSmoothing تماماً — يتيح للـ ticker العمل بأقصى سرعة
+                // lagSmoothing يُبطّئ الحركة عمداً عند أي تأخر وهو عكس ما نريد على الشاشات عالية التردد
+                gsap.ticker.lagSmoothing(0);
+                // 0 = uncapped — GSAP يطابق معدل vsync الفعلي للشاشة (60/90/120/144Hz)
+                gsap.ticker.fps(0);
+            }
+            console.log('[Animations] ⚡ High tier — حركات كاملة / ticker uncapped');
             break;
 
         case 'medium':
             speedMultiplier = 0.75;
             reducedMotion = false;
-            // تخفيف lagSmoothing
-            if (gsap?.ticker) gsap.ticker.lagSmoothing(300, 16);
-            console.log('[Animations] 🔆 Medium tier — حركات مخففة');
+            if (gsap?.ticker) {
+                // تخفيف — 33ms = فريم واحد بـ30fps كـ threshold للـ lag
+                gsap.ticker.lagSmoothing(500, 33);
+                // uncapped أيضاً — الشاشة 120Hz ستستفيد تلقائياً
+                gsap.ticker.fps(0);
+            }
+            console.log('[Animations] 🔆 Medium tier — حركات مخففة / ticker uncapped');
             break;
 
         case 'low':
         default:
             speedMultiplier = 0;
             reducedMotion = true;
-            // تعطيل lagSmoothing توفيراً للموارد
-            if (gsap?.ticker) gsap.ticker.lagSmoothing(0);
+            if (gsap?.ticker) {
+                gsap.ticker.lagSmoothing(0);
+                // fps(30) سيُضبط بعد قياس الشاشة في detectAndApplyRefreshRate
+            }
             console.log('[Animations] 🔇 Low tier — حركات معطلة');
             break;
     }

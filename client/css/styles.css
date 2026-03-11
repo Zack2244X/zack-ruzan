@@ -103,9 +103,11 @@ body::before {
     pointer-events: none;
     filter: saturate(0.85) brightness(1.05);
 
-    /* GPU acceleration */
+    /* GPU acceleration: promoted to own compositing layer.
+       filter + will-change + translate3d معاً = طبقة GPU منفصلة
+       يتم تطبيق الـ filter مرة واحدة وليس مع كل scroll */
     will-change: transform;
-    transform: translateZ(0);
+    transform: translate3d(0, 0, 0);
 }
 
 /* ============================================
@@ -397,6 +399,57 @@ body::before {
 .notes-card-hover-glow {
     background: radial-gradient(circle at 35% 35%, rgba(251, 146, 60, 0.62), rgba(249, 115, 22, 0.24) 55%, rgba(234, 88, 12, 0.08) 75%, transparent 100%);
     filter: blur(0.2px);
+}
+
+/* ── Dashboard Cards: GPU Composited Hover Shadow ───────────────────
+   Tailwind's hover:shadow-xl تغيّر box-shadow لها تكلفة paint على الـ CPU.
+   الحل: نحوّل الظل إلى pseudo-element ونغيّر opacity فقط.
+   opacity transition = GPU-composited لا paint ولا layout.
+   ────────────────────────────────────────────────────── */
+#latest-exams-grid > div,
+#latest-notes-grid > div {
+    /* GPU composite layer — التحرك على الـ GPU */
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* إلغاء Tailwind's transition-all واستبداله بخصائص compositable فقط */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.25s ease !important;
+}
+
+/* الظل على pseudo-element: opacity فقط = GPU, صفر paint */
+#latest-exams-grid > div::after,
+#latest-notes-grid > div::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.13),
+                0 6px 14px rgba(0, 0, 0, 0.07);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    will-change: opacity;
+    z-index: 0; /* خلف محتوى الكارد z-10 */
+}
+
+#latest-exams-grid > div:hover::after,
+#latest-notes-grid > div:hover::after {
+    opacity: 1;
+}
+
+#latest-exams-grid > div:hover,
+#latest-notes-grid > div:hover {
+    transform: translateY(-3px) translate3d(0, 0, 0);
+}
+
+/* ── Section Containment — عزل الأقسام لمنع reflow متسلسل ──────────────
+   contain: layout style → أي reflow داخل القسم لا يتسرب للأقسام الأخرى
+   ────────────────────────────────────────────────────── */
+#dashboard-view,
+#quiz-container {
+    contain: layout style;
 }
 
 /* ── Time Badge (pulsing clock animation) ───────────────────────── */
