@@ -6,7 +6,10 @@ const fs = require('fs');
 const jsDir = path.join(__dirname, '../client/js');
 const modulesDir = path.join(jsDir, 'modules');
 const files = [
-  ...fs.readdirSync(modulesDir).filter(f => f.endsWith('.js')).map(f => path.join(modulesDir, f)),
+  // Only source files — exclude any already-minified or bundled files to prevent .min.min chains
+  ...fs.readdirSync(modulesDir)
+    .filter(f => f.endsWith('.js') && !f.includes('.min') && !f.includes('.bundle'))
+    .map(f => path.join(modulesDir, f)),
   path.join(jsDir, 'app.js')
 ];
 
