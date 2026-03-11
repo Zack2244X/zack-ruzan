@@ -150,20 +150,17 @@
       overflow: hidden;
     }
 
+        /* bg-pattern: absolute fill inside #login-screen (position:fixed inset-0).
+           Kept simple — no contain/will-change so Chrome's LCP algorithm measures
+           the <img> child correctly. */
         .bg-pattern {
-            position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 0;
-            contain: paint;
-            will-change: opacity, transform;
-        }
-        /* bg.webp <img> inside .bg-pattern is the LCP element — full-viewport */
-        .bg-pattern > img {
             position: absolute;
             inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        /* bg.webp <img> is the LCP element — fills the full viewport */
+        .bg-pattern > img {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -792,7 +789,7 @@
     <!-- شاشة تسجيل الدخول -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="bg-pattern">
-                <img src="/icons/bg.webp" alt="" fetchpriority="high" decoding="async" loading="eager" width="1200" height="900">
+                <img src="/icons/bg.webp" alt="" fetchpriority="high" loading="eager" elementtiming="lcp" width="1200" height="900">
             </div>
         <div id="floor-glow"></div>
 

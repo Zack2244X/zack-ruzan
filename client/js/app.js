@@ -411,7 +411,9 @@ Object.assign(window, {
     // Animations & Scroll (exposed for use from HTML/other scripts if needed)
     scrollToTop, scrollToElement,
     playEntranceAnimation, playExitAnimation, animateElement,
-    pauseAllAnimations, resumeAllAnimations
+    pauseAllAnimations, resumeAllAnimations,
+    // Expose startApp so bootstrap.js can invoke it after bundle injection
+    startApp
 });
 
 // ============================================
@@ -514,7 +516,7 @@ export async function startApp() {
             const vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
             const rawScale = vw / targetWidth;
             const clampedScale = Math.max(0.12, Math.min(1, rawScale));
-            const content = `width=${targetWidth}, initial-scale=${clampedScale}, maximum-scale=${clampedScale}, user-scalable=no, viewport-fit=cover`;
+            const content = `width=${targetWidth}, initial-scale=${clampedScale}, minimum-scale=${clampedScale}, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover`;
             if (meta) meta.content = content;
             root.classList.add('force-desktop');
             root.setAttribute('data-force-desktop','1');
