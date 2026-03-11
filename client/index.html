@@ -52,8 +52,8 @@
         window.startGuestLogin = function() {
             document.body.classList.add('guest-mode');
             try {
-                localStorage.setItem('guest-mode', 'true');
-                sessionStorage.setItem('guest-mode', 'true');
+                localStorage.setItem('guestMode', 'true');
+                sessionStorage.setItem('guestMode', 'true');
             } catch(e){}
             window.location.href = '/dashboard-view';
         };
