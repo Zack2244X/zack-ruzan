@@ -396,6 +396,13 @@ function loadApp() {
     }
 }
 
+/** إغلاق نافذة تعديل المحتوى وإعادة تشغيل Lenis عبر _syncMainInteractionState */
+function closeEditSelectionModal() {
+    const el = document.getElementById('edit-selection-modal');
+    if (el) el.classList.add('hidden');
+    _syncMainInteractionState();
+}
+
 // ============================================
 //  ربط الدوال بـ window (للاستدعاء من HTML onclick)
 // ============================================
@@ -430,7 +437,7 @@ Object.assign(window, {
 
     // Grades & Stats
     openGradesModal, closeGradesModal, openStatsModal, closeStatsModal,
-    openEditSelectionModal, switchEditTab,
+    openEditSelectionModal, closeEditSelectionModal, switchEditTab,
 
     // Dashboard
     renderDashboard,

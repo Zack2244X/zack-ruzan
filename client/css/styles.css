@@ -915,7 +915,7 @@ a:focus:not(:focus-visible) {
 }
 
 .confirm-overlay.show {
-    display: flex;
+    display: flex !important; /* يتغلب على Tailwind .hidden { display:none !important } */
     opacity: 1;
     pointer-events: auto;
 }
@@ -1323,6 +1323,8 @@ select {
     #ios-bottom-nav { display: none !important; }
     .bottom-sheet-content { max-height: 90vh; }
     [id$="-modal"] > div { max-height: 95vh !important; }
+    /* محرر الأسئلة: 30vh يعطي ~108px على شاشة 360px landscape — أقل من خيارين */
+    #b-options-container { max-height: 45vh !important; }
 }
 
 /* ============================================
