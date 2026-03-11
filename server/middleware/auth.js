@@ -283,8 +283,26 @@ const generateToken = (userId, role, tokenVersion = 0) => {
     );
 };
 
+// ============================================
+//   authenticateOrGuest — قراءة عامة للضيوف
+// ============================================
+/**
+ * Like `authenticate`, but also allows requests with the X-Guest-Mode: true header.
+ * Used for public read-only routes (GET quizzes, notes, leaderboard) so guest users
+ * can browse content without a JWT.
+ * Attaches req.user = { role: 'guest' } for downstream middleware.
+ */
+const authenticateOrGuest = async (req, res, next) => {
+    if (req.headers['x-guest-mode'] === 'true') {
+        req.user = { role: 'guest', id: null, email: null, isGuest: true };
+        return next();
+    }
+    return authenticate(req, res, next);
+};
+
 module.exports = {
     authenticate,
+    authenticateOrGuest,
     requireAdmin,
     generateToken,
     setTokenCookie,

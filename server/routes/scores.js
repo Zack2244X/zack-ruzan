@@ -21,7 +21,7 @@ const sequelize = require('../models/index');
 const Score = require('../models/Score');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, authenticateOrGuest, requireAdmin } = require('../middleware/auth');
 const { validateSubmitScore, validatePagination, validateIdParam, validateQuizIdParam } = require('../middleware/validators');
 const logger = require('../utils/logger');
 
@@ -354,7 +354,7 @@ router.get('/', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Array of leaderboard entries.
  * @returns {Promise<void>}
  */
-router.get('/leaderboard', authenticate, async (req, res) => {
+router.get('/leaderboard', authenticateOrGuest, async (req, res) => {
     try {
         // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار
         const [rows] = await sequelize.query(`

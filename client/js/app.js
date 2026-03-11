@@ -331,11 +331,21 @@ function loadApp() {
                 : `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
 
             navToHome();
-            renderDashboard();
+            renderDashboard(); // يعرض spinner أولاً ريثما تُحمَّل البيانات
 
             if (isGuest) {
-                // وضع الضيف: لا توكن، لا تجديد، لا بيانات من السيرفر
-                console.log('[app] ✓ وضع الضيف — تحميل بدون بيانات');
+                // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
+                console.log('[app] ✓ وضع الضيف — تحميل البيانات العامة...');
+                loadDataFromServer().then(() => {
+                    renderSubjectFilters();
+                    renderHistoryTree();
+                    renderDashboard();
+                    console.log('[app] ✓ الضيف — البيانات العامة جاهزة');
+                }).catch(e => {
+                    console.warn('[app] ⚠️ فشل جلب البيانات للضيف:', e);
+                    state.dataLoaded = true;
+                    renderDashboard();
+                });
                 return;
             }
 

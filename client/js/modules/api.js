@@ -35,6 +35,12 @@ export function getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
     const csrf = getCsrfToken();
     if (csrf) headers['X-CSRF-Token'] = csrf;
+    // إرسال هيدر الضيف إذا كانت الجلسة الحالية جلسة ضيف
+    try {
+        if (sessionStorage.getItem('guest-mode') === 'true') {
+            headers['X-Guest-Mode'] = 'true';
+        }
+    } catch (e) { /* تجاهل خطأ sessionStorage */ }
     return headers;
 }
 

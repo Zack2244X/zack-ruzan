@@ -16,7 +16,7 @@ const { Op } = require('sequelize');
 const sequelize = require('../models/index');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, authenticateOrGuest, requireAdmin } = require('../middleware/auth');
 const { validateCreateQuiz, validateUpdateQuiz, validateRenameSubject, validatePagination, validateIdParam, validateSubjectParam } = require('../middleware/validators');
 const logger = require('../utils/logger');
 
@@ -32,7 +32,7 @@ const logger = require('../utils/logger');
  * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
  * @returns {Promise<void>}
  */
-router.get('/', authenticate, validatePagination, async (req, res) => {
+router.get('/', authenticateOrGuest, validatePagination, async (req, res) => {
     try {
         const { subject, active } = req.query;
         const page = parseInt(req.query.page) || 1;
