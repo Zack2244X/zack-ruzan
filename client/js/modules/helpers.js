@@ -155,147 +155,318 @@ export function shuffleArray(arr) {
  */
 
 /**
- * @typedef {Object} DevicePerformanceResult
- * @property {PerformanceTier} tier      — المستوى النهائي للأداء
- * @property {number}          cores     — عدد النوى المنطقية (hardwareConcurrency)
- * @property {number}          memory    — ذاكرة RAM المُبلَّغ عنها بـ GB (أو -1 إن لم تُدعم)
- * @property {number}          fps       — متوسط FPS المقاس عبر requestAnimationFrame
- * @property {boolean}         prefersReducedMotion — هل المستخدم فعّل تقليل الحركة
+ * @typedef {Object} GPUInfo
+ * @property {PerformanceTier} tier       — مستوى أداء الـ GPU
+ * @property {string}          renderer   — اسم معالج الرسوميات (عبر OpenGL ES)
+ * @property {string}          vendor     — الشركة المصنّعة
+ * @property {boolean}         webgl2     — يدعم WebGL2 = OpenGL ES 3.0+
+ * @property {number}          maxTexSize — أقصى حجم texture (يعكس bandwidth الـ VRAM)
+ * @property {number}          gpuScore   — النقاط الخام
  */
 
 /**
- * يقيس FPS الفعلي للمتصفح عبر `requestAnimationFrame` خلال نافذة زمنية محددة.
- *
- * الفكرة: نحسب عدد الإطارات التي يرسمها المتصفح خلال `durationMs` ملّي ثانية،
- * ثم نقسم على الزمن الفعلي للحصول على متوسط دقيق حتى لو تأخر أول إطار.
- *
- * @param {number} [durationMs=500] — مدة القياس بالملّي ثانية
- * @returns {Promise<number>} متوسط الـ FPS (مُقرَّب لأقرب عدد صحيح)
+ * @typedef {Object} DevicePerformanceResult
+ * @property {PerformanceTier} tier               — المستوى النهائي (CPU+GPU+battery+DPR)
+ * @property {number}          cores              — عدد النوى المنطقية
+ * @property {number}          memory             — ذاكرة RAM بـ GB  (-1 = غير متاح)
+ * @property {number}          fps                — متوسط FPS  (-1 = لم يُقَس)
+ * @property {boolean}         prefersReducedMotion
+ * @property {GPUInfo}         gpu                — نتائج فحص WebGL
+ * @property {number}          dpr                — Device Pixel Ratio
+ * @property {number}          batteryLevel       — 0-1  (-1 = غير متاح)
+ * @property {boolean}         batteryCharging
  */
-function measureFPS(durationMs = 500) {
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  فحص GPU عبر WebGL / OpenGL ES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * يُنشئ WebGL context مخفي 1×1 لقراءة تفاصيل معالج الرسوميات
+ * ثم يُتلفه فوراً لتجنب احتجاز أي VRAM.
+ *
+ * يعتمد على:
+ *  - WEBGL_debug_renderer_info  للحصول على اسم الـ GPU الحقيقي (OpenGL ES renderer)
+ *  - MAX_TEXTURE_SIZE           لتقييم عرض نطاق الـ VRAM
+ *  - WebGL2 support             للتمييز بين OpenGL ES 2.0 و 3.0
+ *
+ * @returns {GPUInfo}
+ */
+function probeGPU() {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+
+        // نجرب WebGL2 (= OpenGL ES 3.0) أولاً، ثم WebGL (= OpenGL ES 2.0)
+        const gl2 = canvas.getContext('webgl2');
+        const gl  = gl2
+            || canvas.getContext('webgl')
+            || canvas.getContext('experimental-webgl');
+
+        if (!gl) {
+            console.log('[DevicePerf/GPU] لا يوجد دعم WebGL — GPU tier=low');
+            return { tier: 'low', renderer: 'none', vendor: 'none',
+                     webgl2: false, maxTexSize: 0, gpuScore: 0 };
+        }
+
+        const webgl2 = !!gl2;
+
+        // WEBGL_debug_renderer_info يكشف عن اسم الـ GPU الحقيقي
+        // (بعض المتصفحات تحجبه لأسباب الخصوصية — نتعامل مع ذلك بـ fallback)
+        const dbg      = gl.getExtension('WEBGL_debug_renderer_info');
+        const renderer = (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '').toLowerCase();
+        const vendor   = (dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL)   : '').toLowerCase();
+
+        const maxTexSize      = gl.getParameter(gl.MAX_TEXTURE_SIZE)              || 0;
+        const maxVertUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS)    || 0;
+        const maxFragUniforms = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)  || 0;
+
+        // حرر الـ context فوراً لتجنب تسرب VRAM
+        try { (gl.getExtension('WEBGL_lose_context') || {}).loseContext?.(); } catch (e) {}
+
+        // ── تسجيل نقاط GPU ────────────────────────────────────────────────────
+        let gpuScore = 0;
+
+        // WebGL2 = GPU يدعم OpenGL ES 3.0+ → جيل حديث
+        if (webgl2) gpuScore += 2;
+
+        // حجم الـ texture الأقصى: علامة على bandwidth الـ VRAM
+        if      (maxTexSize >= 16384) gpuScore += 2;
+        else if (maxTexSize >=  8192) gpuScore += 1;
+
+        // عدد shader uniforms: كلما كان أكبر دلّ على معالج أقوى
+        if (maxVertUniforms >= 256 && maxFragUniforms >= 256) gpuScore += 1;
+
+        const g = `${renderer} ${vendor}`;
+
+        // ── GPUs عالية الأداء ─────────────────────────────────────────────────
+        // Adreno 6xx/7xx/8xx (Snapdragon 8-series flagship)
+        // Mali-G7x/G8x/G9x/G1xx (Samsung/MediaTek flagship)
+        // Apple GPU (A-series / M-series)
+        // GPU كمبيوتر مكتبي/لابتوب: NVIDIA, AMD, Intel Iris/Arc/Xe
+        if (/adreno\s*[6-9]\d\d/.test(g) ||
+            /mali-g[789]\d|mali-g1\d\d/.test(g) ||
+            /apple\s*(gpu|m\d)|apple\s*a1[0-9]/.test(g) ||
+            /apple/.test(vendor) ||
+            /nvidia|geforce|rtx|gtx|quadro|tesla/.test(g) ||
+            /amd|radeon|rx\s*\d/.test(g) ||
+            /intel\s*(iris|arc|uhd\s*7|xe)/.test(g)) {
+            gpuScore += 3;
+        }
+        // ── GPUs متوسطة الأداء ────────────────────────────────────────────────
+        // Adreno 5xx (Snapdragon 6/7 series)
+        // Mali-G5x/G6x (mid-range)
+        // PowerVR GX (mid iPad/iPhone)
+        // Intel HD/UHD 600-series (كمبيوتر mid-range)
+        else if (/adreno\s*[45]\d\d/.test(g) ||
+                 /mali-g[56]\d/.test(g) ||
+                 /powervr\s*g[ex]/.test(g) ||
+                 /intel\s*(hd|uhd\s*[456]|uhd\s*6[0-9]\d)/.test(g)) {
+            gpuScore += 1;
+        }
+        // ── GPUs ضعيفة الأداء ─────────────────────────────────────────────────
+        // Adreno 2xx/3xx (أجهزة قديمة جداً)
+        // Mali-T7xx/T8xx/400/450 (كانت شائعة في Android 4-6)
+        // PowerVR SGX (iPhone 4 era)
+        // SwiftShader/LLVMpipe/Mesa Software (محاكي / بدون GPU حقيقي)
+        else if (/adreno\s*[23]\d\d/.test(g) ||
+                 /mali-t[0-9]|mali-4/.test(g) ||
+                 /powervr\s*sgx/.test(g) ||
+                 /swiftshader|llvmpipe|softpipe|software|rasterizer/.test(g)) {
+            gpuScore -= 2;
+        }
+
+        const tier = gpuScore >= 5 ? 'high' : gpuScore >= 2 ? 'medium' : 'low';
+        const result = { tier, renderer, vendor, webgl2, maxTexSize, gpuScore };
+        console.log('[DevicePerf/GPU]', result);
+        return result;
+
+    } catch (err) {
+        console.warn('[DevicePerf/GPU] فشل فحص WebGL:', err.message);
+        return { tier: 'medium', renderer: 'error', vendor: 'error',
+                 webgl2: false, maxTexSize: 0, gpuScore: 1 };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  قراءة مستوى البطارية (Battery Status API)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * يقرأ مستوى البطارية الحالي.
+ * الهواتف تُخفّض تردد CPU+GPU تلقائياً عند انخفاض البطارية (Power Management).
+ * @returns {Promise<{ level: number, charging: boolean }>}
+ */
+async function getBatteryInfo() {
+    try {
+        if ('getBattery' in navigator) {
+            const bat = await navigator.getBattery();
+            return { level: bat.level, charging: bat.charging };
+        }
+    } catch (e) { /* API غير مدعوم */ }
+    return { level: 1, charging: true }; // افتراض كامل/متصل
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  قياس FPS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * يقيس FPS الفعلي عبر requestAnimationFrame.
+ * @param {number} durationMs — مدة القياس بالملّي ثانية
+ * @returns {Promise<number>}
+ */
+function measureFPS(durationMs = 1000) {
     return new Promise((resolve) => {
         let frames = 0;
         let startTime = null;
-
-        /**
-         * دالة الإطار — تُستدعى من المتصفح في كل vsync
-         * @param {DOMHighResTimeStamp} timestamp
-         */
-        function frame(timestamp) {
-            if (startTime === null) {
-                // أول إطار: نسجّل وقت البداية الفعلي
-                startTime = timestamp;
-            }
-
+        function frame(ts) {
+            if (startTime === null) startTime = ts;
             frames++;
-            const elapsed = timestamp - startTime;
-
-            if (elapsed < durationMs) {
-                // لم تنته مدة القياس — طلب الإطار التالي
+            if (ts - startTime < durationMs) {
                 requestAnimationFrame(frame);
             } else {
-                // انتهت المدة — احسب المتوسط وأعده
-                // نطرح 1 لأن الإطار الأول يُحتسب بداية لا قياساً
-                const measuredFPS = Math.round(((frames - 1) / elapsed) * 1000);
-                resolve(measuredFPS);
+                resolve(Math.round(((frames - 1) / (ts - startTime)) * 1000));
             }
         }
-
         requestAnimationFrame(frame);
     });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  الدالة الرئيسية لكشف أداء الجهاز
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * يكتشف مستوى أداء الجهاز ويعيد تقريراً شاملاً.
+ * يكتشف مستوى أداء الجهاز بشكل شامل:
+ *  1. CPU (cores + memory)
+ *  2. GPU (WebGL probe — renderer/vendor/texture size/WebGL2)
+ *  3. Battery (تخفيض التردد عند انخفاض البطارية)
+ *  4. DPR (كثافة البكسل — هاتف رخيص بشاشة 3x = ضغط رهيب على GPU)
+ *  5. FPS test (اختياري)
+ *  6. prefers-reduced-motion (إرادة المستخدم — أعلى أولوية)
  *
- * منطق التصنيف (كل معيار يُخفِّض النقاط):
- * ```
- * نقطة البداية = 3 (high)
- *   cores  < 4  → -1
- *   memory < 4  → -1   (يُتجاهل إن لم يُدعم)
- *   fps    < 50 → -1
- *   prefersReducedMotion → tier = 'low' مباشرةً (إرادة المستخدم فوق كل شيء)
- * ```
- * النتيجة:
- *  3 → 'high' | 2 → 'medium' | ≤1 → 'low'
+ * منطق الدمج:
+ *  - إذا CPU low أو GPU low → النتيجة low
+ *  - إذا كلاهما high → high
+ *  - غير ذلك → medium
+ *  - البطارية < 15% وغير متصلة → تخفيض مستوى واحد
+ *  - DPR > 2.5 مع medium/high → يبقى medium (pixel fill rate عالٍ)
  *
+ * @param {{ skipFPSTest?: boolean }} [options]
  * @returns {Promise<DevicePerformanceResult>}
- *
- * @example
- * import { getDevicePerformanceTier } from './helpers.js';
- * const result = await getDevicePerformanceTier();
- * // { tier: 'high', cores: 8, memory: 8, fps: 60, prefersReducedMotion: false }
  */
 export async function getDevicePerformanceTier(options = {}) {
     const { skipFPSTest = false } = options || {};
-    // ── 1. إرادة المستخدم — لها الأولوية القصوى ─────────────────────────────
+
+    // ── 0. prefers-reduced-motion له الأولوية القصوى ────────────────────────
     const prefersReducedMotion =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+    const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
+
     if (prefersReducedMotion) {
-        // لا نحتاج لقياس FPS — المستخدم طلب صراحةً تقليل الحركة
-        console.log('[DevicePerf] prefers-reduced-motion: true → tier=low (بدون قياس FPS)');
+        console.log('[DevicePerf] prefers-reduced-motion → tier=low');
         return {
-            tier: 'low',
-            cores: navigator.hardwareConcurrency ?? -1,
-            memory: navigator.deviceMemory ?? -1,
-            fps: 0,
+            tier: 'low', cores: navigator.hardwareConcurrency ?? -1,
+            memory: navigator.deviceMemory ?? -1, fps: 0,
             prefersReducedMotion: true,
+            gpu: { tier: 'low', renderer: '', vendor: '', webgl2: false, maxTexSize: 0, gpuScore: 0 },
+            dpr, batteryLevel: -1, batteryCharging: true
         };
     }
 
-    // ── 2. قراءة مواصفات الأجهزة ─────────────────────────────────────────────
-    // hardwareConcurrency: عدد النوى المنطقية (Logical CPU cores)
-    // مدعوم في جميع المتصفحات الحديثة؛ fallback = 1 (أضعف افتراض ممكن)
-    const cores = navigator.hardwareConcurrency ?? 1;
-
-    // deviceMemory: ذاكرة RAM بـ GB (مُقرَّبة لأقرب قوة من 2)
-    // مدعوم في Chrome/Edge فقط؛ Firefox وSafari يُعيدان undefined
-    // القيمة -1 تعني "غير مدعوم" ولن تُحتسب في النقاط
+    // ── 1. CPU ───────────────────────────────────────────────────────────────
+    const cores  = navigator.hardwareConcurrency ?? 1;
     const memory = navigator.deviceMemory ?? -1;
 
-    // ── 3. قياس FPS الفعلي (تخطي بناءً على الخيار) ───────────────────────────
-    // إذا طُلب تخطي قياس FPS فنرجع قيمة -1 لتدل على "غير مقاسة"
+    let cpuScore = 3;
+    if (cores  < 4)                      cpuScore--;
+    if (memory !== -1 && memory < 4)     cpuScore--;
+
+    // ── 2. GPU (WebGL probe) ─────────────────────────────────────────────────
+    const gpu = probeGPU();
+
+    // ── 3. Battery ───────────────────────────────────────────────────────────
+    const { level: batteryLevel, charging: batteryCharging } = await getBatteryInfo();
+
+    // ── 4. FPS (اختياري) ────────────────────────────────────────────────────
     let fps = -1;
-    if (!skipFPSTest) {
-        // نقيس على 1000ms — ثانية كاملة لقراءة أدق وأقل تأثراً بضوضاء init
-        fps = await measureFPS(1000);
+    if (!skipFPSTest) fps = await measureFPS(1000);
+    if (fps !== -1 && fps < 50) cpuScore--;
+
+    // ── 5. الدمج: CPU + GPU ──────────────────────────────────────────────────
+    const cpuTier = cpuScore >= 3 ? 'high' : cpuScore === 2 ? 'medium' : 'low';
+    const gpuTier = gpu.tier;
+
+    let tier;
+    if (cpuTier === 'low' || gpuTier === 'low')   tier = 'low';
+    else if (cpuTier === 'high' && gpuTier === 'high') tier = 'high';
+    else                                              tier = 'medium';
+
+    // ── 6. تعديل بسبب البطارية المنخفضة ─────────────────────────────────────
+    // الهاتف يُخفّض تردد GPU تلقائياً — نعكس ذلك في خياراتنا
+    if (!batteryCharging && batteryLevel !== -1 && batteryLevel < 0.15) {
+        if (tier === 'high')   tier = 'medium';
+        else if (tier === 'medium') tier = 'low';
+        console.log(`[DevicePerf] 🔋 بطارية منخفضة (${Math.round(batteryLevel * 100)}%) → تخفيض مستوى`);
     }
 
-    // ── 4. حساب النقاط ───────────────────────────────────────────────────────
-    let score = 3; // نبدأ من الأفضل ونطرح
+    // ── 7. تعديل بسبب كثافة البكسل ──────────────────────────────────────────
+    // هاتف بشاشة DPR=3 مع GPU متوسط = fill rate عالٍ جداً → نُبقيه على medium
+    if (dpr > 2.5 && tier === 'high' && gpuTier !== 'high') {
+        tier = 'medium';
+        console.log(`[DevicePerf] 📱 DPR ${dpr.toFixed(1)} عالٍ → يُبقى على medium`);
+    }
 
-    if (cores < 4) score--;          // نوى قليلة → أداء محدود
-    if (memory !== -1 && memory < 4) score--; // ذاكرة منخفضة (إن كانت متاحة)
-    if (fps !== -1 && fps < 50) score--;           // FPS منخفض → GPU/CPU متعب
-
-    // ── 5. تحويل النقاط إلى مستوى ────────────────────────────────────────────
-    /** @type {PerformanceTier} */
-    const tier = score >= 3 ? 'high' : score === 2 ? 'medium' : 'low';
-
-    const result = { tier, cores, memory, fps, prefersReducedMotion: false };
-    console.log('[DevicePerf]', result);
+    const result = {
+        tier, cores, memory, fps, prefersReducedMotion: false,
+        gpu, dpr, batteryLevel, batteryCharging
+    };
+    console.log('[DevicePerf] ✅ نتيجة شاملة:', result);
     return result;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  كشف سريع متزامن (بدون async) — للاستخدام في inline scripts
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Quick synchronous device tier heuristic (no async, no FPS test).
- * Suitable for inline scripts that must bail out synchronously.
+ * كشف سريع متزامن عن مستوى الأداء.
+ * يُضيف فحص WebGL سريع مقارنةً بالنسخة السابقة.
  * @returns {'high'|'medium'|'low'}
  */
 export function getQuickDeviceTier() {
     try {
-        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        if (prefersReducedMotion) return 'low';
+        if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 'low';
 
-        const cores = navigator.hardwareConcurrency ?? 1;
-        const memory = navigator.deviceMemory ?? -1;
+        const cores  = navigator.hardwareConcurrency ?? 1;
+        const memory = navigator.deviceMemory        ?? -1;
+        const dpr    = window.devicePixelRatio       || 1;
 
         let score = 3;
-        if (cores < 4) score--;
+        if (cores  < 4)                  score--;
         if (memory !== -1 && memory < 4) score--;
-        return score >= 3 ? 'high' : score === 2 ? 'medium' : 'low';
+
+        // فحص WebGL سريع: هل يدعم WebGL2؟
+        try {
+            const c = document.createElement('canvas');
+            c.width  = 1;
+            c.height = 1;
+            const gl2 = c.getContext('webgl2');
+            const gl  = gl2 || c.getContext('webgl');
+            if (!gl)        score -= 2;  // لا GPU = ضعيف جداً
+            else if (gl2)   score += 1;  // WebGL2 = GPU حديث
+            // حرر فوراً
+            try { (gl.getExtension('WEBGL_lose_context') || {}).loseContext?.(); } catch (e) {}
+        } catch (e) {}
+
+        // DPR عالٍ مع score منخفض = ضغط زائد
+        if (dpr > 2.5 && score >= 3) score--;
+
+        return score >= 3 ? 'high' : score >= 2 ? 'medium' : 'low';
     } catch (e) {
         return 'low';
     }

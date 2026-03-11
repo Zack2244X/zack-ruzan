@@ -42,6 +42,71 @@ body.reduced-graphics .lamp-wrapper {
     filter: none !important;
 }
 
+/* ============================================
+   GPU-Tier CSS Classes
+   — يُطبَّق بناءً على نتيجة probeGPU() في helpers.js
+   — يتيح تعطيل الميزات الثقيلة على GPUs الضعيفة تلقائياً
+   ============================================ */
+
+/* ── GPU Low: تعطيل كل العمليات الثقيلة على المعالج الرسومي ─────────
+   backdrop-filter = offscreen pass ثقيل على GPU الضعيف (Mali-T/Adreno 3)
+   will-change = كل عنصر محمّل يحجز طبقة VRAM → سريعاً تنتهي الذاكرة
+   ─────────────────────────────────────────────────────────────────── */
+body.gpu-low *,
+body.gpu-low *::before,
+body.gpu-low *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.gpu-low #ios-bottom-nav,
+body.gpu-low .bottom-sheet-content,
+body.gpu-low [id$="-modal"] > div,
+body.gpu-low .glass-card,
+body.gpu-low .glass-soft,
+body.gpu-low #theme-toggle {
+    will-change: auto !important;   /* حرير VRAM layers */
+    transform: none !important;     /* لا GPU layer إجباري */
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
+}
+
+body.gpu-low #latest-exams-grid > div,
+body.gpu-low #latest-notes-grid > div {
+    will-change: auto !important;
+    transition: border-color 0.2s ease !important;
+}
+body.gpu-low #latest-exams-grid > div::after,
+body.gpu-low #latest-notes-grid > div::after {
+    display: none !important; /* لا pseudo-element shadow */
+}
+
+/* ── GPU Medium: تخفيف blur بدل تعطيله ──────────────────────────────
+   blur(16px) على GPU متوسط + شاشة DPR 2.5x = حساب كثيف
+   نخفضه لـ 6px: يبدو جيداً بدون ضغط زائد
+   ─────────────────────────────────────────────────────────────────── */
+body.gpu-medium .glass-card,
+body.gpu-medium #theme-toggle {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    --glass-blur: 6px;
+}
+
+body.gpu-medium .glass-soft {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* bottom sheet: تخفيف إضافي لأنه دائم الحضور في DOM */
+body.gpu-medium .bottom-sheet-content,
+body.gpu-medium #ios-bottom-nav {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* ── GPU High: الإعداد الافتراضي الكامل (لا قيود) ───────────────── */
+/* لا حاجة لقواعد خاصة — styles الافتراضي يطبق كل شيء */
+
 
 
 /* === Dark Theme Variables === */

@@ -217,14 +217,13 @@ export async function initAnimations(perfOverride) {
         requestAnimationFrame(runAfterPaint);
     });
 
-    // ── كشف أداء الجهاز وضبط التعقيد (يمكن تمرير perfOverride لتجنّب القياس المزدوج)
+    // ── كشف أداء الجهاز وضبط التعقيد ──────────────────────────────────────────
     try {
         const perf = perfOverride || await getDevicePerformanceTier({ skipFPSTest: true });
-        // احفظ النتيجة عالمياً لتستخدمها بقية السكربتات إن لزم
         try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
-        // اقبل إما السلسلة المباشرة أو الكائن المُرجَع
         currentTier = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
-        applyTierSettings(currentTier);
+        const dpr = perf?.dpr || window.devicePixelRatio || 1;
+        applyTierSettings(currentTier, dpr);
     } catch (e) {
         console.warn('[Animations] ⚠️ فشل كشف الأداء، استخدام الإعدادات الافتراضية:', e);
     }

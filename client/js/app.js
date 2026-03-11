@@ -155,11 +155,23 @@ window.addEventListener('pagehide', () => {
  */
 async function applyPerformanceBasedAnimationSettings(perf) {
     logFunctionStatus('applyPerformanceBasedAnimationSettings', true);
-    // getDevicePerformanceTier is async and returns an object { tier, ... }
-    // If `perf` provided, reuse it to avoid duplicate measurements.
     if (!perf) perf = await getDevicePerformanceTier();
-    const tier = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
-    console.log(`[app] 🖥️ مستوى أداء الجهاز: ${tier}`, perf);
+    const tier   = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
+    const gpu    = perf?.gpu;
+    const dpr    = perf?.dpr  || window.devicePixelRatio || 1;
+    const bat    = perf?.batteryLevel ?? -1;
+    const webgl2 = gpu?.webgl2 ?? false;
+
+    console.log(
+        `[app] 🖥️ أداء الجهاز — tier:${tier} / GPU:${gpu?.tier}(${gpu?.renderer || '?'}) `
+      + `/ DPR:${dpr.toFixed(1)} / WebGL2:${webgl2} / 🔋${bat === -1 ? 'N/A' : Math.round(bat*100)+'%'}`,
+        perf
+    );
+
+    // ── تطبيق CSS classes على body لتفعيل قواعد styles.css المشروطة ──────────
+    document.body.classList.remove('gpu-high', 'gpu-medium', 'gpu-low');
+    document.body.classList.add(`gpu-${gpu?.tier || tier}`);
+    if (tier === 'low') document.body.classList.add('reduced-graphics');
 
     switch (tier) {
         case 'high':
@@ -172,7 +184,9 @@ async function applyPerformanceBasedAnimationSettings(perf) {
 
         case 'medium':
             setReducedMotion(false);
-            setAnimationSpeed(0.75);
+            // DPR عالٍ على GPU متوسط = pixel fill pressure → سرعة أقل
+            setAnimationSpeed(dpr > 2.5 ? 0.5 : 0.75);
+
             enableSmoothScroll();
             offScrollEnter();
             console.log('[app] ✓ إعدادات الحركة: وضع الأداء المتوسط');
