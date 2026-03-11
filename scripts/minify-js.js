@@ -45,14 +45,27 @@ const modFiles = fs.readdirSync(modDir)
   console.log('JS   ' + path.relative(root, out));
 });
 
-// ── JS: full IIFE bundle (app + all modules) ─────────────────────────────────
+// ── JS: full IIFE bundle (core — no builder/grades, those are loaded lazily) ──
 esbuild.buildSync({
   entryPoints: [path.join(jsDir, 'app.js')],
   outfile: path.join(jsDir, 'app.bundle.min.js'),
   minify: true,
   bundle: true,
   format: 'iife',
+  globalName: '__app',
   target: ['es2017'],
 });
 const bundleSz = (fs.statSync(path.join(jsDir, 'app.bundle.min.js')).size / 1024).toFixed(1);
 console.log(`Bundle app.bundle.min.js (${bundleSz} KB)`);
+
+// ── JS: admin IIFE bundle (builder + grades — lazy loaded after first admin action) ──
+esbuild.buildSync({
+  entryPoints: [path.join(jsDir, 'app-admin.js')],
+  outfile: path.join(jsDir, 'app.admin.bundle.min.js'),
+  minify: true,
+  bundle: true,
+  format: 'iife',
+  target: ['es2017'],
+});
+const adminSz = (fs.statSync(path.join(jsDir, 'app.admin.bundle.min.js')).size / 1024).toFixed(1);
+console.log(`Bundle app.admin.bundle.min.js (${adminSz} KB)`);

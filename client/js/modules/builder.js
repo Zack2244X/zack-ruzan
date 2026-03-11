@@ -2,10 +2,14 @@
  * @module builder
  * @description وحدة بناء الاختبارات — إنشاء، تعديل، استيراد الأسئلة
  */
-import state from './state.js';
 import { escapeHtml, showAlert, shuffleArray, logFunctionStatus } from './helpers.js';
-import { apiCall } from './api.js';
-import { closeAdminSheet, closeBottomSheet, _showThemeToggle } from './navigation.js';
+// State is provided by the core bundle via window.__appState before any admin function is called
+const state = window.__appState;
+// api + navigation are provided by the core bundle via window globals
+const apiCall = (...a) => window.__api.apiCall(...a);
+const closeAdminSheet = () => window.closeAdminSheet?.();
+const closeBottomSheet = () => window.closeBottomSheet?.();
+const _showThemeToggle = (v) => window._showThemeToggle?.(v);
 
 /**
  * فتح نافذة بناء اختبار جديد — تصفير الواجهة للخطوة 1

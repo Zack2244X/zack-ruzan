@@ -31,16 +31,7 @@ import {
     goToNextQuestion, goToPreviousQuestion, updateProgressBar,
     startTimer, submitQuiz, exitToMain as _exitToMain
 } from './modules/quiz.js';
-import {
-    openCreateSection, closeCreateSection, goToBuilderStep2,
-    renderBuilderQuestion, updateBuilderData, updateBuilderOptionText,
-    setBuilderCorrectOption, addBuilderOption, removeBuilderOption,
-    addBuilderQuestion, navBuilderQuestion,
-    saveBuiltQuiz as _saveBuiltQuiz, loadQuizIntoBuilder as _loadQuizIntoBuilder,
-    updateExistingQuiz as _updateExistingQuiz,
-    triggerImportExamFile, reshuffleImportedAnswers,
-    handleImportFileChange
-} from './modules/builder.js';
+// builder.js — loaded lazily via app.admin.bundle.min.js on first admin interaction
 import {
     getDynamicSubjects,
     renderSubjectFilters as _renderSubjectFilters,
@@ -58,11 +49,7 @@ import {
     saveNote as _saveNote, loadNoteIntoBuilder as _loadNoteIntoBuilder,
     updateExistingNote as _updateExistingNote, forceDownload
 } from './modules/notes.js';
-import {
-    openGradesModal, closeGradesModal, renderGradesList,
-    openStatsModal, closeStatsModal, renderStatsContent,
-    openEditSelectionModal, switchEditTab as _switchEditTab
-} from './modules/grades.js';
+// grades.js — loaded lazily via app.admin.bundle.min.js on first admin interaction
 import { renderDashboard as _renderDashboard, deleteQuiz as _deleteQuiz } from './modules/dashboard.js';
 
 // === وحدات الحركة والتمرير ===
@@ -270,16 +257,6 @@ function exitToMain() {
     _exitToMain(renderDashboard);
 }
 
-/** @private حفظ الامتحان */
-function saveBuiltQuiz() {
-    _saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDashboard);
-}
-
-/** @private تحميل اختبار للتعديل */
-function loadQuizIntoBuilder(index) {
-    _loadQuizIntoBuilder(index);
-}
-
 /** @private إعادة تسمية مادة */
 function renameSubject(oldName, event) {
     _renameSubject(oldName, event);
@@ -310,19 +287,9 @@ function loadNoteIntoBuilder(index) {
     _loadNoteIntoBuilder(index);
 }
 
-/** @private تحديث اختبار */
-function updateExistingQuiz(index) {
-    _updateExistingQuiz(index, renderHistoryTree, renderEditTree, renderDashboard);
-}
-
 /** @private تحديث مذكرة */
 function updateExistingNote() {
     _updateExistingNote(renderHistoryTree, renderEditTree, renderDashboard);
-}
-
-/** @private تبديل تبويب التعديل */
-function switchEditTab(tab) {
-    _switchEditTab(tab, renderSubjectFilters, renderEditTree);
 }
 
 /** @private معالجة تسجيل دخول الطالب */
@@ -419,12 +386,6 @@ Object.assign(window, {
     playQuiz, selectAnswer, goToNextQuestion, goToPreviousQuestion,
     submitQuiz, exitToMain,
 
-    // Builder
-    openCreateSection, closeCreateSection, goToBuilderStep2,
-    renderBuilderQuestion, updateBuilderData, updateBuilderOptionText, setBuilderCorrectOption,
-    addBuilderOption, removeBuilderOption, addBuilderQuestion,
-    navBuilderQuestion, saveBuiltQuiz, loadQuizIntoBuilder, updateExistingQuiz,
-    triggerImportExamFile, reshuffleImportedAnswers, handleImportFileChange,
 
     // Tree & Subjects
     setSubjectFilter, setEditSubjectFilter, renderSubjectFilters,
@@ -435,9 +396,8 @@ Object.assign(window, {
     openAddNoteModal, closeAddNoteModal, saveNote,
     loadNoteIntoBuilder, updateExistingNote, forceDownload,
 
-    // Grades & Stats
-    openGradesModal, closeGradesModal, openStatsModal, closeStatsModal,
-    openEditSelectionModal, closeEditSelectionModal, switchEditTab,
+    // Admin UI (closeEditSelectionModal is a core fn; rest loaded lazily)
+    closeEditSelectionModal,
 
     // Dashboard
     renderDashboard,
@@ -453,6 +413,50 @@ Object.assign(window, {
     playEntranceAnimation, playExitAnimation, animateElement,
     pauseAllAnimations, resumeAllAnimations
 });
+
+// ============================================
+//  Lazy Admin Bundle
+//  builder.js (~19 KB) + grades.js (~11 KB)
+//  Loads app.admin.bundle.min.js on first admin interaction.
+//  Admin bundle overrides these stubs with real implementations.
+// ============================================
+(function registerAdminStubs() {
+    const ADMIN_FNS = [
+        'openCreateSection', 'closeCreateSection', 'goToBuilderStep2',
+        'renderBuilderQuestion', 'updateBuilderData', 'updateBuilderOptionText',
+        'setBuilderCorrectOption', 'addBuilderOption', 'removeBuilderOption',
+        'addBuilderQuestion', 'navBuilderQuestion', 'saveBuiltQuiz',
+        'loadQuizIntoBuilder', 'updateExistingQuiz', 'triggerImportExamFile',
+        'reshuffleImportedAnswers', 'handleImportFileChange',
+        'openGradesModal', 'closeGradesModal', 'openStatsModal', 'closeStatsModal',
+        'openEditSelectionModal', 'switchEditTab'
+    ];
+
+    let _adminLoaded = false;
+    let _adminLoadPromise = null;
+
+    function _loadAdmin() {
+        if (_adminLoaded) return Promise.resolve();
+        if (!_adminLoadPromise) {
+            _adminLoadPromise = new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = '/js/app.admin.bundle.min.js?v=39';
+                s.onload = () => { _adminLoaded = true; resolve(); };
+                s.onerror = () => reject(new Error('Admin bundle failed to load'));
+                document.head.appendChild(s);
+            });
+        }
+        return _adminLoadPromise;
+    }
+
+    ADMIN_FNS.forEach(name => {
+        window[name] = function (...args) {
+            _loadAdmin()
+                .then(() => { if (typeof window[name] === 'function') window[name](...args); })
+                .catch(err => console.error('[admin]', err));
+        };
+    });
+})();
 
 // Fallback: addEventListener for login button (in case onclick doesn't fire)
 document.addEventListener('DOMContentLoaded', () => {
@@ -478,6 +482,11 @@ export async function startApp() {
 
     // تهيئة الثيم
     initTheme();
+
+    // Expose shared state for lazy-loaded admin bundle (builder.js / grades.js)
+    window.__appState = state;
+    // Expose api singletons for admin bundle (avoids duplicating state-aware modules)
+    window.__api = { apiCall, fetchScoresFromServer, fetchLeaderboardFromServer };
 
     // Layout switching: ONLY login page uses desktop layout on mobile
     const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);

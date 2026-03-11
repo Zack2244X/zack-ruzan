@@ -3,13 +3,14 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v38';
+const CACHE_NAME = 'quiz-platform-v39';
 const STATIC_ASSETS = [
     '/css/styles.min.css',
     '/css/tailwind.min.css',
     '/css/dark-fixes.min.css',
-    '/css/fa-local.css',
+    '/css/icons.min.css',
     '/js/bootstrap.min.js',
+    '/js/app.admin.bundle.min.js',
     '/manifest.json',
     '/icons/bg.webp',
     '/fonts/Cairo-Regular.woff2',

@@ -2,10 +2,13 @@
  * @module grades
  * @description وحدة الدرجات والإحصائيات — عرض النتائج، لوحة الشرف، وتبويب التعديل
  */
-import state from './state.js';
 import { escapeHtml, logFunctionStatus } from './helpers.js';
-import { _showThemeToggle } from './navigation.js';
-import { fetchScoresFromServer, fetchLeaderboardFromServer } from './api.js';
+// State is provided by the core bundle via window.__appState before any admin function is called
+const state = window.__appState;
+// api + navigation are provided by the core bundle via window globals
+const fetchScoresFromServer = () => window.__api.fetchScoresFromServer();
+const fetchLeaderboardFromServer = () => window.__api.fetchLeaderboardFromServer();
+const _showThemeToggle = (v) => window._showThemeToggle?.(v);
 
 /**
  * فتح مودل الدرجات — يجلب أحدث بيانات من السيرفر ثم يعرضها

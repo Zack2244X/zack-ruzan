@@ -114,14 +114,11 @@
     #tree-bottom-sheet { min-height: 440px; }
     </style>
 
-    <!-- Font Awesome CSS: non-blocking — icon glyphs load after first paint -->
-    <!-- fa-local.css: font-face declarations + base .fa class -->
-    <!-- CDN all.min.css: icon glyph codepoints (.fa-home:before etc.) -->
-    <link rel="preload" href="/css/fa-local.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
+    <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
+    <!-- icons.min.css = font-faces + base classes + only the glyphs actually used -->
+    <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
-        <link rel="stylesheet" href="/css/fa-local.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+        <link rel="stylesheet" href="/css/icons.min.css">
     </noscript>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
