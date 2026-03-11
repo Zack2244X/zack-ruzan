@@ -158,11 +158,11 @@ export function updateDockUI(activeId) {
             btn.removeAttribute('disabled');
             btn.classList.remove('pointer-events-none', 'opacity-50');
             btn.classList.remove('active', 'text-blue-600', 'text-orange-600', 'text-purple-600');
-            btn.classList.add('text-gray-400');
+            btn.classList.add('text-gray-600');
         });
         const activeBtn = document.getElementById('dock-' + activeId);
         if (activeBtn) {
-            activeBtn.classList.remove('text-gray-400');
+            activeBtn.classList.remove('text-gray-600');
             activeBtn.classList.add('active');
             if (activeId === 'exams') activeBtn.classList.add('text-blue-600');
             else if (activeId === 'notes') activeBtn.classList.add('text-orange-600');

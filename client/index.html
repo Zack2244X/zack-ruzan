@@ -14,7 +14,7 @@
                 }
                 // compute scale so 1200px layout fits the device
                 var desktopWidth = 1200;
-                var deviceW = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+                var deviceW = Math.max(screen.width || window.innerWidth || 360, 320);
                 var scale = Math.max(0.12, Math.min(1, deviceW / desktopWidth));
                 var meta = document.querySelector('meta[name="viewport"]');
                 document.documentElement.classList.add('force-desktop');
@@ -112,6 +112,11 @@
     #subject-filters-container { min-height: 32px; }
     /* Pin min-height for sheet overlay */
     #tree-bottom-sheet { min-height: 440px; }
+    /* touch-action: manipulation removes 300ms tap delay on width=1200 viewport
+       without needing width=device-width (fixes 'Optimize viewport for mobile'). */
+    a, button, [onclick], [role="button"], input, select, textarea, label {
+        touch-action: manipulation;
+    }
     </style>
 
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
@@ -574,15 +579,15 @@
             <i class="fas fa-home text-xl dock-icon"></i>
             <span class="text-[10px] font-bold">الرئيسية</span>
         </button>
-        <button onclick="navToSection('exams')" id="dock-exams" class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-400 hover:text-blue-500 transition-all">
+        <button onclick="navToSection('exams')" id="dock-exams" class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-600 hover:text-blue-500 transition-all">
             <i class="fas fa-bolt text-xl dock-icon"></i>
             <span class="text-[10px] font-bold">امتحانات</span>
         </button>
-        <button onclick="navToSection('notes')" id="dock-notes" class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-400 hover:text-orange-500 transition-all">
+        <button onclick="navToSection('notes')" id="dock-notes" class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-600 hover:text-orange-500 transition-all">
             <i class="fas fa-file-pdf text-xl dock-icon"></i>
             <span class="text-[10px] font-bold">مذكرات</span>
         </button>
-        <button onclick="openAdminAuthOrPanel()" id="dock-settings" class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-400 hover:text-purple-500 transition-all">
+        <button onclick="openAdminAuthOrPanel()" id="dock-settings" class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-600 hover:text-purple-500 transition-all">
             <i class="fas fa-cog text-xl dock-icon"></i>
             <span class="text-[10px] font-bold">إدارة</span>
         </button>
@@ -597,7 +602,7 @@
             </div>
             <div class="px-6 pb-4 flex justify-between items-center shrink-0 sheet-header">
                 <div class="flex items-center">
-                    <i id="sheet-icon" class="fas fa-bolt text-blue-500 bg-blue-50 p-2 rounded-xl ml-3 text-lg"></i>
+                    <i id="sheet-icon" class="fas fa-bolt text-blue-700 bg-blue-50 p-2 rounded-xl ml-3 text-lg"></i>
                     <h2 id="sheet-title" class="text-2xl font-black text-gray-800 tracking-tight">سجل الامتحانات</h2>
                 </div>
                 <button onclick="closeBottomSheet()" aria-label="إغلاق سجل الامتحانات" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition"><i class="fas fa-times" aria-hidden="true"></i></button>
@@ -1001,7 +1006,7 @@
     </div>
 
     <!-- Dashboard -->
-    <div id="dashboard-view" class="hidden container mx-auto px-4 py-6 sm:py-10 pb-24">
+    <div id="dashboard-view" role="main" class="hidden container mx-auto px-4 py-6 sm:py-10 pb-24">
         <header class="text-center mb-8 relative mt-4 sm:mt-0">
             <div class="absolute inset-0 -z-10 flex justify-center items-center opacity-40 blur-2xl">
                 <div class="w-40 h-12 bg-blue-300 rounded-full"></div>
@@ -1298,7 +1303,7 @@
                     try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
                 }
                 var target = 1200;
-                var vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
+                var vw = Math.max(screen.width || window.innerWidth || 360, 320);
                 var scale = Math.max(0.12, Math.min(1, vw / target));
                 // set viewport مع السماح بالتكبير (WCAG 1.4.4 - Resize Text)
                 meta.content = 'width=' + target + ', initial-scale=' + scale + ', minimum-scale=' + scale + ', maximum-scale=3.0, user-scalable=yes, viewport-fit=cover';
