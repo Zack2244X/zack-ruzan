@@ -44,13 +44,13 @@
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
         <!-- Critical CSS: non-blocking — preload ثم تحويل لـ stylesheet بعد الرسم -->
-        <link rel="preload" href="/css/tailwind.css?v=30" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <link rel="preload" href="/css/styles.min.css?v=30" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <link rel="preload" href="/css/dark-fixes.css?v=2" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="preload" href="/css/tailwind.min.css?v=31" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="preload" href="/css/styles.min.css?v=31" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="preload" href="/css/dark-fixes.min.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.css?v=30">
-            <link rel="stylesheet" href="/css/styles.min.css?v=30">
-            <link rel="stylesheet" href="/css/dark-fixes.css?v=2">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=31">
+            <link rel="stylesheet" href="/css/styles.min.css?v=31">
+            <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
         </noscript>
 
     <!-- Preload local Cairo and Amiri fonts -->
@@ -127,7 +127,7 @@
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
 
     <!-- Preload small bootstrap module to reduce initial JS payload -->
-    <link rel="modulepreload" href="/js/bootstrap.js">
+    <link rel="modulepreload" href="/js/bootstrap.min.js">
 
     <!-- Login Page Styles -->
     <style>
@@ -878,10 +878,10 @@
                     window.startGoogleRedirectLogin = function(){
                         window.__lazyCalls.push({name:'startGoogleRedirectLogin', args: Array.prototype.slice.call(arguments)});
                         // ensure bootstrap loader is present so queued calls will be flushed
-                        if (!document.querySelector('script[src="/js/bootstrap.js"]')){
+                        if (!document.querySelector('script[src="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
                             s.type = 'module';
-                            s.src = '/js/bootstrap.js';
+                            s.src = '/js/bootstrap.min.js';
                             s.async = true;
                             document.head.appendChild(s);
                         }
@@ -1281,7 +1281,7 @@
     </script>
 
     <!-- Lightweight bootstrap that lazy-loads the full app when needed -->
-    <script type="module" src="/js/bootstrap.js"></script>
+    <script type="module" src="/js/bootstrap.min.js"></script>
 
     <!-- Ensure login-screen always enforces desktop viewport on mobile while visible -->
     <script>

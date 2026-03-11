@@ -3,12 +3,20 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v37';
+const CACHE_NAME = 'quiz-platform-v38';
 const STATIC_ASSETS = [
-    '/css/styles.css',
-    '/css/tailwind.css',
+    '/css/styles.min.css',
+    '/css/tailwind.min.css',
+    '/css/dark-fixes.min.css',
+    '/css/fa-local.css',
+    '/js/bootstrap.min.js',
     '/manifest.json',
-    '/icons/bg.webp'
+    '/icons/bg.webp',
+    '/fonts/Cairo-Regular.woff2',
+    '/fonts/Cairo-Bold.woff2',
+    '/fonts/Amiri-Regular.woff2',
+    '/fonts/fa-solid-900.woff2',
+    '/fonts/fa-brands-400.woff2'
 ];
 
 // Install — cache static assets only (CDN loaded by browser directly)

@@ -1,27 +1,58 @@
-// Minify all JS files in client/js/modules and app.js using esbuild
+// Build script: minify CSS + JS modules + full bundle
+// Usage: node scripts/minify-js.js
 const esbuild = require('esbuild');
 const path = require('path');
 const fs = require('fs');
 
-const jsDir = path.join(__dirname, '../client/js');
-const modulesDir = path.join(jsDir, 'modules');
-const files = [
-  // Only source files — exclude any already-minified or bundled files to prevent .min.min chains
-  ...fs.readdirSync(modulesDir)
-    .filter(f => f.endsWith('.js') && !f.includes('.min') && !f.includes('.bundle'))
-    .map(f => path.join(modulesDir, f)),
-  path.join(jsDir, 'app.js')
-];
+const root    = path.join(__dirname, '..');
+const jsDir   = path.join(root, 'client/js');
+const cssDir  = path.join(root, 'client/css');
+const modDir  = path.join(jsDir, 'modules');
 
-files.forEach(file => {
-  const outFile = file.replace(/\.js$/, '.min.js');
+// ── CSS: tailwind / styles / dark-fixes ──────────────────────────────────────
+const cssFiles = [
+  { in: 'tailwind.css',    out: 'tailwind.min.css'   },
+  { in: 'styles.css',      out: 'styles.min.css'     },
+  { in: 'dark-fixes.css',  out: 'dark-fixes.min.css' },
+];
+cssFiles.forEach(({ in: src, out }) => {
+  esbuild.buildSync({
+    entryPoints: [path.join(cssDir, src)],
+    outfile: path.join(cssDir, out),
+    minify: true,
+    bundle: false,
+    loader: { '.css': 'css' },
+  });
+  const s = (fs.statSync(path.join(cssDir, out)).size / 1024).toFixed(1);
+  console.log(`CSS  ${out} (${s} KB)`);
+});
+
+// ── JS: individual module .min.js files ─────────────────────────────────────
+const modFiles = fs.readdirSync(modDir)
+  .filter(f => f.endsWith('.js') && !f.includes('.min') && !f.includes('.bundle'))
+  .map(f => path.join(modDir, f));
+
+[...modFiles, path.join(jsDir, 'app.js'), path.join(jsDir, 'bootstrap.js')].forEach(file => {
+  const out = file.replace(/\.js$/, '.min.js');
   esbuild.buildSync({
     entryPoints: [file],
-    outfile: outFile,
+    outfile: out,
     minify: true,
     bundle: false,
     format: 'iife',
     target: ['es2017'],
   });
-  console.log('Minified:', outFile);
+  console.log('JS   ' + path.relative(root, out));
 });
+
+// ── JS: full IIFE bundle (app + all modules) ─────────────────────────────────
+esbuild.buildSync({
+  entryPoints: [path.join(jsDir, 'app.js')],
+  outfile: path.join(jsDir, 'app.bundle.min.js'),
+  minify: true,
+  bundle: true,
+  format: 'iife',
+  target: ['es2017'],
+});
+const bundleSz = (fs.statSync(path.join(jsDir, 'app.bundle.min.js')).size / 1024).toFixed(1);
+console.log(`Bundle app.bundle.min.js (${bundleSz} KB)`);
