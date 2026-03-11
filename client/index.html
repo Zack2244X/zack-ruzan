@@ -26,7 +26,10 @@
                 var desktopWidth = 1200;
                 var deviceW = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
                 var scale = Math.max(0.12, Math.min(1, deviceW / desktopWidth));
-                meta.content = 'width=' + desktopWidth + ', initial-scale=' + scale + ', maximum-scale=' + scale + ', user-scalable=no, viewport-fit=cover';
+                var meta = document.querySelector('meta[name="viewport"]');
+                if (meta) {
+                    meta.content = 'width=' + desktopWidth + ', initial-scale=' + scale + ', maximum-scale=' + scale + ', user-scalable=no, viewport-fit=cover';
+                }
 
                 document.documentElement.classList.add('force-desktop');
                 document.documentElement.setAttribute('data-force-desktop', '1');
