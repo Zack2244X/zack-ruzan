@@ -967,14 +967,20 @@
                 document.body.style.overflow = '';
                 if (welcomeMsg) welcomeMsg.innerText = 'مَرْحَبًا بِكَ يَا ضَيْفَنَا الكَرِيم — الدخول تجريبي ولن تُحفظ الدرجات';
 
-                console.log('[guest] ✓ تم الدخول كضيف — عرض لوحة القيادة');
+                console.log('[guest] ✓ تم الدخول كضيف — سيبدأ تحميل البيانات...');
 
-                // استدعاء دوال التطبيق إن كانت متاحة (لعرض محتوى الـ dashboard)
-                if (typeof window.navToHome === 'function') {
-                    try { window.navToHome(); } catch(e) { console.warn('[guest] navToHome failed', e); }
-                }
-                if (typeof window.renderDashboard === 'function') {
-                    try { window.renderDashboard(); } catch(e) { console.warn('[guest] renderDashboard failed', e); }
+                // بعد حفظ بيانات الضيف في sessionStorage، نستدعي loadApp()
+                // ليلاقي المستخدم ويُشغّل loadDataFromServer() + navToHome + renderDashboard
+                if (typeof window.loadApp === 'function') {
+                    try { window.loadApp(); } catch(e) { console.warn('[guest] loadApp failed', e); }
+                } else {
+                    // fallback إذا لم تُحمَّل app.js بعد
+                    if (typeof window.navToHome === 'function') {
+                        try { window.navToHome(); } catch(e) {}
+                    }
+                    if (typeof window.renderDashboard === 'function') {
+                        try { window.renderDashboard(); } catch(e) {}
+                    }
                 }
             };
             </script>
