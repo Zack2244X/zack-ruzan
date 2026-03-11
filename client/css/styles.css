@@ -81,6 +81,30 @@ body.gpu-low #latest-notes-grid > div::after {
     display: none !important; /* لا pseudo-element shadow */
 }
 
+/* تعطيل filter على body::before لصورة الخلفية
+   filter: saturate+brightness يُجبر GPU pass ثقيل على كل frame
+   على الأجهزة الضعيفة/المتوسطة هذا مكلف جداً — الصورة تبدو لا فرق بدونه */
+body.gpu-low::before,
+body.gpu-medium::before,
+body.reduced-graphics::before {
+    filter: none !important;
+    will-change: auto !important; /* لا طبقة GPU ثابتة لعنصر لا يتحرك */
+    transform: none !important;   /* لا GPU layer إجباري */
+}
+
+/* تخفيف box-shadow على GPU المتوسط:
+   نُعيد تعريف CSS custom properties بحيث تُطبَّق تلقائياً
+   على كل العناصر التي تستخدم var(--shadow)/var(--shadow-sm) */
+body.gpu-medium {
+    --shadow:    0 4px 16px rgba(15, 23, 42, 0.10);
+    --shadow-sm: 0 2px  6px rgba(15, 23, 42, 0.06);
+}
+body.gpu-low,
+body.reduced-graphics {
+    --shadow:    0 2px  8px rgba(15, 23, 42, 0.08);
+    --shadow-sm: 0 1px  4px rgba(15, 23, 42, 0.05);
+}
+
 /* ── GPU Medium: تخفيف blur بدل تعطيله ──────────────────────────────
    blur(16px) على GPU متوسط + شاشة DPR 2.5x = حساب كثيف
    نخفضه لـ 6px: يبدو جيداً بدون ضغط زائد
@@ -507,6 +531,24 @@ body::before {
 #latest-exams-grid > div:hover,
 #latest-notes-grid > div:hover {
     transform: translateY(-3px) translate3d(0, 0, 0);
+}
+
+/* على الأجهزة اللمسية: :hover يظل «عالقاً» بعد رفع الإصبع
+   هذا يُبقي طبقة GPU للـ ::after shadow مفتوحة لا أحد يُغلقها
+   نُلغيها كلياً على touch-only devices (hover: none) */
+@media (hover: none) {
+    #latest-exams-grid > div:hover::after,
+    #latest-notes-grid > div:hover::after {
+        opacity: 0 !important;
+    }
+    #latest-exams-grid > div:hover,
+    #latest-notes-grid > div:hover {
+        transform: none !important;
+    }
+    .answer-option:hover {
+        transform: translateZ(0) !important;
+        box-shadow: none !important;
+    }
 }
 
 /* ── Section Containment — عزل الأقسام لمنع reflow متسلسل ──────────────

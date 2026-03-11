@@ -277,7 +277,12 @@ function probeGPU() {
             gpuScore -= 2;
         }
 
-        const tier = gpuScore >= 5 ? 'high' : gpuScore >= 2 ? 'medium' : 'low';
+        // high ≥ 7: GPUs رائدة فقط (Adreno 6xx+، Mali-G7x+، Apple، NVIDIA، AMD)
+        // medium ≥ 4: GPU مقبول (Adreno 5xx، Mali-G51/G52، Intel HD)
+        // low  < 4:  GPU ضعيف أو لا GPU
+        // سبب رفع العتبات: Mali-G51 كان يسجّل 5 (WebGL2+texSize+uniforms+medium-bonus)
+        // لكنه GPU متوسط-متأخر (2018) يكافح تحت backdrop-filter و will-change
+        const tier = gpuScore >= 7 ? 'high' : gpuScore >= 4 ? 'medium' : 'low';
         const result = { tier, renderer, vendor, webgl2, maxTexSize, gpuScore };
         console.log('[DevicePerf/GPU]', result);
         return result;
@@ -386,11 +391,33 @@ export async function getDevicePerformanceTier(options = {}) {
     if (cores  < 4)                      cpuScore--;
     if (memory !== -1 && memory < 4)     cpuScore--;
 
+    // الهواتف: حتى مع 8 أنوية، الأنوية فوق 4 هي كفاءة وليست أداءً + ضغط حراري
+    // هاتف RAM ≤ 4GB = ذاكرة مشتركة مع Android OS → cap at 'medium'
+    // ملاحظة: isMobile مُعرَّف هنا ويُستخدم لاحقاً في خطوتَي DPR وNetwork
+    const isMobile = navigator.maxTouchPoints > 1 &&
+                     window.matchMedia?.('(hover: none)').matches;
+    if (isMobile && memory !== -1 && memory < 6) {
+        cpuScore = Math.min(cpuScore, 2);
+        console.log(`[DevicePerf] 📱 موبايل RAM=${memory}GB → cpuScore مُقيَّد على 2 (medium)`);
+    }
+
     // ── 2. GPU (WebGL probe) ─────────────────────────────────────────────────
     const gpu = probeGPU();
 
     // ── 3. Battery ───────────────────────────────────────────────────────────
     const { level: batteryLevel, charging: batteryCharging } = await getBatteryInfo();
+
+    // ── 3.5. شبكة / Save-Data ────────────────────────────────────────────────
+    // إذا فعّل المستخدم «توفير البيانات» فهو يشير ضمنياً: شبكتي/جهازي بطيء
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn?.saveData) {
+        console.log('[DevicePerf] 💾 Save-Data: true → tier=low فوري');
+        return {
+            tier: 'low', cores, memory, fps: 0,
+            prefersReducedMotion: false,
+            gpu, dpr, batteryLevel, batteryCharging
+        };
+    }
 
     // ── 4. FPS (اختياري) ────────────────────────────────────────────────────
     let fps = -1;
@@ -414,11 +441,24 @@ export async function getDevicePerformanceTier(options = {}) {
         console.log(`[DevicePerf] 🔋 بطارية منخفضة (${Math.round(batteryLevel * 100)}%) → تخفيض مستوى`);
     }
 
+    // ── 6.5. شبكة بطيئة (effectiveType) ─────────────────────────────────────
+    // 'slow-2g'/'2g' = غالباً جهاز ضعيف أو منطقة سيئة → تخفيض مستوى
+    if (conn?.effectiveType === 'slow-2g' || conn?.effectiveType === '2g') {
+        if (tier === 'high')        tier = 'medium';
+        else if (tier === 'medium') tier = 'low';
+        console.log(`[DevicePerf] 📶 effectiveType=${conn.effectiveType} → تخفيض مستوى`);
+    }
+
     // ── 7. تعديل بسبب كثافة البكسل ──────────────────────────────────────────
-    // هاتف بشاشة DPR=3 مع GPU متوسط = fill rate عالٍ جداً → نُبقيه على medium
+    // موبايل بشاشة DPR=3 مع GPU متوسط = fill rate كثيف جداً → medium
     if (dpr > 2.5 && tier === 'high' && gpuTier !== 'high') {
         tier = 'medium';
-        console.log(`[DevicePerf] 📱 DPR ${dpr.toFixed(1)} عالٍ → يُبقى على medium`);
+        console.log(`[DevicePerf] 📱 DPR ${dpr.toFixed(1)} > 2.5 → يُبقى على medium`);
+    }
+    // DPR > 2.0 على موبايل مع high tier = pixel fill كثيف → يُخفَّض لـ medium
+    if (dpr > 2.0 && isMobile && tier === 'high') {
+        tier = 'medium';
+        console.log(`[DevicePerf] 📱 DPR ${dpr.toFixed(1)} على موبايل → high → medium`);
     }
 
     const result = {
