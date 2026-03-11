@@ -968,7 +968,24 @@
             window.startGuestLogin = function() {
                 // تفعيل وضع الضيف
                 document.body.classList.add('guest-mode');
+                // إنشاء مستخدم وهمي guest
+                var guestUser = {
+                    fname: 'ضيف',
+                    lname: '',
+                    fullName: 'ضيف',
+                    avatar: '',
+                    role: 'guest',
+                    email: ''
+                };
+                // حفظ في state إذا كان متاحاً
+                if (window.state) {
+                    window.state.currentUser = guestUser;
+                    window.state.isAdmin = false;
+                }
+                // حفظ في التخزين
                 try {
+                    sessionStorage.setItem('currentUser', JSON.stringify(guestUser));
+                    sessionStorage.setItem('isAdmin', 'false');
                     localStorage.setItem('guest-mode', 'true');
                     sessionStorage.setItem('guest-mode', 'true');
                 } catch(e){}
