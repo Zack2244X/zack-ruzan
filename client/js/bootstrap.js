@@ -25,7 +25,7 @@
         'triggerImportExamFile','reshuffleImportedAnswers','handleImportFileChange','setSubjectFilter','setEditSubjectFilter',
         'renderSubjectFilters','renameSubject','closeRenameModal','executeRenameSubject','confirmDeleteSubject','closeDeleteModal',
         'executeDeleteSubject','openAddNoteModal','closeAddNoteModal','saveNote','loadNoteIntoBuilder','updateExistingNote','forceDownload',
-        'openGradesModal','closeGradesModal','openStatsModal','closeStatsModal','openEditSelectionModal','switchEditTab','renderDashboard',
+        'openGradesModal','closeGradesModal','openStatsModal','closeStatsModal','openEditSelectionModal','closeEditSelectionModal','switchEditTab','renderDashboard',
         'deleteQuiz','escapeHtml','showAlert','showConfirm','showLoading','getQuickDeviceTier','scrollToTop','scrollToElement',
         'playEntranceAnimation','playExitAnimation','animateElement','pauseAllAnimations','resumeAllAnimations'
     ];
@@ -34,86 +34,50 @@
         if (window.__appLoadTriggered) return;
         window.__appLoadTriggered = true;
         window.__appLoading = true;
-        // Inject Font Awesome stylesheet + preload font to avoid fetching it on first paint
-        try {
-            if (!document.querySelector('link[data-fa]')) {
-                const faPre = document.createElement('link');
-                faPre.rel = 'preload';
-                faPre.as = 'font';
-                faPre.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2';
-                faPre.type = 'font/woff2';
-                faPre.crossOrigin = 'anonymous';
-                faPre.setAttribute('data-fa', '1');
-                document.head.appendChild(faPre);
+        // FA CSS and font preloads are now injected in HTML <head> as non-blocking preloads.
+        // No need to inject them here — avoids double-loading and keeps bootstrap.js light.
 
-                const faLink = document.createElement('link');
-                faLink.rel = 'stylesheet';
-                faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
-                faLink.setAttribute('data-fa', '1');
-                document.head.appendChild(faLink);
-            }
-        } catch (e) { /* ignore */ }
-        // Prefer the unbundled `app.js` here so runtime startup behavior (deferred scroll init)
-        // from the source entrypoint is respected. If that fails, fall back to the minified bundle.
-        const primary = '/js/app.js';
-        const fallback = '/js/app.bundle.min.js?v=31';
-        import(primary).then(mod => {
-            // if module exports startApp, call it
-            if (mod && typeof mod.startApp === 'function') {
-                mod.startApp().catch(err => console.error('startApp failed', err));
-            }
-            // flush queued calls
+        function flushQueue() {
             window.__appLoading = false;
-            while (window.__lazyCalls.length) {
+            while (window.__lazyCalls && window.__lazyCalls.length) {
                 const call = window.__lazyCalls.shift();
                 try {
                     if (typeof window[call.name] === 'function') window[call.name].apply(null, call.args || []);
-                } catch (e) {
-                    console.error('Error invoking queued call', call.name, e);
+                } catch (e) { console.error('Error invoking queued call', call.name, e); }
+            }
+            try { if (typeof wrapRegisteredFunctions === 'function') wrapRegisteredFunctions(); } catch(e) {}
+        }
+
+        // Primary: minified IIFE bundle (one request, all modules pre-bundled).
+        // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
+        // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
+        const bundleUrl = '/js/app.bundle.min.js?v=36';
+        const esmUrl    = '/js/app.js';
+
+        const bundleScript = document.createElement('script');
+        bundleScript.src   = bundleUrl;
+        bundleScript.async = true;
+        bundleScript.onload = function() {
+            // Bundle is a self-executing IIFE — app already initialized on script load.
+            // Call window.startApp() only if the bundle explicitly exposes it.
+            if (typeof window.startApp === 'function') {
+                Promise.resolve(window.startApp()).catch(() => {});
+            }
+            flushQueue();
+        };
+        bundleScript.onerror = function(err) {
+            console.warn('[bootstrap] bundle failed, falling back to ESM app.js:', err);
+            import(esmUrl).then(mod => {
+                if (mod && typeof mod.startApp === 'function') {
+                    mod.startApp().catch(e => console.error('startApp failed', e));
                 }
-            }
-            // wrap functions to surface errors in logs
-            try{ if (typeof wrapRegisteredFunctions === 'function') wrapRegisteredFunctions(); }catch(e){}
-        }).catch(err => {
-            console.warn('Failed to import primary app.js, falling back to bundle:', err);
-            // Many bundles are produced as classic scripts (non-ESM). Dynamic `import()` will
-            // fail for those with strict MIME checks. Inject a classic script tag as a
-            // robust fallback and call `window.startApp()` if the bundle exposes it.
-            try {
-                const script = document.createElement('script');
-                script.src = fallback;
-                script.async = true;
-                script.onload = function() {
-                    try {
-                        if (typeof window.startApp === 'function') {
-                            // bundle may attach startApp to window
-                            Promise.resolve(window.startApp()).catch(()=>{});
-                        }
-                    } catch (e) {
-                        console.error('Error while invoking startApp from fallback bundle', e);
-                    }
-                    // flush queued calls if bundle attached functions to window
-                    window.__appLoading = false;
-                    while (window.__lazyCalls && window.__lazyCalls.length) {
-                        const call = window.__lazyCalls.shift();
-                        try {
-                            if (typeof window[call.name] === 'function') window[call.name].apply(null, call.args || []);
-                        } catch (e) {
-                            console.error('Error invoking queued call', call.name, e);
-                        }
-                    }
-                    try{ if (typeof wrapRegisteredFunctions === 'function') wrapRegisteredFunctions(); }catch(e){}
-                };
-                script.onerror = function(e){
-                    console.error('Failed to load fallback bundle script', e);
-                    window.__appLoading = false;
-                };
-                document.head.appendChild(script);
-            } catch (e) {
-                console.error('Both app.js and bundle failed to load (fallback injection error):', e);
+                flushQueue();
+            }).catch(e => {
+                console.error('[bootstrap] Both bundle and ESM fallback failed:', e);
                 window.__appLoading = false;
-            }
-        });
+            });
+        };
+        document.head.appendChild(bundleScript);
 
         // Wrap real functions once the app has attached them so we log invocations/errors
         function wrapRegisteredFunctions(){

@@ -39,12 +39,18 @@
     <link rel="manifest" href="/manifest.json">
     <title>Zack Exam</title>
         <!-- Load Tailwind and app CSS non-blocking to avoid render-blocking -->
-        <link rel="preload" href="/css/tailwind.css?v=30" as="style" onload="this.rel='stylesheet'">
-        <link rel="preload" href="/css/styles.min.css?v=30" as="style" onload="this.rel='stylesheet'">
-        <link rel="stylesheet" href="/css/dark-fixes.css?v=1">
+        <!-- preconnect مبكر لتسريع أول اتصال بالخادم وبـ CDN -->
+        <link rel="preconnect" href="https://web-production-d184b.up.railway.app">
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+        <!-- Critical CSS: non-blocking — preload ثم تحويل لـ stylesheet بعد الرسم -->
+        <link rel="preload" href="/css/tailwind.css?v=30" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="preload" href="/css/styles.min.css?v=30" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="preload" href="/css/dark-fixes.css?v=2" as="style" onload="this.onload=null;this.rel='stylesheet'">
         <noscript>
             <link rel="stylesheet" href="/css/tailwind.css?v=30">
             <link rel="stylesheet" href="/css/styles.min.css?v=30">
+            <link rel="stylesheet" href="/css/dark-fixes.css?v=2">
         </noscript>
 
     <!-- Preload local Cairo and Amiri fonts -->
@@ -108,8 +114,15 @@
     #tree-bottom-sheet { min-height: 440px; }
     </style>
 
-    <!-- Font Awesome will be loaded lazily by the bootstrap loader to avoid unused CSS on first paint -->
-    <link rel="stylesheet" href="/css/all.min.css">
+    <!-- Font Awesome CSS: non-blocking — icon glyphs load after first paint -->
+    <!-- fa-local.css: font-face declarations + base .fa class -->
+    <!-- CDN all.min.css: icon glyph codepoints (.fa-home:before etc.) -->
+    <link rel="preload" href="/css/fa-local.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
+    <noscript>
+        <link rel="stylesheet" href="/css/fa-local.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+    </noscript>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
 
@@ -491,20 +504,20 @@
     </style>
         <!-- Improve font loading behavior to avoid invisible text and layout shifts -->
         <style>
-        /* Prioritize swap for Font Awesome fonts served from CDN */
+        /* FA font-faces: LOCAL paths + font-display:optional — no font swap = no CLS */
         @font-face {
             font-family: 'Font Awesome 6 Free';
             font-style: normal;
             font-weight: 900;
-            font-display: swap;
-            src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2') format('woff2');
+            font-display: optional;
+            src: url('/fonts/fa-solid-900.woff2') format('woff2');
         }
         @font-face {
             font-family: 'Font Awesome 6 Brands';
             font-style: normal;
             font-weight: 400;
-            font-display: swap;
-            src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2') format('woff2');
+            font-display: optional;
+            src: url('/fonts/fa-brands-400.woff2') format('woff2');
         }
 
         /* Make Lenis class additions layout-stable */
@@ -547,13 +560,12 @@
             -moz-osx-font-smoothing: grayscale;
         }
         </style>
-        <!-- Preload Font Awesome fonts and ensure stylesheet loads early -->
-        <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
-        <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
-        <link rel="stylesheet" href="/css/fa-local.css">
+        <!-- Preload local FA fonts early — font-display:optional in fa-local.css
+             prevents CLS: if font arrives late, icons stay invisible (no swap shift) -->
+        <link rel="preload" href="/fonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="/fonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
     </head>
     <body class="p-4 sm:p-8">
-        <link rel="preconnect" href="https://web-production-d184b.up.railway.app">
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم" aria-label="تبديل الثيم" class="icon-btn"><i class="fas fa-moon"></i></button>
 
     <!-- iOS Bottom Nav -->
