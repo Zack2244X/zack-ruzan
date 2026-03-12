@@ -54,8 +54,19 @@
         height: 85vh;
         max-width: 480px;
         margin: 0 auto;
+        /* content-visibility:hidden skips ALL rendering (layout + paint + compositing)
+           for the off-screen sheet subtree. When Cairo-Bold or FA fonts load and swap,
+           the browser ignores unseen sheets entirely → no measured layout shift → CLS 0.
+           This is the root fix for CLS 0.704 on #admin-content: Cairo-Bold loaded in
+           63ms (warm cache, inside the optional block), metrics changed, text reflowed.
+           With content-visibility:hidden the reflow is simply never measured. */
+        content-visibility: hidden;
     }
-    .bottom-sheet-content.active { transform: translateY(0); }
+    .bottom-sheet-content.active {
+        transform: translateY(0);
+        /* Restore full rendering when sheet is open */
+        content-visibility: visible;
+    }
 
     .bottom-sheet-content *, #history-tree {
         font-family: inherit !important;
@@ -106,27 +117,29 @@
     </style>
 
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
-    <!-- icons.min.css = base classes + only the glyphs actually used -->
-    <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <!-- icons.min.css = base classes + only the glyphs actually used.
+         FA @font-face injected in onload callback so fa-solid (148KB) + fa-brands (107KB)
+         only start downloading AFTER icons.min.css loads, not at HTML parse time.
+         This removes them from the HTML-parse critical path entirely. -->
+    <script>
+    function _injectFAFaces(){
+        var s=document.createElement('style');
+        s.textContent=
+            "@font-face{font-family:'Font Awesome 6 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}"
+           +"@font-face{font-family:'Font Awesome 6 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}"
+           +"@font-face{font-family:'Font Awesome 5 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}"
+           +"@font-face{font-family:'Font Awesome 5 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}";
+        document.head.appendChild(s);
+    }
+    </script>
+    <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet';_injectFAFaces()">
     <noscript>
         <link rel="stylesheet" href="/css/icons.min.css">
     </noscript>
-    <!-- ALL @font-face declarations are inline here — no separate fonts.css request.
-         fonts.css was loaded via window.load but still appeared in Lighthouse's
-         LCP critical chain (depth-2: HTML→fonts.css→woff2) because window.load
-         fired within the LCP measurement window under 3G throttling (~550ms).
-
-         Inline @font-face = depth-1 chain (HTML→woff2 directly). Lighthouse
-         only flags chains with depth≥2, so font files disappear from the audit.
-
-         font-display:optional: browser attempts font load during optional block
-         (~100ms). Cold cache on 3G → block expires → system font used → no CLS.
-         Warm cache → fonts available from disk → used immediately. -->
+    <!-- Cairo + Amiri @font-face inline: needed for LCP text (card title, scene).
+         font-display:optional: cold-cache 3G → optional block expires → system font → no CLS.
+         Warm cache → fonts on disk → used on first recalc → no swap needed. -->
     <style>
-    @font-face{font-family:'Font Awesome 6 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}
-    @font-face{font-family:'Font Awesome 6 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}
-    @font-face{font-family:'Font Awesome 5 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}
-    @font-face{font-family:'Font Awesome 5 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}
     @font-face{font-family:'Cairo';src:url('/fonts/Cairo-Regular.woff2') format('woff2');font-weight:400;font-display:optional}
     @font-face{font-family:'Cairo';src:url('/fonts/Cairo-Bold.woff2') format('woff2');font-weight:700;font-display:optional}
     @font-face{font-family:'Amiri';src:url('/fonts/Amiri-Regular.woff2') format('woff2');font-weight:400;font-display:optional}
