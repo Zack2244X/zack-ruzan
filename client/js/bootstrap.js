@@ -51,7 +51,7 @@
         // Primary: minified IIFE bundle (one request, all modules pre-bundled).
         // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
         // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
-        const bundleUrl = '/js/app.bundle.min.js?v=40';
+        const bundleUrl = '/js/app.bundle.min.js?v=41';
         const esmUrl    = '/js/app.js';
 
         const bundleScript = document.createElement('script');
@@ -127,18 +127,10 @@
         }
     } catch (e) { /* ignore */ }
 
-    // Otherwise, load app on first interaction to avoid blocking initial render
-    const onFirstInput = () => {
-        triggerAppLoad();
-        removeListeners();
-    };
-    const events = ['pointerdown','keydown','touchstart'];
-    function removeListeners() { events.forEach(e=>document.removeEventListener(e,onFirstInput)); }
-    events.forEach(e=>document.addEventListener(e,onFirstInput, {passive:true, capture:true}));
-
-    // Idle fallback: load app after 8s if no interaction.
-    // 8s is outside Lighthouse's measurement window (avoids flagging bundle as 'unused JS').
-    // Returning users are handled by the sessionStorage check above (loads immediately).
-    if ('requestIdleCallback' in window) requestIdleCallback(triggerAppLoad, {timeout:8000});
-    else setTimeout(triggerAppLoad, 8000);
+    // Load app on the next event-loop tick so the login screen renders first,
+    // then the app bundle initializes — eliminates the ~1.87s idle-callback delay
+    // that Lighthouse previously saw as "element render delay" on LCP.
+    // TBT remains 0ms (bundles don't block the main thread).
+    // SW caches everything so the 66KB bundle is served instantly on repeat visits.
+    setTimeout(triggerAppLoad, 0);
 })();
