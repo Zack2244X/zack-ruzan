@@ -308,8 +308,6 @@ export function navToHome() {
     document.getElementById('quiz-container').classList.add('hidden');
     updateDockUI('home');
     _showThemeToggle(true);
-    // Ensure we are not left in the login-only desktop viewport
-    try { _restoreViewportFromLogin(); } catch (e) { /* ignore */ }
 }
 
 /**
@@ -336,8 +334,6 @@ export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
     renderHistoryTree();
     openBottomSheet();
     updateDockUI(section);
-    // Exiting login screen: remove desktop viewport if present
-    try { _restoreViewportFromLogin(); } catch (e) { /* ignore */ }
 }
 
 /**
@@ -360,97 +356,9 @@ export function openAdminAuthOrPanel() {
     }
     _showThemeToggle(false);
     _syncMainInteractionState();
-    // If admin panel / student menu opened from non-login state, ensure no desktop viewport
-    try { _restoreViewportFromLogin(); } catch (e) { /* ignore */ }
 }
 
-// Install a guard to remove force-desktop if login screen is not visible.
-function _installLayoutGuard() {
-    try {
-        const guard = () => {
-            const html = document.documentElement;
-            const login = document.getElementById('login-screen');
-            const hasForce = html.classList.contains('force-desktop') || html.getAttribute('data-force-desktop') === '1';
-            if (hasForce && (!login || login.classList.contains('hidden'))) {
-                _restoreViewportFromLogin();
-            }
-        };
-        const mo = new MutationObserver(() => { guard(); });
-        mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class','data-force-desktop'] });
-        const loginEl = document.getElementById('login-screen');
-        if (loginEl) mo.observe(loginEl, { attributes: true, attributeFilter: ['class'] });
-        // initial check after a tick (DOM may still be initializing)
-        setTimeout(guard, 50);
-        // expose for debugging
-        try { window.__layoutGuard = mo; } catch(e){}
-    } catch (e) { /* ignore */ }
-}
-
-// Lightweight diagnostic helper: prints viewport + force-desktop state and shows a temporary badge
-function _showLayoutDiagnosticBadge() {
-    try {
-        const meta = document.querySelector('meta[name="viewport"]');
-        const viewport = meta ? meta.content : '(no meta viewport)';
-        const html = document.documentElement;
-        const hasForce = html.classList.contains('force-desktop') || html.getAttribute('data-force-desktop') === '1';
-        console.info('[layout.diag] viewport=', viewport, 'force-desktop=', hasForce);
-        const badge = document.createElement('div');
-        badge.style.position = 'fixed';
-        badge.style.right = '12px';
-        badge.style.top = '12px';
-        badge.style.zIndex = '99999';
-        badge.style.background = 'rgba(0,0,0,0.6)';
-        badge.style.color = 'white';
-        badge.style.padding = '8px 10px';
-        badge.style.borderRadius = '8px';
-        badge.style.fontSize = '12px';
-        badge.innerText = `viewport: ${viewport.replace(/\s+/g,' ')}\nforce-desktop: ${hasForce}`;
-        document.body.appendChild(badge);
-        setTimeout(() => badge.remove(), 6000);
-    } catch (e) { console.warn('layout diag failed', e); }
-}
-
-// expose a console helper for quick inspection from device
-try { window.showLayoutDiagnostic = _showLayoutDiagnosticBadge; } catch(e){}
-
-// install the guard once DOM is ready
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _installLayoutGuard);
-else setTimeout(_installLayoutGuard, 30);
-
-// Ensure login page uses desktop layout on mobile devices.
-function _applyLoginDesktopViewport() {
-    try {
-        const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
-        if (!isMobileUA) return;
-        const meta = document.querySelector('meta[name="viewport"]');
-        if (!meta) return;
-        // Save original viewport if not saved
-        if (!document.documentElement.hasAttribute('data-orig-viewport')) {
-            try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
-        }
-        const targetWidth = 1200;
-        const vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
-        const rawScale = vw / targetWidth;
-        const clampedScale = Math.max(0.12, Math.min(1, rawScale));
-        meta.content = `width=${targetWidth}, initial-scale=${clampedScale}, maximum-scale=${clampedScale}, user-scalable=no, viewport-fit=cover`;
-        document.documentElement.classList.add('force-desktop');
-        document.documentElement.setAttribute('data-force-desktop','1');
-    } catch (e) { console.warn('applyLoginDesktopViewport failed', e); }
-}
-
-function _restoreViewportFromLogin() {
-    try {
-        const meta = document.querySelector('meta[name="viewport"]');
-        if (!meta) return;
-        const orig = document.documentElement.getAttribute('data-orig-viewport');
-        if (orig !== null && orig !== undefined) {
-            meta.content = orig || 'width=device-width, initial-scale=1.0, viewport-fit=cover';
-            document.documentElement.removeAttribute('data-orig-viewport');
-        }
-        document.documentElement.classList.remove('force-desktop');
-        document.documentElement.removeAttribute('data-force-desktop');
-    } catch (e) { console.warn('restoreViewportFromLogin failed', e); }
-}
+// Viewport manipulation removed — login page uses responsive CSS (flex-column on mobile).
 
 /** إغلاق قائمة الطالب */
 export function closeStudentMenu() {
@@ -463,7 +371,6 @@ export function closeStudentMenu() {
 /** عرض شاشة تسجيل الدخول */
 export function showLoginScreen() {
     logFunctionStatus('showLoginScreen', false);
-    console.log('[diag] showLoginScreen — removing hidden from login-screen');
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('ios-bottom-nav').classList.add('hidden');
@@ -472,12 +379,9 @@ export function showLoginScreen() {
     _syncMainInteractionState();
 }
 
-/** Ensure login page enforces desktop layout on mobile */
+/** Ensure login page enforces desktop layout on mobile — now alias of showLoginScreen */
 export function showLoginScreenWithDesktop() {
-    console.log('[diag] showLoginScreenWithDesktop invoked; login-screen before=', document.getElementById('login-screen')?.className);
     showLoginScreen();
-    try { _applyLoginDesktopViewport(); } catch (e) { console.warn('showLoginScreenWithDesktop failed', e); }
-    try { console.log('[diag] showLoginScreenWithDesktop after -> login-screen now=', document.getElementById('login-screen')?.className); } catch(e){}
 }
 
 /** طي/فتح فروع الشجرة */
