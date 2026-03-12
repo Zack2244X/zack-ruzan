@@ -336,12 +336,8 @@ app.get('*', (req, res, next) => {
     // HTTP Link preload headers — browser starts fetching critical assets
     // from the very first byte of the response, before HTML is parsed.
     // bg.webp: LCP image (fetchpriority=high)
-    // bootstrap.min.js: first critical script — eliminates the 264ms
-    //   network dependency chain (HTML → bootstrap discovery delay)
-    res.setHeader('Link', [
-        '</icons/bg.webp>; rel=preload; as=image; fetchpriority=high',
-        '</js/bootstrap.min.js>; rel=modulepreload'
-    ].join(', '));
+    // bootstrap is now inlined in HTML — no separate request needed
+    res.setHeader('Link', '</icons/bg.webp>; rel=preload; as=image; fetchpriority=high');
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 

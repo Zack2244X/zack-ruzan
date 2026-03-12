@@ -33,6 +33,13 @@ export function _syncMainInteractionState() {
     })();
     const blocked = anyOpen || sheetOpen || guestModalOpen;
 
+    // ── Batch ALL geometry reads BEFORE any DOM writes to avoid forced reflow ──
+    const body = document.body;
+    const bodyOverflowY = getComputedStyle(body).overflowY;
+    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    const computedPR = parseFloat(getComputedStyle(body).paddingRight) || 0;
+
+    // ── DOM writes ────────────────────────────────────────────────────────────
     if (dashboard) {
         dashboard.classList.toggle('pointer-events-none', blocked);
         dashboard.classList.toggle('select-none', blocked);
@@ -40,15 +47,11 @@ export function _syncMainInteractionState() {
     // Avoid layout shift from scrollbar removal: when blocking, lock scroll and
     // compensate for the scrollbar width by adding equivalent padding-right.
     try {
-        const body = document.body;
-        const bodyOverflowY = getComputedStyle(body).overflowY;
         if (blocked) {
             // Only compensate for scrollbar if overflow-y is not already scroll
             if (!body.hasAttribute('data-orig-pr')) body.setAttribute('data-orig-pr', body.style.paddingRight || '');
-            const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
             if (scrollbarWidth > 0 && bodyOverflowY !== 'scroll') {
-                const computed = parseFloat(getComputedStyle(body).paddingRight) || 0;
-                body.style.paddingRight = (computed + scrollbarWidth) + 'px';
+                body.style.paddingRight = (computedPR + scrollbarWidth) + 'px';
             }
             // Only set overflow if not already scroll
             if (bodyOverflowY !== 'scroll') {

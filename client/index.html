@@ -117,9 +117,6 @@
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
 
-    <!-- Preload small bootstrap module to reduce initial JS payload -->
-    <link rel="modulepreload" href="/js/bootstrap.min.js">
-
     <!-- Login Page Styles -->
     <style>
     /* Prevent layout shifts caused by scrollbar appearing/disappearing */
@@ -1289,8 +1286,8 @@
         if (!window.ScrollTrigger) window.ScrollTrigger = null;
     </script>
 
-    <!-- Lightweight bootstrap that lazy-loads the full app when needed -->
-    <script type="module" src="/js/bootstrap.min.js"></script>
+    <!-- bootstrap is now inlined: eliminates network chain HTML→bootstrap.min.js -->
+    <script type="module">(()=>{(function(){window.__lazyCalls=[],window.__appLoading=!1,window.addEventListener("error",e=>{console.error("\u274C \u062E\u0637\u0623 \u063A\u064A\u0631 \u0645\u062A\u0648\u0642\u0639 (boot):",e.message,e.filename,e.lineno)}),window.addEventListener("unhandledrejection",e=>{console.error("\u274C Promise \u0645\u0631\u0641\u0648\u0636 (boot):",e.reason),e.preventDefault()});const s=["toggleTheme","navToHome","navToSection","openAdminAuthOrPanel","closeStudentMenu","openBottomSheet","closeBottomSheet","closeAdminSheet","closeAllOverlays","startGoogleRedirectLogin","closeAdminAuth","logoutUser","handleStudentGoogleLogin","playQuiz","selectAnswer","goToNextQuestion","goToPreviousQuestion","submitQuiz","exitToMain","openCreateSection","closeCreateSection","goToBuilderStep2","renderBuilderQuestion","updateBuilderData","updateBuilderOptionText","setBuilderCorrectOption","addBuilderOption","removeBuilderOption","addBuilderQuestion","navBuilderQuestion","saveBuiltQuiz","loadQuizIntoBuilder","updateExistingQuiz","triggerImportExamFile","reshuffleImportedAnswers","handleImportFileChange","setSubjectFilter","setEditSubjectFilter","renderSubjectFilters","renameSubject","closeRenameModal","executeRenameSubject","confirmDeleteSubject","closeDeleteModal","executeDeleteSubject","openAddNoteModal","closeAddNoteModal","saveNote","loadNoteIntoBuilder","updateExistingNote","forceDownload","openGradesModal","closeGradesModal","openStatsModal","closeStatsModal","openEditSelectionModal","closeEditSelectionModal","switchEditTab","renderDashboard","deleteQuiz","escapeHtml","showAlert","showConfirm","showLoading","getQuickDeviceTier","scrollToTop","scrollToElement","playEntranceAnimation","playExitAnimation","animateElement","pauseAllAnimations","resumeAllAnimations"];function i(){if(window.__appLoadTriggered)return;window.__appLoadTriggered=!0,window.__appLoading=!0;function e(){for(window.__appLoading=!1;window.__lazyCalls&&window.__lazyCalls.length;){const o=window.__lazyCalls.shift();try{typeof window[o.name]=="function"&&window[o.name].apply(null,o.args||[])}catch(t){console.error("Error invoking queued call",o.name,t)}}try{typeof d=="function"&&d()}catch(o){}}const r="/js/app.bundle.min.js?v=41",u="/js/app.js",n=document.createElement("script");n.src=r,n.async=!0,n.onload=function(){typeof window.startApp=="function"&&Promise.resolve(window.startApp()).catch(()=>{}),e()},n.onerror=function(o){console.warn("[bootstrap] bundle failed, falling back to ESM app.js:",o),import(u).then(t=>{t&&typeof t.startApp=="function"&&t.startApp().catch(a=>console.error("startApp failed",a)),e()}).catch(t=>{console.error("[bootstrap] Both bundle and ESM fallback failed:",t),window.__appLoading=!1})},document.head.appendChild(n);function d(){try{s.forEach(o=>{try{const t=window[o];if(typeof t=="function"&&!t.__wrapped_by_bootstrap){const a=t,c=function(...p){try{return a.apply(this,p)}catch(l){throw console.error("[LAZY_CALL_ERROR]",o,l),l}};c.__wrapped_by_bootstrap=!0,window[o]=c}}catch(t){}})}catch(o){}}}s.forEach(e=>{window[e]||(window[e]=function(...r){window.__lazyCalls.push({name:e,args:r}),i()})});try{if(sessionStorage.getItem("currentUser")){i();return}}catch(e){}setTimeout(i,0)})();})();</script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
