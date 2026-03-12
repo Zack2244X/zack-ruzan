@@ -1,40 +1,22 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" class="lenis lenis-smooth">
 <head>
-        <!-- Fix: Apply theme from localStorage or system preference immediately on page load -->
+        <!-- Apply theme class before first paint to avoid flash of wrong color scheme -->
         <script>
         (function(){
             try {
                 var theme = localStorage.getItem('app-theme');
-                if (!theme) {
-                    // fallback to system preference
-                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        theme = 'dark';
-                    }
+                if (!theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    theme = 'dark';
                 }
-                // compute scale so 1200px layout fits the device
-                var desktopWidth = 1200;
-                var deviceW = Math.max(screen.width || window.innerWidth || 360, 320);
-                var scale = Math.max(0.12, Math.min(1, deviceW / desktopWidth));
-                var meta = document.querySelector('meta[name="viewport"]');
-                document.documentElement.classList.add('force-desktop');
-                document.documentElement.setAttribute('data-force-desktop', '1');
-                // Note: no user-scalable=no and max-scale ≥ 1 to satisfy WCAG 1.4.4
-                if (meta) {
-                    meta.content = 'width=' + desktopWidth + ', initial-scale=' + scale + ', minimum-scale=' + scale + ', maximum-scale=3.0, user-scalable=yes, viewport-fit=cover';
-                }
-            } catch (e) {
-                console.warn('applyLoginDesktopViewport failed', e);
-            }
+                if (theme === 'dark') document.documentElement.classList.add('dark');
+            } catch (e) {}
         })();
         </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-        <!-- Enforced desktop-on-mobile: apply desktop viewport and lock zoom
-             Improved: compute a scale so a 1200px desktop layout fits the device width. -->
-        <!-- Force-desktop logic is now handled in JS (app.js) for login page only -->
 
-        <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
+    <meta name="description" content="Zack Exam — منصة اختبارات تفاعلية للطلاب والمعلمين">
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
     <title>Zack Exam</title>
@@ -112,8 +94,7 @@
     #subject-filters-container { min-height: 32px; }
     /* Pin min-height for sheet overlay */
     #tree-bottom-sheet { min-height: 440px; }
-    /* touch-action: manipulation removes 300ms tap delay on width=1200 viewport
-       without needing width=device-width (fixes 'Optimize viewport for mobile'). */
+    /* touch-action: manipulation eliminates the 300ms tap delay on all interactive elements */
     a, button, [onclick], [role="button"], input, select, textarea, label {
         touch-action: manipulation;
     }
@@ -1290,77 +1271,16 @@
     <!-- Lightweight bootstrap that lazy-loads the full app when needed -->
     <script type="module" src="/js/bootstrap.min.js"></script>
 
-    <!-- Ensure login-screen always enforces desktop viewport on mobile while visible -->
+    <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
-    (function(){
-        var __preventZoomHandlers = null;
-
-        function setDesktopViewport() {
-            try {
-                var meta = document.querySelector('meta[name="viewport"]');
-                if (!meta) return;
-                if (!document.documentElement.hasAttribute('data-orig-viewport')) {
-                    try { document.documentElement.setAttribute('data-orig-viewport', meta.content || ''); } catch(e){}
-                }
-                var target = 1200;
-                var vw = Math.max(screen.width || window.innerWidth || 360, 320);
-                var scale = Math.max(0.12, Math.min(1, vw / target));
-                // set viewport مع السماح بالتكبير (WCAG 1.4.4 - Resize Text)
-                meta.content = 'width=' + target + ', initial-scale=' + scale + ', minimum-scale=' + scale + ', maximum-scale=3.0, user-scalable=yes, viewport-fit=cover';
-                document.documentElement.classList.add('force-desktop');
-                document.documentElement.setAttribute('data-force-desktop','1');
-            } catch (e) { console.warn('setDesktopViewport failed', e); }
-        }
-
-        function restoreViewport() {
-            try {
-                var meta = document.querySelector('meta[name="viewport"]');
-                if (!meta) return;
-                var orig = document.documentElement.getAttribute('data-orig-viewport');
-                if (orig !== null && orig !== undefined) {
-                    meta.content = orig || 'width=device-width, initial-scale=1.0, viewport-fit=cover';
-                    document.documentElement.removeAttribute('data-orig-viewport');
-                }
-                document.documentElement.classList.remove('force-desktop');
-                document.documentElement.removeAttribute('data-force-desktop');
-                // remove zoom prevention handlers
-                if (__preventZoomHandlers) {
-                    window.removeEventListener('touchstart', __preventZoomHandlers.touchStartHandler);
-                    window.removeEventListener('gesturestart', __preventZoomHandlers.gestureStartHandler);
-                    window.removeEventListener('touchend', __preventZoomHandlers.touchEndHandler);
-                    __preventZoomHandlers = null;
-                }
-            } catch (e) { console.warn('restoreViewport failed', e); }
-        }
-
-        function attachToLogin(loginEl) {
-            if (!loginEl) return;
-            var mo = new MutationObserver(function(){
-                try {
-                    if (!loginEl.classList.contains('hidden')) setDesktopViewport();
-                    else restoreViewport();
-                } catch(e) {}
-            });
-            mo.observe(loginEl, { attributes: true, attributeFilter: ['class'] });
-            // apply now if visible
-            if (!loginEl.classList.contains('hidden')) setDesktopViewport();
-            // restore on pagehide
-            window.addEventListener('pagehide', restoreViewport);
-            // provide a global fallback in case other inline scripts call this before modules initialize
-            try { window.showLoginScreenWithDesktop = function(){ loginEl.classList.remove('hidden'); document.getElementById('dashboard-view')?.classList.add('hidden'); document.getElementById('ios-bottom-nav')?.classList.add('hidden'); setDesktopViewport(); }; } catch(e){}
-        }
-
+    window.showLoginScreenWithDesktop = function(){
         var login = document.getElementById('login-screen');
-        if (login) attachToLogin(login);
-        else {
-            // wait for login element to be added later
-            var dmo = new MutationObserver(function(m){
-                var ln = document.getElementById('login-screen');
-                if (ln) { dmo.disconnect(); attachToLogin(ln); }
-            });
-            dmo.observe(document.documentElement, { childList: true, subtree: true });
-        }
-    })();
+        var dash  = document.getElementById('dashboard-view');
+        var nav   = document.getElementById('ios-bottom-nav');
+        if (login) login.classList.remove('hidden');
+        if (dash)  dash.classList.add('hidden');
+        if (nav)   nav.classList.add('hidden');
+    };
     </script>
 
     <!-- Lamp Animation Script -->

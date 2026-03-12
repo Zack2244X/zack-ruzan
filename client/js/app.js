@@ -441,60 +441,6 @@ export async function startApp() {
     // Expose api singletons for admin bundle (avoids duplicating state-aware modules)
     window.__api = { apiCall, fetchScoresFromServer, fetchLeaderboardFromServer };
 
-    // Layout switching: ONLY login page uses desktop layout on mobile
-    const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (screen.width && screen.width < 900);
-    function setDesktopLayout(force) {
-        if (!isMobileUA) return;
-        const root = document.documentElement;
-        if (force) {
-            root.classList.add('force-desktop');
-            root.setAttribute('data-force-desktop','1');
-        } else {
-            root.classList.remove('force-desktop');
-            root.removeAttribute('data-force-desktop');
-        }
-    }
-
-    // Observe login visibility to toggle layout (force-desktop ONLY for login page)
-    function observeLoginLayout() {
-        const login = document.getElementById('login-screen');
-        if (!login) return;
-        const root = document.documentElement;
-        const meta = document.querySelector('meta[name="viewport"]');
-        let originalViewport = meta ? meta.content : '';
-        function applyDesktopViewport() {
-            const targetWidth = 1200;
-            const vw = Math.max(window.innerWidth || screen.width || document.documentElement.clientWidth || 360, 320);
-            const rawScale = vw / targetWidth;
-            const clampedScale = Math.max(0.12, Math.min(1, rawScale));
-            const content = `width=${targetWidth}, initial-scale=${clampedScale}, minimum-scale=${clampedScale}, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover`;
-            if (meta) meta.content = content;
-            root.classList.add('force-desktop');
-            root.setAttribute('data-force-desktop','1');
-        }
-        function restoreViewport() {
-            if (meta && originalViewport) meta.content = originalViewport;
-            root.classList.remove('force-desktop');
-            root.removeAttribute('data-force-desktop');
-        }
-        const observer = new MutationObserver(() => {
-            if (!isMobileUA) return;
-            if (!login.classList.contains('hidden')) {
-                applyDesktopViewport();
-            } else {
-                restoreViewport();
-            }
-        });
-        observer.observe(login, { attributes: true, attributeFilter: ['class'] });
-        // Initial state
-        if (!login.classList.contains('hidden')) {
-            applyDesktopViewport();
-        } else {
-            restoreViewport();
-        }
-    }
-    document.addEventListener('DOMContentLoaded', observeLoginLayout);
-
     // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
     // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
     if (document.readyState === 'loading') {
