@@ -1,0 +1,28 @@
+/* ═══ Arabic UI fonts — loaded async to avoid CLS ═══
+   font-display: optional ensures NO font swap on first visit.
+   On repeat visits, fonts are cached and applied instantly. */
+
+@font-face {
+    font-family: 'Cairo';
+    src: url('/fonts/Cairo-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: optional;
+}
+@font-face {
+    font-family: 'Cairo';
+    src: url('/fonts/Cairo-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: optional;
+}
+@font-face {
+    font-family: 'Amiri';
+    src: url('/fonts/Amiri-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: optional;
+}
+@font-face {
+    font-family: 'Amiri';
+    src: url('/fonts/Amiri-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: optional;
+}

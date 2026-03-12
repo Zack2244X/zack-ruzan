@@ -333,11 +333,10 @@ app.use('/api/notes', noteRoutes);
 // --- SPA Fallback ---
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
-    // HTTP Link preload headers — browser starts fetching critical assets
+    // HTTP Link preload headers — browser starts fetching LCP asset
     // from the very first byte of the response, before HTML is parsed.
-    // bg.webp: LCP image (fetchpriority=high)
-    // bootstrap is now inlined in HTML — no separate request needed
-    res.setHeader('Link', '</icons/bg.webp>; rel=preload; as=image; fetchpriority=high');
+    // Logo is the actual LCP element (Lighthouse confirmed)
+    res.setHeader('Link', '</icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp>; rel=preload; as=image; fetchpriority=high');
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 

@@ -20,9 +20,11 @@
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
     <title>Zack Exam</title>
-        <!-- Preload LCP image FIRST — before any CSS or font so the browser
-             starts fetching bg.webp at the earliest possible moment. -->
-        <link rel="preload" as="image" href="/icons/bg.webp" fetchpriority="high">
+        <!-- Preload LCP image FIRST — Logo is the actual LCP element
+             (Lighthouse confirmed). Give it highest priority + earliest position. -->
+        <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp" fetchpriority="high">
+        <!-- bg.webp: decorative background behind login card — NOT LCP -->
+        <link rel="preload" as="image" href="/icons/bg.webp">
 
         <!-- Load Tailwind and app CSS non-blocking to avoid render-blocking -->
         <!-- preconnect مبكر لتسريع أول اتصال بالخادم وبـ CDN -->
@@ -41,9 +43,6 @@
 
     <!-- Fonts use font-display:optional — browser fetches them on its own
          when @font-face is parsed. No preload needed (saves 537 KB bandwidth for LCP). -->
-
-    <!-- Logo: NOT LCP — low priority so bg.webp gets full bandwidth -->
-    <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp" fetchpriority="low">
 
     <!-- Bottom-sheet and CLS mitigations: use transform for show/hide and system fonts for sheet content until webfonts load -->
     <style>
@@ -89,8 +88,12 @@
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
     <!-- icons.min.css = font-faces + base classes + only the glyphs actually used -->
     <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <!-- Arabic fonts (Cairo+Amiri) @font-face loaded ASYNC to avoid CLS.
+         font-display:optional = no swap on first visit, cached for next visit. -->
+    <link rel="preload" href="/css/fonts.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
         <link rel="stylesheet" href="/css/icons.min.css">
+        <link rel="stylesheet" href="/css/fonts.css">
     </noscript>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
@@ -141,7 +144,6 @@
             pointer-events: none;
             z-index: 0;
         }
-        /* bg.webp <img> is the LCP element — fills the full viewport */
         .bg-pattern > img {
             width: 100%;
             height: 100%;
@@ -510,32 +512,10 @@
             -webkit-text-size-adjust: 100%;
         }
         </style>
-        <!-- Use local Cairo and Amiri fonts for critical UI -->
+        <!-- Cairo+Amiri @font-face is now in /css/fonts.css (loaded async above).
+             font-family references stay here so system-ui is used on first paint,
+             then Cairo/Amiri on cached revisits — zero CLS. -->
         <style>
-        @font-face {
-            font-family: 'Cairo';
-            src: url('/fonts/Cairo-Regular.woff2') format('woff2');
-            font-weight: 400;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Cairo';
-            src: url('/fonts/Cairo-Bold.woff2') format('woff2');
-            font-weight: 700;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Amiri';
-            src: url('/fonts/Amiri-Regular.woff2') format('woff2');
-            font-weight: 400;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Amiri';
-            src: url('/fonts/Amiri-Bold.woff2') format('woff2');
-            font-weight: 700;
-            font-display: optional;
-        }
         #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
             font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
@@ -769,7 +749,7 @@
     <!-- شاشة تسجيل الدخول -->
     <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <div class="bg-pattern">
-                <img src="/icons/bg.webp" alt="" fetchpriority="high" loading="eager" elementtiming="lcp" width="1200" height="900">
+                <img src="/icons/bg.webp" alt="" loading="eager" width="1200" height="900">
             </div>
         <div id="floor-glow"></div>
 
