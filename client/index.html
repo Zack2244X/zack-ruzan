@@ -100,8 +100,8 @@
         <link rel="stylesheet" href="/css/icons.min.css">
         <link rel="stylesheet" href="/css/fonts.css">
     </noscript>
-    <!-- Amiri @font-face deferred to fonts.css (246KB — not needed for first paint).
-         Cairo inline in <head>. Amiri loaded after LCP via deferred script. -->
+    <!-- Cairo+Amiri @font-face deferred to fonts.css — NOT inline to avoid CLS.
+         fonts.css loaded after first paint via rAF+setTimeout. -->
     <script>
     requestAnimationFrame(function(){setTimeout(function(){
         var l=document.createElement('link');
@@ -371,7 +371,7 @@
         }
 
     .card-title {
-      font-family: 'Cairo', serif;
+      font-family: serif;
       font-size: 2.2rem;
       font-weight: 700;
       color: var(--gold-pale);
@@ -409,7 +409,7 @@
       background: linear-gradient(120deg, #8a6d3b 0%, #c9962a 25%, #e8b84b 50%, #f5d98b 65%, #e8b84b 80%, #8a6d3b 100%);
       background-size: 220% auto;
       color: #1a0e00;
-      font-family: 'Cairo', sans-serif;
+      font-family: sans-serif;
       font-size: 1.2rem; font-weight: 900;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -500,10 +500,8 @@
             .card-title { font-size: 1.8rem; }
         }
     </style>
-        <!-- Font @font-face declarations — ALL inline to prevent CLS.
-             font-display:optional means:
-             - Cold cache: ~100ms block → font not ready → system-ui → NO swap
-             - Warm cache: font instant → Cairo from first frame → NO swap -->
+        <!-- Font Awesome @font-face inline (icons only — no text reflow CLS).
+             Cairo/Amiri are in deferred fonts.css to avoid font swap CLS. -->
         <style>
         /* FA font-faces */
         @font-face {
@@ -520,20 +518,9 @@
             font-display: optional;
             src: url('/fonts/fa-brands-400.woff2') format('woff2');
         }
-        /* Cairo (Arabic UI) — inline so browser knows about it from first
-           style recalc. Amiri deferred to fonts.css (246KB not needed for LCP). */
-        @font-face {
-            font-family: 'Cairo';
-            src: url('/fonts/Cairo-Regular.woff2') format('woff2');
-            font-weight: 400;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Cairo';
-            src: url('/fonts/Cairo-Bold.woff2') format('woff2');
-            font-weight: 700;
-            font-display: optional;
-        }
+        /* Cairo + Amiri @font-face are in /css/fonts.css (loaded deferred).
+           NOT inline — inline @font-face triggers immediate download and
+           font-display:optional swap at ~100ms boundary → CLS 0.923. */
 
         /* Make Lenis class additions layout-stable */
         html.lenis, html.lenis-smooth {
@@ -543,11 +530,10 @@
             -webkit-text-size-adjust: 100%;
         }
 
-        /* Font-family with Cairo FIRST — browser resolves it on first frame.
-           Cold cache: optional block expires → falls to system-ui.
-           Warm cache: Cairo instant → used from first frame. No swap either way. */
+        /* system-ui ONLY for first paint — NO Cairo/Amiri reference.
+           fonts.css (deferred) brings @font-face + font-family atomically. */
         #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
-            font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -900,7 +886,7 @@
             <!-- مودال التحذير للضيف -->
             <div id="guest-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.22);backdrop-filter:blur(6px);">
                 <div style="max-width:420px;margin:5vh auto 0 auto;padding:2.2rem 1.2rem;border-radius:32px;background:linear-gradient(135deg,#c9962a 0%,#080c14 100%);box-shadow:0 0 40px 8px rgba(0,0,0,0.18);text-align:center;max-height:90vh;overflow-y:auto;">
-                    <h3 style="font-family:'Cairo',serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
+                    <h3 style="font-family:serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
                     <p style="color:#fff;font-size:1.1rem;margin-bottom:1.2rem;line-height:1.7;">لن يتم تسجيل أي بيانات أو درجات لك في المنصة.<br>لن تظهر في قائمة الشرف أو رصد الدرجات.</p>
                     <div style="display:flex;gap:1.2rem;justify-content:center;margin-top:1.2rem;">
                         <button onclick="agreeGuestLogin()" style="flex:1;padding:0.8rem 0;font-size:1.1rem;font-weight:bold;border:none;border-radius:16px;background:linear-gradient(90deg,#c9962a,#f5d98b);color:#222;box-shadow:0 2px 8px #0002;cursor:pointer;">موافق</button>
@@ -910,7 +896,7 @@
             </div>
             <style>
             .gold-arabic-title {
-                font-family: 'Cairo', serif;
+                font-family: serif;
                 font-size:2.2rem;
                 font-weight:bold;
                 color:#f5d98b;

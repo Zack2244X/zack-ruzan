@@ -1,8 +1,20 @@
-/* ═══ Amiri — deferred Arabic decorative font ═══
-   Cairo is inline in <head>. Amiri is loaded AFTER LCP via deferred JS
-   to save 246KB from the critical path.
-   font-display:optional → no swap. On warm cache, applied instantly. */
+/* ═══ Cairo + Amiri — deferred Arabic fonts ═══
+   Loaded AFTER first paint via rAF+setTimeout in index.html.
+   font-display:optional → cold cache: font skipped (system-ui used).
+   Warm cache: fonts instant from disk → applied on first frame. */
 
+@font-face {
+    font-family: 'Cairo';
+    src: url('/fonts/Cairo-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: optional;
+}
+@font-face {
+    font-family: 'Cairo';
+    src: url('/fonts/Cairo-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: optional;
+}
 @font-face {
     font-family: 'Amiri';
     src: url('/fonts/Amiri-Regular.woff2') format('woff2');
@@ -16,8 +28,16 @@
     font-display: optional;
 }
 
-/* When this file loads, add Amiri to elements that benefit from it.
-   Cairo (inline) is already the primary font. Amiri adds a serif accent. */
+/* Both @font-face + font-family arrive atomically in this file.
+   On cold cache: optional block expires before font files arrive → system-ui.
+   On warm cache: font files instant → Cairo/Amiri from first recalc. */
+#login-screen, .login-card, .login-scene, .card-title, #sheet-title,
+#ios-bottom-nav, .login-btn-fancy {
+    font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+}
 .card-title, .gold-arabic-title {
     font-family: 'Amiri', 'Cairo', serif !important;
+}
+.login-btn-fancy {
+    font-family: 'Cairo', sans-serif !important;
 }
