@@ -427,6 +427,7 @@ async function startServer(retries = 3) {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             await sequelize.authenticate();
+            dbConnected = true;
             logger.info('✅ تم الاتصال بقاعدة البيانات TiDB بنجاح.');
             break;
         } catch (err) {
@@ -459,7 +460,20 @@ async function startServer(retries = 3) {
     await runSafeMigrations();
 
     server = app.listen(PORT, () => {
+        serverReady = true;
         logger.info(`🚀 السيرفر شغال على: http://localhost:${PORT}`);
+
+        // KeepAlive: self-ping every 13 min to prevent Railway free-tier cold-start
+        // (Railway spins down idle services; 13 min < 15 min idle timeout)
+        if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_NAME) {
+            const selfPingUrl = `http://localhost:${PORT}/api/health`;
+            setInterval(() => {
+                require('http').get(selfPingUrl, (res) => {
+                    res.resume(); // drain response
+                }).on('error', () => {}); // silently ignore errors
+            }, 13 * 60 * 1000);
+            logger.info('🏓 KeepAlive self-ping enabled (13 min interval).');
+        }
     });
 }
 

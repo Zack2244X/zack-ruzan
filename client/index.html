@@ -331,14 +331,19 @@
       filter: blur(8px);
       box-shadow: none;
       pointer-events: none;
-      /* content-visibility:hidden skips ALL rendering work for this hidden card:
-         paint, compositing, and layout of its subtree are completely skipped.
-         Implies contain:strict (layout + style + size + paint) — browser uses
-         height:580px as the element's contributed size in the parent flex row
-         without computing anything inside. Saves ~60% of the main-thread
-         Style&Layout time that was spent recalculating invisible content.
-         Height is stable → .login-scene height stable → absolute centering → no CLS. */
-      content-visibility: hidden;
+      /* contain:layout+size: children cannot affect this element's dimensions.
+         height:580px is the declared intrinsic size. Any font swap, icon load,
+         or text reflow inside the card is fully contained — the parent flex row
+         stays stable → .login-scene doesn't shift → CLS 0.
+         CRITICAL DIFFERENCE from content-visibility:hidden:
+           content-visibility:hidden skips ALL rendering (removes element from
+           LCP candidate pool entirely) → Chrome picks bg.webp as LCP instead
+           of the preloaded logo → LCP 7s even though logo is only 7KB.
+           contain:layout+size keeps the element rendered but size-contained.
+           With opacity:0 (not visibility:hidden), Chrome DOES measure the logo
+           as an LCP candidate → the fetchpriority="high" preload benefits LCP
+           → logo loads in ~100ms → LCP drops to ~100-300ms on warm cache. */
+      contain: layout size;
       height: 580px;
     }
     .login-card.appear {
@@ -527,8 +532,9 @@
     }
         @media (max-width: 480px) {
             .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
-            /* Reset content-visibility on mobile — column layout, short scene, no centering CLS */
-            .login-card.off { height: auto; content-visibility: hidden; }
+            /* Mobile: column layout, no height needed — contain:layout isolates
+               internal font/icon changes from .login-scene centring */
+            .login-card.off { height: auto; contain: layout; }
                 /* mobile: reduced 30% from 315px -> 221px */
                 .logo-wrap { width: 221px; height: 221px; }
                 /* Adjust decorative ring for smaller logo: slightly reduced thickness, less blur */
