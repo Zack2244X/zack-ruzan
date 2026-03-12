@@ -361,7 +361,7 @@
         }
 
     .card-title {
-      font-family: 'Amiri', serif;
+      font-family: serif;
       font-size: 2.2rem;
       font-weight: 700;
       color: var(--gold-pale);
@@ -399,7 +399,7 @@
       background: linear-gradient(120deg, #8a6d3b 0%, #c9962a 25%, #e8b84b 50%, #f5d98b 65%, #e8b84b 80%, #8a6d3b 100%);
       background-size: 220% auto;
       color: #1a0e00;
-      font-family: 'Cairo', sans-serif;
+      font-family: sans-serif;
       font-size: 1.2rem; font-weight: 900;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -516,12 +516,13 @@
             -webkit-text-size-adjust: 100%;
         }
         </style>
-        <!-- Cairo+Amiri @font-face is now in /css/fonts.css (loaded async above).
-             font-family references stay here so system-ui is used on first paint,
-             then Cairo/Amiri on cached revisits — zero CLS. -->
+        <!-- Cairo+Amiri @font-face is in /css/fonts.css (loaded async).
+             font-family references are ALSO in fonts.css so both arrive
+             atomically — no CLS from font swap.
+             Inline CSS uses system-ui only for first paint. -->
         <style>
         #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
-            font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -755,12 +756,12 @@
         <div class="bg-pattern">
                 <img src="/icons/bg.webp" alt="" loading="eager" width="1200" height="900">
             </div>
-        <div id="floor-glow"></div>
+        <div id="floor-glow" class="off"></div>
 
         <div class="login-scene">
             <!-- المصباح -->
             <div class="lamp-wrapper">
-                <div class="light-cone" id="light-cone"></div>
+                <div class="light-cone off" id="light-cone"></div>
 
                 <svg id="lamp-svg" width="170" height="260" viewBox="0 0 170 260">
                     <defs>
@@ -817,8 +818,8 @@
                 <canvas id="rope-canvas" width="130" height="110"></canvas>
             </div>
 
-            <!-- كارت تسجيل الدخول -->
-            <div class="login-card" id="login-card">
+            <!-- كارت تسجيل الدخول — starts with .off to match isOn=false (no CLS when applyState runs) -->
+            <div class="login-card off" id="login-card">
                 <div class="logo-wrap">
                     <img src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
                         alt="Logo"
@@ -876,7 +877,7 @@
             <!-- مودال التحذير للضيف -->
             <div id="guest-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.22);backdrop-filter:blur(6px);">
                 <div style="max-width:420px;margin:5vh auto 0 auto;padding:2.2rem 1.2rem;border-radius:32px;background:linear-gradient(135deg,#c9962a 0%,#080c14 100%);box-shadow:0 0 40px 8px rgba(0,0,0,0.18);text-align:center;max-height:90vh;overflow-y:auto;">
-                    <h3 style="font-family:'Amiri',serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
+                    <h3 style="font-family:serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
                     <p style="color:#fff;font-size:1.1rem;margin-bottom:1.2rem;line-height:1.7;">لن يتم تسجيل أي بيانات أو درجات لك في المنصة.<br>لن تظهر في قائمة الشرف أو رصد الدرجات.</p>
                     <div style="display:flex;gap:1.2rem;justify-content:center;margin-top:1.2rem;">
                         <button onclick="agreeGuestLogin()" style="flex:1;padding:0.8rem 0;font-size:1.1rem;font-weight:bold;border:none;border-radius:16px;background:linear-gradient(90deg,#c9962a,#f5d98b);color:#222;box-shadow:0 2px 8px #0002;cursor:pointer;">موافق</button>
@@ -886,7 +887,7 @@
             </div>
             <style>
             .gold-arabic-title {
-                font-family:'Amiri',serif;
+                font-family: serif;
                 font-size:2.2rem;
                 font-weight:bold;
                 color:#f5d98b;
