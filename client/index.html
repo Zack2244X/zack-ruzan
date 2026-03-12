@@ -92,13 +92,23 @@
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
     <!-- icons.min.css = font-faces + base classes + only the glyphs actually used -->
     <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <!-- Arabic fonts (Cairo+Amiri) @font-face loaded ASYNC to avoid CLS.
-         font-display:optional = no swap on first visit, cached for next visit. -->
-    <link rel="preload" href="/css/fonts.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
         <link rel="stylesheet" href="/css/icons.min.css">
         <link rel="stylesheet" href="/css/fonts.css">
     </noscript>
+    <!-- Arabic fonts (Cairo+Amiri): loaded AFTER LCP paint to avoid CLS.
+         preload arrives too fast (~60ms) → font files arrive within
+         font-display:optional 100ms window → swap → CLS 1.000.
+         By deferring fonts.css past the first paint, the optional block period
+         expires before fonts arrive → no swap on first visit.
+         On cached revisits, fonts load instantly from disk. -->
+    <script>
+    requestAnimationFrame(function(){setTimeout(function(){
+        var l=document.createElement('link');
+        l.rel='stylesheet';l.href='/css/fonts.css';
+        document.head.appendChild(l);
+    },0);});
+    </script>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
 
