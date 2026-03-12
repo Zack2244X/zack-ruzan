@@ -117,7 +117,7 @@
     <script>
     requestAnimationFrame(function(){setTimeout(function(){
         var l=document.createElement('link');
-        l.rel='stylesheet';l.href='/css/fonts.css';
+        l.rel='stylesheet';l.href='/css/fonts.css?v=2';
         document.head.appendChild(l);
     },0);});
     </script>
@@ -290,9 +290,14 @@
       filter: blur(8px);
       box-shadow: none;
       pointer-events: none;
-      /* contain:layout prevents invisible card's internal reflow (font changes, etc.)
-         from propagating up to .login-scene and causing CLS in parent flex layout */
-      contain: layout;
+      /* contain: layout size — freezes the card's OWN layout footprint.
+         'layout' prevents internal reflow from propagating to ancestors.
+         'size'   prevents content height changes from changing the element's
+         own size, so .login-scene height is stable → #login-screen flex-center
+         never recalculates → CLS 0.
+         height: 580px matches min-height so contain:size has an explicit value. */
+      contain: layout size;
+      height: 580px;
     }
     .login-card.appear {
       animation: cardAppear 0.85s cubic-bezier(0.34,1.52,0.64,1) forwards;
@@ -480,6 +485,8 @@
     }
         @media (max-width: 480px) {
             .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
+            /* Reset contain:size — mobile layout is column, card auto-sizes short */
+            .login-card.off { height: auto; contain: layout; }
                 /* mobile: reduced 30% from 315px -> 221px */
                 .logo-wrap { width: 221px; height: 221px; }
                 /* Adjust decorative ring for smaller logo: slightly reduced thickness, less blur */

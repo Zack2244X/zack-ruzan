@@ -172,6 +172,13 @@ app.use(express.static(path.join(__dirname, '../client'), {
             return;
         }
 
+        // fonts.css: only @font-face declarations, versioned via ?v=N query param.
+        // Give it a long immutable cache — same as other versioned assets.
+        if (filePath.endsWith(`${path.sep}fonts.css`) || filePath.endsWith('/fonts.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            return;
+        }
+
         // HTML & SW: always revalidate
         if (filePath.endsWith('.html') || filePath.endsWith('sw.js')) {
             res.setHeader('Cache-Control', 'no-cache');
