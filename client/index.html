@@ -27,9 +27,6 @@
         <link rel="preload" as="image" href="/icons/bg.webp">
 
         <!-- Load Tailwind and app CSS non-blocking to avoid render-blocking -->
-        <!-- preconnect مبكر لتسريع أول اتصال بالخادم وبـ CDN -->
-        <link rel="preconnect" href="https://web-production-d184b.up.railway.app">
-        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 
         <!-- Critical CSS: non-blocking — preload ثم تحويل لـ stylesheet بعد الرسم -->
         <link rel="preload" href="/css/tailwind.min.css?v=31" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -84,10 +81,16 @@
        Without this, #ios-bottom-nav, #dashboard-view etc. render briefly
        unstyled, and Chrome can pick their text as the LCP candidate. */
     .hidden { display: none !important; }
-    /* Inline body padding to match Tailwind p-4 sm:p-8 — prevents CLS 0.906
-       when Tailwind CSS loads async and suddenly adds padding to <body>. */
-    body { padding: 1rem; }
+    /* Inline Tailwind preflight essentials — must match tailwind.min.css base
+       so loading it async causes ZERO layout shift on <body>.
+       Without these, body jumps 8px (margin:0), text reflows (line-height:1.5),
+       and box-sizing changes (border-box). */
+    *, *::before, *::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb; }
+    html { line-height: 1.5; -webkit-text-size-adjust: 100%; tab-size: 4; }
+    body { margin: 0; line-height: inherit; padding: 1rem; }
     @media (min-width: 640px) { body { padding: 2rem; } }
+    img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical-align: middle; }
+    img, video { max-width: 100%; height: auto; }
 
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
     <!-- icons.min.css = font-faces + base classes + only the glyphs actually used -->
@@ -96,8 +99,15 @@
         <link rel="stylesheet" href="/css/icons.min.css">
         <link rel="stylesheet" href="/css/fonts.css">
     </noscript>
-    <!-- Cairo+Amiri @font-face are inline in <head> (no external fonts.css needed).
-         font-display:optional handles cold vs warm cache automatically. -->
+    <!-- Amiri @font-face deferred to fonts.css (246KB — not needed for first paint).
+         Cairo inline in <head>. Amiri loaded after LCP via deferred script. -->
+    <script>
+    requestAnimationFrame(function(){setTimeout(function(){
+        var l=document.createElement('link');
+        l.rel='stylesheet';l.href='/css/fonts.css';
+        document.head.appendChild(l);
+    },0);});
+    </script>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
 
@@ -360,7 +370,7 @@
         }
 
     .card-title {
-      font-family: 'Amiri', 'Cairo', serif;
+      font-family: 'Cairo', serif;
       font-size: 2.2rem;
       font-weight: 700;
       color: var(--gold-pale);
@@ -509,8 +519,8 @@
             font-display: optional;
             src: url('/fonts/fa-brands-400.woff2') format('woff2');
         }
-        /* Cairo + Amiri (Arabic UI) — inline so browser knows about them
-           from the very first style recalc. No dynamic CSS load = no CLS. */
+        /* Cairo (Arabic UI) — inline so browser knows about it from first
+           style recalc. Amiri deferred to fonts.css (246KB not needed for LCP). */
         @font-face {
             font-family: 'Cairo';
             src: url('/fonts/Cairo-Regular.woff2') format('woff2');
@@ -520,18 +530,6 @@
         @font-face {
             font-family: 'Cairo';
             src: url('/fonts/Cairo-Bold.woff2') format('woff2');
-            font-weight: 700;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Amiri';
-            src: url('/fonts/Amiri-Regular.woff2') format('woff2');
-            font-weight: 400;
-            font-display: optional;
-        }
-        @font-face {
-            font-family: 'Amiri';
-            src: url('/fonts/Amiri-Bold.woff2') format('woff2');
             font-weight: 700;
             font-display: optional;
         }
@@ -548,7 +546,7 @@
            Cold cache: optional block expires → falls to system-ui.
            Warm cache: Cairo instant → used from first frame. No swap either way. */
         #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
-            font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+            font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -901,7 +899,7 @@
             <!-- مودال التحذير للضيف -->
             <div id="guest-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.22);backdrop-filter:blur(6px);">
                 <div style="max-width:420px;margin:5vh auto 0 auto;padding:2.2rem 1.2rem;border-radius:32px;background:linear-gradient(135deg,#c9962a 0%,#080c14 100%);box-shadow:0 0 40px 8px rgba(0,0,0,0.18);text-align:center;max-height:90vh;overflow-y:auto;">
-                    <h3 style="font-family:'Amiri','Cairo',serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
+                    <h3 style="font-family:'Cairo',serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
                     <p style="color:#fff;font-size:1.1rem;margin-bottom:1.2rem;line-height:1.7;">لن يتم تسجيل أي بيانات أو درجات لك في المنصة.<br>لن تظهر في قائمة الشرف أو رصد الدرجات.</p>
                     <div style="display:flex;gap:1.2rem;justify-content:center;margin-top:1.2rem;">
                         <button onclick="agreeGuestLogin()" style="flex:1;padding:0.8rem 0;font-size:1.1rem;font-weight:bold;border:none;border-radius:16px;background:linear-gradient(90deg,#c9962a,#f5d98b);color:#222;box-shadow:0 2px 8px #0002;cursor:pointer;">موافق</button>
@@ -911,7 +909,7 @@
             </div>
             <style>
             .gold-arabic-title {
-                font-family: 'Amiri', 'Cairo', serif;
+                font-family: 'Cairo', serif;
                 font-size:2.2rem;
                 font-weight:bold;
                 color:#f5d98b;

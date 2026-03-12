@@ -1,24 +1,8 @@
-/* ═══ Arabic UI fonts — loaded async to avoid CLS ═══
-   font-display: optional ensures NO font swap on first visit.
-   On repeat visits, fonts are cached and applied instantly.
-   
-   IMPORTANT: font-family references are HERE (not inline in HTML)
-   so @font-face + font-family apply atomically when this file loads.
-   If font-family were inline in HTML, the browser would swap
-   system-ui → Cairo within the 100ms optional window → CLS. */
+/* ═══ Amiri — deferred Arabic decorative font ═══
+   Cairo is inline in <head>. Amiri is loaded AFTER LCP via deferred JS
+   to save 246KB from the critical path.
+   font-display:optional → no swap. On warm cache, applied instantly. */
 
-@font-face {
-    font-family: 'Cairo';
-    src: url('/fonts/Cairo-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-display: optional;
-}
-@font-face {
-    font-family: 'Cairo';
-    src: url('/fonts/Cairo-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-display: optional;
-}
 @font-face {
     font-family: 'Amiri';
     src: url('/fonts/Amiri-Regular.woff2') format('woff2');
@@ -32,18 +16,8 @@
     font-display: optional;
 }
 
-/* Apply Cairo/Amiri to UI elements — arrives with @font-face above,
-   so the switch from system-ui to Cairo happens in a single style recalc.
-   On first visit (cold cache), font-display:optional skips the font entirely
-   if it doesn't arrive in ~100ms. On revisits (warm cache), font is instant. */
-#login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav,
-.login-btn-fancy, .gold-arabic-title {
-    font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
-}
-/* Specific overrides for elements that had dedicated font-family */
+/* When this file loads, add Amiri to elements that benefit from it.
+   Cairo (inline) is already the primary font. Amiri adds a serif accent. */
 .card-title, .gold-arabic-title {
     font-family: 'Amiri', 'Cairo', serif !important;
-}
-.login-btn-fancy {
-    font-family: 'Cairo', sans-serif !important;
 }
