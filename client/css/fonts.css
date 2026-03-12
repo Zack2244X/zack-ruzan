@@ -1,7 +1,7 @@
 /* ═══ Font Awesome — deferred ═══
    Moved here from inline <head> to remove 255KB from LCP critical path.
-   font-display:swap → icons always render (brief blank then FA glyphs).
-   FA icon containers have fixed sizes so swap causes zero layout shift. */
+   font-display:swap → icons always render (brief invisible then FA glyphs).
+   Family names cover both FA 5 (used by icons.min.css) and FA 6 aliases. */
 @font-face {
     font-family: 'Font Awesome 6 Free';
     font-style: normal;
@@ -16,7 +16,6 @@
     font-display: swap;
     src: url('/fonts/fa-brands-400.woff2') format('woff2');
 }
-/* icons.min.css uses the legacy "Font Awesome 5" family names — alias same files */
 @font-face {
     font-family: 'Font Awesome 5 Free';
     font-style: normal;
@@ -32,11 +31,11 @@
     src: url('/fonts/fa-brands-400.woff2') format('woff2');
 }
 
-/* ═══ Cairo + Amiri — deferred Arabic fonts ═══
-   Loaded AFTER first paint via rAF+setTimeout in index.html.
-   font-display:optional → cold cache: font skipped (system-ui used).
-   Warm cache: fonts instant from disk → applied on first frame. */
-
+/* ═══ Cairo + Amiri — @font-face ONLY ═══
+   font-family is set in inline <head> CSS at first paint and NEVER changes.
+   Adding @font-face here does NOT change font metrics or trigger layout.
+   Cold cache: optional block expires → system-ui fallback inline → no swap.
+   Warm cache: Cairo/Amiri instantly from disk → used on first recalc. */
 @font-face {
     font-family: 'Cairo';
     src: url('/fonts/Cairo-Regular.woff2') format('woff2');
@@ -61,17 +60,4 @@
     font-weight: 700;
     font-display: optional;
 }
-
-/* Both @font-face + font-family arrive atomically in this file.
-   On cold cache: optional block expires before font files arrive → system-ui.
-   On warm cache: font files instant → Cairo/Amiri from first recalc. */
-#login-screen, .login-card, .login-scene, .card-title, #sheet-title,
-#ios-bottom-nav, .login-btn-fancy {
-    font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
-}
-.card-title, .gold-arabic-title {
-    font-family: 'Amiri', 'Cairo', serif !important;
-}
-.login-btn-fancy {
-    font-family: 'Cairo', sans-serif !important;
-}
+/* NO font-family rules here — font-family is fixed in inline CSS, never overridden. */

@@ -290,6 +290,9 @@
       filter: blur(8px);
       box-shadow: none;
       pointer-events: none;
+      /* contain:layout prevents invisible card's internal reflow (font changes, etc.)
+         from propagating up to .login-scene and causing CLS in parent flex layout */
+      contain: layout;
     }
     .login-card.appear {
       animation: cardAppear 0.85s cubic-bezier(0.34,1.52,0.64,1) forwards;
@@ -383,7 +386,7 @@
         }
 
     .card-title {
-      font-family: serif;
+      font-family: 'Amiri', 'Cairo', serif;
       font-size: 2.2rem;
       font-weight: 700;
       color: var(--gold-pale);
@@ -421,7 +424,7 @@
       background: linear-gradient(120deg, #8a6d3b 0%, #c9962a 25%, #e8b84b 50%, #f5d98b 65%, #e8b84b 80%, #8a6d3b 100%);
       background-size: 220% auto;
       color: #1a0e00;
-      font-family: sans-serif;
+      font-family: 'Cairo', sans-serif;
       font-size: 1.2rem; font-weight: 900;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -528,10 +531,11 @@
             -webkit-text-size-adjust: 100%;
         }
 
-        /* system-ui ONLY for first paint — NO Cairo/Amiri reference.
-           fonts.css (deferred) brings @font-face + font-family atomically. */
-        #login-screen, .login-card, .login-scene, .card-title, #sheet-title, #ios-bottom-nav {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
+        /* FINAL font-family — set at first paint, NEVER overridden.
+           fonts.css only adds @font-face, never changes font-family.
+           No font-family change = no CLS. */
+        #login-screen, .login-card, .login-scene, #sheet-title, #ios-bottom-nav {
+            font-family: 'Cairo', 'Amiri', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, sans-serif !important;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -884,7 +888,7 @@
             <!-- مودال التحذير للضيف -->
             <div id="guest-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(0,0,0,0.22);backdrop-filter:blur(6px);">
                 <div style="max-width:420px;margin:5vh auto 0 auto;padding:2.2rem 1.2rem;border-radius:32px;background:linear-gradient(135deg,#c9962a 0%,#080c14 100%);box-shadow:0 0 40px 8px rgba(0,0,0,0.18);text-align:center;max-height:90vh;overflow-y:auto;">
-                    <h3 style="font-family:serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
+                    <h3 style="font-family:'Amiri','Cairo',serif;font-size:2rem;font-weight:bold;color:#f5d98b;text-shadow:0 2px 16px #000,0 1px 0 #c9962a;margin-bottom:1.2rem;">تنبيه هام</h3>
                     <p style="color:#fff;font-size:1.1rem;margin-bottom:1.2rem;line-height:1.7;">لن يتم تسجيل أي بيانات أو درجات لك في المنصة.<br>لن تظهر في قائمة الشرف أو رصد الدرجات.</p>
                     <div style="display:flex;gap:1.2rem;justify-content:center;margin-top:1.2rem;">
                         <button onclick="agreeGuestLogin()" style="flex:1;padding:0.8rem 0;font-size:1.1rem;font-weight:bold;border:none;border-radius:16px;background:linear-gradient(90deg,#c9962a,#f5d98b);color:#222;box-shadow:0 2px 8px #0002;cursor:pointer;">موافق</button>
@@ -894,7 +898,7 @@
             </div>
             <style>
             .gold-arabic-title {
-                font-family: serif;
+                font-family: 'Amiri', 'Cairo', serif;
                 font-size:2.2rem;
                 font-weight:bold;
                 color:#f5d98b;
