@@ -333,10 +333,15 @@ app.use('/api/notes', noteRoutes);
 // --- SPA Fallback ---
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
-    // HTTP Link preload header — browser starts fetching the LCP image
+    // HTTP Link preload headers — browser starts fetching critical assets
     // from the very first byte of the response, before HTML is parsed.
-    // This saves ~150-200ms vs waiting for the <link rel=preload> in HTML.
-    res.setHeader('Link', '</icons/bg.webp>; rel=preload; as=image; fetchpriority=high');
+    // bg.webp: LCP image (fetchpriority=high)
+    // bootstrap.min.js: first critical script — eliminates the 264ms
+    //   network dependency chain (HTML → bootstrap discovery delay)
+    res.setHeader('Link', [
+        '</icons/bg.webp>; rel=preload; as=image; fetchpriority=high',
+        '</js/bootstrap.min.js>; rel=modulepreload'
+    ].join(', '));
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 

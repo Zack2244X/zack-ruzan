@@ -192,11 +192,9 @@ export async function initAnimations(perfOverride) {
                             gsap.registerPlugin(window.ScrollTrigger);
                             console.log('[Animations] ✓ ScrollTrigger loaded & registered (idle)');
                         }
-
-                        // Defer refresh to idle after registration to avoid forced reflows
-                        const doRefresh = () => { try { window.ScrollTrigger.refresh(); console.log('[Animations] ScrollTrigger.refresh() executed (deferred)'); } catch(e){} };
-                        if ('requestIdleCallback' in window) requestIdleCallback(doRefresh, { timeout: 2000 });
-                        else setTimeout(doRefresh, 800);
+                        // DO NOT call ScrollTrigger.refresh() — it triggers a forced reflow
+                        // (reads geometry of every observed element) and is redundant because
+                        // autoRefreshEvents:'' already disables automatic refresh events.
                     }
                 } catch (e) {
                     console.warn('[Animations] failed to register ScrollTrigger:', e);
