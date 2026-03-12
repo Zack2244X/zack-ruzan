@@ -88,7 +88,6 @@
                         if (typeof fn === 'function' && !fn.__wrapped_by_bootstrap){
                             const original = fn;
                             const wrapped = function(...a){
-                                console.info('[LAZY_CALL] invoking', name, a);
                                 try{
                                     const res = original.apply(this,a);
                                     return res;
@@ -111,7 +110,6 @@
     lazyNames.forEach(name => {
         if (window[name]) return;
         window[name] = function(...args) {
-            try{ console.info('[LAZY_CALL_QUEUE] queued', name, args); }catch(e){}
             window.__lazyCalls.push({name, args});
             // start loading app on first user interaction
             triggerAppLoad();

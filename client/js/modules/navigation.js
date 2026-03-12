@@ -11,7 +11,7 @@ import { getLenisInstance } from './scroll.js';
  */
 export function _syncMainInteractionState() {
     logFunctionStatus('_syncMainInteractionState', false);
-    try { console.debug('[diag] _syncMainInteractionState — checking overlays (login/dashboard/ios-bottom-nav)'); } catch(e){}
+
     const dashboard = document.getElementById('dashboard-view');
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
