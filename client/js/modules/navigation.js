@@ -26,10 +26,11 @@ export function _syncMainInteractionState() {
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
-    // guest-modal يستخدم display:none/block بدل hidden class
+    // guest-modal uses display:none/block instead of hidden class
+    // Check style.display only — offsetParent forces reflow
     const guestModalOpen = (() => {
         const gm = document.getElementById('guest-modal');
-        return gm ? gm.style.display !== 'none' && gm.style.display !== '' && gm.offsetParent !== null : false;
+        return gm ? gm.style.display !== 'none' && gm.style.display !== '' : false;
     })();
     const blocked = anyOpen || sheetOpen || guestModalOpen;
 

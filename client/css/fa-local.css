@@ -1,18 +1,7 @@
 /* Font Awesome local fallback (6.4.0) */
-@font-face {
-  font-family: 'Font Awesome 6 Free';
-  font-style: normal;
-  font-weight: 900;
-  font-display: optional; /* optional: no FOUT/swap = zero CLS from icon loading */
-  src: url('/fonts/fa-solid-900.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Font Awesome 6 Brands';
-  font-style: normal;
-  font-weight: 400;
-  font-display: optional;
-  src: url('/fonts/fa-brands-400.woff2') format('woff2');
-}
+/* @font-face declarations moved to /css/fonts.css (loaded deferred via rAF+setTimeout).
+   This removes 255KB (fa-solid 148KB + fa-brands 107KB) from the LCP critical path.
+   fa-solid-900 and fa-brands-400 start downloading only after fonts.css loads. */
 .fa, .fas, .far, .fal, .fab {
   font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
   font-weight: 900 !important;

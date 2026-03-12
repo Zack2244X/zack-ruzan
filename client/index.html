@@ -72,6 +72,18 @@
     #subject-filters-container { min-height: 32px; }
     /* Pin min-height for sheet overlay */
     #tree-bottom-sheet { min-height: 440px; }
+    /* CRITICAL: bottom sheets must be fixed + inset-0 from first paint.
+       Without this they render as normal block divs and jump to fixed
+       when Tailwind loads async → CLS 0.923. */
+    #tree-bottom-sheet, #admin-bottom-sheet {
+        position: fixed;
+        top: 0; right: 0; bottom: 0; left: 0;
+        z-index: 80;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        pointer-events: none;
+    }
     /* touch-action: manipulation eliminates the 300ms tap delay on all interactive elements */
     a, button, [onclick], [role="button"], input, select, textarea, label {
         touch-action: manipulation;
@@ -500,24 +512,10 @@
             .card-title { font-size: 1.8rem; }
         }
     </style>
-        <!-- Font Awesome @font-face inline (icons only — no text reflow CLS).
-             Cairo/Amiri are in deferred fonts.css to avoid font swap CLS. -->
+        <!-- Font Awesome @font-face moved to deferred fonts.css to remove
+             255KB (fa-solid 148KB + fa-brands 107KB) from LCP critical chain.
+             font-display:swap ensures icons always render (no blank icons). -->
         <style>
-        /* FA font-faces */
-        @font-face {
-            font-family: 'Font Awesome 6 Free';
-            font-style: normal;
-            font-weight: 900;
-            font-display: optional;
-            src: url('/fonts/fa-solid-900.woff2') format('woff2');
-        }
-        @font-face {
-            font-family: 'Font Awesome 6 Brands';
-            font-style: normal;
-            font-weight: 400;
-            font-display: optional;
-            src: url('/fonts/fa-brands-400.woff2') format('woff2');
-        }
         /* Cairo + Amiri @font-face are in /css/fonts.css (loaded deferred).
            NOT inline — inline @font-face triggers immediate download and
            font-display:optional swap at ~100ms boundary → CLS 0.923. */

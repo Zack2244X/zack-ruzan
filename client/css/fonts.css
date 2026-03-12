@@ -1,3 +1,37 @@
+/* ═══ Font Awesome — deferred ═══
+   Moved here from inline <head> to remove 255KB from LCP critical path.
+   font-display:swap → icons always render (brief blank then FA glyphs).
+   FA icon containers have fixed sizes so swap causes zero layout shift. */
+@font-face {
+    font-family: 'Font Awesome 6 Free';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url('/fonts/fa-solid-900.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Font Awesome 6 Brands';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/fa-brands-400.woff2') format('woff2');
+}
+/* icons.min.css uses the legacy "Font Awesome 5" family names — alias same files */
+@font-face {
+    font-family: 'Font Awesome 5 Free';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url('/fonts/fa-solid-900.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Font Awesome 5 Brands';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/fonts/fa-brands-400.woff2') format('woff2');
+}
+
 /* ═══ Cairo + Amiri — deferred Arabic fonts ═══
    Loaded AFTER first paint via rAF+setTimeout in index.html.
    font-display:optional → cold cache: font skipped (system-ui used).
