@@ -1368,10 +1368,18 @@
         let dragging = -1;
         let pullCounter = 0;
 
+        // Cache canvas position — getBoundingClientRect() inside every mousemove
+        // forces a layout reflow. Cache it once and refresh only on resize.
+        let _canvasRect = canvas.getBoundingClientRect();
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(() => { _canvasRect = canvas.getBoundingClientRect(); }).observe(canvas);
+        } else {
+            window.addEventListener('resize', () => { _canvasRect = canvas.getBoundingClientRect(); }, { passive: true });
+        }
+
         function getXY(e) {
-            const r = canvas.getBoundingClientRect();
             const s = e.touches ? e.touches[0] : e;
-            return { x: s.clientX - r.left, y: s.clientY - r.top };
+            return { x: s.clientX - _canvasRect.left, y: s.clientY - _canvasRect.top };
         }
 
         function nearest(mx, my) {

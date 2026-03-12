@@ -77,7 +77,8 @@ export function _syncMainInteractionState() {
             try { getLenisInstance()?.start?.(); } catch (e) {}
         }
     } catch (e) {
-        if (getComputedStyle(document.body).overflowY !== 'scroll') {
+        // Use pre-read bodyOverflowY to avoid a forced reflow in the catch path
+        if (bodyOverflowY !== 'scroll') {
             document.body.style.overflow = blocked ? 'hidden' : '';
         }
     }
