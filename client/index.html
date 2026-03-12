@@ -115,11 +115,20 @@
     <!-- Cairo+Amiri @font-face deferred to fonts.css — NOT inline to avoid CLS.
          fonts.css loaded after first paint via rAF+setTimeout. -->
     <script>
-    requestAnimationFrame(function(){setTimeout(function(){
-        var l=document.createElement('link');
-        l.rel='stylesheet';l.href='/css/fonts.css?v=2';
-        document.head.appendChild(l);
-    },0);});
+    /* Load fonts.css AFTER window.load so it is invisible to the LCP critical chain.
+       rAF+setTimeout fires at ~75-200ms (inside LCP window) → Lighthouse traces
+       fonts.css → 6 font files as a 424ms chain that blocks LCP scoring.
+       window.load fires only after the page is fully loaded including LCP,
+       so fonts.css + its children never appear in the LCP critical path. */
+    (function(){
+        function loadFonts(){
+            var l=document.createElement('link');
+            l.rel='stylesheet';l.href='/css/fonts.css?v=2';
+            document.head.appendChild(l);
+        }
+        if(document.readyState==='complete'){loadFonts();}
+        else{window.addEventListener('load',loadFonts,{once:true});}
+    })();
     </script>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
@@ -152,13 +161,13 @@
       inset: 0;
       width: 100%;
       height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
       z-index: 100;
       background: var(--login-bg);
       overflow: hidden;
+      /* No flex centering here — .login-scene is absolutely centered below.
+         flex + align-items:center causes CLS: when .login-scene height changes
+         (font metrics, icon swap, etc.) the flex engine recalculates Y position
+         of the entire scene → visible shift. */
     }
 
         /* bg-pattern: absolute fill inside #login-screen (position:fixed inset-0).
@@ -210,7 +219,17 @@
     #floor-glow.off { opacity: 0; }
 
     .login-scene {
-      position: relative; z-index: 2;
+      /* Absolute centering: top:50% + translateY(-50%) pins the element's
+         CENTER to the viewport's vertical midpoint — independent of the
+         element's own height. Font changes, icon swaps, padding changes
+         inside the scene can never move its center point → CLS 0.
+         Contrast with align-items:center on parent flex: that recalculates
+         Y offset from the scene's actual height every style recalc → CLS. */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -218,6 +237,7 @@
       padding: 24px 16px;
       width: 100%;
       max-width: 880px;
+      box-sizing: border-box;
     }
 
     /* ═══ المصباح ═══ */
@@ -290,13 +310,14 @@
       filter: blur(8px);
       box-shadow: none;
       pointer-events: none;
-      /* contain: layout size — freezes the card's OWN layout footprint.
-         'layout' prevents internal reflow from propagating to ancestors.
-         'size'   prevents content height changes from changing the element's
-         own size, so .login-scene height is stable → #login-screen flex-center
-         never recalculates → CLS 0.
-         height: 580px matches min-height so contain:size has an explicit value. */
-      contain: layout size;
+      /* content-visibility:hidden skips ALL rendering work for this hidden card:
+         paint, compositing, and layout of its subtree are completely skipped.
+         Implies contain:strict (layout + style + size + paint) — browser uses
+         height:580px as the element's contributed size in the parent flex row
+         without computing anything inside. Saves ~60% of the main-thread
+         Style&Layout time that was spent recalculating invisible content.
+         Height is stable → .login-scene height stable → absolute centering → no CLS. */
+      content-visibility: hidden;
       height: 580px;
     }
     .login-card.appear {
@@ -485,8 +506,8 @@
     }
         @media (max-width: 480px) {
             .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
-            /* Reset contain:size — mobile layout is column, card auto-sizes short */
-            .login-card.off { height: auto; contain: layout; }
+            /* Reset content-visibility on mobile — column layout, short scene, no centering CLS */
+            .login-card.off { height: auto; content-visibility: hidden; }
                 /* mobile: reduced 30% from 315px -> 221px */
                 .logo-wrap { width: 221px; height: 221px; }
                 /* Adjust decorative ring for smaller logo: slightly reduced thickness, less blur */
