@@ -39,33 +39,11 @@
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
         </noscript>
 
-    <!-- Preload local Cairo and Amiri fonts — fetchpriority=low so bg.webp
-         (LCP, fetchpriority=high) gets full bandwidth before Arabic fonts -->
-    <link rel="preload" href="/fonts/Cairo-Regular.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low">
-    <link rel="preload" href="/fonts/Cairo-Bold.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low">
-    <link rel="preload" href="/fonts/Amiri-Regular.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low">
-    <link rel="preload" href="/fonts/Amiri-Bold.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low">
-    <!-- Mark font-loading state for local fonts -->
-    <script>
-    document.documentElement.classList.add('fonts-loading');
-    if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(function(){
-            document.documentElement.classList.add('fonts-ready');
-            document.documentElement.classList.remove('fonts-loading');
-        }).catch(function(){
-            document.documentElement.classList.add('fonts-ready');
-            document.documentElement.classList.remove('fonts-loading');
-        });
-    } else {
-        window.addEventListener('load', function(){
-            document.documentElement.classList.add('fonts-ready');
-            document.documentElement.classList.remove('fonts-loading');
-        });
-    }
-    </script>
+    <!-- Fonts use font-display:optional — browser fetches them on its own
+         when @font-face is parsed. No preload needed (saves 537 KB bandwidth for LCP). -->
 
-    <!-- Logo preload: secondary priority after bg.webp -->
-    <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp" fetchpriority="high">
+    <!-- Logo: NOT LCP — low priority so bg.webp gets full bandwidth -->
+    <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp" fetchpriority="low">
 
     <!-- Bottom-sheet and CLS mitigations: use transform for show/hide and system fonts for sheet content until webfonts load -->
     <style>
@@ -564,10 +542,8 @@
             -moz-osx-font-smoothing: grayscale;
         }
         </style>
-        <!-- Preload local FA fonts early — font-display:optional in fa-local.css
-             prevents CLS: if font arrives late, icons stay invisible (no swap shift) -->
-        <link rel="preload" href="/fonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
-        <link rel="preload" href="/fonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+        <!-- FA fonts: font-display:optional in @font-face above — browser
+             fetches them when CSS is parsed. No preload (saves 258 KB for LCP). -->
     </head>
     <body class="p-4 sm:p-8">
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم" aria-label="تبديل الثيم" class="icon-btn"><i class="fas fa-moon"></i></button>
@@ -1301,11 +1277,13 @@
     };
     </script>
 
-    <!-- Lamp Animation Script -->
+    <!-- Lamp Animation Script — deferred so it doesn't block LCP paint -->
     <script>
     /* ═══════════════════════════════════════════
        فيزياء الحبل — Verlet Integration
+       Deferred: runs after first paint via requestAnimationFrame
     ═══════════════════════════════════════════ */
+    requestAnimationFrame(function() { setTimeout(function() {
     (function() {
         const canvas = document.getElementById('rope-canvas');
         if (!canvas) return;
@@ -1550,6 +1528,7 @@
         try { applyState(); } catch(e){}
 
         /* ═══ الرمش التلقائي ═══ */
+        // (Note: entire lamp IIFE is wrapped in rAF+setTimeout to defer past LCP)
         function blinkEyes() {
             if (!isOn) return;
             const eyeL = document.getElementById('eye-l');
@@ -1567,6 +1546,7 @@
         }
         scheduleBlink();
     })();
+    }, 0); });
     </script>
 </body>
 </html>

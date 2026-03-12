@@ -3,7 +3,7 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v43';
+const CACHE_NAME = 'quiz-platform-v44';
 const STATIC_ASSETS = [
     '/',                              // SPA shell — pre-cached for instant HTML on repeat visits
     '/css/styles.min.css',
@@ -13,12 +13,10 @@ const STATIC_ASSETS = [
     '/js/app.admin.bundle.min.js',
     '/js/app.features.bundle.min.js',
     '/manifest.json',
-    '/icons/bg.webp',
-    '/fonts/Cairo-Regular.woff2',
-    '/fonts/Cairo-Bold.woff2',
-    '/fonts/Amiri-Regular.woff2',
-    '/fonts/fa-solid-900.woff2',
-    '/fonts/fa-brands-400.woff2'
+    '/icons/bg.webp'
+    // Fonts removed from pre-cache: font-display:optional means they're
+    // fetched lazily by the browser. Caching 537 KB of fonts in install
+    // delays SW activation and wastes bandwidth on first visit.
 ];
 
 // Install — cache static assets only (CDN loaded by browser directly)
