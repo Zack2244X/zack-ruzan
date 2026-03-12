@@ -84,6 +84,10 @@
        Without this, #ios-bottom-nav, #dashboard-view etc. render briefly
        unstyled, and Chrome can pick their text as the LCP candidate. */
     .hidden { display: none !important; }
+    /* Inline body padding to match Tailwind p-4 sm:p-8 — prevents CLS 0.906
+       when Tailwind CSS loads async and suddenly adds padding to <body>. */
+    body { padding: 1rem; }
+    @media (min-width: 640px) { body { padding: 2rem; } }
 
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
     <!-- icons.min.css = font-faces + base classes + only the glyphs actually used -->
