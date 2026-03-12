@@ -1369,18 +1369,34 @@
         let dragging = -1;
         let pullCounter = 0;
 
-        // Cache canvas position — getBoundingClientRect() inside every mousemove
-        // forces a layout reflow. Cache it once and refresh only on resize.
-        let _canvasRect = canvas.getBoundingClientRect();
-        if (typeof ResizeObserver !== 'undefined') {
-            new ResizeObserver(() => { _canvasRect = canvas.getBoundingClientRect(); }).observe(canvas);
-        } else {
-            window.addEventListener('resize', () => { _canvasRect = canvas.getBoundingClientRect(); }, { passive: true });
+        // Lazy rect cache: avoid eager geometry read on startup.
+        // Measure only when interaction needs coordinates.
+        let _canvasRect = null;
+        let _rectDirty = true;
+
+        function markCanvasRectDirty() {
+            _rectDirty = true;
         }
+
+        function getCanvasRect() {
+            if (_rectDirty || !_canvasRect) {
+                _canvasRect = canvas.getBoundingClientRect();
+                _rectDirty = false;
+            }
+            return _canvasRect;
+        }
+
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(markCanvasRectDirty).observe(canvas);
+        } else {
+            window.addEventListener('resize', markCanvasRectDirty, { passive: true });
+        }
+        window.addEventListener('scroll', markCanvasRectDirty, { passive: true, capture: true });
 
         function getXY(e) {
             const s = e.touches ? e.touches[0] : e;
-            return { x: s.clientX - _canvasRect.left, y: s.clientY - _canvasRect.top };
+            const rect = getCanvasRect();
+            return { x: s.clientX - rect.left, y: s.clientY - rect.top };
         }
 
         function nearest(mx, my) {

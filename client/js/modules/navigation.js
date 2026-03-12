@@ -34,53 +34,37 @@ export function _syncMainInteractionState() {
     })();
     const blocked = anyOpen || sheetOpen || guestModalOpen;
 
-    // ── Batch ALL geometry reads BEFORE any DOM writes to avoid forced reflow ──
     const body = document.body;
-    const bodyOverflowY = getComputedStyle(body).overflowY;
-    const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
-    const computedPR = parseFloat(getComputedStyle(body).paddingRight) || 0;
 
     // ── DOM writes ────────────────────────────────────────────────────────────
     if (dashboard) {
         dashboard.classList.toggle('pointer-events-none', blocked);
         dashboard.classList.toggle('select-none', blocked);
     }
-    // Avoid layout shift from scrollbar removal: when blocking, lock scroll and
-    // compensate for the scrollbar width by adding equivalent padding-right.
+    // Keep scroll-lock writes minimal and avoid any computed-style/layout reads here.
+    // `scrollbar-gutter: stable` is already enabled in CSS, so compensation reads are unnecessary.
     try {
         if (blocked) {
-            // Only compensate for scrollbar if overflow-y is not already scroll
-            if (!body.hasAttribute('data-orig-pr')) body.setAttribute('data-orig-pr', body.style.paddingRight || '');
-            if (scrollbarWidth > 0 && bodyOverflowY !== 'scroll') {
-                body.style.paddingRight = (computedPR + scrollbarWidth) + 'px';
-            }
-            // Only set overflow if not already scroll
-            if (bodyOverflowY !== 'scroll') {
+            if (!body.hasAttribute('data-scroll-lock')) {
+                body.setAttribute('data-scroll-lock', '1');
+                body.setAttribute('data-orig-overflow', body.style.overflow || '');
                 body.style.overflow = 'hidden';
             }
             // وقف Lenis: overflow:hidden لا يكفي — Lenis يستمر عبر RAF
             // ويتجاهل CSS overflow ويُحرِّك الصفحة خلف المودال
             try { getLenisInstance()?.stop?.(); } catch (e) {}
         } else {
-            const orig = body.getAttribute('data-orig-pr');
-            if (orig !== null) {
-                body.style.paddingRight = orig || '';
-                body.removeAttribute('data-orig-pr');
-            } else {
-                body.style.paddingRight = '';
-            }
-            // Restore overflow only if it was changed
-            if (bodyOverflowY !== 'scroll') {
-                body.style.overflow = '';
+            if (body.hasAttribute('data-scroll-lock')) {
+                const origOverflow = body.getAttribute('data-orig-overflow');
+                body.style.overflow = origOverflow || '';
+                body.removeAttribute('data-orig-overflow');
+                body.removeAttribute('data-scroll-lock');
             }
             // استئناف Lenis بعد إغلاق المودال
             try { getLenisInstance()?.start?.(); } catch (e) {}
         }
     } catch (e) {
-        // Use pre-read bodyOverflowY to avoid a forced reflow in the catch path
-        if (bodyOverflowY !== 'scroll') {
-            document.body.style.overflow = blocked ? 'hidden' : '';
-        }
+        document.body.style.overflow = blocked ? 'hidden' : '';
     }
 
     const t = document.getElementById('theme-toggle');
