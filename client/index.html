@@ -117,34 +117,40 @@
     </style>
 
     <!-- Font Awesome CSS: custom subset — 44 used icons only (2.6 KB vs 19 KB CDN) -->
-    <!-- icons.min.css = base classes + only the glyphs actually used.
-         FA @font-face injected in onload callback so fa-solid (148KB) + fa-brands (107KB)
-         only start downloading AFTER icons.min.css loads, not at HTML parse time.
-         This removes them from the HTML-parse critical path entirely. -->
-    <script>
-    function _injectFAFaces(){
-        var s=document.createElement('style');
-        s.textContent=
-            "@font-face{font-family:'Font Awesome 6 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}"
-           +"@font-face{font-family:'Font Awesome 6 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}"
-           +"@font-face{font-family:'Font Awesome 5 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}"
-           +"@font-face{font-family:'Font Awesome 5 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}";
-        document.head.appendChild(s);
-    }
-    </script>
-    <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet';_injectFAFaces()">
+    <!-- icons.min.css = base classes + only the glyphs actually used -->
+    <link rel="preload" href="/css/icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
         <link rel="stylesheet" href="/css/icons.min.css">
     </noscript>
-    <!-- Cairo + Amiri @font-face inline: needed for LCP text (card title, scene).
-         font-display:optional: cold-cache 3G → optional block expires → system font → no CLS.
-         Warm cache → fonts on disk → used on first recalc → no swap needed. -->
-    <style>
-    @font-face{font-family:'Cairo';src:url('/fonts/Cairo-Regular.woff2') format('woff2');font-weight:400;font-display:optional}
-    @font-face{font-family:'Cairo';src:url('/fonts/Cairo-Bold.woff2') format('woff2');font-weight:700;font-display:optional}
-    @font-face{font-family:'Amiri';src:url('/fonts/Amiri-Regular.woff2') format('woff2');font-weight:400;font-display:optional}
-    @font-face{font-family:'Amiri';src:url('/fonts/Amiri-Bold.woff2') format('woff2');font-weight:700;font-display:optional}
-    </style>
+    <!-- ALL @font-face deferred to window.load.
+         font-family names are set inline (below) so the browser knows which font
+         stack to use at first paint. @font-face only tells the browser WHERE to
+         download the file — delaying it past window.load means:
+           • Zero font bytes start downloading during LCP → woff2 files absent from chain
+           • font-display:optional block expires before fonts arrive (cold cache 3G)
+             → system font used at first paint → no CLS
+           • After window.load: @font-face injected → fonts download for warm cache
+           • 2nd visit (warm cache): fonts on disk → used at first recalc → no swap
+         Covers FA5/FA6 aliases, Cairo 400/700, Amiri 400/700. -->
+    <script>
+    (function(){
+        function injectAllFontFaces(){
+            var s=document.createElement('style');
+            s.textContent=
+                "@font-face{font-family:'Font Awesome 6 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}"
+               +"@font-face{font-family:'Font Awesome 6 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}"
+               +"@font-face{font-family:'Font Awesome 5 Free';font-style:normal;font-weight:900;font-display:optional;src:url('/fonts/fa-solid-900.woff2') format('woff2')}"
+               +"@font-face{font-family:'Font Awesome 5 Brands';font-style:normal;font-weight:400;font-display:optional;src:url('/fonts/fa-brands-400.woff2') format('woff2')}"
+               +"@font-face{font-family:'Cairo';src:url('/fonts/Cairo-Regular.woff2') format('woff2');font-weight:400;font-display:optional}"
+               +"@font-face{font-family:'Cairo';src:url('/fonts/Cairo-Bold.woff2') format('woff2');font-weight:700;font-display:optional}"
+               +"@font-face{font-family:'Amiri';src:url('/fonts/Amiri-Regular.woff2') format('woff2');font-weight:400;font-display:optional}"
+               +"@font-face{font-family:'Amiri';src:url('/fonts/Amiri-Bold.woff2') format('woff2');font-weight:700;font-display:optional}";
+            document.head.appendChild(s);
+        }
+        if(document.readyState==='complete'){injectAllFontFaces();}
+        else{window.addEventListener('load',injectAllFontFaces,{once:true});}
+    })();
+    </script>
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
 
