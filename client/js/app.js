@@ -25,30 +25,7 @@ import {
     handleGoogleAdminResponse, handleStudentGoogleLogin as _handleStudentGoogleLogin,
     closeAdminAuth, showAdminToast, logoutUser, startTokenRefresh
 } from './modules/auth.js';
-import {
-    initQuizDOM, playQuiz as _playQuiz, initializeQuiz, renderQuestion,
-    selectAnswer, showFeedback, hideFeedback, disableOptions,
-    goToNextQuestion, goToPreviousQuestion, updateProgressBar,
-    startTimer, submitQuiz, exitToMain as _exitToMain
-} from './modules/quiz.js';
-// builder.js — loaded lazily via app.admin.bundle.min.js on first admin interaction
-import {
-    getDynamicSubjects,
-    renderSubjectFilters as _renderSubjectFilters,
-    setSubjectFilter as _setSubjectFilter,
-    setEditSubjectFilter as _setEditSubjectFilter,
-    renderHistoryTree as _renderHistoryTree,
-    renderEditTree as _renderEditTree,
-    renameSubject as _renameSubject,
-    closeRenameModal, executeRenameSubject as _executeRenameSubject,
-    confirmDeleteSubject as _confirmDeleteSubject,
-    closeDeleteModal, executeDeleteSubject as _executeDeleteSubject
-} from './modules/tree.js';
-import {
-    openAddNoteModal, closeAddNoteModal,
-    saveNote as _saveNote, loadNoteIntoBuilder as _loadNoteIntoBuilder,
-    updateExistingNote as _updateExistingNote, forceDownload
-} from './modules/notes.js';
+// quiz.js, tree.js, notes.js — loaded lazily via app.features.bundle.min.js on first feature interaction
 // grades.js — loaded lazily via app.admin.bundle.min.js on first admin interaction
 import { renderDashboard as _renderDashboard, deleteQuiz as _deleteQuiz } from './modules/dashboard.js';
 
@@ -207,24 +184,9 @@ async function applyPerformanceBasedAnimationSettings(perf) {
 //  — تربط الوحدات التي تحتاج بعضها بلا circular import
 // ============================================
 
-/** @private رسم الفلاتر مع ربط دوال التعديل والحذف */
-function renderSubjectFilters() {
-    _renderSubjectFilters(renameSubject, confirmDeleteSubject);
-}
-
-/** @private رسم الشجرة الرئيسية مع ربط playQuiz و forceDownload */
-function renderHistoryTree() {
-    _renderHistoryTree(playQuiz, forceDownload);
-}
-
-/** @private رسم شجرة التعديل مع ربط دوال التحميل */
-function renderEditTree() {
-    _renderEditTree(loadQuizIntoBuilder, loadNoteIntoBuilder);
-}
-
-/** @private رسم لوحة القيادة مع ربط الدوال */
+/** @private رسم لوحة القيادة مع ربط الدوال — يستخدم window.X للحزمة الكسولة */
 function renderDashboard() {
-    _renderDashboard(playQuiz, forceDownload);
+    _renderDashboard(window.playQuiz, window.forceDownload);
 }
 
 /** @private حذف امتحان */
@@ -232,69 +194,14 @@ function deleteQuiz(index) {
     _deleteQuiz(index, renderDashboard);
 }
 
-/** @private تبديل فلتر المادة الرئيسية */
-function setSubjectFilter(subject) {
-    _setSubjectFilter(subject, renderHistoryTree, renameSubject, confirmDeleteSubject);
-}
-
-/** @private تبديل فلتر المادة في نافذة التعديل */
-function setEditSubjectFilter(subject) {
-    _setEditSubjectFilter(subject, renderEditTree, renameSubject, confirmDeleteSubject);
-}
-
-/** @private الانتقال لقسم */
+/** @private الانتقال لقسم — يستخدم window.X للحزمة الكسولة */
 function navToSection(section) {
-    _navToSection(section, renderSubjectFilters, renderHistoryTree);
-}
-
-/** @private بدء اختبار */
-function playQuiz(index) {
-    _playQuiz(index);
-}
-
-/** @private الخروج للرئيسية */
-function exitToMain() {
-    _exitToMain(renderDashboard);
-}
-
-/** @private إعادة تسمية مادة */
-function renameSubject(oldName, event) {
-    _renameSubject(oldName, event);
-}
-
-/** @private تأكيد حذف مادة */
-function confirmDeleteSubject(subjectName, event) {
-    _confirmDeleteSubject(subjectName, event);
-}
-
-/** @private تنفيذ إعادة التسمية */
-function executeRenameSubject() {
-    _executeRenameSubject(renderSubjectFilters, renderHistoryTree, renderDashboard);
-}
-
-/** @private تنفيذ الحذف */
-function executeDeleteSubject() {
-    _executeDeleteSubject(renderSubjectFilters, renderHistoryTree, renderDashboard);
-}
-
-/** @private حفظ مذكرة */
-function saveNote() {
-    _saveNote(renderEditTree, renderSubjectFilters, renderHistoryTree, navToSection);
-}
-
-/** @private تحميل مذكرة للتعديل */
-function loadNoteIntoBuilder(index) {
-    _loadNoteIntoBuilder(index);
-}
-
-/** @private تحديث مذكرة */
-function updateExistingNote() {
-    _updateExistingNote(renderHistoryTree, renderEditTree, renderDashboard);
+    _navToSection(section, window.renderSubjectFilters, window.renderHistoryTree);
 }
 
 /** @private معالجة تسجيل دخول الطالب */
 function handleStudentGoogleLogin(response) {
-    _handleStudentGoogleLogin(response, renderSubjectFilters, renderHistoryTree, renderDashboard, startTokenRefresh);
+    _handleStudentGoogleLogin(response, window.renderSubjectFilters, window.renderHistoryTree, renderDashboard, startTokenRefresh);
 }
 
 // ============================================
@@ -326,12 +233,16 @@ function loadApp() {
             navToHome();
             renderDashboard(); // يعرض spinner أولاً ريثما تُحمَّل البيانات
 
+            // ── تحميل الحزمة الكسولة للميزات مبكّراً (قبل الاشتباك مع السيرفر) ──
+            // بحلول وقت وصول البيانات تكون الحزمة جاهزة بالفعل
+            window.__loadFeatures?.();
+
             if (isGuest) {
                 // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
                 console.log('[app] ✓ وضع الضيف — تحميل البيانات العامة...');
                 loadDataFromServer().then(() => {
-                    renderSubjectFilters();
-                    renderHistoryTree();
+                    window.renderSubjectFilters?.();
+                    window.renderHistoryTree?.();
                     renderDashboard();
                     console.log('[app] ✓ الضيف — البيانات العامة جاهزة');
                 }).catch(e => {
@@ -345,8 +256,8 @@ function loadApp() {
             startTokenRefresh();
             loadDataFromServer().then(() => {
                 state.dataLoaded = true;
-                renderSubjectFilters();
-                renderHistoryTree();
+                window.renderSubjectFilters?.();
+                window.renderHistoryTree?.();
                 renderDashboard();
                 console.log('[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر');
             });
@@ -382,19 +293,8 @@ Object.assign(window, {
     // Auth
     startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,
 
-    // Quiz
-    playQuiz, selectAnswer, goToNextQuestion, goToPreviousQuestion,
-    submitQuiz, exitToMain,
-
-
-    // Tree & Subjects
-    setSubjectFilter, setEditSubjectFilter, renderSubjectFilters,
-    renameSubject, closeRenameModal, executeRenameSubject,
-    confirmDeleteSubject, closeDeleteModal, executeDeleteSubject,
-
-    // Notes
-    openAddNoteModal, closeAddNoteModal, saveNote,
-    loadNoteIntoBuilder, updateExistingNote, forceDownload,
+    // Quiz / Tree / Notes — stubs installed by registerFeatureStubs() below;
+    // real implementations loaded lazily via app.features.bundle.min.js
 
     // Admin UI (closeEditSelectionModal is a core fn; rest loaded lazily)
     closeEditSelectionModal,
@@ -442,7 +342,7 @@ Object.assign(window, {
         if (!_adminLoadPromise) {
             _adminLoadPromise = new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = '/js/app.admin.bundle.min.js?v=39';
+                s.src = '/js/app.admin.bundle.min.js?v=40';
                 s.onload = () => { _adminLoaded = true; resolve(); };
                 s.onerror = () => reject(new Error('Admin bundle failed to load'));
                 document.head.appendChild(s);
@@ -456,6 +356,57 @@ Object.assign(window, {
             _loadAdmin()
                 .then(() => { if (typeof window[name] === 'function') window[name](...args); })
                 .catch(err => console.error('[admin]', err));
+        };
+    });
+})();
+
+// ============================================
+//  Lazy Features Bundle
+//  quiz.js (34 KB) + tree.js (26 KB) + notes.js (7 KB)
+//  Loads app.features.bundle.min.js on first feature interaction.
+//  Features bundle overrides these stubs with real implementations.
+// ============================================
+(function registerFeatureStubs() {
+    const FEATURE_FNS = [
+        // Quiz
+        'playQuiz', 'selectAnswer', 'goToNextQuestion', 'goToPreviousQuestion',
+        'submitQuiz', 'exitToMain', 'showFeedback', 'hideFeedback',
+        // Tree & Subjects
+        'getDynamicSubjects',
+        'setSubjectFilter', 'setEditSubjectFilter', 'renderSubjectFilters',
+        'renderHistoryTree', 'renderEditTree',
+        'renameSubject', 'closeRenameModal', 'executeRenameSubject',
+        'confirmDeleteSubject', 'closeDeleteModal', 'executeDeleteSubject',
+        // Notes
+        'openAddNoteModal', 'closeAddNoteModal', 'saveNote',
+        'loadNoteIntoBuilder', 'updateExistingNote', 'forceDownload'
+    ];
+
+    let _featuresLoaded = false;
+    let _featuresPromise = null;
+
+    function _loadFeatures() {
+        if (_featuresLoaded) return Promise.resolve();
+        if (!_featuresPromise) {
+            _featuresPromise = new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = '/js/app.features.bundle.min.js?v=40';
+                s.onload = () => { _featuresLoaded = true; resolve(); };
+                s.onerror = () => reject(new Error('Features bundle failed to load'));
+                document.head.appendChild(s);
+            });
+        }
+        return _featuresPromise;
+    }
+
+    // Expose loader so loadApp() can trigger proactive prefetch
+    window.__loadFeatures = _loadFeatures;
+
+    FEATURE_FNS.forEach(name => {
+        window[name] = function (...args) {
+            _loadFeatures()
+                .then(() => { if (typeof window[name] === 'function') window[name](...args); })
+                .catch(err => console.error('[features]', err));
         };
     });
 })();
@@ -623,16 +574,8 @@ export async function startApp() {
         console.warn('⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:', e);
     }
 
-    // تهيئة عناصر DOM للاختبار
-    initQuizDOM();
-
-    // ربط Enter في حقل إعادة التسمية
-    const renameInput = document.getElementById('rename-subject-input');
-    if (renameInput) {
-        renameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') executeRenameSubject();
-        });
-    }
+    // تهيئة DOM الاختبار + ربط Enter في حقل التسمية تتم داخل app.features.bundle.min.js
+    // (quiz.js + tree.js + notes.js محمَّلة كسولاً — لا initQuizDOM هنا)
 
     // Patch: Inject guest-mode header for score submission
     const originalSubmitScore = window.submitScore;

@@ -69,3 +69,15 @@ esbuild.buildSync({
 });
 const adminSz = (fs.statSync(path.join(jsDir, 'app.admin.bundle.min.js')).size / 1024).toFixed(1);
 console.log(`Bundle app.admin.bundle.min.js (${adminSz} KB)`);
+
+// ── JS: features IIFE bundle (quiz + tree + notes — lazy loaded on first feature interaction) ──
+esbuild.buildSync({
+  entryPoints: [path.join(jsDir, 'app-features.js')],
+  outfile: path.join(jsDir, 'app.features.bundle.min.js'),
+  minify: true,
+  bundle: true,
+  format: 'iife',
+  target: ['es2017'],
+});
+const featuresSz = (fs.statSync(path.join(jsDir, 'app.features.bundle.min.js')).size / 1024).toFixed(1);
+console.log(`Bundle app.features.bundle.min.js (${featuresSz} KB)`);
