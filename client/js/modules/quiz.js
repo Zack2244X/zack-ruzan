@@ -624,7 +624,14 @@ export function renderQuestion() {
 
     currentQuestionNumberEl.textContent = state.currentQuestionIndex + 1;
     questionTextEl.innerHTML = `<span class="quiz-question-gradient">${state.currentQuestionIndex + 1}. ${escapeHtml(currentQ.question)}</span>`;
-    questionHintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${escapeHtml(currentQ.hint || '')}`;
+    const safeHint = escapeHtml(currentQ.hint || '').trim();
+    if (safeHint) {
+        questionHintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${safeHint}`;
+        questionHintEl.classList.remove('hidden');
+    } else {
+        questionHintEl.innerHTML = '';
+        questionHintEl.classList.add('hidden');
+    }
 
     previousButton.disabled = state.currentQuestionIndex === 0 || !state.quizStarted;
 
@@ -738,14 +745,12 @@ export function showFeedback(isCorrect, rationale, message) {
         feedbackMessageEl.classList.replace('text-white', 'text-red-900') || feedbackMessageEl.classList.add('text-red-900');
         rationaleTextEl.classList.replace('text-white', 'text-red-900')   || rationaleTextEl.classList.add('text-red-900');
     }
-    questionHintEl.classList.remove('hidden');
 }
 
 export function hideFeedback() {
     logFunctionStatus('hideFeedback', false);
     feedbackBoxEl.classList.add('scale-y-0', 'h-0', 'opacity-0');
     feedbackBoxEl.classList.remove('scale-y-100', 'h-auto', 'opacity-100', 'p-4', 'correct-bg', 'incorrect-bg');
-    questionHintEl.classList.add('hidden');
 }
 
 export function disableOptions() {
