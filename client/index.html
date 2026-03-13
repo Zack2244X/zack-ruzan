@@ -1620,5 +1620,69 @@
     })();
     }, 0); });
     </script>
+
+    <script>
+    (function () {
+        function validateIconsInConsole() {
+            try {
+                var probe = document.createElement('i');
+                probe.className = 'fas fa-home';
+                probe.style.position = 'fixed';
+                probe.style.left = '-9999px';
+                probe.style.top = '-9999px';
+                probe.style.fontSize = '16px';
+                probe.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(probe);
+
+                var iconStyle = window.getComputedStyle(probe);
+                var pseudo = window.getComputedStyle(probe, '::before');
+                var iconFont = iconStyle.fontFamily || '';
+                var pseudoFont = pseudo.fontFamily || '';
+                var pseudoContent = pseudo.content || '';
+                var hasGlyph = pseudoContent && pseudoContent !== 'none' && pseudoContent !== '""';
+
+                var fa5FreeLoaded = null;
+                var fa5BrandsLoaded = null;
+                if (document.fonts && document.fonts.check) {
+                    fa5FreeLoaded = document.fonts.check('900 16px "Font Awesome 5 Free"');
+                    fa5BrandsLoaded = document.fonts.check('400 16px "Font Awesome 5 Brands"');
+                }
+
+                var looksCorrect = hasGlyph && (
+                    /font awesome 5 free/i.test(iconFont) || /font awesome 5 free/i.test(pseudoFont)
+                );
+
+                console.group('[IconCheck] Font Awesome diagnostics');
+                console.log('glyphContent:', pseudoContent);
+                console.log('iconFontFamily:', iconFont);
+                console.log('pseudoFontFamily:', pseudoFont);
+                console.log('fa5FreeLoaded:', fa5FreeLoaded);
+                console.log('fa5BrandsLoaded:', fa5BrandsLoaded);
+                if (looksCorrect) {
+                    console.log('status: OK ✅ icons should render correctly');
+                } else {
+                    console.warn('status: FAIL ❌ icon font/glyph mismatch detected');
+                }
+                console.groupEnd();
+
+                probe.remove();
+                return looksCorrect;
+            } catch (err) {
+                console.error('[IconCheck] diagnostics failed:', err);
+                return false;
+            }
+        }
+
+        window.validateIconsInConsole = validateIconsInConsole;
+
+        if (document.readyState === 'complete') {
+            setTimeout(validateIconsInConsole, 120);
+        } else {
+            window.addEventListener('load', function () {
+                setTimeout(validateIconsInConsole, 120);
+            }, { once: true });
+        }
+    })();
+    </script>
 </body>
 </html>
