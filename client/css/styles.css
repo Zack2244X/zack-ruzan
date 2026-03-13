@@ -835,6 +835,14 @@ a:focus:not(:focus-visible) {
         background-clip: text;
         -webkit-text-fill-color: transparent;
     }
+
+    [data-theme="dark"] #question-text .quiz-question-gradient,
+    .dark #question-text .quiz-question-gradient {
+        background: none;
+        -webkit-background-clip: border-box;
+        background-clip: border-box;
+        -webkit-text-fill-color: currentColor;
+    }
 }
 
 /* ============================================
