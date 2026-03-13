@@ -25,16 +25,40 @@
         <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif" type="image/avif" fetchpriority="high">
         <!-- bg.webp is decorative; skip eager preload to preserve early bandwidth for LCP -->
 
-        <!-- Load Tailwind and app CSS non-blocking to avoid render-blocking -->
-
-        <!-- Critical CSS: non-blocking — preload ثم تحويل لـ stylesheet بعد الرسم -->
-        <link rel="preload" href="/css/tailwind.min.css?v=31" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <link rel="preload" href="/css/styles.min.css?v=31" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <!-- Keep only small critical CSS eager; load heavy app CSS on demand -->
         <link rel="preload" href="/css/dark-fixes.min.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="stylesheet" href="/css/login-extra.min.css?v=1">
+        <script>
+        (function(){
+            var loaded = false;
+            function addStylesheet(href){
+                if (document.querySelector('link[data-core-css="'+href+'"]')) return;
+                var l = document.createElement('link');
+                l.rel = 'stylesheet';
+                l.href = href;
+                l.setAttribute('data-core-css', href);
+                document.head.appendChild(l);
+            }
+            window.__loadCoreCss = function(){
+                if (loaded) return;
+                loaded = true;
+                addStylesheet('/css/tailwind.min.css?v=31');
+                addStylesheet('/css/styles.min.css?v=31');
+            };
+            if (document.readyState === 'complete') {
+                setTimeout(window.__loadCoreCss, 1800);
+            } else {
+                window.addEventListener('load', function(){ setTimeout(window.__loadCoreCss, 1200); }, { once: true });
+            }
+            document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
+            document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
+        })();
+        </script>
         <noscript>
             <link rel="stylesheet" href="/css/tailwind.min.css?v=31">
             <link rel="stylesheet" href="/css/styles.min.css?v=31">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
+            <link rel="stylesheet" href="/css/login-extra.min.css?v=1">
         </noscript>
 
     <!-- Fonts use font-display:optional — browser fetches them on its own
@@ -970,13 +994,13 @@
                     if (window.startGoogleRedirectLogin) return;
                     window.__lazyCalls = window.__lazyCalls || [];
                     window.startGoogleRedirectLogin = function(){
+                        if (window.__loadCoreCss) window.__loadCoreCss();
                         window.__lazyCalls.push({name:'startGoogleRedirectLogin', args: Array.prototype.slice.call(arguments)});
                         // ensure bootstrap loader is present so queued calls will be flushed
-                        if (!document.querySelector('script[src="/js/bootstrap.min.js"]')){
+                        if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
-                            s.type = 'module';
-                            s.src = '/js/bootstrap.min.js';
-                            s.async = true;
+                            s.src = '/js/bootstrap.min.js?v=46';
+                            s.defer = true;
                             document.head.appendChild(s);
                         }
                     };
@@ -1012,165 +1036,7 @@
                     </div>
                 </div>
             </div>
-            <style>
-            .gold-arabic-title {
-                font-family: 'Amiri', 'Cairo', serif;
-                font-size:2.2rem;
-                font-weight:bold;
-                color:#f5d98b;
-                text-shadow:0 2px 16px #000,0 1px 0 #c9962a;
-                letter-spacing:0.02em;
-                margin-bottom: 0.5rem;
-            }
-            @media (max-width: 600px) {
-                .gold-arabic-title {
-                    font-size:0.95rem;
-                    margin-bottom:0.2rem;
-                    padding:0 0.5rem;
-                }
-            }
-
-            .guest-modal {
-                display: none;
-                position: fixed;
-                inset: 0;
-                z-index: 9999;
-                background: rgba(0,0,0,0.42);
-                backdrop-filter: blur(8px);
-                -webkit-backdrop-filter: blur(8px);
-                align-items: center;
-                justify-content: center;
-                padding: 16px;
-            }
-            .guest-modal-card {
-                width: 100%;
-                max-width: 460px;
-                padding: 2rem 1.2rem;
-                border-radius: 28px;
-                background: linear-gradient(135deg,#c9962a 0%,#080c14 100%);
-                box-shadow: 0 0 40px 8px rgba(0,0,0,0.22);
-                text-align: center;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-            .guest-modal-title {
-                font-family:'Amiri','Cairo',serif;
-                font-size: 2rem;
-                font-weight: bold;
-                color: #f5d98b;
-                text-shadow: 0 2px 16px #000, 0 1px 0 #c9962a;
-                margin-bottom: 1rem;
-            }
-            .guest-modal-text {
-                color: #fff;
-                font-size: 1.1rem;
-                margin-bottom: 1rem;
-                line-height: 1.7;
-            }
-            .guest-modal-actions {
-                display: flex;
-                gap: 1rem;
-                justify-content: center;
-                margin-top: 1rem;
-            }
-            .guest-btn-ok,
-            .guest-btn-cancel {
-                flex: 1;
-                padding: 0.8rem 0;
-                font-size: 1.05rem;
-                font-weight: bold;
-                border: none;
-                border-radius: 16px;
-                box-shadow: 0 2px 8px #0002;
-                cursor: pointer;
-            }
-            .guest-btn-ok {
-                background: linear-gradient(90deg,#c9962a,#f5d98b);
-                color: #222;
-            }
-            .guest-btn-cancel {
-                background: linear-gradient(90deg,#222,#080c14);
-                color: #f5d98b;
-            }
-            @media (max-width: 600px) {
-                .guest-modal-card { border-radius: 22px; padding: 1.4rem 1rem; }
-                .guest-modal-title { font-size: 1.55rem; }
-                .guest-modal-text { font-size: 0.98rem; }
-                .guest-modal-actions { gap: 0.7rem; }
-            }
-            </style>
-            <script>
-            (function moveGuestModalToBody() {
-                var modal = document.getElementById('guest-modal');
-                if (!modal) return;
-                if (modal.parentElement !== document.body) {
-                    document.body.appendChild(modal);
-                }
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) window.closeGuestModal();
-                });
-            })();
-
-            window.showGuestModal = function() {
-                var m = document.getElementById('guest-modal');
-                if (m) m.style.display = 'flex';
-            };
-            window.closeGuestModal = function() {
-                var m = document.getElementById('guest-modal');
-                if (m) m.style.display = 'none';
-            };
-            window.agreeGuestLogin = function() {
-                window.closeGuestModal();
-                window.startGuestLogin && window.startGuestLogin();
-            };
-            window.startGuestLogin = function() {
-                document.body.classList.add('guest-mode');
-                var guestUser = {
-                    fname: 'ضيف',
-                    lname: '',
-                    fullName: 'ضيف',
-                    avatar: '',
-                    role: 'guest',
-                    email: ''
-                };
-                try {
-                    sessionStorage.setItem('currentUser', JSON.stringify(guestUser));
-                    sessionStorage.setItem('isAdmin', 'false');
-                    localStorage.setItem('guest-mode', 'true');
-                    sessionStorage.setItem('guest-mode', 'true');
-                } catch(e) { console.error('[guest] failed to save session', e); return; }
-
-                // ── التلاعب المباشر بالـ DOM بدون الاعتماد على app.js ──
-                var loginScreen    = document.getElementById('login-screen');
-                var dashboardView  = document.getElementById('dashboard-view');
-                var bottomNav      = document.getElementById('ios-bottom-nav');
-                var quizContainer  = document.getElementById('quiz-container');
-                var welcomeMsg     = document.getElementById('welcome-msg');
-
-                if (loginScreen)   loginScreen.classList.add('hidden');
-                if (dashboardView) dashboardView.classList.remove('hidden');
-                if (bottomNav)     bottomNav.classList.remove('hidden');
-                if (quizContainer) quizContainer.classList.add('hidden');
-                // لا نلمس body.style.overflow مباشرةً — _syncMainInteractionState في navigation.js يتولاه
-                if (welcomeMsg) welcomeMsg.innerText = 'مَرْحَبًا بِكَ يَا ضَيْفَنَا الكَرِيم — الدخول تجريبي ولن تُحفظ الدرجات';
-
-                console.log('[guest] ✓ تم الدخول كضيف — سيبدأ تحميل البيانات...');
-
-                // بعد حفظ بيانات الضيف في sessionStorage، نستدعي loadApp()
-                // ليلاقي المستخدم ويُشغّل loadDataFromServer() + navToHome + renderDashboard
-                if (typeof window.loadApp === 'function') {
-                    try { window.loadApp(); } catch(e) { console.warn('[guest] loadApp failed', e); }
-                } else {
-                    // fallback إذا لم تُحمَّل app.js بعد
-                    if (typeof window.navToHome === 'function') {
-                        try { window.navToHome(); } catch(e) {}
-                    }
-                    if (typeof window.renderDashboard === 'function') {
-                        try { window.renderDashboard(); } catch(e) {}
-                    }
-                }
-            };
-            </script>
+            <script src="/js/guest-login.min.js?v=1" defer></script>
         </div>
     </div>
 
@@ -1471,301 +1337,8 @@
     };
     </script>
 
-    <!-- Lamp Animation Script — deferred so it doesn't block LCP paint -->
-    <script>
-    /* ═══════════════════════════════════════════
-       فيزياء الحبل — Verlet Integration
-       Deferred: runs after first paint via requestAnimationFrame
-    ═══════════════════════════════════════════ */
-    requestAnimationFrame(function() { setTimeout(function() {
-    (function() {
-        const canvas = document.getElementById('rope-canvas');
-        if (!canvas) return;
-
-        // Quick synchronous bail-out for low-end devices or users who prefer reduced motion.
-        try {
-            // Respect user's reduced-motion preference only. Do not auto-skip on heuristic low-tier devices;
-            // we want the rope to render unless the user explicitly requests reduced motion.
-            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                console.log('[Lamp] skipping heavy lamp animation due to prefers-reduced-motion');
-                return;
-            }
-            // keep going otherwise
-        
-        } catch (e) {
-            // detection failed — continue with caution
-        }
-
-        const ctx = canvas.getContext('2d');
-        const CW = canvas.width;
-        const CH = canvas.height;
-
-        const SEG = 12;
-        const GRAVITY = 0.40;
-        const DAMP = 0.980;
-        const ITER = 22;
-
-        let pts = [];
-        for (let i = 0; i <= SEG; i++) {
-            const y = i * (CH / SEG);
-            pts.push({ x: CW/2, y, ox: CW/2, oy: y, pin: i === 0 });
-        }
-        const segLen = CH / SEG;
-
-        let dragging = -1;
-        let pullCounter = 0;
-
-        // Lazy rect cache: avoid eager geometry read on startup.
-        // Measure only when interaction needs coordinates.
-        let _canvasRect = null;
-        let _rectDirty = true;
-
-        function markCanvasRectDirty() {
-            _rectDirty = true;
-        }
-
-        function getCanvasRect() {
-            if (_rectDirty || !_canvasRect) {
-                _canvasRect = canvas.getBoundingClientRect();
-                _rectDirty = false;
-            }
-            return _canvasRect;
-        }
-
-        if (typeof ResizeObserver !== 'undefined') {
-            new ResizeObserver(markCanvasRectDirty).observe(canvas);
-        } else {
-            window.addEventListener('resize', markCanvasRectDirty, { passive: true });
-        }
-        window.addEventListener('scroll', markCanvasRectDirty, { passive: true, capture: true });
-
-        function getXY(e) {
-            const s = e.touches ? e.touches[0] : e;
-            const rect = getCanvasRect();
-            return { x: s.clientX - rect.left, y: s.clientY - rect.top };
-        }
-
-        function nearest(mx, my) {
-            let best = -1, bd = 40;
-            pts.forEach((p, i) => {
-                if (p.pin) return;
-                const d = Math.hypot(p.x - mx, p.y - my);
-                if (d < bd) { bd = d; best = i; }
-            });
-            return best;
-        }
-
-        canvas.addEventListener('mousedown', e => {
-            const p = getXY(e);
-            dragging = nearest(p.x, p.y);
-            if (dragging >= 0) pullCounter = 0;
-        });
-        canvas.addEventListener('mousemove', e => {
-            if (dragging < 0) return;
-            const p = getXY(e);
-            pts[dragging].x = Math.max(4, Math.min(CW-4, p.x));
-            pts[dragging].y = Math.max(2, Math.min(CH-4, p.y));
-            pts[dragging].ox = pts[dragging].x;
-            pts[dragging].oy = pts[dragging].y;
-            pullCounter++;
-        });
-        canvas.addEventListener('mouseup', () => {
-            if (dragging >= 0 && pullCounter > 4) checkToggle();
-            dragging = -1; pullCounter = 0;
-        });
-        canvas.addEventListener('mouseleave', () => { dragging = -1; });
-
-        canvas.addEventListener('touchstart', e => {
-            e.preventDefault();
-            const p = getXY(e);
-            dragging = nearest(p.x, p.y);
-            if (dragging >= 0) pullCounter = 0;
-        }, { passive: false });
-        canvas.addEventListener('touchmove', e => {
-            e.preventDefault();
-            if (dragging < 0) return;
-            const p = getXY(e);
-            pts[dragging].x = Math.max(4, Math.min(CW-4, p.x));
-            pts[dragging].y = Math.max(2, Math.min(CH-4, p.y));
-            pts[dragging].ox = pts[dragging].x;
-            pts[dragging].oy = pts[dragging].y;
-            pullCounter++;
-        }, { passive: false });
-        canvas.addEventListener('touchend', () => {
-            if (dragging >= 0 && pullCounter > 3) checkToggle();
-            dragging = -1; pullCounter = 0;
-        });
-
-        function checkToggle() {
-            const last = pts.length - 1;
-            if (dragging >= last - 3) toggleLamp();
-        }
-
-        function update() {
-            for (const p of pts) {
-                if (p.pin) continue;
-                const vx = (p.x - p.ox) * DAMP;
-                const vy = (p.y - p.oy) * DAMP;
-                p.ox = p.x; p.oy = p.y;
-                p.x += vx; p.y += vy + GRAVITY;
-                if (p.x < 4) { p.x = 4; p.ox = p.x; }
-                if (p.x > CW-4) { p.x = CW-4; p.ox = p.x; }
-                if (p.y > CH-4) { p.y = CH-4; p.oy = p.y; }
-                if (p.y < 2) { p.y = 2; p.oy = p.y; }
-            }
-            for (let it = 0; it < ITER; it++) {
-                for (let i = 0; i < pts.length - 1; i++) {
-                    const a = pts[i], b = pts[i+1];
-                    const dx = b.x - a.x, dy = b.y - a.y;
-                    const dist = Math.hypot(dx, dy) || 0.001;
-                    const diff = (dist - segLen) / dist * 0.5;
-                    if (!a.pin) { a.x += dx*diff; a.y += dy*diff; }
-                    if (!b.pin) { b.x -= dx*diff; b.y -= dy*diff; }
-                }
-                pts[0].x = CW / 2; pts[0].y = 0;
-            }
-        }
-
-        function drawRope() {
-            ctx.clearRect(0, 0, CW, CH);
-
-            ctx.beginPath();
-            ctx.moveTo(pts[0].x + 1.5, pts[0].y + 1.5);
-            for (let i = 1; i < pts.length - 1; i++) {
-                const mx = (pts[i].x + pts[i+1].x) / 2 + 1.5;
-                const my = (pts[i].y + pts[i+1].y) / 2 + 1.5;
-                ctx.quadraticCurveTo(pts[i].x + 1.5, pts[i].y + 1.5, mx, my);
-            }
-            ctx.lineTo(pts[pts.length-1].x + 1.5, pts[pts.length-1].y + 1.5);
-            ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-            ctx.lineWidth = 3.5; ctx.lineCap = 'round';
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length - 1; i++) {
-                const mx = (pts[i].x + pts[i+1].x) / 2;
-                const my = (pts[i].y + pts[i+1].y) / 2;
-                ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-            }
-            ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
-
-            const grad = ctx.createLinearGradient(0, 0, 0, CH);
-            grad.addColorStop(0, '#8a6d3b');
-            grad.addColorStop(0.5, '#c9962a');
-            grad.addColorStop(1, '#8a6d3b');
-            ctx.strokeStyle = grad;
-            ctx.lineWidth = 2.8;
-            ctx.shadowColor = 'rgba(201,150,42,0.4)';
-            ctx.shadowBlur = 4;
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-
-            const tip = pts[pts.length - 1];
-            const g = ctx.createRadialGradient(tip.x-2, tip.y-2, 1, tip.x, tip.y, 8);
-            g.addColorStop(0, '#fff8e0');
-            g.addColorStop(0.5, '#e8b84b');
-            g.addColorStop(1, '#7a5010');
-            ctx.beginPath();
-            ctx.arc(tip.x, tip.y, 8, 0, Math.PI * 2);
-            ctx.fillStyle = g;
-            ctx.strokeStyle = '#5a3a08';
-            ctx.lineWidth = 1.2;
-            ctx.shadowColor = 'rgba(201,150,42,0.6)';
-            ctx.shadowBlur = 6;
-            ctx.fill(); ctx.stroke();
-            ctx.shadowBlur = 0;
-
-            ctx.beginPath();
-            ctx.arc(CW/2, 0, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#8a6d3b';
-            ctx.strokeStyle = '#c9962a';
-            ctx.lineWidth = 1;
-            ctx.fill(); ctx.stroke();
-        }
-
-        (function loop() { update(); drawRope(); requestAnimationFrame(loop); })();
-
-        /* ═══ تبديل الإضاءة ═══ */
-        // Default to off so the lamp is off on first load and after refresh
-        let isOn = false;
-
-        window.toggleLamp = function() { isOn = !isOn; applyState(); };
-
-        const lampSvg = document.getElementById('lamp-svg');
-        if (lampSvg) lampSvg.addEventListener('click', toggleLamp);
-
-        function applyState() {
-            const shade = document.getElementById('shade-body');
-            const rim = document.getElementById('shade-rim');
-            const innerLight = document.getElementById('inner-light');
-            const eyeL = document.getElementById('eye-l');
-            const eyeR = document.getElementById('eye-r');
-            const mouth = document.getElementById('mouth');
-            const svg = document.getElementById('lamp-svg');
-            const cone = document.getElementById('light-cone');
-            const glow = document.getElementById('floor-glow');
-            const card = document.getElementById('login-card');
-
-            if (isOn) {
-                shade.setAttribute('fill', 'url(#shadeOn)');
-                rim.setAttribute('fill', '#7a5820');
-                innerLight.setAttribute('opacity', '1');
-                svg.classList.remove('off');
-
-                eyeL.setAttribute('rx', '5.5'); eyeL.setAttribute('ry', '5.5');
-                eyeR.setAttribute('rx', '5.5'); eyeR.setAttribute('ry', '5.5');
-                eyeL.setAttribute('fill', '#1a0e00');
-                eyeR.setAttribute('fill', '#1a0e00');
-                mouth.setAttribute('d', 'M 76 97 Q 85 108 94 97');
-
-                cone.classList.remove('off');
-                glow.classList.remove('off');
-                card.classList.remove('off');
-                card.classList.add('appear');
-                setTimeout(() => card.classList.remove('appear'), 900);
-
-            } else {
-                shade.setAttribute('fill', 'url(#shadeOff)');
-                rim.setAttribute('fill', '#1a1510');
-                innerLight.setAttribute('opacity', '0');
-                svg.classList.add('off');
-
-                eyeL.setAttribute('rx', '5.5'); eyeL.setAttribute('ry', '1.5');
-                eyeR.setAttribute('rx', '5.5'); eyeR.setAttribute('ry', '1.5');
-                eyeL.setAttribute('fill', '#444');
-                eyeR.setAttribute('fill', '#444');
-                mouth.setAttribute('d', 'M 76 100 Q 85 95 94 100');
-
-                cone.classList.add('off');
-                glow.classList.add('off');
-                card.classList.add('off');
-            }
-        }
-        // Ensure UI reflects initial state on page load/refresh
-        try { applyState(); } catch(e){}
-
-        /* ═══ الرمش التلقائي ═══ */
-        // (Note: entire lamp IIFE is wrapped in rAF+setTimeout to defer past LCP)
-        function blinkEyes() {
-            if (!isOn) return;
-            const eyeL = document.getElementById('eye-l');
-            const eyeR = document.getElementById('eye-r');
-            eyeL.setAttribute('ry', '1'); eyeR.setAttribute('ry', '1');
-            setTimeout(() => {
-                if (!isOn) return;
-                eyeL.setAttribute('ry', '5.5'); eyeR.setAttribute('ry', '5.5');
-            }, 130);
-        }
-
-        function scheduleBlink() {
-            const t = Math.random() * 4500 + 2000;
-            setTimeout(() => { blinkEyes(); scheduleBlink(); }, t);
-        }
-        scheduleBlink();
-    })();
-    }, 0); });
-    </script>
+    <!-- Lamp animation moved to external minified script to reduce inline JS cost -->
+    <script src="/js/lamp-animation.min.js?v=1" defer></script>
 
     <script>
     window.validateIconsInConsole = function () {
