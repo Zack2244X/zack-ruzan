@@ -284,7 +284,7 @@ Object.assign(window, {
     // Navigation
     navToHome, navToSection, openAdminAuthOrPanel, closeStudentMenu,
     openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
-    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle,
+    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle, _syncMainInteractionState,
 
     // Auth
     startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,

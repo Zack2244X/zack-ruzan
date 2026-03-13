@@ -232,10 +232,8 @@ export function closeBottomSheet() {
             if (!content?.classList.contains('active')) sheet.classList.add('hidden');
         }, SHEET_CLOSE_MS);
     }
-    const dock = document.getElementById('ios-bottom-nav');
-    if (dock) dock.classList.remove('hidden');
     if (state.currentViewMode) updateDockUI('home');
-    _showThemeToggle(true);
+    _syncMainInteractionState();
 }
 
 /** إغلاق قائمة الأدمن السفلية */
@@ -253,7 +251,7 @@ export function closeAdminSheet() {
         }, SHEET_CLOSE_MS);
     }
     updateDockUI('home');
-    _showThemeToggle(true);
+    _syncMainInteractionState();
 }
 
 /** إغلاق جميع النوافذ المنبثقة */
