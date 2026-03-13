@@ -73,7 +73,7 @@
 .dark .line-clamp-2, .dark p, .dark span { color: #cbd5e1 !important; }
 
 /* Slightly dim icons where appropriate */
-.dark i.fas, .dark i.far { color: #cbd5e1 !important; }
+.dark i.fas, .dark i.far { color: inherit !important; }
 
 /* End of dark fixes */
 

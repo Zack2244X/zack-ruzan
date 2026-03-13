@@ -72,6 +72,29 @@
         font-family: inherit !important;
         box-sizing: border-box;
     }
+    /* Keep Font Awesome font-family intact inside bottom sheets (otherwise icons become squares/lines) */
+    .bottom-sheet-content .fa,
+    .bottom-sheet-content .fas,
+    .bottom-sheet-content .far,
+    .bottom-sheet-content .fab {
+        font-family: "Font Awesome 5 Free" !important;
+        font-weight: 900 !important;
+    }
+    .bottom-sheet-content .fab {
+        font-family: "Font Awesome 5 Brands" !important;
+        font-weight: 400 !important;
+    }
+    /* Admin sheet icons: brighter and clearer in dark mode */
+    [data-theme="dark"] #admin-content button span i,
+    .dark #admin-content button span i {
+        color: currentColor !important;
+        text-shadow: 0 0 10px currentColor;
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+    [data-theme="dark"] #admin-content button span,
+    .dark #admin-content button span {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.18), 0 0 14px rgba(148,163,184,0.25);
+    }
 
     /* Make handle and header stable dimensions */
     .sheet-handle .w-12 { width: 48px; height: 6px; }
