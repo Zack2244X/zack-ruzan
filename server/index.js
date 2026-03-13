@@ -343,7 +343,7 @@ app.get('*', (req, res, next) => {
     // HTTP Link preload headers — browser starts fetching LCP asset
     // from the very first byte of the response, before HTML is parsed.
     // Logo is the actual LCP element (Lighthouse confirmed)
-    res.setHeader('Link', '</icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp>; rel=preload; as=image; fetchpriority=high');
+    res.setHeader('Link', '</icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif>; rel=preload; as=image; type=image/avif; fetchpriority=high');
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
