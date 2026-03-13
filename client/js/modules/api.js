@@ -3,6 +3,24 @@
 import state from './state.js';
 import { logFunctionStatus } from './helpers.js';
 
+const DEVICE_ID_KEY = 'client-device-id';
+
+export function getClientDeviceId() {
+    try {
+        let id = localStorage.getItem(DEVICE_ID_KEY);
+        if (id && id.length >= 12) return id;
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            id = `dev-${crypto.randomUUID()}`;
+        } else {
+            id = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+        }
+        localStorage.setItem(DEVICE_ID_KEY, id);
+        return id;
+    } catch {
+        return `dev-fallback-${Math.random().toString(36).slice(2, 12)}`;
+    }
+}
+
 // 2. تعريف الدوال والتصدير
 // Provide a fetch-like wrapper for dashboard.js compatibility
 export async function apiFetch(url) {
@@ -33,6 +51,7 @@ function getCsrfToken() {
  */
 export function getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json' };
+    headers['X-Device-Id'] = getClientDeviceId();
     const csrf = getCsrfToken();
     if (csrf) headers['X-CSRF-Token'] = csrf;
     // إرسال هيدر الضيف إذا كانت الجلسة الحالية جلسة ضيف

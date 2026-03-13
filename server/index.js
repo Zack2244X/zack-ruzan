@@ -12,7 +12,8 @@
 //   — Sequelize + TiDB (MySQL) —
 // ============================================
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -20,7 +21,6 @@ const hpp = require('hpp');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 const logger = require('./utils/logger');
 const { sanitizeBody } = require('./middleware/sanitize');
 const { verifyCsrf } = require('./middleware/auth');
@@ -156,6 +156,35 @@ app.use(cookieParser());
 // 5. JSON parsing مع حد آمن
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+
+app.use('/api', async (req, res, next) => {
+    try {
+        const deviceId = String(req.get('x-device-id') || req.body?.deviceId || req.query?.deviceId || '').trim().substring(0, 120);
+        const forwarded = req.headers['x-forwarded-for'];
+        const ipAddress = (typeof forwarded === 'string' && forwarded.trim() ? forwarded.split(',')[0].trim() : (req.ip || '').toString()).substring(0, 64);
+
+        if (!deviceId && !ipAddress) return next();
+
+        const [rows] = await sequelize.query(
+            `SELECT id, reason FROM blocked_devices
+             WHERE isActive = 1
+               AND ((? <> '' AND deviceId = ?) OR (? <> '' AND ipAddress = ?))
+             ORDER BY id DESC
+             LIMIT 1`,
+            { replacements: [deviceId, deviceId, ipAddress, ipAddress] }
+        );
+
+        if (rows && rows.length > 0) {
+            return res.status(403).json({
+                error: 'تم حظر هذا الجهاز من الدخول إلى المنصة.',
+                reason: rows[0].reason || 'سبب غير محدد'
+            });
+        }
+    } catch (err) {
+        logger.warn('⚠️ Device block check failed, allowing request:', { error: err.message });
+    }
+    next();
+});
 
 // 6. Sanitize all request bodies
 app.use(sanitizeBody);
@@ -338,6 +367,7 @@ app.get('/config.js', (req, res) => {
 // Exempt: POST /api/auth/google (initial login, no CSRF cookie exists yet).
 app.use('/api', (req, res, next) => {
     if (req.path === '/auth/google' && req.method === 'POST') return next();
+    if (req.path === '/auth/guest-session' && req.method === 'POST') return next();
     return verifyCsrf(req, res, next);
 });
 
@@ -417,6 +447,39 @@ async function runSafeMigrations() {
             \`count\`        INT          NOT NULL DEFAULT 1,
             \`last_attempt\` BIGINT       NOT NULL,
             PRIMARY KEY (\`ip\`)
+        )`,
+        `CREATE TABLE IF NOT EXISTS \`account_sessions\` (
+            \`id\` BIGINT NOT NULL AUTO_INCREMENT,
+            \`userId\` INT NULL,
+            \`email\` VARCHAR(255) NULL,
+            \`deviceId\` VARCHAR(120) NULL,
+            \`loginType\` VARCHAR(30) NOT NULL DEFAULT 'google',
+            \`ipAddress\` VARCHAR(64) NULL,
+            \`macAddress\` VARCHAR(64) NULL,
+            \`deviceName\` VARCHAR(120) NULL,
+            \`userAgent\` VARCHAR(500) NULL,
+            \`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            \`updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (\`id\`),
+            INDEX \`idx_account_sessions_user\` (\`userId\`),
+            INDEX \`idx_account_sessions_email\` (\`email\`),
+            INDEX \`idx_account_sessions_device\` (\`deviceId\`),
+            INDEX \`idx_account_sessions_type\` (\`loginType\`)
+        )`,
+        `CREATE TABLE IF NOT EXISTS \`blocked_devices\` (
+            \`id\` BIGINT NOT NULL AUTO_INCREMENT,
+            \`deviceId\` VARCHAR(120) NULL,
+            \`ipAddress\` VARCHAR(64) NULL,
+            \`deviceName\` VARCHAR(120) NULL,
+            \`reason\` VARCHAR(255) NULL,
+            \`blockedBy\` VARCHAR(255) NULL,
+            \`isActive\` TINYINT(1) NOT NULL DEFAULT 1,
+            \`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            \`updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (\`id\`),
+            INDEX \`idx_blocked_devices_device\` (\`deviceId\`),
+            INDEX \`idx_blocked_devices_ip\` (\`ipAddress\`),
+            INDEX \`idx_blocked_devices_active\` (\`isActive\`)
         )`,
         // index for leaderboard query: WHERE deletedAt IS NULL GROUP BY userId
         `CREATE INDEX IF NOT EXISTS \`idx_scores_user_deleted\` ON \`scores\` (\`userId\`, \`deletedAt\`)`,

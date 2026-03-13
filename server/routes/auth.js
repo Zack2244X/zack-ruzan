@@ -16,6 +16,7 @@ const User = require('../models/User');
 const {
     generateToken,
     authenticate,
+    requireAdmin,
     setTokenCookie,
     clearTokenCookie,
     setCsrfCookie,
@@ -27,6 +28,7 @@ const {
 const { validateGoogleLogin, validateCompleteProfile, validateCreateAdmin } = require('../middleware/validators');
 const logger = require('../utils/logger');
 const rateLimit = require('express-rate-limit');
+const sequelize = require('../models');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -114,6 +116,55 @@ function splitName(fullName = '') {
     };
 }
 
+function getClientIp(req) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim()) {
+        return forwarded.split(',')[0].trim().substring(0, 64);
+    }
+    return (req.ip || '').toString().substring(0, 64);
+}
+
+function inferDeviceName(ua = '') {
+    const u = String(ua || '').toLowerCase();
+    if (!u) return 'Unknown Device';
+    if (u.includes('iphone')) return 'iPhone';
+    if (u.includes('ipad')) return 'iPad';
+    if (u.includes('android')) return 'Android Phone';
+    if (u.includes('windows')) return 'Windows PC';
+    if (u.includes('mac os') || u.includes('macintosh')) return 'Mac';
+    if (u.includes('linux')) return 'Linux';
+    return 'Unknown Device';
+}
+
+function sanitizeText(value, maxLen = 255) {
+    if (!value) return '';
+    return String(value).trim().substring(0, maxLen);
+}
+
+async function recordAccountSession({ userId = null, email = '', deviceId = '', loginType = 'google', ipAddress = '', macAddress = '', deviceName = '', userAgent = '' }) {
+    try {
+        await sequelize.query(
+            `INSERT INTO account_sessions
+                (userId, email, deviceId, loginType, ipAddress, macAddress, deviceName, userAgent, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            {
+                replacements: [
+                    userId,
+                    sanitizeText(email.toLowerCase(), 255) || null,
+                    sanitizeText(deviceId, 120),
+                    sanitizeText(loginType, 30),
+                    sanitizeText(ipAddress, 64),
+                    sanitizeText(macAddress, 64),
+                    sanitizeText(deviceName, 120),
+                    sanitizeText(userAgent, 500)
+                ]
+            }
+        );
+    } catch (err) {
+        logger.warn('⚠️ تعذر تسجيل account session audit:', { error: err.message });
+    }
+}
+
 // ============================================
 //   دالة مساعدة: التحقق من توكن Google
 // ============================================
@@ -181,6 +232,12 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
 
         await clearFailedAttempts(req.ip);
 
+        const userAgent = req.get('user-agent') || '';
+        const ipAddress = getClientIp(req);
+        const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
+        const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
+        const macAddress = sanitizeText(req.body?.macAddress || req.get('x-device-mac'), 64);
+
         // البحث عن المستخدم بالإيميل
         let user = await User.findOne({ where: { email: googleData.email } });
 
@@ -203,6 +260,17 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
                 user.tokenVersion = (user.tokenVersion || 0) + 1; // إلغاء الجلسات القديمة
             }
             await user.save();
+
+            await recordAccountSession({
+                userId: user.id,
+                email: user.email,
+                deviceId,
+                loginType: 'google',
+                ipAddress,
+                macAddress,
+                deviceName,
+                userAgent
+            });
 
             const token = generateToken(user.id, user.role, user.tokenVersion);
             setTokenCookie(res, token);
@@ -241,6 +309,17 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
 
         logger.info(`🆕 تسجيل جديد — ${isAdminEmail ? '👑 أدمن' : '👤 طالب'}: ${googleData.email}`);
 
+        await recordAccountSession({
+            userId: user.id,
+            email: user.email,
+            deviceId,
+            loginType: 'google',
+            ipAddress,
+            macAddress,
+            deviceName,
+            userAgent
+        });
+
         const token = generateToken(user.id, user.role, user.tokenVersion);
         setTokenCookie(res, token);
         setCsrfCookie(res);
@@ -277,6 +356,207 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             error: 'حدث خطأ أثناء التسجيل بالجيميل.',
             ...(process.env.NODE_ENV !== 'production' && { debug: mysqlMsg || error.message })
         });
+    }
+});
+
+// ============================================
+//   POST /api/auth/guest-session — تسجيل دخول ضيف
+// ============================================
+router.post('/guest-session', async (req, res) => {
+    try {
+        const userAgent = req.get('user-agent') || '';
+        const ipAddress = getClientIp(req);
+        const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
+        const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
+        const macAddress = sanitizeText(req.body?.macAddress || req.get('x-device-mac'), 64);
+
+        await recordAccountSession({
+            userId: null,
+            email: '',
+            deviceId,
+            loginType: 'guest',
+            ipAddress,
+            macAddress,
+            deviceName,
+            userAgent
+        });
+
+        return res.status(201).json({ ok: true });
+    } catch (error) {
+        logger.error('خطأ في تسجيل guest-session:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر تسجيل جلسة الضيف.' });
+    }
+});
+
+// ============================================
+//   GET /api/auth/accounts-overview — لوحة إدارة الحسابات
+// ============================================
+router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const [accounts] = await sequelize.query(
+            `SELECT
+                u.id,
+                u.fname,
+                u.lname,
+                u.email,
+                u.role,
+                u.createdAt,
+                s.ipAddress,
+                s.deviceId,
+                s.macAddress,
+                s.deviceName,
+                s.loginType,
+                s.createdAt AS lastSeenAt
+             FROM users u
+             LEFT JOIN account_sessions s
+               ON s.id = (
+                    SELECT s2.id
+                    FROM account_sessions s2
+                    WHERE (s2.userId = u.id OR (s2.email IS NOT NULL AND s2.email = u.email))
+                      AND s2.loginType <> 'guest'
+                    ORDER BY s2.id DESC
+                    LIMIT 1
+               )
+             WHERE u.deletedAt IS NULL
+             ORDER BY u.createdAt DESC`
+        );
+
+        const [guestSessions] = await sequelize.query(
+            `SELECT id, ipAddress, deviceId, macAddress, deviceName, createdAt AS lastSeenAt
+             FROM account_sessions
+             WHERE loginType = 'guest'
+             ORDER BY id DESC
+             LIMIT 200`
+        );
+
+        return res.json({
+            accounts: (accounts || []).map((a) => ({
+                id: a.id,
+                type: 'account',
+                fullName: `${a.fname || ''} ${a.lname || ''}`.trim() || a.email,
+                email: a.email,
+                role: a.role,
+                ipAddress: a.ipAddress || '',
+                deviceId: a.deviceId || '',
+                macAddress: a.macAddress || '',
+                deviceName: a.deviceName || '',
+                loginType: a.loginType || 'google',
+                createdAt: a.createdAt,
+                lastSeenAt: a.lastSeenAt || null
+            })),
+            guests: (guestSessions || []).map((g) => ({
+                id: g.id,
+                type: 'guest',
+                fullName: 'ضيف (بدون حساب)',
+                email: '',
+                role: 'guest',
+                ipAddress: g.ipAddress || '',
+                deviceId: g.deviceId || '',
+                macAddress: g.macAddress || '',
+                deviceName: g.deviceName || '',
+                loginType: 'guest',
+                createdAt: g.lastSeenAt,
+                lastSeenAt: g.lastSeenAt
+            }))
+        });
+    } catch (error) {
+        logger.error('خطأ في جلب accounts-overview:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر جلب بيانات الحسابات.' });
+    }
+});
+
+router.delete('/accounts/:id', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const targetId = Number(req.params.id);
+        if (!Number.isInteger(targetId) || targetId <= 0) {
+            return res.status(400).json({ error: 'معرّف الحساب غير صالح.' });
+        }
+
+        if (req.user.id === targetId) {
+            return res.status(400).json({ error: 'لا يمكنك حذف حسابك الحالي.' });
+        }
+
+        const targetUser = await User.findByPk(targetId);
+        if (!targetUser) {
+            return res.status(404).json({ error: 'الحساب غير موجود.' });
+        }
+
+        await targetUser.destroy();
+        logger.info(`🗑️ تم حذف حساب بواسطة الأدمن: ${targetUser.email} بواسطة ${req.user.email}`);
+        return res.json({ ok: true, message: 'تم حذف الحساب بنجاح.' });
+    } catch (error) {
+        logger.error('خطأ في حذف الحساب:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر حذف الحساب.' });
+    }
+});
+
+router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const deviceId = sanitizeText(req.body?.deviceId, 120);
+        const ipAddress = sanitizeText(req.body?.ipAddress, 64);
+        const deviceName = sanitizeText(req.body?.deviceName, 120);
+        const reason = sanitizeText(req.body?.reason, 255) || 'تم الحظر بواسطة الإدارة';
+
+        if (!deviceId && !ipAddress) {
+            return res.status(400).json({ error: 'يجب توفير deviceId أو ipAddress للحظر.' });
+        }
+
+        await sequelize.query(
+            `INSERT INTO blocked_devices
+                (deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+            {
+                replacements: [
+                    deviceId || null,
+                    ipAddress || null,
+                    deviceName || null,
+                    reason,
+                    req.user.email || 'admin'
+                ]
+            }
+        );
+
+        logger.warn(`⛔ Device blocked by ${req.user.email}: deviceId=${deviceId || '-'} ip=${ipAddress || '-'}`);
+        return res.status(201).json({ ok: true, message: 'تم حظر الجهاز بنجاح.' });
+    } catch (error) {
+        logger.error('خطأ في حظر الجهاز:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر حظر الجهاز.' });
+    }
+});
+
+router.get('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const [rows] = await sequelize.query(
+            `SELECT id, deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt
+             FROM blocked_devices
+             WHERE isActive = 1
+             ORDER BY id DESC`
+        );
+        return res.json({ devices: rows || [] });
+    } catch (error) {
+        logger.error('خطأ في جلب الأجهزة المحظورة:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر جلب قائمة الأجهزة المحظورة.' });
+    }
+});
+
+router.delete('/blocked-devices/:id', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const blockId = Number(req.params.id);
+        if (!Number.isInteger(blockId) || blockId <= 0) {
+            return res.status(400).json({ error: 'معرّف الحظر غير صالح.' });
+        }
+
+        await sequelize.query(
+            `UPDATE blocked_devices
+             SET isActive = 0, updatedAt = NOW()
+             WHERE id = ?`,
+            { replacements: [blockId] }
+        );
+
+        return res.json({ ok: true, message: 'تم فك الحظر بنجاح.' });
+    } catch (error) {
+        logger.error('خطأ في فك الحظر:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر فك حظر الجهاز.' });
     }
 });
 

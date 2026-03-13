@@ -4,9 +4,16 @@
  */
 import state from './state.js';
 import { showAlert, logFunctionStatus } from './helpers.js';
-import { apiCall, loadDataFromServer } from './api.js';
+import { apiCall, loadDataFromServer, getClientDeviceId } from './api.js';
 import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
 import { startLeaderboardAutoRefresh } from './dashboard.js';
+
+function getClientDevicePayload() {
+    return {
+        deviceId: getClientDeviceId(),
+        deviceName: navigator.userAgent || 'Unknown Device'
+    };
+}
 
 /**
  * بدء تسجيل دخول Google عبر Redirect
@@ -131,9 +138,15 @@ export async function handleGoogleAdminResponse(response) {
     try {
         const res = await fetch('/api/auth/google', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Device-Id': getClientDeviceId()
+            },
             credentials: 'include',
-            body: JSON.stringify({ idToken: response.credential })
+            body: JSON.stringify({
+                idToken: response.credential,
+                ...getClientDevicePayload()
+            })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'فشل التحقق');
@@ -195,9 +208,15 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
     try {
         const res = await fetch('/api/auth/google', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Device-Id': getClientDeviceId()
+            },
             credentials: 'include',
-            body: JSON.stringify({ idToken: response.credential })
+            body: JSON.stringify({
+                idToken: response.credential,
+                ...getClientDevicePayload()
+            })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.debug ? `${data.error} [${data.debug}]` : (data.error || 'فشل تسجيل الدخول'));
