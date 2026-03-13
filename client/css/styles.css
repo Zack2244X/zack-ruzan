@@ -819,17 +819,30 @@ a:focus:not(:focus-visible) {
     color: #111827;
     font-weight: 700;
     font-size: 1.3rem;
-    background: linear-gradient(90deg, #7c3aed 0%, #000000 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
     text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 [data-theme="dark"] #question-text .quiz-question-gradient,
 .dark #question-text .quiz-question-gradient {
-    background: linear-gradient(90deg, #ff9100 0%, #fffde7 100%);
+    color: #ffe7b3;
     text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    #question-text .quiz-question-gradient {
+        background: linear-gradient(90deg, #7c3aed 0%, #000000 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+    }
+
+    [data-theme="dark"] #question-text .quiz-question-gradient,
+    .dark #question-text .quiz-question-gradient {
+        background: linear-gradient(90deg, #ff9100 0%, #fffde7 100%);
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+    }
 }
 
 /* ============================================
