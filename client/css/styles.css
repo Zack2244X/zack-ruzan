@@ -814,6 +814,24 @@ a:focus:not(:focus-visible) {
 .correct-bg   { background-color: #10b981; }
 .incorrect-bg { background-color: #ef4444; }
 
+/* Quiz question title gradient by theme */
+#question-text .quiz-question-gradient {
+    color: #111827;
+    font-weight: 700;
+    font-size: 1.3rem;
+    background: linear-gradient(90deg, #7c3aed 0%, #000000 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] #question-text .quiz-question-gradient,
+.dark #question-text .quiz-question-gradient {
+    background: linear-gradient(90deg, #ff9100 0%, #fffde7 100%);
+    text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 /* ============================================
    Editable Mode (Quiz Builder)
    ============================================ */
