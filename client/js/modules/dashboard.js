@@ -276,8 +276,14 @@ if (latestExams.length === 0) {
 } else {
     let examsHtml = '';
 
-    latestExams.forEach((q, idx) => {
-        const realIndex       = state.allQuizzes.length - 1 - idx;
+    latestExams.forEach((q) => {
+        const quizIdentity = String(q.id ?? q.config?.id ?? '');
+        let realIndex = state.allQuizzes.findIndex(item => {
+            if (item === q) return true;
+            const itemIdentity = String(item.id ?? item.config?.id ?? '');
+            return quizIdentity && itemIdentity && itemIdentity === quizIdentity;
+        });
+        if (realIndex < 0) realIndex = state.allQuizzes.indexOf(q);
         const safeTitle       = escapeHtml(q.config.title);
         const safeDesc        = escapeHtml(q.config.description || '');
         const safeSubject     = escapeHtml(q.config.subject || 'عام');
