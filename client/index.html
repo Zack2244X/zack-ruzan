@@ -199,10 +199,14 @@
 
     <!-- Login Page Styles -->
     <style>
-    /* Prevent layout shifts caused by scrollbar appearing/disappearing */
-    html { overflow-y: scroll; scrollbar-gutter: stable; }
-    body { scrollbar-gutter: stable; }
+    /* Prevent layout shifts and keep page scroll hidden by default. */
+    html { overflow-y: hidden; scrollbar-gutter: stable; }
+    body { scrollbar-gutter: stable; overflow-y: hidden; }
     body { min-height: 100vh; }
+
+    /* Scrollbar is allowed only on the home page (toggled from navigation.js). */
+    html.home-scroll { overflow-y: scroll !important; }
+    body.home-scroll { overflow-y: auto !important; }
 
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
@@ -685,9 +689,14 @@
         /* Make Lenis class additions layout-stable */
         html.lenis, html.lenis-smooth {
             scrollbar-gutter: stable;
-            overflow-y: scroll !important;
+            overflow-y: hidden !important;
             -webkit-font-smoothing: antialiased;
             -webkit-text-size-adjust: 100%;
+        }
+
+        html.home-scroll.lenis,
+        html.home-scroll.lenis-smooth {
+            overflow-y: scroll !important;
         }
 
         /* FINAL font-family — set at first paint, NEVER overridden.

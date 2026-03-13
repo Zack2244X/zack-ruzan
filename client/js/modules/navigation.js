@@ -39,6 +39,11 @@ export function _syncMainInteractionState() {
 
     const body = document.body;
     const root = document.documentElement;
+    const allowHomeScroll = onHome && !blocked;
+
+    // Show page scrollbar only on home view when no overlay is open.
+    body.classList.toggle('home-scroll', allowHomeScroll);
+    root.classList.toggle('home-scroll', allowHomeScroll);
 
     // ── DOM writes ────────────────────────────────────────────────────────────
     if (dashboard) {
