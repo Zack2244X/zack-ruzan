@@ -22,7 +22,7 @@
     <title>Zack Exam</title>
         <!-- Preload LCP image FIRST — Logo is the actual LCP element
              (Lighthouse confirmed). Give it highest priority + earliest position. -->
-        <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp" fetchpriority="high">
+        <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif" type="image/avif" fetchpriority="high">
         <!-- bg.webp: decorative background behind login card — NOT LCP -->
         <link rel="preload" as="image" href="/icons/bg.webp">
 
@@ -946,11 +946,14 @@
             <!-- كارت تسجيل الدخول — starts with .off to match isOn=false (no CLS when applyState runs) -->
             <div class="login-card off" id="login-card">
                 <div class="logo-wrap">
-                    <img src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
-                        alt="Logo"
-                        fetchpriority="high" decoding="async"
-                        style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
-                        srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x">
+                    <picture>
+                        <source type="image/avif" srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif 1x">
+                        <img src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
+                            alt="Logo"
+                            fetchpriority="high" decoding="async"
+                            style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
+                            srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x">
+                    </picture>
                 </div>
 
                 <h2 class="card-title gold-arabic-title">حَيَّ اللَّهُ الدَّرَاعِمَة</h2>
