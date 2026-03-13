@@ -87,12 +87,11 @@
     /* Admin sheet icons: stronger direct glow on icon glyphs in dark mode */
     [data-theme="dark"] #admin-content button span i,
     .dark #admin-content button span i {
-        color: currentColor !important;
+        color: #000 !important;
         text-shadow:
-            0 0 8px currentColor,
-            0 0 16px currentColor,
-            0 0 24px currentColor;
-        filter: brightness(1.25) saturate(1.15) drop-shadow(0 0 10px currentColor);
+            0 0 6px rgba(255,255,255,0.3),
+            0 0 12px rgba(255,255,255,0.2);
+        filter: brightness(1.1) drop-shadow(0 0 6px rgba(255,255,255,0.25));
     }
     [data-theme="dark"] #admin-content button span,
     .dark #admin-content button span {
