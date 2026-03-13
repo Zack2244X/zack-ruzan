@@ -208,6 +208,15 @@
     html.home-scroll { overflow-y: scroll !important; }
     body.home-scroll { overflow-y: auto !important; }
 
+        /* Hard guard: while accounts modal is open, never show home controls. */
+        body.accounts-modal-open #ios-bottom-nav,
+        body.accounts-modal-open #theme-toggle {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+        }
+
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
       --gold: #c9962a;
@@ -1306,7 +1315,7 @@
         </div>
     </div>
 
-    <div id="accounts-management-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[220] p-3 sm:p-6">
+    <div id="accounts-management-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[320] p-3 sm:p-6">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full h-full shadow-2xl border border-white/60 flex flex-col overflow-hidden">
             <div class="bg-gradient-to-r from-indigo-50 to-white p-5 sm:p-6 border-b border-indigo-100 flex justify-between items-center">
                 <div>
@@ -1442,6 +1451,7 @@
             var dock = document.getElementById('ios-bottom-nav');
             if (!modal || !list) return;
 
+            document.body.classList.add('accounts-modal-open');
             if (dock) dock.classList.add('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(false);
 
@@ -1471,6 +1481,7 @@
         window.closeAccountsManagementModal = function(){
             var modal = document.getElementById('accounts-management-modal');
             if (modal) modal.classList.add('hidden');
+            document.body.classList.remove('accounts-modal-open');
             if (typeof window._syncMainInteractionState === 'function') {
                 window._syncMainInteractionState();
             } else if (typeof window._showThemeToggle === 'function') {
