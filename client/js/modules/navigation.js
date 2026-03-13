@@ -24,7 +24,8 @@ export function _syncMainInteractionState() {
         'create-section-modal', 'add-note-modal', 'edit-selection-modal',
         'grades-modal', 'stats-modal', 'admin-auth-modal',
         'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
-        'results-screen', 'confirm-modal-overlay', 'delete-exam-modal'
+        'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
+        'accounts-management-modal'
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
@@ -37,6 +38,7 @@ export function _syncMainInteractionState() {
     const blocked = anyOpen || sheetOpen || guestModalOpen;
 
     const body = document.body;
+    const root = document.documentElement;
 
     // ── DOM writes ────────────────────────────────────────────────────────────
     if (dashboard) {
@@ -51,6 +53,10 @@ export function _syncMainInteractionState() {
                 body.setAttribute('data-scroll-lock', '1');
                 body.setAttribute('data-orig-overflow', body.style.overflow || '');
                 body.style.overflow = 'hidden';
+
+                root.setAttribute('data-scroll-lock', '1');
+                root.setAttribute('data-orig-overflow', root.style.overflow || '');
+                root.style.overflow = 'hidden';
             }
             // وقف Lenis: overflow:hidden لا يكفي — Lenis يستمر عبر RAF
             // ويتجاهل CSS overflow ويُحرِّك الصفحة خلف المودال
@@ -61,6 +67,11 @@ export function _syncMainInteractionState() {
                 body.style.overflow = origOverflow || '';
                 body.removeAttribute('data-orig-overflow');
                 body.removeAttribute('data-scroll-lock');
+
+                const rootOrigOverflow = root.getAttribute('data-orig-overflow');
+                root.style.overflow = rootOrigOverflow || '';
+                root.removeAttribute('data-orig-overflow');
+                root.removeAttribute('data-scroll-lock');
             }
             // استئناف Lenis بعد إغلاق المودال
             try { getLenisInstance()?.start?.(); } catch (e) {}
@@ -107,6 +118,7 @@ export function initOverlayScrollLock() {
         'admin-auth-modal', 'student-menu-modal',
         'delete-subject-modal', 'rename-subject-modal',
         'results-screen', 'confirm-modal-overlay',
+        'accounts-management-modal',
         'guest-modal', 'delete-exam-modal'
     ];
     const SHEET_IDS = ['tree-content', 'admin-content'];
