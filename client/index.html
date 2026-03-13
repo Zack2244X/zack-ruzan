@@ -994,7 +994,7 @@
                         // ensure bootstrap loader is present so queued calls will be flushed
                         if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
-                            s.src = '/js/bootstrap.min.js?v=47';
+                            s.src = '/js/bootstrap.min.js?v=48';
                             s.defer = true;
                             document.head.appendChild(s);
                         }
@@ -1319,7 +1319,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=47" defer></script>
+    <script src="/js/bootstrap.min.js?v=48" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>

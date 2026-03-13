@@ -2,7 +2,8 @@
 // Goal: avoid sending the large bundled app to anonymous users and defer heavy modules.
 (function(){
     // queue for calls made before the real app loads
-    window.__lazyCalls = [];
+    // Keep any calls queued by inline fallbacks before bootstrap executes.
+    window.__lazyCalls = window.__lazyCalls || [];
     window.__appLoading = false;
 
     // safe error handlers (small)
