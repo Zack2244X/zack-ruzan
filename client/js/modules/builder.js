@@ -436,7 +436,8 @@ export function parseIconQuestions(rawText) {
     const questions = [];
     let current = null;
     const questionRegex = /^Q\s*\d*\.?\s*(.+)$/i;
-    const optionRegex = /^([A-Za-zأ-ي])\s*[).،\.\-:]?\s*(.+)$/;
+    const hintRegex = /^(?:!|تلميح\s*[:：-]?)\s*(.+)$/i;
+    const optionRegex = /^(?:اختيار\s*)?([A-Za-zأ-ي])\s*[).،\.\-:]?\s*(.+)$/;
 
     const pushCurrent = () => {
         if (!current) return;
@@ -456,12 +457,27 @@ export function parseIconQuestions(rawText) {
             return;
         }
 
+        const hMatch = line.match(hintRegex);
+        if (current && hMatch) {
+            const hintPart = hMatch[1].trim();
+            current.hint = current.hint ? `${current.hint} ${hintPart}` : hintPart;
+            return;
+        }
+
         const oMatch = line.match(optionRegex);
         if (current && oMatch) {
             const rawText = oMatch[2].trim();
             const isCorrect = /\*$/.test(rawText);
             const cleanText = rawText.replace(/\*+\s*$/, '').trim();
             current.answerOptions.push({ text: cleanText, isCorrect });
+            return;
+        }
+
+        if (current && current.answerOptions.length === 0) {
+            const hintPart = line.trim();
+            if (hintPart) {
+                current.hint = current.hint ? `${current.hint} ${hintPart}` : hintPart;
+            }
         }
     });
     pushCurrent();
