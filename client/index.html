@@ -548,20 +548,56 @@
     }
 
     /* ═══ Responsive ═══ */
-    @media (max-width: 780px) {
-      .login-scene { flex-direction: column; gap: 20px; padding: 16px 12px; }
-      .lamp-wrapper { width: 140px; }
-      #lamp-svg { width: 130px; height: 200px; }
-      .light-cone { top: 100px; width: 180px; height: 260px; }
-      #rope-canvas { top: 100px; }
-    }
-        @media (max-width: 480px) {
-            .login-card { width: 92%; padding: 35px 24px; min-height: auto; }
-            /* Mobile: column layout, no height needed — contain:layout isolates
-               internal font/icon changes from .login-scene centring */
-            .login-card.off { height: auto; contain: layout; }
-                /* mobile: reduced 30% from 315px -> 221px */
-                .logo-wrap { width: 221px; height: 221px; }
+        @media (max-width: 780px) {
+            .login-scene {
+                flex-direction: row-reverse;
+                gap: 14px;
+                padding: 12px 8px;
+                max-width: 96vw;
+            }
+            .lamp-wrapper { width: 110px; }
+            #lamp-svg { width: 96px; height: 150px; }
+            .light-cone { top: 78px; width: 130px; height: 190px; }
+            #rope-canvas {
+                top: 78px;
+                transform: translateX(-50%) scale(0.75);
+                transform-origin: top center;
+            }
+
+            .login-card {
+                width: 210px;
+                min-height: 290px;
+                padding: 20px 14px;
+                border-radius: 20px;
+            }
+            .login-card.off {
+                contain: layout size;
+                height: 290px;
+            }
+
+            .logo-wrap {
+                width: 140px;
+                height: 140px;
+                margin: 0 auto 12px;
+            }
+            .card-title { font-size: 1rem; margin-bottom: 4px; }
+            .card-college { font-size: 0.68rem; margin-bottom: 8px; letter-spacing: 0.5px; }
+            .card-sub { font-size: 0.62rem; margin-bottom: 10px; line-height: 1.5; }
+            .divider { gap: 6px; margin-bottom: 10px; }
+            .divider-star { font-size: 0.52rem; }
+            .login-btn-fancy { padding: 8px 10px; font-size: 0.75rem; border-radius: 12px; }
+            .guest-btn { margin-top: 8px !important; font-size: 0.62rem; }
+            .login-error-msg,
+            .login-loading-msg { font-size: 0.62rem; margin-top: 8px; padding: 6px; }
+            .lamp-hint { display: none; }
+        }
+                @media (max-width: 480px) {
+                        .login-card { width: 200px; padding: 18px 12px; min-height: 270px; }
+                        /* Mobile: column layout, no height needed — contain:layout isolates
+                             internal font/icon changes from .login-scene centring */
+                        .login-card.off { height: 270px; contain: layout size; }
+                                /* mobile: reduced logo size */
+                                .logo-wrap { width: 130px; height: 130px; }
                 /* Adjust decorative ring for smaller logo: slightly reduced thickness, less blur */
                 .logo-wrap::before {
                     inset: -8px;
@@ -592,7 +628,7 @@
                     transform-origin: center center;
                     transition: transform 280ms cubic-bezier(.2,.9,.2,1);
                 }
-            .card-title { font-size: 1.8rem; }
+            .card-title { font-size: 0.92rem; }
         }
     </style>
         <!-- @font-face declarations are now inline in <head> (above) — no separate file request. -->
@@ -985,7 +1021,7 @@
             }
             @media (max-width: 600px) {
                 .gold-arabic-title {
-                    font-size:1.5rem;
+                    font-size:0.95rem;
                     margin-bottom:0.2rem;
                     padding:0 0.5rem;
                 }
