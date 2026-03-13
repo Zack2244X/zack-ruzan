@@ -107,6 +107,9 @@
 
     }
 
+    // Expose loader so inline fallbacks can force app load when needed.
+    window.__triggerAppLoad = triggerAppLoad;
+
     // create stub functions that queue the call and trigger app load
     lazyNames.forEach(name => {
         if (window[name]) return;
