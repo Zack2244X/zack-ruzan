@@ -1470,10 +1470,12 @@
 
         window.closeAccountsManagementModal = function(){
             var modal = document.getElementById('accounts-management-modal');
-            var dock = document.getElementById('ios-bottom-nav');
             if (modal) modal.classList.add('hidden');
-            if (dock) dock.classList.remove('hidden');
-            if (typeof window._showThemeToggle === 'function') window._showThemeToggle(true);
+            if (typeof window._syncMainInteractionState === 'function') {
+                window._syncMainInteractionState();
+            } else if (typeof window._showThemeToggle === 'function') {
+                window._showThemeToggle(true);
+            }
         };
 
         window.addEventListener('load', function(){

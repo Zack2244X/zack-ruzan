@@ -18,15 +18,15 @@ export function _syncMainInteractionState() {
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
 
-    // قائمة كاملة بكل العناصر التي تظهر فوق الشاشة الرئيسية:
-    // — تشمل results-screen (نتيجة الاختبار) و confirm-modal-overlay (مربع التأكيد)
-    const anyOpen = [
+    // قائمة أساسية + كشف عام لأي مودال جديد ينتهي id الخاص به بـ "-modal".
+    const listedOverlaysOpen = [
         'create-section-modal', 'add-note-modal', 'edit-selection-modal',
         'grades-modal', 'stats-modal', 'admin-auth-modal',
         'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
         'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
         'accounts-management-modal'
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
+    const dynamicModalOpen = !!document.querySelector('[id$="-modal"]:not(.hidden)');
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
     // guest-modal uses display:none/block instead of hidden class
@@ -35,7 +35,7 @@ export function _syncMainInteractionState() {
         const gm = document.getElementById('guest-modal');
         return gm ? gm.style.display !== 'none' && gm.style.display !== '' : false;
     })();
-    const blocked = anyOpen || sheetOpen || guestModalOpen;
+    const blocked = listedOverlaysOpen || dynamicModalOpen || sheetOpen || guestModalOpen;
 
     const body = document.body;
     const root = document.documentElement;
@@ -116,18 +116,6 @@ export function _showThemeToggle(show) {
  * يُستدعى مرة واحدة بعد DOMContentLoaded من startApp في app.js.
  */
 export function initOverlayScrollLock() {
-    // كل العناصر التي يمكن أن تظهر فوق الصفحة الرئيسية
-    const OVERLAY_IDS = [
-        'grades-modal', 'stats-modal', 'edit-selection-modal',
-        'add-note-modal', 'create-section-modal',
-        'admin-auth-modal', 'student-menu-modal',
-        'delete-subject-modal', 'rename-subject-modal',
-        'results-screen', 'confirm-modal-overlay',
-        'accounts-management-modal',
-        'guest-modal', 'delete-exam-modal'
-    ];
-    const SHEET_IDS = ['tree-content', 'admin-content'];
-
     if (typeof MutationObserver === 'undefined') return;
 
     const observer = new MutationObserver(() => {
@@ -135,15 +123,14 @@ export function initOverlayScrollLock() {
         requestAnimationFrame(() => _syncMainInteractionState());
     });
 
-    const observeEl = (id) => {
-        const el = document.getElementById(id);
-        if (el) observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
-    };
+    // راقب الصفحة كاملة حتى أي مودال جديد يُضاف لاحقًا يدخل تلقائيًا في المزامنة.
+    observer.observe(document.body, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style', 'hidden']
+    });
 
-    [...OVERLAY_IDS, ...SHEET_IDS].forEach(observeEl);
-
-    console.log('[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على '
-        + (OVERLAY_IDS.length + SHEET_IDS.length) + ' عنصر');
+    console.log('[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على document.body');
 }
 
 /**
