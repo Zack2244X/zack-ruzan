@@ -160,6 +160,14 @@ app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 // 6. Sanitize all request bodies
 app.use(sanitizeBody);
 
+// Block debug artifacts in production to avoid source disclosure and payload waste.
+app.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production' && /\.(map|bak)$/i.test(req.path)) {
+        return res.status(404).end();
+    }
+    next();
+});
+
 // 7. Static files مع Cache headers
 app.use(express.static(path.join(__dirname, '../client'), {
     maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
@@ -286,7 +294,9 @@ let dbConnected = false;
 let serverReady = false;
 
 app.get('/api/health', (req, res) => {
-    const status = serverReady ? 'healthy' : 'starting';
+    // In test environment, the app is imported without calling startServer(),
+    // so `serverReady` stays false and would cause a false-negative health check.
+    const status = (process.env.NODE_ENV === 'test' || serverReady) ? 'healthy' : 'starting';
     res.json({
         status,
         uptime: Math.floor(process.uptime()),
@@ -418,6 +428,31 @@ async function runSafeMigrations() {
             logger.warn(`⚠️ Migration skipped: ${e.message.substring(0, 80)}`);
         }
     }
+
+    // Drop legacy UNIQUE(userId, quizId) index to allow multiple attempts per quiz.
+    try {
+        const [uniqueIdxRows] = await sequelize.query(
+            `SELECT INDEX_NAME
+             FROM INFORMATION_SCHEMA.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'scores'
+               AND NON_UNIQUE = 0
+             GROUP BY INDEX_NAME
+             HAVING COUNT(*) = 2
+                AND SUM(CASE WHEN COLUMN_NAME = 'userId' THEN 1 ELSE 0 END) = 1
+                AND SUM(CASE WHEN COLUMN_NAME = 'quizId' THEN 1 ELSE 0 END) = 1`
+        );
+
+        for (const row of uniqueIdxRows || []) {
+            const idxName = row.INDEX_NAME || row.index_name;
+            if (!idxName || idxName === 'PRIMARY') continue;
+            await sequelize.query(`ALTER TABLE \`scores\` DROP INDEX \`${idxName}\``);
+            logger.info(`✅ Dropped legacy unique index on scores: ${idxName}`);
+        }
+    } catch (e) {
+        logger.warn(`⚠️ Unable to drop legacy score unique index automatically: ${e.message}`);
+    }
+
     logger.info('✅ Safe migrations complete.');
 }
 

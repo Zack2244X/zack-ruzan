@@ -49,6 +49,42 @@ const createAdminLimiter = rateLimit({
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 /**
+ * Checks whether request Origin/Referer belongs to trusted frontend origins.
+ * Used to harden first-step auth flows that are exempt from CSRF.
+ */
+function isTrustedRequestOrigin(req) {
+    const allowed = new Set(
+        (process.env.ALLOWED_ORIGINS || '')
+            .split(',')
+            .map(o => o.trim())
+            .filter(Boolean)
+    );
+
+    // Reasonable defaults for local/dev runs.
+    allowed.add('http://localhost:3000');
+    allowed.add('http://localhost:5173');
+    allowed.add('http://127.0.0.1:3000');
+    allowed.add('http://127.0.0.1:5173');
+
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+        allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+
+    const origin = req.get('origin');
+    if (origin) return allowed.has(origin);
+
+    const referer = req.get('referer');
+    if (!referer) return process.env.NODE_ENV !== 'production';
+
+    try {
+        const refOrigin = new URL(referer).origin;
+        return allowed.has(refOrigin);
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Splits a full name string into first name and last name.
  * @param {string} [fullName=''] - The full name to split.
  * @returns {{ fname: string, lname: string }} Object with `fname` and `lname` properties (max 50 chars each).
@@ -107,6 +143,15 @@ async function verifyGoogleToken(idToken) {
  */
 router.post('/google', validateGoogleLogin, async (req, res) => {
     try {
+        if (!isTrustedRequestOrigin(req)) {
+            logger.warn('🚫 Blocked /api/auth/google due to untrusted origin', {
+                origin: req.get('origin') || null,
+                referer: req.get('referer') || null,
+                ip: req.ip
+            });
+            return res.status(403).json({ error: 'مصدر الطلب غير موثوق.' });
+        }
+
         if (await checkBruteForce(req.ip)) {
             return res.status(429).json({ error: 'تم حظرك مؤقتاً بسبب محاولات كثيرة. انتظر 30 دقيقة.' });
         }

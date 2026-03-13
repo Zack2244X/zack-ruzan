@@ -305,6 +305,10 @@ router.put('/:id', authenticate, requireAdmin, validateUpdateQuiz, async (req, r
             return res.status(404).json({ error: 'الامتحان غير موجود.' });
         }
 
+        if (quiz.createdBy && quiz.createdBy !== req.user.id) {
+            return res.status(403).json({ error: 'غير مصرح لك بتعديل امتحان أنشأه أدمن آخر.' });
+        }
+
         const allowedFields = [
             'title', 'subject', 'description', 'timeLimit',
             'closingMessage', 'streakGoal', 'feedback', 'questions', 'isActive'
@@ -358,10 +362,16 @@ router.put('/:id', authenticate, requireAdmin, validateUpdateQuiz, async (req, r
  */
 router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
     try {
-        const deleted = await Quiz.destroy({ where: { id: req.params.id } });
-        if (!deleted) {
+        const quiz = await Quiz.findByPk(req.params.id);
+        if (!quiz) {
             return res.status(404).json({ error: 'الامتحان غير موجود.' });
         }
+
+        if (quiz.createdBy && quiz.createdBy !== req.user.id) {
+            return res.status(403).json({ error: 'غير مصرح لك بحذف امتحان أنشأه أدمن آخر.' });
+        }
+
+        await quiz.destroy();
         res.json({ message: 'تم حذف الامتحان بنجاح.' });
     } catch (error) {
         logger.error('خطأ في حذف الامتحان:', { error: error.message });

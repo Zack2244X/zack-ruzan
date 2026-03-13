@@ -293,7 +293,8 @@ const generateToken = (userId, role, tokenVersion = 0) => {
  * Attaches req.user = { role: 'guest' } for downstream middleware.
  */
 const authenticateOrGuest = async (req, res, next) => {
-    if (req.headers['x-guest-mode'] === 'true') {
+    const isReadOnlyMethod = req.method === 'GET' || req.method === 'HEAD';
+    if (isReadOnlyMethod && req.headers['x-guest-mode'] === 'true') {
         req.user = { role: 'guest', id: null, email: null, isGuest: true };
         return next();
     }

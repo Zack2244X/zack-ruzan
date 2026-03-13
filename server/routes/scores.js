@@ -25,6 +25,33 @@ const { authenticate, authenticateOrGuest, requireAdmin } = require('../middlewa
 const { validateSubmitScore, validatePagination, validateIdParam, validateQuizIdParam } = require('../middleware/validators');
 const logger = require('../utils/logger');
 
+function isTrustedGuestOrigin(req) {
+    const allowed = new Set(
+        (process.env.ALLOWED_ORIGINS || '')
+            .split(',')
+            .map(o => o.trim())
+            .filter(Boolean)
+    );
+    allowed.add('http://localhost:3000');
+    allowed.add('http://localhost:5173');
+    allowed.add('http://127.0.0.1:3000');
+    allowed.add('http://127.0.0.1:5173');
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+        allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+
+    const origin = req.get('origin');
+    if (origin) return allowed.has(origin);
+
+    const referer = req.get('referer');
+    if (!referer) return process.env.NODE_ENV !== 'production';
+    try {
+        return allowed.has(new URL(referer).origin);
+    } catch {
+        return false;
+    }
+}
+
 // ============================================
 //   resolveAttemptMeta — تحديد رقم المحاولة وطبيعتها
 // ============================================
@@ -62,6 +89,9 @@ async function resolveAttemptMeta(userId, quizId) {
 // middleware لمعالجة الضيف قبل التحقق من التوكن
 const handleGuestMode = (req, res, next) => {
     if (req.headers['x-guest-mode'] === 'true') {
+        if (!isTrustedGuestOrigin(req)) {
+            return res.status(403).json({ error: 'مصدر الطلب غير موثوق لوضع الضيف.' });
+        }
         return res.status(200).json({
             message: 'تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.',
             result: null,

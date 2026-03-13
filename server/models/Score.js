@@ -88,7 +88,8 @@ const Score = sequelize.define('Score', {
     timestamps: true,
     paranoid: true,
     indexes: [
-        { unique: true, fields: ['userId', 'quizId'] }, // منع تكرار الامتحان
+        // Multiple attempts are supported; keep this non-unique for fast lookup only.
+        { fields: ['userId', 'quizId'] },
         { fields: ['quizId', 'percentage'] },
         { fields: ['userId'] }
     ],
