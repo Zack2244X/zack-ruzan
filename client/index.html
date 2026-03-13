@@ -84,12 +84,15 @@
         font-family: "Font Awesome 5 Brands" !important;
         font-weight: 400 !important;
     }
-    /* Admin sheet icons: brighter and clearer in dark mode */
+    /* Admin sheet icons: stronger direct glow on icon glyphs in dark mode */
     [data-theme="dark"] #admin-content button span i,
     .dark #admin-content button span i {
         color: currentColor !important;
-        text-shadow: 0 0 10px currentColor;
-        filter: drop-shadow(0 0 8px currentColor);
+        text-shadow:
+            0 0 8px currentColor,
+            0 0 16px currentColor,
+            0 0 24px currentColor;
+        filter: brightness(1.25) saturate(1.15) drop-shadow(0 0 10px currentColor);
     }
     [data-theme="dark"] #admin-content button span,
     .dark #admin-content button span {
