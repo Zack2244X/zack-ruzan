@@ -3,6 +3,12 @@
    بسم الله الرحمن الرحيم
    ============================================ */
 
+@font-face {
+    font-family: 'Typokar';
+    src: url('/fonts/typokar.ttf') format('truetype');
+    font-display: swap;
+}
+
 /* === CSS Variables (Design Tokens) === */
 :root {
     --bg: #f5f7fb;
@@ -772,6 +778,11 @@ button:active,
    ============================================ */
 .text-arabic {
     font-family: 'Amiri', 'Traditional Arabic', serif;
+}
+
+#dashboard-view > header #welcome-msg,
+#dashboard-view > header p.font-arabic-stylish {
+    font-family: 'Typokar', 'Amiri', 'Traditional Arabic', serif;
 }
 
 /* ============================================
