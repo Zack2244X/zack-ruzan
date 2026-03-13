@@ -466,6 +466,8 @@ async function runSafeMigrations() {
             INDEX \`idx_account_sessions_device\` (\`deviceId\`),
             INDEX \`idx_account_sessions_type\` (\`loginType\`)
         )`,
+        `ALTER TABLE \`account_sessions\` ADD COLUMN IF NOT EXISTS \`deviceId\` VARCHAR(120) NULL`,
+        `CREATE INDEX IF NOT EXISTS \`idx_account_sessions_device\` ON \`account_sessions\` (\`deviceId\`)`,
         `CREATE TABLE IF NOT EXISTS \`blocked_devices\` (
             \`id\` BIGINT NOT NULL AUTO_INCREMENT,
             \`deviceId\` VARCHAR(120) NULL,
