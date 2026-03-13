@@ -27,7 +27,7 @@
 
         <!-- Keep only small critical CSS eager; load heavy app CSS on demand -->
         <link rel="preload" href="/css/dark-fixes.min.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <link rel="preload" href="/css/login-extra.min.css?v=2" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <link rel="preload" href="/css/login-extra.min.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
         <script>
         (function(){
             var loaded = false;
@@ -53,7 +53,7 @@
             <link rel="stylesheet" href="/css/tailwind.min.css?v=31">
             <link rel="stylesheet" href="/css/styles.min.css?v=31">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
-            <link rel="stylesheet" href="/css/login-extra.min.css?v=2">
+            <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
 
     <!-- Fonts use font-display:optional — browser fetches them on its own
@@ -649,6 +649,34 @@
                 }
             .card-title { font-size: 0.92rem; }
         }
+    </style>
+    <style>
+    /* Guaranteed guest modal glass style (runtime override). */
+    #guest-modal.guest-modal {
+        background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.10), rgba(2,6,16,0.76)) !important;
+        backdrop-filter: blur(16px) saturate(145%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(145%) !important;
+    }
+    #guest-modal .guest-modal-card {
+        background: linear-gradient(145deg, rgba(18,26,44,0.44), rgba(255,255,255,0.12)) !important;
+        border: 1px solid rgba(255,255,255,0.34) !important;
+        backdrop-filter: blur(28px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+        box-shadow: 0 30px 70px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.46), inset 0 -1px 0 rgba(255,255,255,0.12) !important;
+    }
+    #guest-modal .guest-modal-title {
+        color: #f6d992 !important;
+        text-shadow: 0 2px 14px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.24) !important;
+    }
+    #guest-modal .guest-modal-text {
+        color: #f3f7ff !important;
+        text-shadow: 0 1px 10px rgba(0,0,0,0.42) !important;
+    }
+    #guest-modal .guest-btn-cancel {
+        background: linear-gradient(110deg, rgba(8,12,20,0.86), rgba(30,40,62,0.60)) !important;
+        border: 1px solid rgba(255,255,255,0.24) !important;
+        color: #f5d98b !important;
+    }
     </style>
         <!-- @font-face declarations are now inline in <head> (above) — no separate file request. -->
         <style>
