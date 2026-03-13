@@ -70,14 +70,27 @@ function isTrustedRequestOrigin(req) {
         allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
     }
 
+    const host = req.get('host');
+    const forwardedProto = req.get('x-forwarded-proto');
+    const protocol = forwardedProto || req.protocol || 'https';
+    const sameOrigin = host ? `${protocol}://${host}` : null;
+
     const origin = req.get('origin');
-    if (origin) return allowed.has(origin);
+    if (origin) {
+        if (sameOrigin && origin === sameOrigin) return true;
+        return allowed.has(origin);
+    }
 
     const referer = req.get('referer');
-    if (!referer) return process.env.NODE_ENV !== 'production';
+    if (!referer) {
+        const fetchSite = (req.get('sec-fetch-site') || '').toLowerCase();
+        if (fetchSite === 'same-origin' || fetchSite === 'same-site') return true;
+        return process.env.NODE_ENV !== 'production';
+    }
 
     try {
         const refOrigin = new URL(referer).origin;
+        if (sameOrigin && refOrigin === sameOrigin) return true;
         return allowed.has(refOrigin);
     } catch {
         return false;
