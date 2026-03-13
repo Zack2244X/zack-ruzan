@@ -6,6 +6,8 @@ import state, { THEME_KEY } from './state.js';
 import { logFunctionStatus } from './helpers.js';
 import { getLenisInstance } from './scroll.js';
 
+const SHEET_CLOSE_MS = 340;
+
 /**
  * مزامنة حالة التفاعل مع العناصر الرئيسية (منع التفاعل عند فتح نوافذ)
  */
@@ -197,11 +199,16 @@ function _attachSwipeToClose(el, closeFn) {
 /** فتح القائمة السفلية (Bottom Sheet) */
 export function openBottomSheet() {
     logFunctionStatus('openBottomSheet', false);
+    const sheet = document.getElementById('tree-bottom-sheet');
+    const overlay = document.getElementById('tree-overlay');
     const content = document.getElementById('tree-content');
     const dock = document.getElementById('ios-bottom-nav');
     if (dock) dock.classList.add('hidden');
-    document.getElementById('tree-overlay').classList.add('active');
-    content.classList.add('active');
+    if (sheet) sheet.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        overlay?.classList.add('active');
+        content?.classList.add('active');
+    });
     _attachSwipeToClose(content, closeBottomSheet);
     _showThemeToggle(false);
     _syncMainInteractionState();
@@ -210,8 +217,17 @@ export function openBottomSheet() {
 /** إغلاق القائمة السفلية */
 export function closeBottomSheet() {
     logFunctionStatus('closeBottomSheet', false);
-    document.getElementById('tree-overlay').classList.remove('active');
-    document.getElementById('tree-content').classList.remove('active');
+    const sheet = document.getElementById('tree-bottom-sheet');
+    const overlay = document.getElementById('tree-overlay');
+    const content = document.getElementById('tree-content');
+    overlay?.classList.remove('active');
+    content?.classList.remove('active');
+    if (sheet) {
+        clearTimeout(sheet._hideTimer);
+        sheet._hideTimer = setTimeout(() => {
+            if (!content?.classList.contains('active')) sheet.classList.add('hidden');
+        }, SHEET_CLOSE_MS);
+    }
     const dock = document.getElementById('ios-bottom-nav');
     if (dock) dock.classList.remove('hidden');
     if (state.currentViewMode) updateDockUI('home');
@@ -221,8 +237,17 @@ export function closeBottomSheet() {
 /** إغلاق قائمة الأدمن السفلية */
 export function closeAdminSheet() {
     logFunctionStatus('closeAdminSheet', false);
-    document.getElementById('admin-overlay').classList.remove('active');
-    document.getElementById('admin-content').classList.remove('active');
+    const sheet = document.getElementById('admin-bottom-sheet');
+    const overlay = document.getElementById('admin-overlay');
+    const content = document.getElementById('admin-content');
+    overlay?.classList.remove('active');
+    content?.classList.remove('active');
+    if (sheet) {
+        clearTimeout(sheet._hideTimer);
+        sheet._hideTimer = setTimeout(() => {
+            if (!content?.classList.contains('active')) sheet.classList.add('hidden');
+        }, SHEET_CLOSE_MS);
+    }
     updateDockUI('home');
     _showThemeToggle(true);
 }
@@ -333,9 +358,14 @@ export function openAdminAuthOrPanel() {
     closeAllOverlays();
     updateDockUI('settings');
     if (state.isAdmin) {
+        const sheet = document.getElementById('admin-bottom-sheet');
+        if (sheet) sheet.classList.remove('hidden');
+        const adminOverlay = document.getElementById('admin-overlay');
         const adminContent = document.getElementById('admin-content');
-        document.getElementById('admin-overlay').classList.add('active');
-        adminContent.classList.add('active');
+        requestAnimationFrame(() => {
+            adminOverlay?.classList.add('active');
+            adminContent?.classList.add('active');
+        });
         // إخفاء الشريط السفلي عند فتح لوحة الأدمن
         const dock = document.getElementById('ios-bottom-nav');
         if (dock) dock.classList.add('hidden');
