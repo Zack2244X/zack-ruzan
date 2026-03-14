@@ -32,7 +32,7 @@ const modFiles = fs.readdirSync(modDir)
   .filter(f => f.endsWith('.js') && !f.includes('.min') && !f.includes('.bundle'))
   .map(f => path.join(modDir, f));
 
-[...modFiles, path.join(jsDir, 'app.js'), path.join(jsDir, 'bootstrap.js')].forEach(file => {
+[...modFiles, path.join(jsDir, 'app.js'), path.join(jsDir, 'bootstrap.js'), path.join(jsDir, 'guest-login.js')].forEach(file => {
   const out = file.replace(/\.js$/, '.min.js');
   esbuild.buildSync({
     entryPoints: [file],
