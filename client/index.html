@@ -208,6 +208,28 @@
     html.home-scroll { overflow-y: scroll !important; }
     body.home-scroll { overflow-y: auto !important; }
 
+    /* Touch safety: when home is active, prevent stale interaction locks on dashboard. */
+    body.home-scroll #dashboard-view.pointer-events-none,
+    html.home-scroll #dashboard-view.pointer-events-none {
+        pointer-events: auto !important;
+    }
+    body.home-scroll #dashboard-view.select-none,
+    html.home-scroll #dashboard-view.select-none {
+        user-select: auto !important;
+    }
+
+    /* Never let hidden fullscreen layers intercept taps. */
+    #login-screen.hidden,
+    #results-screen.hidden,
+    #tree-bottom-sheet.hidden,
+    #admin-bottom-sheet.hidden,
+    #accounts-management-modal.hidden,
+    #delete-exam-modal.hidden,
+    #confirm-modal-overlay.hidden,
+    [id$="-modal"].hidden {
+        pointer-events: none !important;
+    }
+
     /* Mobile: make homepage scrollbar clearly visible as a scroll affordance. */
     @media (max-width: 768px) {
         html.home-scroll,
@@ -1729,6 +1751,11 @@
                          (!login || login.classList.contains('hidden'));
 
             if (!onHome || overlayIsOpen()) return;
+
+            if (dashboard) {
+                dashboard.classList.remove('pointer-events-none');
+                dashboard.classList.remove('select-none');
+            }
 
             // Force-unlock stale states that can remain on some Android sessions.
             body.classList.add('home-scroll');
