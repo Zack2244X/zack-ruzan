@@ -138,8 +138,8 @@
         justify-content: center;
         pointer-events: none;
     }
-    /* touch-action: manipulation eliminates the 300ms tap delay on all interactive elements */
-    a, button, [onclick], [role="button"], input, select, textarea, label {
+    /* Keep tap latency low on form/button controls without blocking vertical pan on large clickable cards. */
+    a, button, [role="button"], input, select, textarea, label {
         touch-action: manipulation;
     }
     /* Prevent FOUC: elements with Tailwind 'hidden' class must be invisible
@@ -1695,7 +1695,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=49" defer></script>
+    <script src="/js/bootstrap.min.js?v=50" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
