@@ -51,6 +51,9 @@
             window.__loadCoreCss();
         }
 
+        // Wait a bit for Lenis to load from __loadMotionLibs
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Set guest user state
         const guestUser = {
             fname: 'ضيف',
