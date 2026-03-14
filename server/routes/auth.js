@@ -127,13 +127,41 @@ function getClientIp(req) {
 function inferDeviceName(ua = '') {
     const u = String(ua || '').toLowerCase();
     if (!u) return 'Unknown Device';
-    if (u.includes('iphone')) return 'iPhone';
-    if (u.includes('ipad')) return 'iPad';
-    if (u.includes('android')) return 'Android Phone';
-    if (u.includes('windows')) return 'Windows PC';
-    if (u.includes('mac os') || u.includes('macintosh')) return 'Mac';
-    if (u.includes('linux')) return 'Linux';
-    return 'Unknown Device';
+
+    let platform = 'Unknown Device';
+    if (u.includes('iphone')) platform = 'iPhone';
+    else if (u.includes('ipad')) platform = 'iPad';
+    else if (u.includes('android') && u.includes('mobile')) platform = 'Android Phone';
+    else if (u.includes('android')) platform = 'Android Tablet';
+    else if (u.includes('windows')) platform = 'Windows PC';
+    else if (u.includes('mac os') || u.includes('macintosh')) platform = 'Mac';
+    else if (u.includes('linux')) platform = 'Linux PC';
+
+    let browser = 'Browser';
+    if (u.includes('edg/')) browser = 'Edge';
+    else if (u.includes('opr/') || u.includes('opera')) browser = 'Opera';
+    else if (u.includes('chrome/') && !u.includes('edg/')) browser = 'Chrome';
+    else if (u.includes('safari/') && !u.includes('chrome/')) browser = 'Safari';
+    else if (u.includes('firefox/')) browser = 'Firefox';
+
+    return `${platform} - ${browser}`;
+}
+
+function normalizeDeviceName(rawName = '', ua = '') {
+    const raw = sanitizeText(rawName, 120);
+    const lower = raw.toLowerCase();
+    const looksLikeUA =
+        lower.includes('mozilla/') ||
+        lower.includes('applewebkit') ||
+        lower.includes('chrome/') ||
+        lower.includes('safari/') ||
+        lower.includes('firefox/');
+
+    if (!raw || looksLikeUA || raw.length > 60) {
+        return inferDeviceName(ua);
+    }
+
+    return raw;
 }
 
 function sanitizeText(value, maxLen = 255) {
@@ -205,6 +233,7 @@ async function findActiveBlock({ email = '', deviceId = '', ipAddress = '' }) {
 async function recordAccountSession({ userId = null, email = '', deviceId = '', loginType = 'google', ipAddress = '', deviceName = '', userAgent = '' }) {
     try {
         const cols = await getAccountSessionsColumns();
+        const normalizedDeviceName = normalizeDeviceName(deviceName, userAgent);
 
         const insertCols = [];
         const placeholders = [];
@@ -222,7 +251,7 @@ async function recordAccountSession({ userId = null, email = '', deviceId = '', 
         pushVal('deviceId', sanitizeText(deviceId, 120));
         pushVal('loginType', sanitizeText(loginType, 30));
         pushVal('ipAddress', sanitizeText(ipAddress, 64));
-        pushVal('deviceName', sanitizeText(deviceName, 120));
+        pushVal('deviceName', normalizedDeviceName);
         pushVal('userAgent', sanitizeText(userAgent, 500));
 
         if (cols.has('createdAt')) {
@@ -561,15 +590,34 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
 
                 const latestByUserId = new Map();
                 const latestByEmail = new Map();
+
+                const mergeSessionData = (base, candidate) => ({
+                    ...base,
+                    ipAddress: base?.ipAddress || candidate?.ipAddress || '',
+                    deviceId: base?.deviceId || candidate?.deviceId || '',
+                    deviceName: base?.deviceName || candidate?.deviceName || '',
+                    loginType: base?.loginType || candidate?.loginType || 'google',
+                    lastSeenAt: base?.lastSeenAt || candidate?.lastSeenAt || null
+                });
+
                 for (const s of (sessionRows || [])) {
                     const uid = Number(s.userId);
                     const em = String(s.email || '').trim().toLowerCase();
 
-                    if (hasUserIdCol && Number.isInteger(uid) && uid > 0 && !latestByUserId.has(uid)) {
-                        latestByUserId.set(uid, s);
+                    if (hasUserIdCol && Number.isInteger(uid) && uid > 0) {
+                        if (!latestByUserId.has(uid)) {
+                            latestByUserId.set(uid, s);
+                        } else {
+                            latestByUserId.set(uid, mergeSessionData(latestByUserId.get(uid), s));
+                        }
                     }
-                    if (hasEmailCol && em && !latestByEmail.has(em)) {
-                        latestByEmail.set(em, s);
+
+                    if (hasEmailCol && em) {
+                        if (!latestByEmail.has(em)) {
+                            latestByEmail.set(em, s);
+                        } else {
+                            latestByEmail.set(em, mergeSessionData(latestByEmail.get(em), s));
+                        }
                     }
                 }
 
