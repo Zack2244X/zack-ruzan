@@ -40,10 +40,11 @@ export function _syncMainInteractionState() {
         const gm = document.getElementById('guest-modal');
         return gm ? gm.style.display !== 'none' && gm.style.display !== '' : false;
     })();
-    const blocked = listedOverlaysOpen || dynamicModalOpen || sheetOpen || guestModalOpen;
-
     const body = document.body;
     const root = document.documentElement;
+    const accountsModalLockActive = body.classList.contains('accounts-modal-open')
+        || root.classList.contains('accounts-modal-open');
+    const blocked = listedOverlaysOpen || dynamicModalOpen || sheetOpen || guestModalOpen || accountsModalLockActive;
     const allowHomeScroll = onHome && !blocked;
 
     // Show page scrollbar only on home view when no overlay is open.
@@ -58,7 +59,26 @@ export function _syncMainInteractionState() {
     // Keep scroll-lock writes minimal and avoid any computed-style/layout reads here.
     // `scrollbar-gutter: stable` is already enabled in CSS, so compensation reads are unnecessary.
     try {
-        if (blocked) {
+        const releaseGlobalScrollLock = () => {
+            if (!body.hasAttribute('data-scroll-lock')) return;
+
+            const origOverflow = body.getAttribute('data-orig-overflow');
+            body.style.overflow = origOverflow || '';
+            body.removeAttribute('data-orig-overflow');
+            body.removeAttribute('data-scroll-lock');
+
+            const rootOrigOverflow = root.getAttribute('data-orig-overflow');
+            root.style.overflow = rootOrigOverflow || '';
+            root.removeAttribute('data-orig-overflow');
+            root.removeAttribute('data-scroll-lock');
+        };
+
+        if (accountsModalLockActive) {
+            // accounts modal uses its own viewport lock in index.html.
+            // Do not capture/restore overflow here to avoid stale hidden overflow on mobile.
+            releaseGlobalScrollLock();
+            try { getLenisInstance()?.stop?.(); } catch (e) {}
+        } else if (blocked) {
             if (!body.hasAttribute('data-scroll-lock')) {
                 body.setAttribute('data-scroll-lock', '1');
                 body.setAttribute('data-orig-overflow', body.style.overflow || '');
@@ -72,17 +92,7 @@ export function _syncMainInteractionState() {
             // ويتجاهل CSS overflow ويُحرِّك الصفحة خلف المودال
             try { getLenisInstance()?.stop?.(); } catch (e) {}
         } else {
-            if (body.hasAttribute('data-scroll-lock')) {
-                const origOverflow = body.getAttribute('data-orig-overflow');
-                body.style.overflow = origOverflow || '';
-                body.removeAttribute('data-orig-overflow');
-                body.removeAttribute('data-scroll-lock');
-
-                const rootOrigOverflow = root.getAttribute('data-orig-overflow');
-                root.style.overflow = rootOrigOverflow || '';
-                root.removeAttribute('data-orig-overflow');
-                root.removeAttribute('data-scroll-lock');
-            }
+            releaseGlobalScrollLock();
             // استئناف Lenis بعد إغلاق المودال
             try { getLenisInstance()?.start?.(); } catch (e) {}
         }
