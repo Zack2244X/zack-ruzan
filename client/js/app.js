@@ -531,6 +531,14 @@ export async function startApp() {
     };
 
     // معالجة Google redirect أو تحميل التطبيق
+    // Check if returning from Google (has id_token in hash)
+    const hasGoogleToken = window.location.hash && window.location.hash.includes('id_token=');
+    if (hasGoogleToken) {
+        // Show loading screen during Google authentication
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.classList.remove('hidden');
+    }
+    
     const handledRedirect = handleGoogleRedirectToken();
     initGoogleSignIn();
     if (!handledRedirect) {

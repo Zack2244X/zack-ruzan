@@ -257,6 +257,11 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}، أَسْأَلُ اللهَ أَنْ يَنْفَعَكَ بِمَا تَعَلَّمْتَ`
         ];
         document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
+        
+        // Hide loading screen and login screen
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.classList.add('hidden');
+        
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('dashboard-view').classList.remove('hidden');
         document.getElementById('ios-bottom-nav').classList.remove('hidden');
