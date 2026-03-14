@@ -290,6 +290,19 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
 export async function logoutUser() {
     logFunctionStatus('logoutUser', true);
     console.log('[auth] بدء تسجيل الخروج...');
+    
+    // Turn off the lamp on logout
+    if (window.toggleLamp) {
+        // Set lamp to off state (!1 means false/off)
+        const lampSvg = document.getElementById('lamp-svg');
+        if (lampSvg) {
+            // Only turn off if lamp is currently on
+            if (!lampSvg.classList.contains('off')) {
+                window.toggleLamp();
+            }
+        }
+    }
+    
     const isGuest = state.currentUser?.role === 'guest' || localStorage.getItem('guest-mode') === 'true';
     if (!isGuest) {
         try { await apiCall('POST', '/api/auth/logout').catch(() => { }); } catch (e) { /* ignore */ }
