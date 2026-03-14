@@ -946,7 +946,7 @@
             <div class="lamp-wrapper">
                 <div class="light-cone off" id="light-cone"></div>
 
-                <svg id="lamp-svg" width="170" height="260" viewBox="0 0 170 260">
+                <svg id="lamp-svg" class="off" width="170" height="260" viewBox="0 0 170 260">
                     <defs>
                         <pattern id="arabicPattern" x="0" y="0" width="18" height="18" patternUnits="userSpaceOnUse">
                             <g fill="none" stroke="rgba(255,220,120,0.18)" stroke-width="0.7">
@@ -982,16 +982,16 @@
                             <path d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z"/>
                         </clipPath>
                     </defs>
-                    <path id="shade-body" d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#shadeOn)"/>
+                    <path id="shade-body" d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#shadeOff)"/>
                     <path d="M 22,118 L 44,46 Q 50,24 85,24 Q 120,24 126,46 L 148,118 Q 85,128 22,118 Z" fill="url(#arabicPattern)" clip-path="url(#shadeClip)" opacity="1"/>
                     <path d="M 44,46 Q 50,24 85,24 Q 120,24 126,46" fill="none" stroke="rgba(201,150,42,0.6)" stroke-width="2.5"/>
-                    <path id="shade-rim" d="M 22,118 Q 85,130 148,118 L 146,122 Q 85,134 24,122 Z" fill="#7a5820"/>
-                    <ellipse id="inner-light" cx="85" cy="120" rx="56" ry="10" fill="url(#innerGlow)" opacity="1"/>
-                    <ellipse id="eye-l" cx="68" cy="85" rx="5.5" ry="5.5" fill="#1a0e00"/>
+                    <path id="shade-rim" d="M 22,118 Q 85,130 148,118 L 146,122 Q 85,134 24,122 Z" fill="#1a1510"/>
+                    <ellipse id="inner-light" cx="85" cy="120" rx="56" ry="10" fill="url(#innerGlow)" opacity="0"/>
+                    <ellipse id="eye-l" cx="68" cy="85" rx="5.5" ry="1.5" fill="#444"/>
                     <circle cx="66.5" cy="83.5" r="1.5" fill="rgba(255,255,255,0.35)"/>
-                    <ellipse id="eye-r" cx="102" cy="85" rx="5.5" ry="5.5" fill="#1a0e00"/>
+                    <ellipse id="eye-r" cx="102" cy="85" rx="5.5" ry="1.5" fill="#444"/>
                     <circle cx="100.5" cy="83.5" r="1.5" fill="rgba(255,255,255,0.35)"/>
-                    <path id="mouth" d="M 76 97 Q 85 108 94 97" stroke="#1a0e00" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+                    <path id="mouth" d="M 76 100 Q 85 95 94 100" stroke="#444" stroke-width="2.8" fill="none" stroke-linecap="round"/>
                     <rect x="81" y="124" width="8" height="96" rx="4" fill="url(#poleGrad)"/>
                     <ellipse cx="85" cy="222" rx="38" ry="8" fill="url(#baseGrad)"/>
                     <path d="M 47,222 L 47,230 Q 85,242 123,230 L 123,222 Z" fill="#6b4c1e"/>
