@@ -412,6 +412,7 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             const [sessionColumnsRows] = await sequelize.query(`SHOW COLUMNS FROM account_sessions`);
             const sessionColumns = new Set((sessionColumnsRows || []).map((r) => r.Field));
 
+            const hasUserIdCol = sessionColumns.has('userId');
             const hasEmailCol = sessionColumns.has('email');
             const hasDeviceIdCol = sessionColumns.has('deviceId');
             const hasDeviceNameCol = sessionColumns.has('deviceName');
@@ -419,10 +420,25 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             const hasLoginTypeCol = sessionColumns.has('loginType');
             const hasCreatedAtCol = sessionColumns.has('createdAt');
 
-            if (hasLoginTypeCol && hasCreatedAtCol && hasIpCol) {
-                const emailJoinClause = hasEmailCol
-                    ? `(s2.userId = u.id OR (s2.email IS NOT NULL AND s2.email = u.email))`
-                    : `(s2.userId = u.id)`;
+            const hasJoinKey = hasUserIdCol || hasEmailCol;
+            const orderByLatest = hasCreatedAtCol ? 's2.createdAt DESC, s2.id DESC' : 's2.id DESC';
+            const nonGuestFilter = hasLoginTypeCol ? "AND s2.loginType <> 'guest'" : '';
+
+            const ipExpr = hasIpCol ? 's.ipAddress' : "'' AS ipAddress";
+            const deviceIdExpr = hasDeviceIdCol ? 's.deviceId' : "'' AS deviceId";
+            const deviceNameExpr = hasDeviceNameCol ? 's.deviceName' : "'' AS deviceName";
+            const loginTypeExpr = hasLoginTypeCol ? 's.loginType' : "'google' AS loginType";
+            const guestLastSeenExpr = hasCreatedAtCol ? 'createdAt AS lastSeenAt' : 'NULL AS lastSeenAt';
+
+            if (hasJoinKey) {
+                let accountJoinClause = '';
+                if (hasUserIdCol && hasEmailCol) {
+                    accountJoinClause = `(s2.userId = u.id OR (s2.email IS NOT NULL AND s2.email = u.email))`;
+                } else if (hasUserIdCol) {
+                    accountJoinClause = `(s2.userId = u.id)`;
+                } else {
+                    accountJoinClause = `(s2.email IS NOT NULL AND s2.email = u.email)`;
+                }
 
                 const [accountsRows] = await sequelize.query(
                     `SELECT
@@ -432,19 +448,19 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                         u.email,
                         u.role,
                         u.createdAt,
-                        s.ipAddress,
-                        ${hasDeviceIdCol ? 's.deviceId' : "'' AS deviceId"},
-                        ${hasDeviceNameCol ? 's.deviceName' : "'' AS deviceName"},
-                        s.loginType,
-                        s.createdAt AS lastSeenAt
+                        ${ipExpr},
+                        ${deviceIdExpr},
+                        ${deviceNameExpr},
+                        ${loginTypeExpr},
+                        ${hasCreatedAtCol ? 's.createdAt' : 'NULL'} AS lastSeenAt
                      FROM users u
                      LEFT JOIN account_sessions s
                        ON s.id = (
                             SELECT s2.id
                             FROM account_sessions s2
-                            WHERE ${emailJoinClause}
-                              AND s2.loginType <> 'guest'
-                            ORDER BY s2.id DESC
+                            WHERE ${accountJoinClause}
+                              ${nonGuestFilter}
+                            ORDER BY ${orderByLatest}
                             LIMIT 1
                        )
                      WHERE u.deletedAt IS NULL
@@ -452,19 +468,21 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                 );
                 accounts = accountsRows || usersOnly;
 
-                const [guestRows] = await sequelize.query(
-                    `SELECT
-                        id,
-                        ipAddress,
-                        ${hasDeviceIdCol ? 'deviceId' : "'' AS deviceId"},
-                        ${hasDeviceNameCol ? 'deviceName' : "'' AS deviceName"},
-                        createdAt AS lastSeenAt
-                     FROM account_sessions
-                     WHERE loginType = 'guest'
-                     ORDER BY id DESC
-                     LIMIT 200`
-                );
-                guestSessions = guestRows || [];
+                if (hasLoginTypeCol) {
+                    const [guestRows] = await sequelize.query(
+                        `SELECT
+                            id,
+                            ${hasIpCol ? 'ipAddress' : "'' AS ipAddress"},
+                            ${hasDeviceIdCol ? 'deviceId' : "'' AS deviceId"},
+                            ${hasDeviceNameCol ? 'deviceName' : "'' AS deviceName"},
+                            ${guestLastSeenExpr}
+                         FROM account_sessions
+                         WHERE loginType = 'guest'
+                         ORDER BY id DESC
+                         LIMIT 200`
+                    );
+                    guestSessions = guestRows || [];
+                }
             }
         } catch (sessionsErr) {
             logger.warn('⚠️ accounts-overview: account_sessions unavailable, returning users-only data', {
