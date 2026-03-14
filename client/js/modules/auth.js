@@ -263,8 +263,8 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         ];
         document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
         document.getElementById('login-screen').classList.add('hidden');
-        // Show loading screen instead of dashboard immediately
-        document.getElementById('loading-screen').classList.remove('hidden');
+        document.getElementById('dashboard-view').classList.remove('hidden');
+        document.getElementById('ios-bottom-nav').classList.remove('hidden');
         if (data.user.role === 'admin') showAdminToast();
 
         navToHome();
@@ -280,11 +280,6 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             if (typeof renderSubjectFilters === 'function') renderSubjectFilters();
             if (typeof renderHistoryTree === 'function') renderHistoryTree();
             if (typeof renderDashboard === 'function') renderDashboard();
-            
-            // Hide loading screen and show dashboard after data is loaded
-            document.getElementById('loading-screen').classList.add('hidden');
-            document.getElementById('dashboard-view').classList.remove('hidden');
-            document.getElementById('ios-bottom-nav').classList.remove('hidden');
             
             // Start automatic data polling (refresh every 30 seconds)
             startDataPolling(30000);
