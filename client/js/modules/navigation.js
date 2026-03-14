@@ -26,7 +26,12 @@ export function _syncMainInteractionState() {
         'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
         'accounts-management-modal'
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
-    const dynamicModalOpen = !!document.querySelector('[id$="-modal"]:not(.hidden)');
+    const dynamicModalOpen = Array.from(document.querySelectorAll('[id$="-modal"]')).some((el) => {
+        if (!el || el.id === 'guest-modal') return false;
+        if (el.classList.contains('hidden')) return false;
+        const cs = window.getComputedStyle(el);
+        return cs.display !== 'none' && cs.visibility !== 'hidden';
+    });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
     // guest-modal uses display:none/block instead of hidden class
@@ -129,6 +134,9 @@ export function initOverlayScrollLock() {
         attributes: true,
         attributeFilter: ['class', 'style', 'hidden']
     });
+
+    // مزامنة فورية للحالة الحالية حتى لا ننتظر أول mutation.
+    _syncMainInteractionState();
 
     console.log('[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على document.body');
 }
