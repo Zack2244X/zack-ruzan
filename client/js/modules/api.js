@@ -262,6 +262,12 @@ export async function fetchLeaderboardFromServer() {
 export async function fetchScoresFromServer(officialOnly = false) {
     logFunctionStatus('fetchScoresFromServer', true);
     try {
+        // للضيف أو من لم يسجل الدخول: لا نطلب درجاته الشخصية، نطلب فقط لوحة الشرف
+        if (!state.currentUser || state.currentUser.role === 'guest') {
+            console.log('[scores] ✓ ضيف/لم يسجل الدخول — تخطي جلب الدرجات الشخصية');
+            return [];
+        }
+        
         const base     = state.isAdmin ? '/api/scores/all' : '/api/scores/my';
         const endpoint = officialOnly ? `${base}?isOfficial=true` : base;
         const raw      = await apiCall('GET', endpoint);

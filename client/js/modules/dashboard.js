@@ -76,6 +76,18 @@ async function resolveAttemptsMap(quizzes, forceRefresh = false) {
     // ── تهيئة الكاش إن لم يوجد ────────────────────────────────────────────
     if (!state.attemptsMap) state.attemptsMap = new Map();
 
+    // ── للضيف أو من لم يسجل الدخول: لا نطلب درجاته، نملأ الكاش بـ 0 ─────────
+    if (!state.currentUser || state.currentUser.role === 'guest') {
+        console.log('[dashboard] ✓ ضيف/لم يسجل الدخول — تخطي جلب المحاولات');
+        quizzes.forEach(q => {
+            const key = String(q.id);
+            if (!state.attemptsMap.has(key)) {
+                state.attemptsMap.set(key, 0); // لا محاولات للضيف
+            }
+        });
+        return state.attemptsMap;
+    }
+
     // ── الكاش الكامل: لا حاجة لأي طلب ──────────────────────────────────
     // إذا كان الكاش يغطي جميع الامتحانات المطلوبة نعود فوراً
     if (!forceRefresh) {
