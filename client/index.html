@@ -1322,6 +1322,22 @@
             <div class="px-5 py-3 sm:px-6 text-xs sm:text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
                 ملاحظة: قد لا تتوفر كل بيانات الجهاز حسب صلاحيات المتصفح وسياسات الخصوصية.
             </div>
+            <div class="px-4 sm:px-6 py-3 border-b border-gray-100 bg-white/70 flex flex-col gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="accounts-tab-btn" type="button" class="px-3 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white">الحسابات</button>
+                    <button id="blocked-tab-btn" type="button" class="px-3 py-2 text-xs font-bold rounded-xl bg-gray-100 text-gray-700">المحظورون</button>
+                    <div class="mr-auto"></div>
+                    <input id="accounts-management-search" type="search" placeholder="بحث بالبريد، الاسم، IP، Device..." class="w-full sm:w-80 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                    <button id="accounts-management-search-btn" type="button" class="px-3 py-2 text-xs font-bold rounded-xl bg-gray-900 text-white">بحث</button>
+                </div>
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                    <p id="accounts-management-pagination-meta">-</p>
+                    <div class="flex items-center gap-2">
+                        <button id="accounts-management-prev" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">السابق</button>
+                        <button id="accounts-management-next" type="button" class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">التالي</button>
+                    </div>
+                </div>
+            </div>
             <div id="accounts-management-list" class="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
         </div>
     </div>
@@ -1351,41 +1367,204 @@
             }
         }
 
-        function cardHtml(item) {
-            var isGuest = item.type === 'guest';
-            var email = item.email ? esc(item.email) : (isGuest ? 'تسجيل تجريبي بدون حساب' : 'لا يوجد');
-            var ip = item.ipAddress ? esc(item.ipAddress) : 'غير متاح';
-            var devId = item.deviceId ? esc(item.deviceId) : '';
-            var device = item.deviceName ? esc(item.deviceName) : 'غير معروف';
-            var role = isGuest ? 'ضيف' : (item.role === 'admin' ? 'معلم' : 'طالب');
-            var name = esc(item.fullName || (isGuest ? 'ضيف (بدون حساب)' : 'بدون اسم'));
-            var when = item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('ar-EG') : 'غير متاح';
-            var roleClass = isGuest ? 'bg-gray-100 text-gray-700' : (item.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700');
-            var safeDeviceId = encodeURIComponent(String(item.deviceId || ''));
-            var safeIpAddress = encodeURIComponent(String(item.ipAddress || ''));
-            var safeDeviceName = encodeURIComponent(String(item.deviceName || ''));
-            var safeEmail = encodeURIComponent(String(item.email || ''));
-            var accountActions = '';
-            if (!isGuest && item.role !== 'admin') {
-                accountActions = `<button class="js-delete-account px-3 py-2 text-xs font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition" data-account-id="${Number(item.id) || 0}">حذف الحساب</button>`;
-            }
-            var blockAction = `<button class="js-block-device px-3 py-2 text-xs font-bold rounded-xl bg-gray-900 text-white hover:bg-black transition" data-device-id="${safeDeviceId}" data-ip-address="${safeIpAddress}" data-device-name="${safeDeviceName}" data-email="${safeEmail}">حظر هذا الجهاز</button>`;
+        var accountMgmtState = {
+            view: 'accounts',
+            q: '',
+            page: 1,
+            limit: 24,
+            pagination: { page: 1, pages: 1, total: 0, hasNext: false, hasPrev: false }
+        };
+        var accountMgmtControlsBound = false;
 
-            return `
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 sm:p-5">
-                <div class="flex items-start justify-between gap-3 mb-3">
-                    <h3 class="font-black text-gray-800 text-base sm:text-lg leading-tight">${name}</h3>
-                    <span class="text-xs font-bold px-3 py-1 rounded-full ${roleClass}">${role}</span>
-                </div>
-                <div class="space-y-2 text-sm">
-                    <p><span class="font-bold text-gray-600">البريد:</span> <span class="text-gray-800 break-all">${email}</span></p>
-                    <p><span class="font-bold text-gray-600">IP:</span> <span class="text-gray-800">${ip}</span></p>
-                    <p><span class="font-bold text-gray-600">Device ID:</span> <span class="text-gray-800 break-all">${devId || 'غير متاح'}</span></p>
-                    <p><span class="font-bold text-gray-600">الجهاز:</span> <span class="text-gray-800">${device}</span></p>
-                    <p><span class="font-bold text-gray-600">آخر ظهور:</span> <span class="text-gray-800">${esc(when)}</span></p>
-                </div>
-                <div class="mt-4 flex flex-wrap gap-2">${blockAction}${accountActions}</div>
-            </div>`;
+        function createCardBase() {
+            var card = document.createElement('div');
+            card.className = 'rounded-2xl border border-gray-200 bg-white shadow-sm p-4 sm:p-5';
+            return card;
+        }
+
+        function createInfoLine(label, value, breakAll) {
+            var p = document.createElement('p');
+            var spanLabel = document.createElement('span');
+            spanLabel.className = 'font-bold text-gray-600';
+            spanLabel.textContent = label + ': ';
+
+            var spanValue = document.createElement('span');
+            spanValue.className = 'text-gray-800' + (breakAll ? ' break-all' : '');
+            spanValue.textContent = value;
+
+            p.appendChild(spanLabel);
+            p.appendChild(spanValue);
+            return p;
+        }
+
+        function createAccountCard(item) {
+            var isGuest = item.type === 'guest';
+            var roleClass = isGuest ? 'bg-gray-100 text-gray-700' : (item.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700');
+            var roleText = isGuest ? 'ضيف' : (item.role === 'admin' ? 'معلم' : 'طالب');
+
+            var card = createCardBase();
+
+            var head = document.createElement('div');
+            head.className = 'flex items-start justify-between gap-3 mb-3';
+
+            var title = document.createElement('h3');
+            title.className = 'font-black text-gray-800 text-base sm:text-lg leading-tight';
+            title.textContent = item.fullName || (isGuest ? 'ضيف (بدون حساب)' : 'بدون اسم');
+
+            var role = document.createElement('span');
+            role.className = 'text-xs font-bold px-3 py-1 rounded-full ' + roleClass;
+            role.textContent = roleText;
+
+            head.appendChild(title);
+            head.appendChild(role);
+            card.appendChild(head);
+
+            var body = document.createElement('div');
+            body.className = 'space-y-2 text-sm';
+            body.appendChild(createInfoLine('البريد', item.email || (isGuest ? 'تسجيل تجريبي بدون حساب' : 'لا يوجد'), true));
+            body.appendChild(createInfoLine('IP', item.ipAddress || 'غير متاح', false));
+            body.appendChild(createInfoLine('Device ID', item.deviceId || 'غير متاح', true));
+            body.appendChild(createInfoLine('الجهاز', item.deviceName || 'غير معروف', false));
+            body.appendChild(createInfoLine('آخر ظهور', item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('ar-EG') : 'غير متاح', false));
+            card.appendChild(body);
+
+            var actions = document.createElement('div');
+            actions.className = 'mt-4 flex flex-wrap gap-2';
+
+            var blockBtn = document.createElement('button');
+            blockBtn.type = 'button';
+            blockBtn.className = 'js-block-device px-3 py-2 text-xs font-bold rounded-xl bg-gray-900 text-white hover:bg-black transition';
+            blockBtn.dataset.deviceId = String(item.deviceId || '');
+            blockBtn.dataset.ipAddress = String(item.ipAddress || '');
+            blockBtn.dataset.deviceName = String(item.deviceName || '');
+            blockBtn.dataset.email = String(item.email || '');
+            blockBtn.textContent = 'حظر هذا الجهاز';
+            actions.appendChild(blockBtn);
+
+            if (!isGuest && item.role !== 'admin') {
+                var delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'js-delete-account px-3 py-2 text-xs font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition';
+                delBtn.dataset.accountId = String(Number(item.id) || 0);
+                delBtn.textContent = 'حذف الحساب';
+                actions.appendChild(delBtn);
+            }
+
+            card.appendChild(actions);
+            return card;
+        }
+
+        function createBlockedCard(item) {
+            var card = createCardBase();
+
+            var title = document.createElement('h3');
+            title.className = 'font-black text-gray-800 text-base sm:text-lg leading-tight mb-3';
+            title.textContent = 'سجل حظر #' + String(item.id || '-');
+            card.appendChild(title);
+
+            var body = document.createElement('div');
+            body.className = 'space-y-2 text-sm';
+            body.appendChild(createInfoLine('البريد', item.email || 'غير متاح', true));
+            body.appendChild(createInfoLine('IP', item.ipAddress || 'غير متاح', false));
+            body.appendChild(createInfoLine('Device ID', item.deviceId || 'غير متاح', true));
+            body.appendChild(createInfoLine('الجهاز', item.deviceName || 'غير معروف', false));
+            body.appendChild(createInfoLine('السبب', item.reason || 'غير محدد', true));
+            body.appendChild(createInfoLine('تم بواسطة', item.blockedBy || 'admin', true));
+            body.appendChild(createInfoLine('التاريخ', item.createdAt ? new Date(item.createdAt).toLocaleString('ar-EG') : 'غير متاح', false));
+            card.appendChild(body);
+
+            var actions = document.createElement('div');
+            actions.className = 'mt-4 flex flex-wrap gap-2';
+            var unblockBtn = document.createElement('button');
+            unblockBtn.type = 'button';
+            unblockBtn.className = 'js-unblock-device px-3 py-2 text-xs font-bold rounded-xl bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition';
+            unblockBtn.dataset.blockId = String(Number(item.id) || 0);
+            unblockBtn.textContent = 'فك الحظر';
+            actions.appendChild(unblockBtn);
+            card.appendChild(actions);
+
+            return card;
+        }
+
+        function renderList(items, mode) {
+            var list = document.getElementById('accounts-management-list');
+            if (!list) return;
+            while (list.firstChild) list.removeChild(list.firstChild);
+
+            if (!Array.isArray(items) || items.length === 0) {
+                var empty = document.createElement('div');
+                empty.className = 'col-span-full text-center text-gray-400 py-16';
+                var icon = document.createElement('i');
+                icon.className = 'fas fa-folder-open text-4xl mb-3';
+                var text = document.createElement('p');
+                text.className = 'font-medium';
+                text.textContent = mode === 'blocked' ? 'لا توجد سجلات حظر مطابقة.' : 'لا توجد حسابات أو جلسات مسجلة بعد.';
+                empty.appendChild(icon);
+                empty.appendChild(text);
+                list.appendChild(empty);
+                return;
+            }
+
+            for (var i = 0; i < items.length; i += 1) {
+                list.appendChild(mode === 'blocked' ? createBlockedCard(items[i]) : createAccountCard(items[i]));
+            }
+        }
+
+        function renderLoading(label) {
+            var list = document.getElementById('accounts-management-list');
+            if (!list) return;
+            while (list.firstChild) list.removeChild(list.firstChild);
+
+            var wrap = document.createElement('div');
+            wrap.className = 'col-span-full text-center text-gray-400 py-16';
+            var icon = document.createElement('i');
+            icon.className = 'fas fa-spinner fa-spin text-3xl mb-3';
+            var text = document.createElement('p');
+            text.className = 'font-medium';
+            text.textContent = label;
+            wrap.appendChild(icon);
+            wrap.appendChild(text);
+            list.appendChild(wrap);
+        }
+
+        function renderError(message) {
+            var list = document.getElementById('accounts-management-list');
+            if (!list) return;
+            while (list.firstChild) list.removeChild(list.firstChild);
+
+            var wrap = document.createElement('div');
+            wrap.className = 'col-span-full text-center text-red-500 py-16';
+            var icon = document.createElement('i');
+            icon.className = 'fas fa-exclamation-triangle text-3xl mb-3';
+            var text = document.createElement('p');
+            text.className = 'font-bold';
+            text.textContent = message || 'حدث خطأ';
+            wrap.appendChild(icon);
+            wrap.appendChild(text);
+            list.appendChild(wrap);
+        }
+
+        function updatePaginationUi() {
+            var pg = accountMgmtState.pagination || { page: 1, pages: 1, total: 0, hasNext: false, hasPrev: false };
+            var meta = document.getElementById('accounts-management-pagination-meta');
+            var prev = document.getElementById('accounts-management-prev');
+            var next = document.getElementById('accounts-management-next');
+            if (meta) meta.textContent = 'إجمالي ' + String(pg.total || 0) + ' - صفحة ' + String(pg.page || 1) + ' من ' + String(pg.pages || 1);
+            if (prev) prev.disabled = !pg.hasPrev;
+            if (next) next.disabled = !pg.hasNext;
+        }
+
+        function updateTabsUi() {
+            var accountsTab = document.getElementById('accounts-tab-btn');
+            var blockedTab = document.getElementById('blocked-tab-btn');
+            var isAccounts = accountMgmtState.view === 'accounts';
+
+            if (accountsTab) {
+                accountsTab.className = 'px-3 py-2 text-xs font-bold rounded-xl ' + (isAccounts ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700');
+            }
+            if (blockedTab) {
+                blockedTab.className = 'px-3 py-2 text-xs font-bold rounded-xl ' + (!isAccounts ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700');
+            }
         }
 
         function getCsrfToken() {
@@ -1432,7 +1611,7 @@
             if (!confirm('هل أنت متأكد من حذف هذا الحساب نهائيًا؟')) return;
             try {
                 await adminJsonRequest('DELETE', '/api/auth/accounts/' + accountId);
-                await window.openAccountsManagementModal();
+                await loadCurrentAccountsManagementView();
             } catch (err) {
                 alert('تعذر حذف الحساب: ' + (err.message || 'خطأ غير متوقع'));
             }
@@ -1450,11 +1629,126 @@
                     reason: (reason || '').trim()
                 });
                 alert('تم حظر الجهاز بنجاح.');
-                await window.openAccountsManagementModal();
+                await loadCurrentAccountsManagementView();
             } catch (err) {
                 alert('تعذر حظر الجهاز: ' + (err.message || 'خطأ غير متوقع'));
             }
         };
+
+        window.unblockDeviceById = async function(blockId) {
+            if (!confirm('هل تريد فك الحظر عن هذا السجل؟')) return;
+            try {
+                await adminJsonRequest('DELETE', '/api/auth/blocked-devices/' + blockId);
+                await loadCurrentAccountsManagementView();
+            } catch (err) {
+                alert('تعذر فك الحظر: ' + (err.message || 'خطأ غير متوقع'));
+            }
+        };
+
+        async function loadAccountsView() {
+            var query = new URLSearchParams({
+                page: String(accountMgmtState.page),
+                limit: String(accountMgmtState.limit),
+                type: 'all'
+            });
+            if (accountMgmtState.q) query.set('q', accountMgmtState.q);
+
+            renderLoading('جاري تحميل الحسابات...');
+            var res = await fetch('/api/auth/accounts-overview?' + query.toString(), { credentials: 'include' });
+            var data = await res.json().catch(function(){ return {}; });
+            if (!res.ok) throw new Error(data && data.error ? data.error : 'فشل تحميل البيانات');
+
+            accountMgmtState.pagination = data.pagination || { page: 1, pages: 1, total: 0, hasNext: false, hasPrev: false };
+            updatePaginationUi();
+            renderList(Array.isArray(data.items) ? data.items : [], 'accounts');
+        }
+
+        async function loadBlockedView() {
+            var query = new URLSearchParams({
+                page: String(accountMgmtState.page),
+                limit: String(accountMgmtState.limit)
+            });
+            if (accountMgmtState.q) query.set('q', accountMgmtState.q);
+
+            renderLoading('جاري تحميل سجلات الحظر...');
+            var res = await fetch('/api/auth/blocked-devices?' + query.toString(), { credentials: 'include' });
+            var data = await res.json().catch(function(){ return {}; });
+            if (!res.ok) throw new Error(data && data.error ? data.error : 'فشل تحميل البيانات');
+
+            accountMgmtState.pagination = data.pagination || { page: 1, pages: 1, total: 0, hasNext: false, hasPrev: false };
+            updatePaginationUi();
+            renderList(Array.isArray(data.devices) ? data.devices : [], 'blocked');
+        }
+
+        async function loadCurrentAccountsManagementView() {
+            updateTabsUi();
+            try {
+                if (accountMgmtState.view === 'blocked') {
+                    await loadBlockedView();
+                } else {
+                    await loadAccountsView();
+                }
+            } catch (err) {
+                renderError(err && err.message ? err.message : 'حدث خطأ');
+            }
+        }
+
+        function bindAccountsControls() {
+            if (accountMgmtControlsBound) return;
+            accountMgmtControlsBound = true;
+
+            var accountsTab = document.getElementById('accounts-tab-btn');
+            var blockedTab = document.getElementById('blocked-tab-btn');
+            var searchInput = document.getElementById('accounts-management-search');
+            var searchBtn = document.getElementById('accounts-management-search-btn');
+            var prevBtn = document.getElementById('accounts-management-prev');
+            var nextBtn = document.getElementById('accounts-management-next');
+
+            if (accountsTab) {
+                accountsTab.addEventListener('click', function() {
+                    accountMgmtState.view = 'accounts';
+                    accountMgmtState.page = 1;
+                    loadCurrentAccountsManagementView();
+                });
+            }
+
+            if (blockedTab) {
+                blockedTab.addEventListener('click', function() {
+                    accountMgmtState.view = 'blocked';
+                    accountMgmtState.page = 1;
+                    loadCurrentAccountsManagementView();
+                });
+            }
+
+            var runSearch = function() {
+                accountMgmtState.q = (searchInput && searchInput.value ? String(searchInput.value) : '').trim();
+                accountMgmtState.page = 1;
+                loadCurrentAccountsManagementView();
+            };
+
+            if (searchBtn) searchBtn.addEventListener('click', runSearch);
+            if (searchInput) {
+                searchInput.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Enter') runSearch();
+                });
+            }
+
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    if (!accountMgmtState.pagination || !accountMgmtState.pagination.hasPrev) return;
+                    accountMgmtState.page = Math.max(1, accountMgmtState.page - 1);
+                    loadCurrentAccountsManagementView();
+                });
+            }
+
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    if (!accountMgmtState.pagination || !accountMgmtState.pagination.hasNext) return;
+                    accountMgmtState.page += 1;
+                    loadCurrentAccountsManagementView();
+                });
+            }
+        }
 
         document.addEventListener('click', function(evt) {
             var delBtn = evt.target && evt.target.closest ? evt.target.closest('.js-delete-account') : null;
@@ -1467,25 +1761,27 @@
             }
 
             var blockBtn = evt.target && evt.target.closest ? evt.target.closest('.js-block-device') : null;
-            if (!blockBtn) return;
+            if (blockBtn) {
+                window.blockDeviceFromEntry(
+                    blockBtn.getAttribute('data-device-id') || '',
+                    blockBtn.getAttribute('data-ip-address') || '',
+                    blockBtn.getAttribute('data-device-name') || '',
+                    blockBtn.getAttribute('data-email') || ''
+                );
+                return;
+            }
 
-            var decode = function(v) {
-                try { return decodeURIComponent(v || ''); } catch (e) { return ''; }
-            };
-
-            window.blockDeviceFromEntry(
-                decode(blockBtn.getAttribute('data-device-id')),
-                decode(blockBtn.getAttribute('data-ip-address')),
-                decode(blockBtn.getAttribute('data-device-name')),
-                decode(blockBtn.getAttribute('data-email'))
-            );
+            var unblockBtn = evt.target && evt.target.closest ? evt.target.closest('.js-unblock-device') : null;
+            if (unblockBtn) {
+                var blockId = Number(unblockBtn.getAttribute('data-block-id') || 0);
+                if (blockId > 0) window.unblockDeviceById(blockId);
+            }
         });
 
         window.openAccountsManagementModal = async function(){
             var modal = document.getElementById('accounts-management-modal');
-            var list = document.getElementById('accounts-management-list');
             var dock = document.getElementById('ios-bottom-nav');
-            if (!modal || !list) return;
+            if (!modal) return;
 
             document.body.classList.add('accounts-management-open');
             if (dock) dock.classList.add('hidden');
@@ -1493,26 +1789,16 @@
 
             modal.classList.remove('hidden');
             lockBody();
-            list.innerHTML = '<div class="col-span-full text-center text-gray-400 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل الحسابات...</p></div>';
 
-            try {
-                var res = await fetch('/api/auth/accounts-overview', { credentials: 'include' });
-                var data = await res.json();
-                if (!res.ok) throw new Error(data && data.error ? data.error : 'فشل تحميل البيانات');
+            bindAccountsControls();
+            accountMgmtState.view = 'accounts';
+            accountMgmtState.page = 1;
+            accountMgmtState.q = '';
 
-                var items = [];
-                if (Array.isArray(data.accounts)) items = items.concat(data.accounts);
-                if (Array.isArray(data.guests)) items = items.concat(data.guests);
+            var searchInput = document.getElementById('accounts-management-search');
+            if (searchInput) searchInput.value = '';
 
-                if (!items.length) {
-                    list.innerHTML = '<div class="col-span-full text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-3"></i><p class="font-medium">لا توجد حسابات أو جلسات مسجلة بعد.</p></div>';
-                    return;
-                }
-
-                list.innerHTML = items.map(cardHtml).join('');
-            } catch (err) {
-                list.innerHTML = '<div class="col-span-full text-center text-red-500 py-16"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p class="font-bold">' + esc(err.message || 'حدث خطأ') + '</p></div>';
-            }
+            await loadCurrentAccountsManagementView();
         };
 
         window.closeAccountsManagementModal = function(){

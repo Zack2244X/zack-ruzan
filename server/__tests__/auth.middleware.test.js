@@ -42,6 +42,18 @@ describe('generateToken()', () => {
         expect(decoded.exp - now).toBeGreaterThan(6 * 24 * 3600);
         expect(decoded.exp - now).toBeLessThan(8 * 24 * 3600);
     });
+
+    test('should include normalized email claim when provided', () => {
+        const token = generateToken(9, 'student', 1, 'Student@Test.COM');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        expect(decoded.email).toBe('student@test.com');
+    });
+
+    test('should keep email claim undefined when not provided', () => {
+        const token = generateToken(9, 'student', 1);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        expect(decoded.email).toBeUndefined();
+    });
 });
 
 describe('authenticate middleware', () => {

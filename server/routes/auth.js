@@ -141,6 +141,13 @@ function sanitizeText(value, maxLen = 255) {
     return String(value).trim().substring(0, maxLen);
 }
 
+function parsePageLimit(query, defaultLimit = 30, maxLimit = 100) {
+    const page = Math.max(1, Number.parseInt(query?.page, 10) || 1);
+    const limit = Math.min(maxLimit, Math.max(1, Number.parseInt(query?.limit, 10) || defaultLimit));
+    const offset = (page - 1) * limit;
+    return { page, limit, offset };
+}
+
 let accountSessionsColumnsCache = null;
 let blockedDevicesColumnsCache = null;
 
@@ -365,7 +372,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
                 userAgent
             });
 
-            const token = generateToken(user.id, user.role, user.tokenVersion);
+            const token = generateToken(user.id, user.role, user.tokenVersion, user.email);
             setTokenCookie(res, token);
             setCsrfCookie(res);
             logger.info(`تسجيل دخول — ${user.role === 'admin' ? '👑 أدمن' : '👤 طالب'}: ${user.email}`);
@@ -412,7 +419,7 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             userAgent
         });
 
-        const token = generateToken(user.id, user.role, user.tokenVersion);
+        const token = generateToken(user.id, user.role, user.tokenVersion, user.email);
         setTokenCookie(res, token);
         setCsrfCookie(res);
 
@@ -491,6 +498,10 @@ router.post('/guest-session', async (req, res) => {
 // ============================================
 router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) => {
     try {
+        const q = sanitizeText(req.query?.q, 120).toLowerCase();
+        const type = sanitizeText(req.query?.type, 20).toLowerCase();
+        const { page, limit, offset } = parsePageLimit(req.query, 24, 100);
+
         const [accountsOnlyRows] = await sequelize.query(
             `SELECT id, fname, lname, email, role, createdAt
              FROM users
@@ -525,13 +536,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             const hasCreatedAtCol = sessionColumns.has('createdAt');
 
             const hasJoinKey = hasUserIdCol || hasEmailCol;
-            const orderByLatest = hasCreatedAtCol ? 's2.createdAt DESC, s2.id DESC' : 's2.id DESC';
-            const nonGuestFilter = hasLoginTypeCol ? "AND s2.loginType <> 'guest'" : '';
-
-            const ipExpr = hasIpCol ? 's.ipAddress' : "'' AS ipAddress";
-            const deviceIdExpr = hasDeviceIdCol ? 's.deviceId' : "'' AS deviceId";
-            const deviceNameExpr = hasDeviceNameCol ? 's.deviceName' : "'' AS deviceName";
-            const loginTypeExpr = hasLoginTypeCol ? 's.loginType' : "'google' AS loginType";
             const guestLastSeenExpr = hasCreatedAtCol ? 'createdAt AS lastSeenAt' : 'NULL AS lastSeenAt';
 
             if (hasJoinKey) {
@@ -606,8 +610,7 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             });
         }
 
-        return res.json({
-            accounts: (accounts || []).map((a) => ({
+        const mappedAccounts = (accounts || []).map((a) => ({
                 id: a.id,
                 type: 'account',
                 fullName: `${a.fname || ''} ${a.lname || ''}`.trim() || a.email,
@@ -619,8 +622,9 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                 loginType: a.loginType || 'google',
                 createdAt: a.createdAt,
                 lastSeenAt: a.lastSeenAt || null
-            })),
-            guests: (guestSessions || []).map((g) => ({
+            }));
+
+        const mappedGuests = (guestSessions || []).map((g) => ({
                 id: g.id,
                 type: 'guest',
                 fullName: 'ضيف (بدون حساب)',
@@ -632,11 +636,57 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                 loginType: 'guest',
                 createdAt: g.lastSeenAt,
                 lastSeenAt: g.lastSeenAt
-            }))
+            }));
+
+        let merged = mappedAccounts.concat(mappedGuests);
+        if (type === 'accounts') {
+            merged = mappedAccounts;
+        } else if (type === 'guests') {
+            merged = mappedGuests;
+        }
+
+        if (q) {
+            merged = merged.filter((item) => {
+                const haystack = [
+                    item.fullName,
+                    item.email,
+                    item.role,
+                    item.ipAddress,
+                    item.deviceId,
+                    item.deviceName,
+                    item.loginType
+                ]
+                    .map((v) => String(v || '').toLowerCase())
+                    .join(' ');
+                return haystack.includes(q);
+            });
+        }
+
+        const total = merged.length;
+        const pages = Math.max(1, Math.ceil(total / limit));
+        const pageItems = merged.slice(offset, offset + limit);
+
+        return res.json({
+            accounts: pageItems.filter((i) => i.type === 'account'),
+            guests: pageItems.filter((i) => i.type === 'guest'),
+            items: pageItems,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages,
+                hasNext: page < pages,
+                hasPrev: page > 1
+            }
         });
     } catch (error) {
         logger.error('خطأ في جلب accounts-overview:', { error: error.message, stack: error.stack });
-        return res.status(200).json({ accounts: [], guests: [] });
+        return res.status(200).json({
+            accounts: [],
+            guests: [],
+            items: [],
+            pagination: { page: 1, limit: 24, total: 0, pages: 1, hasNext: false, hasPrev: false }
+        });
     }
 });
 
@@ -678,6 +728,62 @@ router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => 
         }
 
         const cols = await getBlockedDevicesColumns();
+
+        const dedupeClauses = [];
+        const dedupeReplacements = [];
+        if (cols.has('email') && email) {
+            dedupeClauses.push('email = ?');
+            dedupeReplacements.push(email);
+        }
+        if (cols.has('deviceId') && deviceId) {
+            dedupeClauses.push('deviceId = ?');
+            dedupeReplacements.push(deviceId);
+        }
+        if (cols.has('ipAddress') && ipAddress) {
+            dedupeClauses.push('ipAddress = ?');
+            dedupeReplacements.push(ipAddress);
+        }
+
+        if (dedupeClauses.length > 0) {
+            const [existingRows] = await sequelize.query(
+                `SELECT id FROM blocked_devices
+                 WHERE isActive = 1 AND (${dedupeClauses.join(' OR ')})
+                 ORDER BY id DESC
+                 LIMIT 1`,
+                { replacements: dedupeReplacements }
+            );
+
+            if (existingRows && existingRows.length > 0) {
+                const existingId = Number(existingRows[0].id);
+                const updateFields = [];
+                const updateReplacements = [];
+                if (cols.has('reason')) {
+                    updateFields.push('reason = ?');
+                    updateReplacements.push(reason);
+                }
+                if (cols.has('deviceName')) {
+                    updateFields.push('deviceName = ?');
+                    updateReplacements.push(deviceName || null);
+                }
+                if (cols.has('blockedBy')) {
+                    updateFields.push('blockedBy = ?');
+                    updateReplacements.push(req.user.email || 'admin');
+                }
+                if (cols.has('updatedAt')) {
+                    updateFields.push('updatedAt = NOW()');
+                }
+
+                if (updateFields.length > 0) {
+                    await sequelize.query(
+                        `UPDATE blocked_devices SET ${updateFields.join(', ')} WHERE id = ?`,
+                        { replacements: updateReplacements.concat(existingId) }
+                    );
+                }
+
+                return res.status(200).json({ ok: true, message: 'هذا الجهاز/الحساب محظور مسبقًا وتم تحديث بيانات الحظر.' });
+            }
+        }
+
         const insertCols = [];
         const placeholders = [];
         const replacements = [];
@@ -725,15 +831,49 @@ router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => 
 
 router.get('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
     try {
+        const q = sanitizeText(req.query?.q, 120).toLowerCase();
+        const { page, limit, offset } = parsePageLimit(req.query, 24, 100);
         const cols = await getBlockedDevicesColumns();
         const emailSelect = cols.has('email') ? 'email' : "'' AS email";
-        const [rows] = await sequelize.query(
+        const [rowsRaw] = await sequelize.query(
             `SELECT id, ${emailSelect}, deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt
              FROM blocked_devices
              WHERE isActive = 1
              ORDER BY id DESC`
         );
-        return res.json({ devices: rows || [] });
+        let rows = rowsRaw || [];
+
+        if (q) {
+            rows = rows.filter((row) => {
+                const haystack = [
+                    row.email,
+                    row.deviceId,
+                    row.ipAddress,
+                    row.deviceName,
+                    row.reason,
+                    row.blockedBy
+                ]
+                    .map((v) => String(v || '').toLowerCase())
+                    .join(' ');
+                return haystack.includes(q);
+            });
+        }
+
+        const total = rows.length;
+        const pages = Math.max(1, Math.ceil(total / limit));
+        const devices = rows.slice(offset, offset + limit);
+
+        return res.json({
+            devices,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages,
+                hasNext: page < pages,
+                hasPrev: page > 1
+            }
+        });
     } catch (error) {
         logger.error('خطأ في جلب الأجهزة المحظورة:', { error: error.message });
         return res.status(500).json({ error: 'تعذر جلب قائمة الأجهزة المحظورة.' });
@@ -895,7 +1035,7 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
 
             logger.info(`👑 تم ترقية ${email} إلى أدمن`);
 
-            const token = generateToken(existing.id, existing.role, existing.tokenVersion);
+            const token = generateToken(existing.id, existing.role, existing.tokenVersion, existing.email);
             setTokenCookie(res, token);
             setCsrfCookie(res);
             return res.json({
@@ -921,7 +1061,7 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
 
         logger.info(`👑 تم إنشاء حساب أدمن جديد: ${email}`);
 
-        const token = generateToken(user.id, user.role, user.tokenVersion);
+        const token = generateToken(user.id, user.role, user.tokenVersion, user.email);
         setTokenCookie(res, token);
         setCsrfCookie(res);
 
@@ -961,7 +1101,7 @@ router.post('/refresh', authenticate, async (req, res) => {
         if (!user) {
             return res.status(401).json({ error: 'المستخدم غير موجود.' });
         }
-        const newToken = generateToken(user.id, user.role, user.tokenVersion);
+        const newToken = generateToken(user.id, user.role, user.tokenVersion, user.email);
         setTokenCookie(res, newToken);
         logger.info(`🔄 تجديد توكن — ${user.email}`);
         res.json({ message: 'تم تجديد الجلسة.' });

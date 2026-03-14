@@ -57,6 +57,16 @@ describe('API routes return proper errors without auth', () => {
             .send({});
         expect(res.statusCode).toBe(400);
     });
+
+    test('GET /api/auth/accounts-overview should require authentication', async () => {
+        const res = await request(app).get('/api/auth/accounts-overview');
+        expect(res.statusCode).toBe(401);
+    });
+
+    test('GET /api/auth/blocked-devices should require authentication', async () => {
+        const res = await request(app).get('/api/auth/blocked-devices');
+        expect(res.statusCode).toBe(401);
+    });
 });
 
 describe('CSRF Protection', () => {

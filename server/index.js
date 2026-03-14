@@ -21,6 +21,7 @@ const hpp = require('hpp');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const logger = require('./utils/logger');
 const { sanitizeBody } = require('./middleware/sanitize');
 const { verifyCsrf } = require('./middleware/auth');
@@ -157,21 +158,79 @@ app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
+let blockedDevicesColumnsCache = null;
+
+async function getBlockedDevicesColumns() {
+    if (blockedDevicesColumnsCache) return blockedDevicesColumnsCache;
+    const [rows] = await sequelize.query(`SHOW COLUMNS FROM blocked_devices`);
+    blockedDevicesColumnsCache = new Set((rows || []).map((r) => r.Field));
+    return blockedDevicesColumnsCache;
+}
+
+async function getSessionEmail(req) {
+    try {
+        const cookieToken = req.cookies?.jwt;
+        const authHeader = req.headers.authorization;
+        const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
+        const token = cookieToken || bearerToken;
+        if (!token || token.length > 2048 || !process.env.JWT_SECRET) return '';
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decoded?.userId) return '';
+
+        if (typeof decoded.email === 'string' && decoded.email.trim()) {
+            return decoded.email.trim().toLowerCase().substring(0, 255);
+        }
+
+        if (decoded.userId) {
+            const user = await User.findByPk(decoded.userId);
+            if (user && user.email) {
+                return String(user.email).trim().toLowerCase().substring(0, 255);
+            }
+        }
+    } catch (_) {
+        return '';
+    }
+    return '';
+}
+
 app.use(async (req, res, next) => {
+    if (process.env.NODE_ENV === 'test') return next();
     try {
         const deviceId = String(req.get('x-device-id') || req.body?.deviceId || req.query?.deviceId || '').trim().substring(0, 120);
         const forwarded = req.headers['x-forwarded-for'];
         const ipAddress = (typeof forwarded === 'string' && forwarded.trim() ? forwarded.split(',')[0].trim() : (req.ip || '').toString()).substring(0, 64);
+        const sessionEmail = await getSessionEmail(req);
+        const email = String(req.get('x-user-email') || req.body?.email || req.query?.email || sessionEmail || '').trim().toLowerCase().substring(0, 255);
 
-        if (!deviceId && !ipAddress) return next();
+        if (!deviceId && !ipAddress && !email) return next();
+
+        const cols = await getBlockedDevicesColumns();
+        const filters = [];
+        const replacements = [];
+
+        if (cols.has('deviceId') && deviceId) {
+            filters.push('deviceId = ?');
+            replacements.push(deviceId);
+        }
+        if (cols.has('ipAddress') && ipAddress) {
+            filters.push('ipAddress = ?');
+            replacements.push(ipAddress);
+        }
+        if (cols.has('email') && email) {
+            filters.push('email = ?');
+            replacements.push(email);
+        }
+
+        if (filters.length === 0) return next();
 
         const [rows] = await sequelize.query(
             `SELECT id, reason FROM blocked_devices
              WHERE isActive = 1
-               AND ((? <> '' AND deviceId = ?) OR (? <> '' AND ipAddress = ?))
+               AND (${filters.join(' OR ')})
              ORDER BY id DESC
              LIMIT 1`,
-            { replacements: [deviceId, deviceId, ipAddress, ipAddress] }
+            { replacements }
         );
 
         if (rows && rows.length > 0) {
@@ -210,7 +269,15 @@ app.use(async (req, res, next) => {
 </html>`);
         }
     } catch (err) {
-        logger.warn('⚠️ Device block check failed, allowing request:', { error: err.message });
+        const sensitivePath = req.path.startsWith('/api/auth/') || req.path === '/api/auth' || req.path === '/' || req.path === '/index.html';
+        if (process.env.NODE_ENV === 'production' && sensitivePath) {
+            logger.error('❌ Block check failed on sensitive path, denying request:', {
+                path: req.path,
+                error: err.message
+            });
+            return res.status(503).json({ error: 'تعذر التحقق من حالة الحظر الآن. حاول مرة أخرى بعد قليل.' });
+        }
+        logger.warn('⚠️ Device block check failed, allowing non-sensitive request:', { error: err.message, path: req.path });
     }
     next();
 });

@@ -267,14 +267,16 @@ const requireAdmin = (req, res, next) => {
  * @param {number} userId - The user's database ID.
  * @param {string} role - The user's role ('student' or 'admin').
  * @param {number} [tokenVersion=0] - The current token version for revocation support.
+ * @param {string} [email=''] - Optional user email for cross-middleware policies.
  * @returns {string} A signed JWT string.
  */
-const generateToken = (userId, role, tokenVersion = 0) => {
+const generateToken = (userId, role, tokenVersion = 0, email = '') => {
     return jwt.sign(
         {
             userId,
             role,
             tokenVersion,
+            email: email ? String(email).toLowerCase().substring(0, 255) : undefined,
             iat: Math.floor(Date.now() / 1000),
             jti: crypto.randomBytes(8).toString('hex')
         },
