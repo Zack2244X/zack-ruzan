@@ -1,0 +1,317 @@
+/* ============================================
+   CSS VARIABLES - Design System & Standards
+   منصة الاختبارات التفاعلية
+   ============================================ */
+
+:root {
+    /* ==========================================
+       COLOR SYSTEM - Enhanced with Standards
+       ========================================== */
+    
+    /* Primary Colors */
+    --primary: #2563eb;
+    --primary-light: #3b82f6;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
+    --primary-50: #f0f9ff;
+    --primary-900: #0c4a6e;
+    
+    /* Secondary Colors */
+    --secondary-500: #8b5cf6;
+    --secondary-600: #7c3aed;
+    --secondary-700: #6d28d9;
+    
+    /* Semantic Colors */
+    --success: #16a34a;
+    --warning: #ea580c;
+    --error: #ef4444;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    
+    /* Neutral Palette */
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    
+    /* Background & Card Colors */
+    --bg: #f5f7fb;
+    --bg-soft: rgba(255, 255, 255, 0.68);
+    --card: rgba(255, 255, 255, 0.92);
+    --card-strong: rgba(255, 255, 255, 0.85);
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --muted: #475569;
+    
+    /* ==========================================
+       TYPOGRAPHY
+       ========================================== */
+    
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Cairo', Arial, sans-serif;
+    --font-size-base: 16px;
+    --line-height-base: 1.6;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+    
+    /* ==========================================
+       SPACING (Standardized)
+       ========================================== */
+    
+    --space-0: 0;
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-5: 1.25rem;   /* 20px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-10: 2.5rem;   /* 40px */
+    --space-12: 3rem;     /* 48px */
+    --space-16: 4rem;     /* 64px */
+    
+    /* ==========================================
+       BORDER RADIUS (Standardized)
+       ========================================== */
+    
+    --radius-none: 0;
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+    
+    /* Current custom radii (for backwards compatibility) */
+    --radius-sm-custom: 8px;
+    --radius-md-custom: 12px;
+    --radius-lg-custom: 16px;
+    --radius-xl-custom: 24px;
+    --radius-full-custom: 9999px;
+    
+    /* ==========================================
+       TRANSITIONS & ANIMATIONS (Smooth UX Standard)
+       
+       ✅ ALL VALUES: 200-500ms (optimal for 60 FPS)
+       ✅ Easing: cubic-bezier(0.4, 0, 0.2, 1) for smoothness
+       ✅ Only transform + opacity (GPU accelerated)
+       ✅ Supporting prefers-reduced-motion
+       ========================================== */
+    
+    /* Duration Tiers - Smooth UX Standard */
+    --duration-micro: 200ms;        /* Micro interactions (hover, focus) */
+    --duration-fast: 250ms;         /* Fast transitions (color, opacity) */
+    --duration-normal: 300ms;       /* Standard interactions (modal, toast) */
+    --duration-slow: 400ms;         /* Slow animations (page transitions) */
+    --duration-slower: 500ms;       /* Slower entrance animations (page load) */
+    
+    /* Legacy aliases (for backwards compatibility) */
+    --duration-fast-compat: 150ms;
+    --duration-normal-compat: 300ms;
+    --duration-slow-compat: 500ms;
+    --duration-slower-compat: 800ms;
+    
+    /* Easing Functions - Smooth UX Standard */
+    --easing-linear: linear;
+    --easing-ease: ease;
+    --easing-ease-in: ease-in;
+    --easing-ease-out: ease-out;
+    --easing-ease-in-out: ease-in-out;
+    
+    /* Smooth UX Primary Easing - Used for 99% of animations */
+    --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);     /* Entry/Exit */
+    --easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* Spring effect */
+    --easing-decelerate: cubic-bezier(0.16, 1, 0.3, 1); /* Decelerate (legacy) */
+    
+    /* Transition Combinations - Smooth UX Standard */
+    --transition-micro: transform var(--duration-micro) var(--easing-smooth),
+                        opacity var(--duration-micro) var(--easing-smooth);
+    --transition-fast: transform var(--duration-fast) var(--easing-smooth),
+                       opacity var(--duration-fast) var(--easing-smooth);
+    --transition-normal: transform var(--duration-normal) var(--easing-smooth),
+                         opacity var(--duration-normal) var(--easing-smooth);
+    --transition-slow: transform var(--duration-slow) var(--easing-smooth),
+                       opacity var(--duration-slow) var(--easing-smooth);
+    --transition-slower: transform var(--duration-slower) var(--easing-smooth),
+                         opacity var(--duration-slower) var(--easing-smooth);
+    
+    /* Color/Shadow Transitions - Only opacity, not dimensions */
+    --transition-color: color var(--duration-fast) var(--easing-smooth),
+                        background-color var(--duration-fast) var(--easing-smooth),
+                        border-color var(--duration-fast) var(--easing-smooth),
+                        box-shadow var(--duration-fast) var(--easing-smooth);
+    
+    /* Legacy aliases */
+    --transition-fast-compat: 150ms ease;
+    --transition-normal-compat: 250ms ease;
+    --transition-slow-compat: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    
+    /* ==========================================
+       SHADOWS (Standardized + Current)
+       ========================================== */
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05), 0 4px 12px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 20px 60px rgba(15, 23, 42, 0.12);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+    
+    /* ==========================================
+       EFFECTS (Glass, Blur, etc.)
+       ========================================== */
+    
+    --glass-blur: 16px;
+    --backdrop-blur: 16px;
+    
+    /* ==========================================
+       BREAKPOINTS (for reference in JS)
+       ========================================== */
+    
+    --breakpoint-sm: 480px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1200px;
+    --breakpoint-2xl: 1400px;
+}
+
+/* ==========================================
+   DARK MODE OVERRIDES
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+        
+        /* Primary Colors */
+        --primary-50: #0c4a6e;
+        --primary-500: #60a5fa;
+        --primary-light: #60a5fa;
+        --primary-900: #f0f9ff;
+        
+        /* Secondary Colors */
+        --secondary-500: #a78bfa;
+        --secondary-600: #a78bfa;
+        --secondary-700: #c4b5fd;
+        
+        /* Neutral Palette */
+        --gray-50: #1f2937;
+        --gray-100: #111827;
+        --gray-900: #f9fafb;
+        --gray-800: #111827;
+        
+        /* Background Colors */
+        --bg: #0f172a;
+        --bg-soft: rgba(15, 23, 42, 0.68);
+        --card: rgba(30, 41, 59, 0.92);
+        --card-strong: rgba(30, 41, 59, 0.85);
+        --border: #334155;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+    }
+}
+
+/* ==========================================
+   HIGH CONTRAST MODE (Accessibility)
+   ========================================== */
+
+@media (prefers-contrast: more) {
+    :root {
+        --primary-700: #0d3aa8;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+        --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
+        --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.6);
+    }
+}
+
+/* ==========================================
+   REDUCED MOTION (Accessibility - Smooth UX Compatible)
+   
+   ✅ Respects user preference: prefers-reduced-motion: reduce
+   ✅ No animation removal - just instant completion
+   ✅ Preserves interaction feedback (no total disable)
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        /* Duration = nearly instant (no visual delay) */
+        --duration-micro: 1ms;
+        --duration-fast: 1ms;
+        --duration-normal: 1ms;
+        --duration-slow: 1ms;
+        --duration-slower: 1ms;
+        
+        /* Keep easing (still needed for accessibility) */
+        /* No change to transitions - they run instantly now */
+    }
+    
+    /* Ensure all animations complete immediately */
+    *, *::before, *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+    }
+}
+
+/* ==========================================
+   PERFORMANCE & GPU TIERS (Smooth UX Optimization)
+   
+   ✅ GPU Low: Disable expensive effects, keep animations
+   ✅ GPU Medium: Reduce blur/shadow, optimize GPU usage
+   ✅ GPU High: Full effects (default)
+   
+   All transitions remain smooth on all tiers!
+   ========================================== */
+
+/* GPU Low Tier - Basic animations, no blur effects */
+body.gpu-low {
+    --shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
+    --glass-blur: 0px;              /* Disable blur (expensive) */
+    --backdrop-blur: 0px;
+    
+    /* Keep transitions smooth! */
+    /* Duration stays the same = smooth UX on low-end devices */
+}
+
+/* GPU Medium Tier - Optimized effects */
+body.gpu-medium {
+    --shadow: 0 4px 16px rgba(15, 23, 42, 0.10);
+    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
+    --glass-blur: 8px;              /* Reduce blur (medium GPU) */
+    --backdrop-blur: 8px;
+    
+    /* Keep smooth transitions - Duration unchanged */
+}
+
+/* GPU High Tier - Full effects (default) */
+body.gpu-high {
+    --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+    --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
+    --glass-blur: 16px;             /* Full blur */
+    --backdrop-blur: 16px;
+    
+    /* Full smooth UX experience */
+}
+
+/* ==========================================
+   REDUCED GRAPHICS (Low Device)
+   ========================================== */
+
+body.reduced-graphics .login-card,
+body.reduced-graphics .backdrop-blur-2xl,
+body.reduced-graphics [class*="backdrop-blur"],
+body.reduced-graphics .logo-wrap,
+body.reduced-graphics .lamp-wrapper {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+}

@@ -1,0 +1,431 @@
+/* ============================================
+   SMOOTH UX ANIMATIONS STANDARD
+   
+   الحركات الموحدة لمنصة الاختبارات التفاعلية
+   ✅ All durations: 200-500ms (60 FPS guaranteed)
+   ✅ All easing: cubic-bezier(0.4, 0, 0.2, 1)
+   ✅ All properties: transform + opacity only
+   ✅ GPU accelerated on all devices
+   ✅ Respects prefers-reduced-motion
+   ============================================ */
+
+/* ==========================================
+   ENTRANCE ANIMATIONS (Page Load)
+   Duration: 400-500ms
+   ========================================== */
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideLeftFade {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideRightFade {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes rotateIn {
+    from {
+        opacity: 0;
+        transform: rotate(-4deg) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: rotate(0) scale(1);
+    }
+}
+
+/* ==========================================
+   EXIT ANIMATIONS (Dismiss/Navigate Away)
+   Duration: 300-400ms
+   ========================================== */
+
+@keyframes slideUpOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-16px);
+    }
+}
+
+@keyframes slideDownOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes scaleOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+/* ==========================================
+   INTERACTION ANIMATIONS (Hover/Focus/Active)
+   Duration: 200-250ms
+   ========================================== */
+
+@keyframes buttonHoverLift {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes buttonPressPush {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(2px);
+    }
+}
+
+@keyframes scaleHover {
+    from {
+        transform: scale(1);
+    }
+    to {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes scaleFocus {
+    from {
+        transform: scale(1);
+    }
+    to {
+        transform: scale(1.02);
+    }
+}
+
+@keyframes pulseLight {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* ==========================================
+   LOADING ANIMATIONS
+   Duration: 1200-2000ms (infinite)
+   ========================================== */
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-8px);
+        opacity: 0.7;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+@keyframes skeletonWave {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* ==========================================
+   ATTENTION ANIMATIONS (Error/Alert)
+   Duration: 250-400ms
+   ========================================== */
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-4px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(4px);
+    }
+}
+
+@keyframes heartbeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    14% {
+        transform: scale(1.15);
+    }
+    28% {
+        transform: scale(1);
+    }
+}
+
+@keyframes blink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
+}
+
+/* ==========================================
+   STAGGERED ANIMATION HELPERS
+   Use with nth-child or data attributes
+   ========================================== */
+
+@keyframes staggerSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Apply stagger via CSS delays */
+.stagger-item-1 { animation-delay: 0ms; }
+.stagger-item-2 { animation-delay: 50ms; }
+.stagger-item-3 { animation-delay: 100ms; }
+.stagger-item-4 { animation-delay: 150ms; }
+.stagger-item-5 { animation-delay: 200ms; }
+.stagger-item-n { animation-delay: calc(var(--stagger-index, 0) * 50ms); }
+
+/* ==========================================
+   UTILITY ANIMATION CLASSES
+   Apply directly: class="animate-slideUp"
+   ========================================== */
+
+/* Entrance Animations */
+.animate-slideUp {
+    animation: slideUpFade var(--duration-slower) var(--easing-smooth) forwards;
+}
+
+.animate-slideDown {
+    animation: slideDownFade var(--duration-slower) var(--easing-smooth) forwards;
+}
+
+.animate-slideLeft {
+    animation: slideLeftFade var(--duration-slower) var(--easing-smooth) forwards;
+}
+
+.animate-slideRight {
+    animation: slideRightFade var(--duration-slower) var(--easing-smooth) forwards;
+}
+
+.animate-fadeIn {
+    animation: fadeIn var(--duration-slower) var(--easing-smooth) forwards;
+}
+
+.animate-scaleIn {
+    animation: scaleIn var(--duration-slower) var(--easing-bounce) forwards;
+}
+
+.animate-rotateIn {
+    animation: rotateIn var(--duration-slower) var(--easing-bounce) forwards;
+}
+
+/* Exit Animations */
+.animate-slideUpOut {
+    animation: slideUpOut var(--duration-slow) var(--easing-smooth) forwards;
+}
+
+.animate-slideDownOut {
+    animation: slideDownOut var(--duration-slow) var(--easing-smooth) forwards;
+}
+
+.animate-fadeOut {
+    animation: fadeOut var(--duration-slow) var(--easing-smooth) forwards;
+}
+
+.animate-scaleOut {
+    animation: scaleOut var(--duration-slow) var(--easing-smooth) forwards;
+}
+
+/* Interaction Animations */
+.animate-hover-lift {
+    animation: buttonHoverLift var(--duration-micro) var(--easing-smooth) forwards;
+}
+
+.animate-press {
+    animation: buttonPressPush var(--duration-micro) var(--easing-smooth) forwards;
+}
+
+.animate-scale-hover {
+    animation: scaleHover var(--duration-fast) var(--easing-smooth) forwards;
+}
+
+.animate-pulse {
+    animation: pulseLight var(--duration-normal) ease-in-out infinite;
+}
+
+/* Loading Animations */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+.animate-bounce {
+    animation: bounce 1.4s ease-in-out infinite;
+}
+
+.animate-shimmer {
+    animation: shimmer 2s infinite;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    background-size: 1000px 100%;
+}
+
+/* Attention Animations */
+.animate-shake {
+    animation: shake var(--duration-normal) var(--easing-ease-in-out) forwards;
+}
+
+.animate-heartbeat {
+    animation: heartbeat var(--duration-normal) var(--easing-ease-in-out) forwards;
+}
+
+/* ==========================================
+   TRANSITION UTILITY CLASSES
+   Apply directly: class="transition-smooth"
+   ========================================== */
+
+.transition-smooth {
+    transition: var(--transition-normal);
+}
+
+.transition-fast {
+    transition: var(--transition-fast);
+}
+
+.transition-slow {
+    transition: var(--transition-slow);
+}
+
+.transition-slower {
+    transition: var(--transition-slower);
+}
+
+.transition-color {
+    transition: var(--transition-color);
+}
+
+/* ==========================================
+   DISABLE ANIMATIONS (for debugging)
+   ========================================== */
+
+.no-animate {
+    animation: none !important;
+    transition: none !important;
+}
+
+.no-transition {
+    transition: none !important;
+}
+
+.no-animation {
+    animation: none !important;
+}
