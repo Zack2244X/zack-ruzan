@@ -284,7 +284,7 @@ Object.assign(window, {
     // Navigation
     navToHome, navToSection, openAdminAuthOrPanel, closeStudentMenu,
     openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
-    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle, _syncMainInteractionState,
+    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle,
 
     // Auth
     startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,
@@ -338,7 +338,7 @@ Object.assign(window, {
         if (!_adminLoadPromise) {
             _adminLoadPromise = new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = '/js/app.admin.bundle.min.js?v=41';
+                s.src = '/js/app.admin.bundle.min.js?v=40';
                 s.onload = () => { _adminLoaded = true; resolve(); };
                 s.onerror = () => reject(new Error('Admin bundle failed to load'));
                 document.head.appendChild(s);
@@ -386,7 +386,7 @@ Object.assign(window, {
         if (!_featuresPromise) {
             _featuresPromise = new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = '/js/app.features.bundle.min.js?v=41';
+                s.src = '/js/app.features.bundle.min.js?v=40';
                 s.onload = () => { _featuresLoaded = true; resolve(); };
                 s.onerror = () => reject(new Error('Features bundle failed to load'));
                 document.head.appendChild(s);

@@ -14,34 +14,18 @@ const SHEET_CLOSE_MS = 340;
 export function _syncMainInteractionState() {
     logFunctionStatus('_syncMainInteractionState', false);
 
-    const body = document.body;
-    const root = document.documentElement;
     const dashboard = document.getElementById('dashboard-view');
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
 
-    // Failsafe: if accounts modal is hidden, clear stale lock classes from previous sessions.
-    const accountsModal = document.getElementById('accounts-management-modal');
-    const accountsModalActuallyOpen = !!(accountsModal && !accountsModal.classList.contains('hidden'));
-    if (!accountsModalActuallyOpen) {
-        body.classList.remove('accounts-modal-open');
-        root.classList.remove('accounts-modal-open');
-    }
-
-    // قائمة أساسية + كشف عام لأي مودال جديد ينتهي id الخاص به بـ "-modal".
-    const listedOverlaysOpen = [
+    // قائمة كاملة بكل العناصر التي تظهر فوق الشاشة الرئيسية:
+    // — تشمل results-screen (نتيجة الاختبار) و confirm-modal-overlay (مربع التأكيد)
+    const anyOpen = [
         'create-section-modal', 'add-note-modal', 'edit-selection-modal',
         'grades-modal', 'stats-modal', 'admin-auth-modal',
         'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
-        'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
-        'accounts-management-modal'
+        'results-screen', 'confirm-modal-overlay', 'delete-exam-modal'
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
-    const dynamicModalOpen = Array.from(document.querySelectorAll('[id$="-modal"]')).some((el) => {
-        if (!el || el.id === 'guest-modal') return false;
-        if (el.classList.contains('hidden')) return false;
-        const cs = window.getComputedStyle(el);
-        return cs.display !== 'none' && cs.visibility !== 'hidden';
-    });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
     // guest-modal uses display:none/block instead of hidden class
@@ -50,15 +34,9 @@ export function _syncMainInteractionState() {
         const gm = document.getElementById('guest-modal');
         return gm ? gm.style.display !== 'none' && gm.style.display !== '' : false;
     })();
-    const accountsModalLockActive = body.classList.contains('accounts-modal-open')
-        || root.classList.contains('accounts-modal-open')
-        || accountsModalActuallyOpen;
-    const blocked = listedOverlaysOpen || dynamicModalOpen || sheetOpen || guestModalOpen || accountsModalLockActive;
-    const allowHomeScroll = onHome && !blocked;
+    const blocked = anyOpen || sheetOpen || guestModalOpen;
 
-    // Show page scrollbar only on home view when no overlay is open.
-    body.classList.toggle('home-scroll', allowHomeScroll);
-    root.classList.toggle('home-scroll', allowHomeScroll);
+    const body = document.body;
 
     // ── DOM writes ────────────────────────────────────────────────────────────
     if (dashboard) {
@@ -68,58 +46,22 @@ export function _syncMainInteractionState() {
     // Keep scroll-lock writes minimal and avoid any computed-style/layout reads here.
     // `scrollbar-gutter: stable` is already enabled in CSS, so compensation reads are unnecessary.
     try {
-        const releaseGlobalScrollLock = (force = false) => {
-            if (!force && !body.hasAttribute('data-scroll-lock')) return;
-
-            const origOverflow = body.getAttribute('data-orig-overflow');
-            body.style.overflow = (origOverflow !== null)
-                ? (origOverflow || '')
-                : (force && body.style.overflow === 'hidden' ? '' : body.style.overflow);
-            body.removeAttribute('data-orig-overflow');
-            body.removeAttribute('data-scroll-lock');
-
-            const rootOrigOverflow = root.getAttribute('data-orig-overflow');
-            root.style.overflow = (rootOrigOverflow !== null)
-                ? (rootOrigOverflow || '')
-                : (force && root.style.overflow === 'hidden' ? '' : root.style.overflow);
-            root.removeAttribute('data-orig-overflow');
-            root.removeAttribute('data-scroll-lock');
-        };
-
-        const clearStaleViewportLock = () => {
-            // accounts modal viewport lock is managed in index.html.
-            // If its class is gone but inline fixed lock remains, release it to restore touch scroll.
-            if (accountsModalLockActive) return;
-            if (body.style.position === 'fixed') {
-                body.style.position = '';
-                body.style.top = '';
-                body.style.left = '';
-                body.style.right = '';
-                body.style.width = '';
-            }
-        };
-
-        if (accountsModalLockActive) {
-            // accounts modal uses its own viewport lock in index.html.
-            // Do not capture/restore overflow here to avoid stale hidden overflow on mobile.
-            releaseGlobalScrollLock();
-            try { getLenisInstance()?.stop?.(); } catch (e) {}
-        } else if (blocked) {
+        if (blocked) {
             if (!body.hasAttribute('data-scroll-lock')) {
                 body.setAttribute('data-scroll-lock', '1');
                 body.setAttribute('data-orig-overflow', body.style.overflow || '');
                 body.style.overflow = 'hidden';
-
-                root.setAttribute('data-scroll-lock', '1');
-                root.setAttribute('data-orig-overflow', root.style.overflow || '');
-                root.style.overflow = 'hidden';
             }
             // وقف Lenis: overflow:hidden لا يكفي — Lenis يستمر عبر RAF
             // ويتجاهل CSS overflow ويُحرِّك الصفحة خلف المودال
             try { getLenisInstance()?.stop?.(); } catch (e) {}
         } else {
-            releaseGlobalScrollLock(true);
-            clearStaleViewportLock();
+            if (body.hasAttribute('data-scroll-lock')) {
+                const origOverflow = body.getAttribute('data-orig-overflow');
+                body.style.overflow = origOverflow || '';
+                body.removeAttribute('data-orig-overflow');
+                body.removeAttribute('data-scroll-lock');
+            }
             // استئناف Lenis بعد إغلاق المودال
             try { getLenisInstance()?.start?.(); } catch (e) {}
         }
@@ -158,6 +100,17 @@ export function _showThemeToggle(show) {
  * يُستدعى مرة واحدة بعد DOMContentLoaded من startApp في app.js.
  */
 export function initOverlayScrollLock() {
+    // كل العناصر التي يمكن أن تظهر فوق الصفحة الرئيسية
+    const OVERLAY_IDS = [
+        'grades-modal', 'stats-modal', 'edit-selection-modal',
+        'add-note-modal', 'create-section-modal',
+        'admin-auth-modal', 'student-menu-modal',
+        'delete-subject-modal', 'rename-subject-modal',
+        'results-screen', 'confirm-modal-overlay',
+        'guest-modal', 'delete-exam-modal'
+    ];
+    const SHEET_IDS = ['tree-content', 'admin-content'];
+
     if (typeof MutationObserver === 'undefined') return;
 
     const observer = new MutationObserver(() => {
@@ -165,17 +118,15 @@ export function initOverlayScrollLock() {
         requestAnimationFrame(() => _syncMainInteractionState());
     });
 
-    // راقب الصفحة كاملة حتى أي مودال جديد يُضاف لاحقًا يدخل تلقائيًا في المزامنة.
-    observer.observe(document.body, {
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class', 'style', 'hidden']
-    });
+    const observeEl = (id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    };
 
-    // مزامنة فورية للحالة الحالية حتى لا ننتظر أول mutation.
-    _syncMainInteractionState();
+    [...OVERLAY_IDS, ...SHEET_IDS].forEach(observeEl);
 
-    console.log('[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على document.body');
+    console.log('[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على '
+        + (OVERLAY_IDS.length + SHEET_IDS.length) + ' عنصر');
 }
 
 /**
@@ -277,8 +228,10 @@ export function closeBottomSheet() {
             if (!content?.classList.contains('active')) sheet.classList.add('hidden');
         }, SHEET_CLOSE_MS);
     }
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.remove('hidden');
     if (state.currentViewMode) updateDockUI('home');
-    _syncMainInteractionState();
+    _showThemeToggle(true);
 }
 
 /** إغلاق قائمة الأدمن السفلية */
@@ -296,7 +249,7 @@ export function closeAdminSheet() {
         }, SHEET_CLOSE_MS);
     }
     updateDockUI('home');
-    _syncMainInteractionState();
+    _showThemeToggle(true);
 }
 
 /** إغلاق جميع النوافذ المنبثقة */

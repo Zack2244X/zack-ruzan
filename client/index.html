@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="lenis lenis-smooth">
 <head>
         <!-- Apply theme class before first paint to avoid flash of wrong color scheme -->
         <script>
@@ -138,8 +138,8 @@
         justify-content: center;
         pointer-events: none;
     }
-    /* Keep tap latency low on form/button controls without blocking vertical pan on large clickable cards. */
-    a, button, [role="button"], input, select, textarea, label {
+    /* touch-action: manipulation eliminates the 300ms tap delay on all interactive elements */
+    a, button, [onclick], [role="button"], input, select, textarea, label {
         touch-action: manipulation;
     }
     /* Prevent FOUC: elements with Tailwind 'hidden' class must be invisible
@@ -199,112 +199,10 @@
 
     <!-- Login Page Styles -->
     <style>
-    /* Prevent layout shifts while allowing normal page scroll by default. */
-    html { overflow-y: auto; scrollbar-gutter: stable; }
-    body { scrollbar-gutter: stable; overflow-y: auto; }
+    /* Prevent layout shifts caused by scrollbar appearing/disappearing */
+    html { overflow-y: scroll; scrollbar-gutter: stable; }
+    body { scrollbar-gutter: stable; }
     body { min-height: 100vh; }
-
-    /* Scrollbar is allowed only on the home page (toggled from navigation.js). */
-    html.home-scroll { overflow-y: scroll !important; }
-    body.home-scroll { overflow-y: auto !important; }
-
-    /* Touch safety: when home is active, prevent stale interaction locks on dashboard. */
-    body.home-scroll #dashboard-view.pointer-events-none,
-    html.home-scroll #dashboard-view.pointer-events-none {
-        pointer-events: auto !important;
-    }
-    body.home-scroll #dashboard-view.select-none,
-    html.home-scroll #dashboard-view.select-none {
-        user-select: auto !important;
-    }
-
-    /* Never let hidden fullscreen layers intercept taps. */
-    #login-screen.hidden,
-    #results-screen.hidden,
-    #tree-bottom-sheet.hidden,
-    #admin-bottom-sheet.hidden,
-    #accounts-management-modal.hidden,
-    #delete-exam-modal.hidden,
-    #confirm-modal-overlay.hidden,
-    [id$="-modal"].hidden {
-        pointer-events: none !important;
-    }
-
-    /* Mobile: make homepage scrollbar clearly visible as a scroll affordance. */
-    @media (max-width: 768px) {
-        html.home-scroll,
-        body.home-scroll {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(37, 99, 235, 0.75) rgba(148, 163, 184, 0.22);
-        }
-
-        html.home-scroll::-webkit-scrollbar,
-        body.home-scroll::-webkit-scrollbar {
-            width: 7px;
-        }
-
-        html.home-scroll::-webkit-scrollbar-track,
-        body.home-scroll::-webkit-scrollbar-track {
-            background: rgba(148, 163, 184, 0.22);
-            border-radius: 999px;
-        }
-
-        html.home-scroll::-webkit-scrollbar-thumb,
-        body.home-scroll::-webkit-scrollbar-thumb {
-            background: linear-gradient(180deg, rgba(37, 99, 235, 0.95), rgba(30, 64, 175, 0.9));
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.55);
-        }
-
-        html.home-scroll::-webkit-scrollbar-thumb:hover,
-        body.home-scroll::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(180deg, rgba(59, 130, 246, 0.98), rgba(30, 64, 175, 0.95));
-        }
-    }
-
-        /* Hard guard: while accounts modal is open, never show home controls. */
-        body.accounts-modal-open #ios-bottom-nav,
-        body.accounts-modal-open #theme-toggle {
-            display: none !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-            opacity: 0 !important;
-        }
-
-        /* Disable interaction with main app layers while accounts/device modal is open. */
-        html.accounts-modal-open,
-        html.accounts-modal-open.lenis,
-        html.accounts-modal-open.lenis-smooth,
-        html.accounts-modal-open.home-scroll,
-        html.accounts-modal-open.home-scroll.lenis,
-        html.accounts-modal-open.home-scroll.lenis-smooth,
-        body.accounts-modal-open,
-        body.accounts-modal-open.home-scroll {
-            overflow: hidden !important;
-        }
-        body.accounts-modal-open #dashboard-view,
-        body.accounts-modal-open #quiz-container,
-        body.accounts-modal-open #login-screen,
-        body.accounts-modal-open #tree-bottom-sheet,
-        body.accounts-modal-open #admin-bottom-sheet {
-            pointer-events: none !important;
-            user-select: none !important;
-        }
-        body.accounts-modal-open #accounts-management-modal,
-        body.accounts-modal-open #accounts-management-modal * {
-            pointer-events: auto !important;
-        }
-
-        /* Keep scroll contained inside accounts modal content on mobile. */
-        #accounts-management-modal {
-            overscroll-behavior: contain;
-            touch-action: pan-y;
-        }
-        #accounts-management-list {
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
-        }
 
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
@@ -787,14 +685,9 @@
         /* Make Lenis class additions layout-stable */
         html.lenis, html.lenis-smooth {
             scrollbar-gutter: stable;
-            overflow-y: auto;
+            overflow-y: scroll !important;
             -webkit-font-smoothing: antialiased;
             -webkit-text-size-adjust: 100%;
-        }
-
-        html.home-scroll.lenis,
-        html.home-scroll.lenis-smooth {
-            overflow-y: scroll !important;
         }
 
         /* FINAL font-family — set at first paint, NEVER overridden.
@@ -872,7 +765,7 @@
                 <button onclick="openEditSelectionModal(); closeAdminSheet();" class="w-full p-4 bg-gradient-to-l from-blue-50 to-white border border-blue-100 text-blue-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
                     <span class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center ml-4"><i class="fas fa-pen"></i></span> تعديل المحتوى
                 </button>
-                <button onclick="closeAdminSheet(); openAccountsManagementModal();" class="w-full p-4 bg-gradient-to-l from-indigo-50 to-white border border-indigo-100 text-indigo-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
+                <button onclick="openAccountsManagementModal(); closeAdminSheet();" class="w-full p-4 bg-gradient-to-l from-indigo-50 to-white border border-indigo-100 text-indigo-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
                     <span class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center ml-4"><i class="fas fa-users"></i></span> إدارة الحسابات
                 </button>
                 <button onclick="logoutUser()" class="w-full p-4 bg-gradient-to-l from-red-50 to-white border border-red-100 text-red-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
@@ -1133,7 +1026,7 @@
                         // ensure bootstrap loader is present so queued calls will be flushed
                         if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
-                            s.src = '/js/bootstrap.min.js?v=51';
+                            s.src = '/js/bootstrap.min.js?v=49';
                             s.defer = true;
                             document.head.appendChild(s);
                         }
@@ -1404,7 +1297,7 @@
         </div>
     </div>
 
-    <div id="accounts-management-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[320] p-3 sm:p-6">
+    <div id="accounts-management-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] p-3 sm:p-6">
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl w-full h-full shadow-2xl border border-white/60 flex flex-col overflow-hidden">
             <div class="bg-gradient-to-r from-indigo-50 to-white p-5 sm:p-6 border-b border-indigo-100 flex justify-between items-center">
                 <div>
@@ -1416,6 +1309,9 @@
                 <button onclick="closeAccountsManagementModal()" aria-label="إغلاق إدارة الحسابات" class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-red-500 hover:bg-red-50 transition shadow-sm flex items-center justify-center text-xl">
                     <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
+            </div>
+            <div class="px-5 py-3 sm:px-6 text-xs sm:text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
+                ملاحظة: عنوان MAC لا يمكن قراءته من المتصفح مباشرة. إذا لم يكن متاحًا سيظهر "غير متاح من المتصفح".
             </div>
             <div id="accounts-management-list" class="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
         </div>
@@ -1434,9 +1330,22 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function lockBody() {
+            document.body.setAttribute('data-accounts-lock', '1');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function unlockBody() {
+            if (document.body.getAttribute('data-accounts-lock') === '1') {
+                document.body.removeAttribute('data-accounts-lock');
+                document.body.style.overflow = '';
+            }
+        }
+
         function cardHtml(item) {
             var isGuest = item.type === 'guest';
             var email = item.email ? esc(item.email) : (isGuest ? 'تسجيل تجريبي بدون حساب' : 'لا يوجد');
+            var mac = item.macAddress ? esc(item.macAddress) : 'غير متاح من المتصفح';
             var ip = item.ipAddress ? esc(item.ipAddress) : 'غير متاح';
             var devId = item.deviceId ? esc(item.deviceId) : '';
             var device = item.deviceName ? esc(item.deviceName) : 'غير معروف';
@@ -1460,6 +1369,7 @@
                     <p><span class="font-bold text-gray-600">البريد:</span> <span class="text-gray-800 break-all">${email}</span></p>
                     <p><span class="font-bold text-gray-600">IP:</span> <span class="text-gray-800">${ip}</span></p>
                     <p><span class="font-bold text-gray-600">Device ID:</span> <span class="text-gray-800 break-all">${devId || 'غير متاح'}</span></p>
+                    <p><span class="font-bold text-gray-600">MAC:</span> <span class="text-gray-800">${mac}</span></p>
                     <p><span class="font-bold text-gray-600">الجهاز:</span> <span class="text-gray-800">${device}</span></p>
                     <p><span class="font-bold text-gray-600">آخر ظهور:</span> <span class="text-gray-800">${esc(when)}</span></p>
                 </div>
@@ -1534,99 +1444,6 @@
             }
         };
 
-        var accountsModalBodyLock = {
-            active: false,
-            scrollY: 0,
-            prevBody: null,
-            prevRootOverflow: ''
-        };
-
-        function lockViewportForAccountsModal() {
-            if (accountsModalBodyLock.active) return;
-            var body = document.body;
-            var root = document.documentElement;
-            var y = window.scrollY || window.pageYOffset || 0;
-
-            accountsModalBodyLock.scrollY = y;
-            accountsModalBodyLock.prevBody = {
-                position: body.style.position || '',
-                top: body.style.top || '',
-                left: body.style.left || '',
-                right: body.style.right || '',
-                width: body.style.width || '',
-                overflow: body.style.overflow || ''
-            };
-            accountsModalBodyLock.prevRootOverflow = root.style.overflow || '';
-
-            body.style.position = 'fixed';
-            body.style.top = '-' + y + 'px';
-            body.style.left = '0';
-            body.style.right = '0';
-            body.style.width = '100%';
-            body.style.overflow = 'hidden';
-            root.style.overflow = 'hidden';
-
-            accountsModalBodyLock.active = true;
-        }
-
-        function unlockViewportForAccountsModal() {
-            if (!accountsModalBodyLock.active) return;
-            var body = document.body;
-            var root = document.documentElement;
-            var prev = accountsModalBodyLock.prevBody || {};
-
-            body.style.position = prev.position || '';
-            body.style.top = prev.top || '';
-            body.style.left = prev.left || '';
-            body.style.right = prev.right || '';
-            body.style.width = prev.width || '';
-            body.style.overflow = prev.overflow || '';
-            root.style.overflow = accountsModalBodyLock.prevRootOverflow || '';
-
-            window.scrollTo(0, accountsModalBodyLock.scrollY || 0);
-            accountsModalBodyLock.active = false;
-        }
-
-        function isAccountsModalScrollTarget(target) {
-            var modal = document.getElementById('accounts-management-modal');
-            var scroller = document.getElementById('accounts-management-list');
-            if (!modal || !scroller || !target) return false;
-            if (!modal.contains(target)) return false;
-            return scroller.contains(target);
-        }
-
-        document.addEventListener('touchmove', function(e){
-            if (!document.body.classList.contains('accounts-modal-open')) return;
-            if (!isAccountsModalScrollTarget(e.target)) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        document.addEventListener('wheel', function(e){
-            if (!document.body.classList.contains('accounts-modal-open')) return;
-            if (!isAccountsModalScrollTarget(e.target)) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        function syncAccountsModalLockState() {
-            var modal = document.getElementById('accounts-management-modal');
-            var open = !!(modal && !modal.classList.contains('hidden'));
-            document.body.classList.toggle('accounts-modal-open', open);
-            document.documentElement.classList.toggle('accounts-modal-open', open);
-            if (open) lockViewportForAccountsModal();
-            else unlockViewportForAccountsModal();
-        }
-
-        var accountsModalEl = document.getElementById('accounts-management-modal');
-        if (accountsModalEl && typeof MutationObserver !== 'undefined') {
-            var accountsModalObserver = new MutationObserver(function(){
-                syncAccountsModalLockState();
-            });
-            accountsModalObserver.observe(accountsModalEl, { attributes: true, attributeFilter: ['class'] });
-            syncAccountsModalLockState();
-        }
-
         window.openAccountsManagementModal = async function(){
             var modal = document.getElementById('accounts-management-modal');
             var list = document.getElementById('accounts-management-list');
@@ -1637,10 +1454,7 @@
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(false);
 
             modal.classList.remove('hidden');
-            syncAccountsModalLockState();
-            if (typeof window._syncMainInteractionState === 'function') {
-                window._syncMainInteractionState();
-            }
+            lockBody();
             list.innerHTML = '<div class="col-span-full text-center text-gray-400 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل الحسابات...</p></div>';
 
             try {
@@ -1665,13 +1479,11 @@
 
         window.closeAccountsManagementModal = function(){
             var modal = document.getElementById('accounts-management-modal');
+            var dock = document.getElementById('ios-bottom-nav');
             if (modal) modal.classList.add('hidden');
-            syncAccountsModalLockState();
-            if (typeof window._syncMainInteractionState === 'function') {
-                window._syncMainInteractionState();
-            } else if (typeof window._showThemeToggle === 'function') {
-                window._showThemeToggle(true);
-            }
+            unlockBody();
+            if (dock) dock.classList.remove('hidden');
+            if (typeof window._showThemeToggle === 'function') window._showThemeToggle(true);
         };
 
         window.addEventListener('load', function(){
@@ -1694,116 +1506,6 @@
             };
             window.startGuestLogin.__auditWrapped = true;
         });
-    })();
-    </script>
-
-    <script>
-    (function(){
-        function isHiddenByClass(el) {
-            return !el || el.classList.contains('hidden');
-        }
-
-        function overlayIsOpen() {
-            var ids = [
-                'create-section-modal', 'add-note-modal', 'edit-selection-modal',
-                'grades-modal', 'stats-modal', 'admin-auth-modal',
-                'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
-                'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
-                'accounts-management-modal'
-            ];
-
-            for (var i = 0; i < ids.length; i++) {
-                var el = document.getElementById(ids[i]);
-                if (el && !isHiddenByClass(el)) return true;
-            }
-
-            var treeContent = document.getElementById('tree-content');
-            var adminContent = document.getElementById('admin-content');
-            if ((treeContent && treeContent.classList.contains('active')) ||
-                (adminContent && adminContent.classList.contains('active'))) {
-                return true;
-            }
-
-            var guestModal = document.getElementById('guest-modal');
-            if (guestModal && guestModal.style.display && guestModal.style.display !== 'none') {
-                return true;
-            }
-
-            if (document.body.classList.contains('accounts-modal-open') ||
-                document.documentElement.classList.contains('accounts-modal-open')) {
-                return true;
-            }
-
-            return false;
-        }
-
-        function forceHomeScrollIfSafe() {
-            var root = document.documentElement;
-            var body = document.body;
-            var dashboard = document.getElementById('dashboard-view');
-            var quiz = document.getElementById('quiz-container');
-            var login = document.getElementById('login-screen');
-
-            if (!dashboard || !quiz || !body || !root) return;
-
-            var onHome = !dashboard.classList.contains('hidden') &&
-                         quiz.classList.contains('hidden') &&
-                         (!login || login.classList.contains('hidden'));
-
-            if (!onHome || overlayIsOpen()) return;
-
-            if (dashboard) {
-                dashboard.classList.remove('pointer-events-none');
-                dashboard.classList.remove('select-none');
-            }
-
-            // Force-unlock stale states that can remain on some Android sessions.
-            body.classList.add('home-scroll');
-            root.classList.add('home-scroll');
-            body.classList.remove('accounts-modal-open');
-            root.classList.remove('accounts-modal-open');
-            body.removeAttribute('data-scroll-lock');
-            root.removeAttribute('data-scroll-lock');
-            body.removeAttribute('data-orig-overflow');
-            root.removeAttribute('data-orig-overflow');
-
-            if (body.style.overflow === 'hidden') body.style.overflow = '';
-            if (root.style.overflow === 'hidden') root.style.overflow = '';
-
-            if (body.style.position === 'fixed') {
-                body.style.position = '';
-                body.style.top = '';
-                body.style.left = '';
-                body.style.right = '';
-                body.style.width = '';
-            }
-
-            try {
-                if (window.__lenis && typeof window.__lenis.start === 'function') {
-                    window.__lenis.start();
-                }
-            } catch (e) {}
-        }
-
-        function scheduleHomeScrollFix() {
-            requestAnimationFrame(forceHomeScrollIfSafe);
-            setTimeout(forceHomeScrollIfSafe, 80);
-            setTimeout(forceHomeScrollIfSafe, 320);
-        }
-
-        document.addEventListener('DOMContentLoaded', scheduleHomeScrollFix);
-        window.addEventListener('load', scheduleHomeScrollFix);
-        window.addEventListener('pageshow', scheduleHomeScrollFix);
-        window.addEventListener('hashchange', scheduleHomeScrollFix);
-
-        // React to DOM/class updates from lazy bundles and modal open/close actions.
-        if (typeof MutationObserver !== 'undefined') {
-            var mo = new MutationObserver(scheduleHomeScrollFix);
-            mo.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
-        }
-
-        // Final safety net for stale mobile sessions.
-        setInterval(forceHomeScrollIfSafe, 1200);
     })();
     </script>
 
@@ -1859,7 +1561,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=51" defer></script>
+    <script src="/js/bootstrap.min.js?v=49" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
