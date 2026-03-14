@@ -142,12 +142,57 @@ function sanitizeText(value, maxLen = 255) {
 }
 
 let accountSessionsColumnsCache = null;
+let blockedDevicesColumnsCache = null;
 
 async function getAccountSessionsColumns() {
     if (accountSessionsColumnsCache) return accountSessionsColumnsCache;
     const [rows] = await sequelize.query(`SHOW COLUMNS FROM account_sessions`);
     accountSessionsColumnsCache = new Set((rows || []).map((r) => r.Field));
     return accountSessionsColumnsCache;
+}
+
+async function getBlockedDevicesColumns() {
+    if (blockedDevicesColumnsCache) return blockedDevicesColumnsCache;
+    const [rows] = await sequelize.query(`SHOW COLUMNS FROM blocked_devices`);
+    blockedDevicesColumnsCache = new Set((rows || []).map((r) => r.Field));
+    return blockedDevicesColumnsCache;
+}
+
+async function findActiveBlock({ email = '', deviceId = '', ipAddress = '' }) {
+    const normalizedEmail = sanitizeText(email, 255).toLowerCase();
+    const normalizedDeviceId = sanitizeText(deviceId, 120);
+    const normalizedIp = sanitizeText(ipAddress, 64);
+
+    const cols = await getBlockedDevicesColumns();
+    const whereParts = [];
+    const replacements = [];
+
+    if (cols.has('email') && normalizedEmail) {
+        whereParts.push(`email = ?`);
+        replacements.push(normalizedEmail);
+    }
+    if (cols.has('deviceId') && normalizedDeviceId) {
+        whereParts.push(`deviceId = ?`);
+        replacements.push(normalizedDeviceId);
+    }
+    if (cols.has('ipAddress') && normalizedIp) {
+        whereParts.push(`ipAddress = ?`);
+        replacements.push(normalizedIp);
+    }
+
+    if (whereParts.length === 0) return null;
+
+    const [rows] = await sequelize.query(
+        `SELECT id, reason, email, deviceId, ipAddress
+         FROM blocked_devices
+         WHERE isActive = 1
+           AND (${whereParts.join(' OR ')})
+         ORDER BY id DESC
+         LIMIT 1`,
+        { replacements }
+    );
+
+    return rows && rows.length > 0 ? rows[0] : null;
 }
 
 async function recordAccountSession({ userId = null, email = '', deviceId = '', loginType = 'google', ipAddress = '', deviceName = '', userAgent = '' }) {
@@ -268,6 +313,24 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         const ipAddress = getClientIp(req);
         const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
         const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
+
+        const blockedEntry = await findActiveBlock({
+            email: googleData.email,
+            deviceId,
+            ipAddress
+        });
+        if (blockedEntry) {
+            logger.warn('🚫 محاولة دخول بحساب/جهاز/آيبي محظور', {
+                email: sanitizeText(googleData.email, 255).toLowerCase(),
+                deviceId,
+                ipAddress,
+                blockId: blockedEntry.id
+            });
+            return res.status(403).json({
+                error: 'تم حظر هذا الحساب أو الجهاز من الدخول إلى المنصة.',
+                reason: blockedEntry.reason || 'سبب غير محدد'
+            });
+        }
 
         // البحث عن المستخدم بالإيميل
         let user = await User.findOne({ where: { email: googleData.email } });
@@ -397,6 +460,14 @@ router.post('/guest-session', async (req, res) => {
         const ipAddress = getClientIp(req);
         const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
         const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
+
+        const blockedEntry = await findActiveBlock({ deviceId, ipAddress });
+        if (blockedEntry) {
+            return res.status(403).json({
+                error: 'تم حظر هذا الجهاز من الدخول إلى المنصة.',
+                reason: blockedEntry.reason || 'سبب غير محدد'
+            });
+        }
 
         await recordAccountSession({
             userId: null,
@@ -596,31 +667,55 @@ router.delete('/accounts/:id', authenticate, requireAdmin, async (req, res) => {
 
 router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
     try {
+        const email = sanitizeText(req.body?.email, 255).toLowerCase();
         const deviceId = sanitizeText(req.body?.deviceId, 120);
         const ipAddress = sanitizeText(req.body?.ipAddress, 64);
         const deviceName = sanitizeText(req.body?.deviceName, 120);
         const reason = sanitizeText(req.body?.reason, 255) || 'تم الحظر بواسطة الإدارة';
 
-        if (!deviceId && !ipAddress) {
-            return res.status(400).json({ error: 'يجب توفير deviceId أو ipAddress للحظر.' });
+        if (!email && !deviceId && !ipAddress) {
+            return res.status(400).json({ error: 'يجب توفير email أو deviceId أو ipAddress للحظر.' });
+        }
+
+        const cols = await getBlockedDevicesColumns();
+        const insertCols = [];
+        const placeholders = [];
+        const replacements = [];
+
+        const pushVal = (colName, value) => {
+            if (!cols.has(colName)) return;
+            insertCols.push(colName);
+            placeholders.push('?');
+            replacements.push(value);
+        };
+
+        pushVal('email', email || null);
+        pushVal('deviceId', deviceId || null);
+        pushVal('ipAddress', ipAddress || null);
+        pushVal('deviceName', deviceName || null);
+        pushVal('reason', reason);
+        pushVal('blockedBy', req.user.email || 'admin');
+        pushVal('isActive', 1);
+
+        if (cols.has('createdAt')) {
+            insertCols.push('createdAt');
+            placeholders.push('NOW()');
+        }
+        if (cols.has('updatedAt')) {
+            insertCols.push('updatedAt');
+            placeholders.push('NOW()');
         }
 
         await sequelize.query(
             `INSERT INTO blocked_devices
-                (deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+                (${insertCols.join(', ')})
+             VALUES (${placeholders.join(', ')})`,
             {
-                replacements: [
-                    deviceId || null,
-                    ipAddress || null,
-                    deviceName || null,
-                    reason,
-                    req.user.email || 'admin'
-                ]
+                replacements
             }
         );
 
-        logger.warn(`⛔ Device blocked by ${req.user.email}: deviceId=${deviceId || '-'} ip=${ipAddress || '-'}`);
+        logger.warn(`⛔ Access blocked by ${req.user.email}: email=${email || '-'} deviceId=${deviceId || '-'} ip=${ipAddress || '-'}`);
         return res.status(201).json({ ok: true, message: 'تم حظر الجهاز بنجاح.' });
     } catch (error) {
         logger.error('خطأ في حظر الجهاز:', { error: error.message });
@@ -630,8 +725,10 @@ router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => 
 
 router.get('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
     try {
+        const cols = await getBlockedDevicesColumns();
+        const emailSelect = cols.has('email') ? 'email' : "'' AS email";
         const [rows] = await sequelize.query(
-            `SELECT id, deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt
+            `SELECT id, ${emailSelect}, deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt
              FROM blocked_devices
              WHERE isActive = 1
              ORDER BY id DESC`

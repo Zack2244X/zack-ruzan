@@ -157,7 +157,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
-app.use('/api', async (req, res, next) => {
+app.use(async (req, res, next) => {
     try {
         const deviceId = String(req.get('x-device-id') || req.body?.deviceId || req.query?.deviceId || '').trim().substring(0, 120);
         const forwarded = req.headers['x-forwarded-for'];
@@ -175,10 +175,39 @@ app.use('/api', async (req, res, next) => {
         );
 
         if (rows && rows.length > 0) {
-            return res.status(403).json({
-                error: 'تم حظر هذا الجهاز من الدخول إلى المنصة.',
-                reason: rows[0].reason || 'سبب غير محدد'
-            });
+                        const reason = rows[0].reason || 'سبب غير محدد';
+                        if (req.path.startsWith('/api/')) {
+                                return res.status(403).json({
+                                        error: 'تم حظر هذا الجهاز من الدخول إلى المنصة.',
+                                        reason
+                                });
+                        }
+
+                        return res.status(403).send(`<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تم حظر الوصول</title>
+    <style>
+        body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: #f8fafc; color: #111827; }
+        .wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+        .card { max-width: 560px; width: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+        h1 { margin: 0 0 10px; font-size: 1.3rem; }
+        p { margin: 0 0 8px; line-height: 1.7; }
+        .meta { color: #4b5563; }
+    </style>
+</head>
+<body>
+    <main class="wrap">
+        <section class="card">
+            <h1>تم حظر هذا الجهاز من الوصول للمنصة</h1>
+            <p class="meta">السبب: ${String(reason).replace(/[<>]/g, '')}</p>
+            <p>إذا كان هذا الحظر بالخطأ، تواصل مع إدارة المنصة.</p>
+        </section>
+    </main>
+</body>
+</html>`);
         }
     } catch (err) {
         logger.warn('⚠️ Device block check failed, allowing request:', { error: err.message });
@@ -469,6 +498,7 @@ async function runSafeMigrations() {
         `CREATE INDEX IF NOT EXISTS \`idx_account_sessions_device\` ON \`account_sessions\` (\`deviceId\`)`,
         `CREATE TABLE IF NOT EXISTS \`blocked_devices\` (
             \`id\` BIGINT NOT NULL AUTO_INCREMENT,
+            \`email\` VARCHAR(255) NULL,
             \`deviceId\` VARCHAR(120) NULL,
             \`ipAddress\` VARCHAR(64) NULL,
             \`deviceName\` VARCHAR(120) NULL,
@@ -478,10 +508,13 @@ async function runSafeMigrations() {
             \`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             \`updatedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (\`id\`),
+            INDEX \`idx_blocked_devices_email\` (\`email\`),
             INDEX \`idx_blocked_devices_device\` (\`deviceId\`),
             INDEX \`idx_blocked_devices_ip\` (\`ipAddress\`),
             INDEX \`idx_blocked_devices_active\` (\`isActive\`)
         )`,
+        `ALTER TABLE \`blocked_devices\` ADD COLUMN IF NOT EXISTS \`email\` VARCHAR(255) NULL`,
+        `CREATE INDEX IF NOT EXISTS \`idx_blocked_devices_email\` ON \`blocked_devices\` (\`email\`)`,
         // index for leaderboard query: WHERE deletedAt IS NULL GROUP BY userId
         `CREATE INDEX IF NOT EXISTS \`idx_scores_user_deleted\` ON \`scores\` (\`userId\`, \`deletedAt\`)`,
     ];
