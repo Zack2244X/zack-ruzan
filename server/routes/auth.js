@@ -278,6 +278,64 @@ async function recordAccountSession({ userId = null, email = '', deviceId = '', 
     }
 }
 
+async function touchAccountSessionIfNeeded(req, user, loginType = 'activity') {
+    try {
+        if (!user || !user.id) return;
+
+        const cols = await getAccountSessionsColumns();
+        if (!cols.has('userId')) return;
+
+        const userAgent = req.get('user-agent') || '';
+        const deviceId = sanitizeText(req.get('x-device-id') || req.body?.deviceId || req.query?.deviceId, 120);
+        const ipAddress = getClientIp(req);
+        const email = sanitizeText(user.email || '', 255).toLowerCase();
+
+        const uniqueClauses = ['userId = ?'];
+        const replacements = [user.id];
+
+        if (cols.has('deviceId') && deviceId) {
+            uniqueClauses.push('deviceId = ?');
+            replacements.push(deviceId);
+        }
+        if (cols.has('ipAddress') && ipAddress) {
+            uniqueClauses.push('ipAddress = ?');
+            replacements.push(ipAddress);
+        }
+        if (cols.has('email') && email) {
+            uniqueClauses.push('email = ?');
+            replacements.push(email);
+        }
+
+        const [rows] = await sequelize.query(
+            `SELECT id, ${cols.has('createdAt') ? 'createdAt' : 'NULL AS createdAt'}
+             FROM account_sessions
+             WHERE ${uniqueClauses.join(' AND ')}
+             ORDER BY ${cols.has('createdAt') ? 'createdAt DESC, id DESC' : 'id DESC'}
+             LIMIT 1`,
+            { replacements }
+        );
+
+        if (rows && rows.length > 0 && rows[0].createdAt) {
+            const lastAt = new Date(rows[0].createdAt).getTime();
+            if (Number.isFinite(lastAt) && Date.now() - lastAt < 6 * 60 * 60 * 1000) {
+                return;
+            }
+        }
+
+        await recordAccountSession({
+            userId: user.id,
+            email,
+            deviceId,
+            loginType,
+            ipAddress,
+            deviceName: inferDeviceName(userAgent),
+            userAgent
+        });
+    } catch (err) {
+        logger.warn('⚠️ تعذر تحديث account session من /me:', { error: err.message });
+    }
+}
+
 // ============================================
 //   دالة مساعدة: التحقق من توكن Google
 // ============================================
@@ -560,6 +618,7 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             const hasEmailCol = sessionColumns.has('email');
             const hasDeviceIdCol = sessionColumns.has('deviceId');
             const hasDeviceNameCol = sessionColumns.has('deviceName');
+            const hasUserAgentCol = sessionColumns.has('userAgent');
             const hasIpCol = sessionColumns.has('ipAddress');
             const hasLoginTypeCol = sessionColumns.has('loginType');
             const hasCreatedAtCol = sessionColumns.has('createdAt');
@@ -574,6 +633,7 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                     hasIpCol ? 'ipAddress' : "'' AS ipAddress",
                     hasDeviceIdCol ? 'deviceId' : "'' AS deviceId",
                     hasDeviceNameCol ? 'deviceName' : "'' AS deviceName",
+                    hasUserAgentCol ? 'userAgent' : "'' AS userAgent",
                     hasLoginTypeCol ? 'loginType' : "'google' AS loginType",
                     hasCreatedAtCol ? 'createdAt AS lastSeenAt' : 'NULL AS lastSeenAt'
                 ].join(',\n                            ');
@@ -595,7 +655,7 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                     ...base,
                     ipAddress: base?.ipAddress || candidate?.ipAddress || '',
                     deviceId: base?.deviceId || candidate?.deviceId || '',
-                    deviceName: base?.deviceName || candidate?.deviceName || '',
+                    deviceName: base?.deviceName || candidate?.deviceName || inferDeviceName(base?.userAgent || candidate?.userAgent || ''),
                     loginType: base?.loginType || candidate?.loginType || 'google',
                     lastSeenAt: base?.lastSeenAt || candidate?.lastSeenAt || null
                 });
@@ -630,7 +690,7 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                         ...u,
                         ipAddress: s?.ipAddress || '',
                         deviceId: s?.deviceId || '',
-                        deviceName: s?.deviceName || '',
+                        deviceName: s?.deviceName || inferDeviceName(s?.userAgent || ''),
                         loginType: s?.loginType || 'google',
                         lastSeenAt: s?.lastSeenAt || null
                     };
@@ -1003,7 +1063,9 @@ router.put('/complete-profile', authenticate, validateCompleteProfile, async (re
  * @param {import('express').Response} res - Express response.
  * @returns {void}
  */
-router.get('/me', authenticate, (req, res) => {
+router.get('/me', authenticate, async (req, res) => {
+    await touchAccountSessionIfNeeded(req, req.user, 'activity');
+
     const userData = {
         id: req.user.id,
         fname: req.user.fname,
