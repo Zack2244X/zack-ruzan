@@ -11,11 +11,6 @@
                 }
                 if (theme === 'dark') document.documentElement.classList.add('dark');
             } catch (e) {}
-            
-            // Ensure login card is hidden on initial load (lamp starts off)
-            var style = document.createElement('style');
-            style.textContent = '#login-card { opacity: 0; transform: scale(0.86) translateY(30px); filter: blur(8px); pointer-events: none; contain: layout size; height: 580px; }';
-            document.head.appendChild(style);
         })();
         </script>
     <meta charset="UTF-8">
@@ -373,7 +368,7 @@
       text-align: center;
       backdrop-filter: blur(20px);
       box-shadow: 0 0 80px rgba(0, 0, 0, 0.5);
-      transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), filter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .login-card::before {
       content: '';
@@ -383,25 +378,25 @@
       pointer-events: none;
     }
     .login-card.off {
-      animation: cardExit 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      opacity: 0;
+      transform: scale(0.86) translateY(30px);
+      filter: blur(8px);
+      box-shadow: none;
       pointer-events: none;
-    }
-    @keyframes cardExit {
-      0% {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-        filter: blur(0);
-      }
-      50% {
-        opacity: 0.5;
-        filter: blur(4px);
-      }
-      100% {
-        opacity: 0;
-        transform: scale(0.86) translateY(30px);
-        filter: blur(8px);
-        contain: layout size;
-      }
+      /* contain:layout+size: children cannot affect this element's dimensions.
+         height:580px is the declared intrinsic size. Any font swap, icon load,
+         or text reflow inside the card is fully contained — the parent flex row
+         stays stable → .login-scene doesn't shift → CLS 0.
+         CRITICAL DIFFERENCE from content-visibility:hidden:
+           content-visibility:hidden skips ALL rendering (removes element from
+           LCP candidate pool entirely) → Chrome picks bg.webp as LCP instead
+           of the preloaded logo → LCP 7s even though logo is only 7KB.
+           contain:layout+size keeps the element rendered but size-contained.
+           With opacity:0 (not visibility:hidden), Chrome DOES measure the logo
+           as an LCP candidate → the fetchpriority="high" preload benefits LCP
+           → logo loads in ~100ms → LCP drops to ~100-300ms on warm cache. */
+      contain: layout size;
+      height: 580px;
     }
     .login-card.appear {
       animation: cardAppear 0.85s cubic-bezier(0.34,1.52,0.64,1) forwards;
@@ -935,20 +930,6 @@
                 <button id="btn-save-final" onclick="saveBuiltQuiz()" class="hidden px-8 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition flex items-center">
                     <i class="fas fa-save ml-2"></i> حفظ الامتحان في السجل
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- صفحة التحميل أثناء معالجة Google Login -->
-    <div id="loading-screen" class="hidden fixed inset-0 z-[120] flex items-center justify-center bg-gradient-to-br from-amber-900 to-gray-900">
-        <div class="flex flex-col items-center gap-6 animate-fadeIn">
-            <div class="relative">
-                <div class="w-16 h-16 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-                <div class="absolute inset-2 flex items-center justify-center text-2xl">💫</div>
-            </div>
-            <div class="text-center">
-                <h2 class="text-xl font-bold text-amber-100 mb-2">جاري تحميل المنصة</h2>
-                <p class="text-sm text-amber-300">يرجى الانتظار قليلاً...</p>
             </div>
         </div>
     </div>
