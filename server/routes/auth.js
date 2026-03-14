@@ -913,6 +913,38 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
     }
 });
 
+router.delete('/account-sessions/:id', authenticate, requireAdmin, async (req, res) => {
+    try {
+        const sessionId = Number(req.params.id);
+        if (!Number.isInteger(sessionId) || sessionId <= 0) {
+            return res.status(400).json({ error: 'معرّف الزيارة غير صالح.' });
+        }
+
+        const cols = await getAccountSessionsColumns();
+        const extraFilter = cols.has('loginType')
+            ? `AND loginType = 'guest'`
+            : (cols.has('userId') ? `AND userId IS NULL` : '');
+
+        const [deleteResult] = await sequelize.query(
+            `DELETE FROM account_sessions
+             WHERE id = ?
+             ${extraFilter}`,
+            { replacements: [sessionId] }
+        );
+
+        const affected = Number(deleteResult?.affectedRows || 0);
+        if (affected === 0) {
+            return res.status(404).json({ error: 'الزيارة غير موجودة أو لا يمكن حذفها.' });
+        }
+
+        logger.info(`🗑️ تم حذف زيارة ضيف بواسطة الأدمن ${req.user.email} (sessionId=${sessionId})`);
+        return res.json({ ok: true, message: 'تم حذف الزيارة بنجاح.' });
+    } catch (error) {
+        logger.error('خطأ في حذف الزيارة:', { error: error.message });
+        return res.status(500).json({ error: 'تعذر حذف الزيارة.' });
+    }
+});
+
 router.delete('/accounts/:id', authenticate, requireAdmin, async (req, res) => {
     try {
         const targetId = Number(req.params.id);

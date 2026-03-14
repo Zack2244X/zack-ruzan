@@ -1452,6 +1452,15 @@
                 actions.appendChild(delBtn);
             }
 
+            if (isGuest) {
+                var delVisitBtn = document.createElement('button');
+                delVisitBtn.type = 'button';
+                delVisitBtn.className = 'js-delete-visit px-3 py-2 text-xs font-bold rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition';
+                delVisitBtn.dataset.visitId = String(Number(item.id) || 0);
+                delVisitBtn.textContent = 'حذف الزيارة';
+                actions.appendChild(delVisitBtn);
+            }
+
             card.appendChild(actions);
             return card;
         }
@@ -1647,6 +1656,16 @@
             }
         };
 
+        window.deleteVisitById = async function(visitId) {
+            if (!confirm('هل تريد حذف هذه الزيارة؟')) return;
+            try {
+                await adminJsonRequest('DELETE', '/api/auth/account-sessions/' + visitId);
+                await loadCurrentAccountsManagementView();
+            } catch (err) {
+                alert('تعذر حذف الزيارة: ' + (err.message || 'خطأ غير متوقع'));
+            }
+        };
+
         async function loadAccountsView() {
             var query = new URLSearchParams({
                 page: String(accountMgmtState.page),
@@ -1770,6 +1789,13 @@
                     blockBtn.getAttribute('data-device-name') || '',
                     blockBtn.getAttribute('data-email') || ''
                 );
+                return;
+            }
+
+            var delVisitBtn = evt.target && evt.target.closest ? evt.target.closest('.js-delete-visit') : null;
+            if (delVisitBtn) {
+                var visitId = Number(delVisitBtn.getAttribute('data-visit-id') || 0);
+                if (visitId > 0) window.deleteVisitById(visitId);
                 return;
             }
 
