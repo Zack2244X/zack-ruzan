@@ -153,6 +153,8 @@ export async function handleGoogleAdminResponse(response) {
         if (data.user.role === 'admin') {
             state.isAdmin = true;
             loadingEl.classList.add('hidden');
+            // Load core CSS immediately before showing admin panel
+            if (window.__loadCoreCss) window.__loadCoreCss();
             closeAdminAuth();
             openAdminAuthOrPanel();
         } else {
@@ -250,6 +252,9 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         if (data.user.role === 'admin') { state.isAdmin = true; }
         loadingEl.classList.add('hidden');
         console.log(`[auth] ✓ تسجيل دخول ناجح — ${state.currentUser.fullName} (${state.isAdmin ? 'أدمن' : 'طالب'})`);
+
+        // Load core CSS immediately before showing dashboard
+        if (window.__loadCoreCss) window.__loadCoreCss();
 
         const safeName = (state.currentUser.fname || state.currentUser.fullName || state.currentUser.email || 'صديقنا').trim();
         const greetings = [
