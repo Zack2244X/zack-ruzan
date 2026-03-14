@@ -204,6 +204,15 @@
     body { scrollbar-gutter: stable; }
     body { min-height: 100vh; }
 
+        /* Keep home controls hidden while accounts management modal is open. */
+        body.accounts-management-open #ios-bottom-nav,
+        body.accounts-management-open #theme-toggle {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+        }
+
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
       --gold: #c9962a;
@@ -1311,7 +1320,7 @@
                 </button>
             </div>
             <div class="px-5 py-3 sm:px-6 text-xs sm:text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
-                ملاحظة: عنوان MAC لا يمكن قراءته من المتصفح مباشرة. إذا لم يكن متاحًا سيظهر "غير متاح من المتصفح".
+                ملاحظة: قد لا تتوفر كل بيانات الجهاز حسب صلاحيات المتصفح وسياسات الخصوصية.
             </div>
             <div id="accounts-management-list" class="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
         </div>
@@ -1345,7 +1354,6 @@
         function cardHtml(item) {
             var isGuest = item.type === 'guest';
             var email = item.email ? esc(item.email) : (isGuest ? 'تسجيل تجريبي بدون حساب' : 'لا يوجد');
-            var mac = item.macAddress ? esc(item.macAddress) : 'غير متاح من المتصفح';
             var ip = item.ipAddress ? esc(item.ipAddress) : 'غير متاح';
             var devId = item.deviceId ? esc(item.deviceId) : '';
             var device = item.deviceName ? esc(item.deviceName) : 'غير معروف';
@@ -1369,7 +1377,6 @@
                     <p><span class="font-bold text-gray-600">البريد:</span> <span class="text-gray-800 break-all">${email}</span></p>
                     <p><span class="font-bold text-gray-600">IP:</span> <span class="text-gray-800">${ip}</span></p>
                     <p><span class="font-bold text-gray-600">Device ID:</span> <span class="text-gray-800 break-all">${devId || 'غير متاح'}</span></p>
-                    <p><span class="font-bold text-gray-600">MAC:</span> <span class="text-gray-800">${mac}</span></p>
                     <p><span class="font-bold text-gray-600">الجهاز:</span> <span class="text-gray-800">${device}</span></p>
                     <p><span class="font-bold text-gray-600">آخر ظهور:</span> <span class="text-gray-800">${esc(when)}</span></p>
                 </div>
@@ -1450,6 +1457,7 @@
             var dock = document.getElementById('ios-bottom-nav');
             if (!modal || !list) return;
 
+            document.body.classList.add('accounts-management-open');
             if (dock) dock.classList.add('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(false);
 
@@ -1482,6 +1490,7 @@
             var dock = document.getElementById('ios-bottom-nav');
             if (modal) modal.classList.add('hidden');
             unlockBody();
+            document.body.classList.remove('accounts-management-open');
             if (dock) dock.classList.remove('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(true);
         };

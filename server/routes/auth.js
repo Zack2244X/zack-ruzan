@@ -141,12 +141,12 @@ function sanitizeText(value, maxLen = 255) {
     return String(value).trim().substring(0, maxLen);
 }
 
-async function recordAccountSession({ userId = null, email = '', deviceId = '', loginType = 'google', ipAddress = '', macAddress = '', deviceName = '', userAgent = '' }) {
+async function recordAccountSession({ userId = null, email = '', deviceId = '', loginType = 'google', ipAddress = '', deviceName = '', userAgent = '' }) {
     try {
         await sequelize.query(
             `INSERT INTO account_sessions
-                (userId, email, deviceId, loginType, ipAddress, macAddress, deviceName, userAgent, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                (userId, email, deviceId, loginType, ipAddress, deviceName, userAgent, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
             {
                 replacements: [
                     userId,
@@ -154,7 +154,6 @@ async function recordAccountSession({ userId = null, email = '', deviceId = '', 
                     sanitizeText(deviceId, 120),
                     sanitizeText(loginType, 30),
                     sanitizeText(ipAddress, 64),
-                    sanitizeText(macAddress, 64),
                     sanitizeText(deviceName, 120),
                     sanitizeText(userAgent, 500)
                 ]
@@ -236,7 +235,6 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         const ipAddress = getClientIp(req);
         const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
         const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
-        const macAddress = sanitizeText(req.body?.macAddress || req.get('x-device-mac'), 64);
 
         // البحث عن المستخدم بالإيميل
         let user = await User.findOne({ where: { email: googleData.email } });
@@ -267,7 +265,6 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
                 deviceId,
                 loginType: 'google',
                 ipAddress,
-                macAddress,
                 deviceName,
                 userAgent
             });
@@ -315,7 +312,6 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             deviceId,
             loginType: 'google',
             ipAddress,
-            macAddress,
             deviceName,
             userAgent
         });
@@ -368,7 +364,6 @@ router.post('/guest-session', async (req, res) => {
         const ipAddress = getClientIp(req);
         const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
         const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
-        const macAddress = sanitizeText(req.body?.macAddress || req.get('x-device-mac'), 64);
 
         await recordAccountSession({
             userId: null,
@@ -376,7 +371,6 @@ router.post('/guest-session', async (req, res) => {
             deviceId,
             loginType: 'guest',
             ipAddress,
-            macAddress,
             deviceName,
             userAgent
         });
@@ -404,7 +398,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             ...u,
             ipAddress: '',
             deviceId: '',
-            macAddress: '',
             deviceName: '',
             loginType: 'google',
             lastSeenAt: null
@@ -421,7 +414,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
 
             const hasEmailCol = sessionColumns.has('email');
             const hasDeviceIdCol = sessionColumns.has('deviceId');
-            const hasMacCol = sessionColumns.has('macAddress');
             const hasDeviceNameCol = sessionColumns.has('deviceName');
             const hasIpCol = sessionColumns.has('ipAddress');
             const hasLoginTypeCol = sessionColumns.has('loginType');
@@ -442,7 +434,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                         u.createdAt,
                         s.ipAddress,
                         ${hasDeviceIdCol ? 's.deviceId' : "'' AS deviceId"},
-                        ${hasMacCol ? 's.macAddress' : "'' AS macAddress"},
                         ${hasDeviceNameCol ? 's.deviceName' : "'' AS deviceName"},
                         s.loginType,
                         s.createdAt AS lastSeenAt
@@ -466,7 +457,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                         id,
                         ipAddress,
                         ${hasDeviceIdCol ? 'deviceId' : "'' AS deviceId"},
-                        ${hasMacCol ? 'macAddress' : "'' AS macAddress"},
                         ${hasDeviceNameCol ? 'deviceName' : "'' AS deviceName"},
                         createdAt AS lastSeenAt
                      FROM account_sessions
@@ -491,7 +481,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                 role: a.role,
                 ipAddress: a.ipAddress || '',
                 deviceId: a.deviceId || '',
-                macAddress: a.macAddress || '',
                 deviceName: a.deviceName || '',
                 loginType: a.loginType || 'google',
                 createdAt: a.createdAt,
@@ -505,7 +494,6 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                 role: 'guest',
                 ipAddress: g.ipAddress || '',
                 deviceId: g.deviceId || '',
-                macAddress: g.macAddress || '',
                 deviceName: g.deviceName || '',
                 loginType: 'guest',
                 createdAt: g.lastSeenAt,

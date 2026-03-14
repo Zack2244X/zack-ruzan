@@ -455,7 +455,6 @@ async function runSafeMigrations() {
             \`deviceId\` VARCHAR(120) NULL,
             \`loginType\` VARCHAR(30) NOT NULL DEFAULT 'google',
             \`ipAddress\` VARCHAR(64) NULL,
-            \`macAddress\` VARCHAR(64) NULL,
             \`deviceName\` VARCHAR(120) NULL,
             \`userAgent\` VARCHAR(500) NULL,
             \`createdAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
