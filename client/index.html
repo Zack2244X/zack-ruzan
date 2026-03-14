@@ -241,6 +241,17 @@
             pointer-events: auto !important;
         }
 
+        /* Keep scroll contained inside accounts modal content on mobile. */
+        #accounts-management-modal {
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+        }
+        #accounts-management-list {
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
       --gold: #c9962a;
@@ -1469,11 +1480,88 @@
             }
         };
 
+        var accountsModalBodyLock = {
+            active: false,
+            scrollY: 0,
+            prevBody: null,
+            prevRootOverflow: ''
+        };
+
+        function lockViewportForAccountsModal() {
+            if (accountsModalBodyLock.active) return;
+            var body = document.body;
+            var root = document.documentElement;
+            var y = window.scrollY || window.pageYOffset || 0;
+
+            accountsModalBodyLock.scrollY = y;
+            accountsModalBodyLock.prevBody = {
+                position: body.style.position || '',
+                top: body.style.top || '',
+                left: body.style.left || '',
+                right: body.style.right || '',
+                width: body.style.width || '',
+                overflow: body.style.overflow || ''
+            };
+            accountsModalBodyLock.prevRootOverflow = root.style.overflow || '';
+
+            body.style.position = 'fixed';
+            body.style.top = '-' + y + 'px';
+            body.style.left = '0';
+            body.style.right = '0';
+            body.style.width = '100%';
+            body.style.overflow = 'hidden';
+            root.style.overflow = 'hidden';
+
+            accountsModalBodyLock.active = true;
+        }
+
+        function unlockViewportForAccountsModal() {
+            if (!accountsModalBodyLock.active) return;
+            var body = document.body;
+            var root = document.documentElement;
+            var prev = accountsModalBodyLock.prevBody || {};
+
+            body.style.position = prev.position || '';
+            body.style.top = prev.top || '';
+            body.style.left = prev.left || '';
+            body.style.right = prev.right || '';
+            body.style.width = prev.width || '';
+            body.style.overflow = prev.overflow || '';
+            root.style.overflow = accountsModalBodyLock.prevRootOverflow || '';
+
+            window.scrollTo(0, accountsModalBodyLock.scrollY || 0);
+            accountsModalBodyLock.active = false;
+        }
+
+        function isAccountsModalScrollTarget(target) {
+            var modal = document.getElementById('accounts-management-modal');
+            var scroller = document.getElementById('accounts-management-list');
+            if (!modal || !scroller || !target) return false;
+            if (!modal.contains(target)) return false;
+            return scroller.contains(target);
+        }
+
+        document.addEventListener('touchmove', function(e){
+            if (!document.body.classList.contains('accounts-modal-open')) return;
+            if (!isAccountsModalScrollTarget(e.target)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('wheel', function(e){
+            if (!document.body.classList.contains('accounts-modal-open')) return;
+            if (!isAccountsModalScrollTarget(e.target)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
         function syncAccountsModalLockState() {
             var modal = document.getElementById('accounts-management-modal');
             var open = !!(modal && !modal.classList.contains('hidden'));
             document.body.classList.toggle('accounts-modal-open', open);
             document.documentElement.classList.toggle('accounts-modal-open', open);
+            if (open) lockViewportForAccountsModal();
+            else unlockViewportForAccountsModal();
         }
 
         var accountsModalEl = document.getElementById('accounts-management-modal');
