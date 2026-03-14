@@ -1469,18 +1469,33 @@
             }
         };
 
+        function syncAccountsModalLockState() {
+            var modal = document.getElementById('accounts-management-modal');
+            var open = !!(modal && !modal.classList.contains('hidden'));
+            document.body.classList.toggle('accounts-modal-open', open);
+            document.documentElement.classList.toggle('accounts-modal-open', open);
+        }
+
+        var accountsModalEl = document.getElementById('accounts-management-modal');
+        if (accountsModalEl && typeof MutationObserver !== 'undefined') {
+            var accountsModalObserver = new MutationObserver(function(){
+                syncAccountsModalLockState();
+            });
+            accountsModalObserver.observe(accountsModalEl, { attributes: true, attributeFilter: ['class'] });
+            syncAccountsModalLockState();
+        }
+
         window.openAccountsManagementModal = async function(){
             var modal = document.getElementById('accounts-management-modal');
             var list = document.getElementById('accounts-management-list');
             var dock = document.getElementById('ios-bottom-nav');
             if (!modal || !list) return;
 
-            document.body.classList.add('accounts-modal-open');
-            document.documentElement.classList.add('accounts-modal-open');
             if (dock) dock.classList.add('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(false);
 
             modal.classList.remove('hidden');
+            syncAccountsModalLockState();
             if (typeof window._syncMainInteractionState === 'function') {
                 window._syncMainInteractionState();
             }
@@ -1509,8 +1524,7 @@
         window.closeAccountsManagementModal = function(){
             var modal = document.getElementById('accounts-management-modal');
             if (modal) modal.classList.add('hidden');
-            document.body.classList.remove('accounts-modal-open');
-            document.documentElement.classList.remove('accounts-modal-open');
+            syncAccountsModalLockState();
             if (typeof window._syncMainInteractionState === 'function') {
                 window._syncMainInteractionState();
             } else if (typeof window._showThemeToggle === 'function') {
