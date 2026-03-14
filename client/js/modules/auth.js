@@ -263,6 +263,11 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         ];
         document.getElementById('welcome-msg').innerText = greetings[Math.floor(Math.random() * greetings.length)];
         document.getElementById('login-screen').classList.add('hidden');
+        // Ensure login-card stays hidden and lamp stays off
+        const loginCard = document.getElementById('login-card');
+        const lampSvg = document.getElementById('lamp-svg');
+        if (loginCard) loginCard.classList.add('off');
+        if (lampSvg) lampSvg.classList.add('off');
         // Show loading screen instead of dashboard immediately
         document.getElementById('loading-screen').classList.remove('hidden');
         if (data.user.role === 'admin') showAdminToast();
