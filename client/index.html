@@ -1675,6 +1675,111 @@
     })();
     </script>
 
+    <script>
+    (function(){
+        function isHiddenByClass(el) {
+            return !el || el.classList.contains('hidden');
+        }
+
+        function overlayIsOpen() {
+            var ids = [
+                'create-section-modal', 'add-note-modal', 'edit-selection-modal',
+                'grades-modal', 'stats-modal', 'admin-auth-modal',
+                'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
+                'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
+                'accounts-management-modal'
+            ];
+
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i]);
+                if (el && !isHiddenByClass(el)) return true;
+            }
+
+            var treeContent = document.getElementById('tree-content');
+            var adminContent = document.getElementById('admin-content');
+            if ((treeContent && treeContent.classList.contains('active')) ||
+                (adminContent && adminContent.classList.contains('active'))) {
+                return true;
+            }
+
+            var guestModal = document.getElementById('guest-modal');
+            if (guestModal && guestModal.style.display && guestModal.style.display !== 'none') {
+                return true;
+            }
+
+            if (document.body.classList.contains('accounts-modal-open') ||
+                document.documentElement.classList.contains('accounts-modal-open')) {
+                return true;
+            }
+
+            return false;
+        }
+
+        function forceHomeScrollIfSafe() {
+            var root = document.documentElement;
+            var body = document.body;
+            var dashboard = document.getElementById('dashboard-view');
+            var quiz = document.getElementById('quiz-container');
+            var login = document.getElementById('login-screen');
+
+            if (!dashboard || !quiz || !body || !root) return;
+
+            var onHome = !dashboard.classList.contains('hidden') &&
+                         quiz.classList.contains('hidden') &&
+                         (!login || login.classList.contains('hidden'));
+
+            if (!onHome || overlayIsOpen()) return;
+
+            // Force-unlock stale states that can remain on some Android sessions.
+            body.classList.add('home-scroll');
+            root.classList.add('home-scroll');
+            body.classList.remove('accounts-modal-open');
+            root.classList.remove('accounts-modal-open');
+            body.removeAttribute('data-scroll-lock');
+            root.removeAttribute('data-scroll-lock');
+            body.removeAttribute('data-orig-overflow');
+            root.removeAttribute('data-orig-overflow');
+
+            if (body.style.overflow === 'hidden') body.style.overflow = '';
+            if (root.style.overflow === 'hidden') root.style.overflow = '';
+
+            if (body.style.position === 'fixed') {
+                body.style.position = '';
+                body.style.top = '';
+                body.style.left = '';
+                body.style.right = '';
+                body.style.width = '';
+            }
+
+            try {
+                if (window.__lenis && typeof window.__lenis.start === 'function') {
+                    window.__lenis.start();
+                }
+            } catch (e) {}
+        }
+
+        function scheduleHomeScrollFix() {
+            requestAnimationFrame(forceHomeScrollIfSafe);
+            setTimeout(forceHomeScrollIfSafe, 80);
+            setTimeout(forceHomeScrollIfSafe, 320);
+        }
+
+        document.addEventListener('DOMContentLoaded', scheduleHomeScrollFix);
+        window.addEventListener('load', scheduleHomeScrollFix);
+        window.addEventListener('pageshow', scheduleHomeScrollFix);
+        window.addEventListener('hashchange', scheduleHomeScrollFix);
+
+        // React to DOM/class updates from lazy bundles and modal open/close actions.
+        if (typeof MutationObserver !== 'undefined') {
+            var mo = new MutationObserver(scheduleHomeScrollFix);
+            mo.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+        }
+
+        // Final safety net for stale mobile sessions.
+        setInterval(forceHomeScrollIfSafe, 1200);
+    })();
+    </script>
+
     <!-- ═══════════════════════════════════════════════════════════════
          مكتبات الحركة والتمرير — يجب تحميلها قبل app.js
          GSAP: محرك الأنيميشن | Lenis: التمرير السلس
