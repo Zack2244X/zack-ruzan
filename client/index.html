@@ -208,6 +208,38 @@
     html.home-scroll { overflow-y: scroll !important; }
     body.home-scroll { overflow-y: auto !important; }
 
+    /* Mobile: make homepage scrollbar clearly visible as a scroll affordance. */
+    @media (max-width: 768px) {
+        html.home-scroll,
+        body.home-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(37, 99, 235, 0.75) rgba(148, 163, 184, 0.22);
+        }
+
+        html.home-scroll::-webkit-scrollbar,
+        body.home-scroll::-webkit-scrollbar {
+            width: 7px;
+        }
+
+        html.home-scroll::-webkit-scrollbar-track,
+        body.home-scroll::-webkit-scrollbar-track {
+            background: rgba(148, 163, 184, 0.22);
+            border-radius: 999px;
+        }
+
+        html.home-scroll::-webkit-scrollbar-thumb,
+        body.home-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(37, 99, 235, 0.95), rgba(30, 64, 175, 0.9));
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+        }
+
+        html.home-scroll::-webkit-scrollbar-thumb:hover,
+        body.home-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.98), rgba(30, 64, 175, 0.95));
+        }
+    }
+
         /* Hard guard: while accounts modal is open, never show home controls. */
         body.accounts-modal-open #ios-bottom-nav,
         body.accounts-modal-open #theme-toggle {
