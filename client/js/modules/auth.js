@@ -4,7 +4,7 @@
  */
 import state from './state.js';
 import { showAlert, logFunctionStatus } from './helpers.js';
-import { apiCall, loadDataFromServer, getClientDeviceId } from './api.js';
+import { apiCall, loadDataFromServer, getClientDeviceId, startDataPolling, stopDataPolling } from './api.js';
 import { navToHome, showLoginScreen, _showThemeToggle, openAdminAuthOrPanel, updateDockUI } from './navigation.js';
 import { startLeaderboardAutoRefresh } from './dashboard.js';
 
@@ -285,6 +285,9 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             document.getElementById('loading-screen').classList.add('hidden');
             document.getElementById('dashboard-view').classList.remove('hidden');
             document.getElementById('ios-bottom-nav').classList.remove('hidden');
+            
+            // Start automatic data polling (refresh every 30 seconds)
+            startDataPolling(30000);
         });
     } catch (err) {
         loadingEl.classList.add('hidden');
@@ -312,6 +315,9 @@ export async function logoutUser() {
             }
         }
     }
+    
+    // Stop automatic data polling on logout
+    stopDataPolling();
     
     const isGuest = state.currentUser?.role === 'guest' || localStorage.getItem('guest-mode') === 'true';
     if (!isGuest) {

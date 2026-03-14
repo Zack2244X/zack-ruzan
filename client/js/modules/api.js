@@ -341,3 +341,49 @@ export async function loadDataFromServer() {
         console.error('[loadData] ✗ فشل تحميل البيانات:', e.message);
     }
 }
+
+// ─────────────────────────────────────────────
+//  نظام التحديث التلقائي (Polling)
+// ─────────────────────────────────────────────
+
+let dataPollingTimer = null;
+
+/**
+ * بدء التحديث التلقائي للبيانات من السيرفر
+ * يقوم بجلب الامتحانات والمذكرات والدرجات بشكل دوري
+ * @param {number} [interval=30000] - الفترة الزمنية بالمللي ثانية (افتراضياً 30 ثانية)
+ * @example
+ * startDataPolling(30000); // تحديث كل 30 ثانية
+ */
+export function startDataPolling(interval = 30000) {
+    logFunctionStatus('startDataPolling', false);
+    
+    // إيقاف أي polling موجود بالفعل
+    if (dataPollingTimer) {
+        clearInterval(dataPollingTimer);
+    }
+    
+    console.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
+    
+    dataPollingTimer = setInterval(() => {
+        console.log('[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...');
+        loadDataFromServer().catch(err => {
+            console.warn('[polling] ⚠️ فشل جلب البيانات:', err.message);
+        });
+    }, interval);
+}
+
+/**
+ * إيقاف التحديث التلقائي للبيانات
+ * @example
+ * stopDataPolling(); // إيقاف كل التحديثات التلقائية
+ */
+export function stopDataPolling() {
+    logFunctionStatus('stopDataPolling', false);
+    
+    if (dataPollingTimer) {
+        clearInterval(dataPollingTimer);
+        dataPollingTimer = null;
+        console.log('[polling] ✓ تم إيقاف التحديث التلقائي');
+    }
+}
