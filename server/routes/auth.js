@@ -141,22 +141,55 @@ function sanitizeText(value, maxLen = 255) {
     return String(value).trim().substring(0, maxLen);
 }
 
+let accountSessionsColumnsCache = null;
+
+async function getAccountSessionsColumns() {
+    if (accountSessionsColumnsCache) return accountSessionsColumnsCache;
+    const [rows] = await sequelize.query(`SHOW COLUMNS FROM account_sessions`);
+    accountSessionsColumnsCache = new Set((rows || []).map((r) => r.Field));
+    return accountSessionsColumnsCache;
+}
+
 async function recordAccountSession({ userId = null, email = '', deviceId = '', loginType = 'google', ipAddress = '', deviceName = '', userAgent = '' }) {
     try {
+        const cols = await getAccountSessionsColumns();
+
+        const insertCols = [];
+        const placeholders = [];
+        const replacements = [];
+
+        const pushVal = (colName, value) => {
+            if (!cols.has(colName)) return;
+            insertCols.push(colName);
+            placeholders.push('?');
+            replacements.push(value);
+        };
+
+        pushVal('userId', userId);
+        pushVal('email', sanitizeText(email.toLowerCase(), 255) || null);
+        pushVal('deviceId', sanitizeText(deviceId, 120));
+        pushVal('loginType', sanitizeText(loginType, 30));
+        pushVal('ipAddress', sanitizeText(ipAddress, 64));
+        pushVal('deviceName', sanitizeText(deviceName, 120));
+        pushVal('userAgent', sanitizeText(userAgent, 500));
+
+        if (cols.has('createdAt')) {
+            insertCols.push('createdAt');
+            placeholders.push('NOW()');
+        }
+        if (cols.has('updatedAt')) {
+            insertCols.push('updatedAt');
+            placeholders.push('NOW()');
+        }
+
+        if (insertCols.length === 0) return;
+
         await sequelize.query(
             `INSERT INTO account_sessions
-                (userId, email, deviceId, loginType, ipAddress, deviceName, userAgent, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                (${insertCols.join(', ')})
+             VALUES (${placeholders.join(', ')})`,
             {
-                replacements: [
-                    userId,
-                    sanitizeText(email.toLowerCase(), 255) || null,
-                    sanitizeText(deviceId, 120),
-                    sanitizeText(loginType, 30),
-                    sanitizeText(ipAddress, 64),
-                    sanitizeText(deviceName, 120),
-                    sanitizeText(userAgent, 500)
-                ]
+                replacements
             }
         );
     } catch (err) {
