@@ -209,7 +209,7 @@ function handleStudentGoogleLogin(response) {
 // ============================================
 
 /** @description تحميل التطبيق عند بدء التشغيل */
-function loadApp() {
+async function loadApp() {
     logFunctionStatus('loadApp', true);
     console.log('[app] بدء تحميل التطبيق...');
     try {
@@ -240,11 +240,18 @@ function loadApp() {
             if (isGuest) {
                 // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
                 console.log('[app] ✓ وضع الضيف — تحميل البيانات العامة...');
+                
+                // Import polling function
+                const { startDataPolling } = await import('./modules/api.js');
+                
                 loadDataFromServer().then(() => {
+                    state.dataLoaded = true;
                     window.renderSubjectFilters?.();
                     window.renderHistoryTree?.();
                     renderDashboard();
-                    console.log('[app] ✓ الضيف — البيانات العامة جاهزة');
+                    // Start auto-polling for guest mode too
+                    startDataPolling(30000);
+                    console.log('[app] ✓ الضيف — البيانات العامة جاهزة + polling نشط');
                 }).catch(e => {
                     console.warn('[app] ⚠️ فشل جلب البيانات للضيف:', e);
                     state.dataLoaded = true;
@@ -448,6 +455,11 @@ export async function startApp() {
     // ── تهيئة وحدات الحركة والتمرير ──────────────────────────────────────────
     // يجب أن تسبق applyPerformanceBasedAnimationSettings() حتى تكون
     // الوحدتان جاهزتين قبل استقبال أوامر الضبط
+    // Load motion libs (GSAP + Lenis) before using them
+    if (window.__loadMotionLibs) {
+        window.__loadMotionLibs();
+    }
+
     // ── قياس مستوى الجهاز المبسّط مبكّراً ونشره لوحدات الواجهة ─────────────
     const perf = await getDevicePerformanceTier({ skipFPSTest: true });
     try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
