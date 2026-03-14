@@ -464,42 +464,54 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             const guestLastSeenExpr = hasCreatedAtCol ? 'createdAt AS lastSeenAt' : 'NULL AS lastSeenAt';
 
             if (hasJoinKey) {
-                let accountJoinClause = '';
-                if (hasUserIdCol && hasEmailCol) {
-                    accountJoinClause = `(s2.userId = u.id OR (s2.email IS NOT NULL AND s2.email = u.email))`;
-                } else if (hasUserIdCol) {
-                    accountJoinClause = `(s2.userId = u.id)`;
-                } else {
-                    accountJoinClause = `(s2.email IS NOT NULL AND s2.email = u.email)`;
+                const sessionSelectFields = [
+                    hasUserIdCol ? 'userId' : 'NULL AS userId',
+                    hasEmailCol ? 'email' : "'' AS email",
+                    hasIpCol ? 'ipAddress' : "'' AS ipAddress",
+                    hasDeviceIdCol ? 'deviceId' : "'' AS deviceId",
+                    hasDeviceNameCol ? 'deviceName' : "'' AS deviceName",
+                    hasLoginTypeCol ? 'loginType' : "'google' AS loginType",
+                    hasCreatedAtCol ? 'createdAt AS lastSeenAt' : 'NULL AS lastSeenAt'
+                ].join(',\n                            ');
+
+                const [sessionRows] = await sequelize.query(
+                    `SELECT
+                            ${sessionSelectFields}
+                     FROM account_sessions
+                     WHERE 1=1
+                       ${hasLoginTypeCol ? "AND loginType <> 'guest'" : ''}
+                     ORDER BY ${hasCreatedAtCol ? 'createdAt DESC, id DESC' : 'id DESC'}
+                     LIMIT 5000`
+                );
+
+                const latestByUserId = new Map();
+                const latestByEmail = new Map();
+                for (const s of (sessionRows || [])) {
+                    const uid = Number(s.userId);
+                    const em = String(s.email || '').trim().toLowerCase();
+
+                    if (hasUserIdCol && Number.isInteger(uid) && uid > 0 && !latestByUserId.has(uid)) {
+                        latestByUserId.set(uid, s);
+                    }
+                    if (hasEmailCol && em && !latestByEmail.has(em)) {
+                        latestByEmail.set(em, s);
+                    }
                 }
 
-                const [accountsRows] = await sequelize.query(
-                    `SELECT
-                        u.id,
-                        u.fname,
-                        u.lname,
-                        u.email,
-                        u.role,
-                        u.createdAt,
-                        ${ipExpr},
-                        ${deviceIdExpr},
-                        ${deviceNameExpr},
-                        ${loginTypeExpr},
-                        ${hasCreatedAtCol ? 's.createdAt' : 'NULL'} AS lastSeenAt
-                     FROM users u
-                     LEFT JOIN account_sessions s
-                       ON s.id = (
-                            SELECT s2.id
-                            FROM account_sessions s2
-                            WHERE ${accountJoinClause}
-                              ${nonGuestFilter}
-                            ORDER BY ${orderByLatest}
-                            LIMIT 1
-                       )
-                     WHERE u.deletedAt IS NULL
-                     ORDER BY u.createdAt DESC`
-                );
-                accounts = accountsRows || usersOnly;
+                accounts = usersOnly.map((u) => {
+                    const byUserId = hasUserIdCol ? latestByUserId.get(Number(u.id)) : null;
+                    const byEmail = hasEmailCol ? latestByEmail.get(String(u.email || '').toLowerCase()) : null;
+                    const s = byUserId || byEmail || null;
+
+                    return {
+                        ...u,
+                        ipAddress: s?.ipAddress || '',
+                        deviceId: s?.deviceId || '',
+                        deviceName: s?.deviceName || '',
+                        loginType: s?.loginType || 'google',
+                        lastSeenAt: s?.lastSeenAt || null
+                    };
+                });
 
                 if (hasLoginTypeCol) {
                     const [guestRows] = await sequelize.query(
