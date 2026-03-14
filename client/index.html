@@ -217,6 +217,24 @@
             opacity: 0 !important;
         }
 
+        /* Disable interaction with main app layers while accounts/device modal is open. */
+        html.accounts-modal-open,
+        body.accounts-modal-open {
+            overflow: hidden !important;
+        }
+        body.accounts-modal-open #dashboard-view,
+        body.accounts-modal-open #quiz-container,
+        body.accounts-modal-open #login-screen,
+        body.accounts-modal-open #tree-bottom-sheet,
+        body.accounts-modal-open #admin-bottom-sheet {
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        body.accounts-modal-open #accounts-management-modal,
+        body.accounts-modal-open #accounts-management-modal * {
+            pointer-events: auto !important;
+        }
+
     /* ═══ متغيرات صفحة الدخول ═══ */
     :root {
       --gold: #c9962a;
@@ -1452,6 +1470,7 @@
             if (!modal || !list) return;
 
             document.body.classList.add('accounts-modal-open');
+            document.documentElement.classList.add('accounts-modal-open');
             if (dock) dock.classList.add('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(false);
 
@@ -1482,6 +1501,7 @@
             var modal = document.getElementById('accounts-management-modal');
             if (modal) modal.classList.add('hidden');
             document.body.classList.remove('accounts-modal-open');
+            document.documentElement.classList.remove('accounts-modal-open');
             if (typeof window._syncMainInteractionState === 'function') {
                 window._syncMainInteractionState();
             } else if (typeof window._showThemeToggle === 'function') {
