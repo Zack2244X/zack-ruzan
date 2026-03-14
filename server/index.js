@@ -196,6 +196,8 @@ async function getSessionEmail(req) {
 
 app.use(async (req, res, next) => {
     if (process.env.NODE_ENV === 'test') return next();
+    if (req.method === 'POST' && req.path === '/api/auth/google') return next();
+    if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html')) return next();
     try {
         const deviceId = String(req.get('x-device-id') || req.body?.deviceId || req.query?.deviceId || '').trim().substring(0, 120);
         const forwarded = req.headers['x-forwarded-for'];

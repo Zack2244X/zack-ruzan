@@ -336,6 +336,100 @@ async function touchAccountSessionIfNeeded(req, user, loginType = 'activity') {
     }
 }
 
+async function releaseBlocksForSession({ email = '', deviceId = '', ipAddress = '' }) {
+    const cols = await getBlockedDevicesColumns();
+    const whereParts = [];
+    const replacements = [];
+
+    if (cols.has('email') && email) {
+        whereParts.push('email = ?');
+        replacements.push(email);
+    }
+    if (cols.has('deviceId') && deviceId) {
+        whereParts.push('deviceId = ?');
+        replacements.push(deviceId);
+    }
+    if (cols.has('ipAddress') && ipAddress) {
+        whereParts.push('ipAddress = ?');
+        replacements.push(ipAddress);
+    }
+
+    if (whereParts.length === 0) return 0;
+
+    await sequelize.query(
+        `UPDATE blocked_devices
+         SET isActive = 0, updatedAt = NOW(), reason = CONCAT(COALESCE(reason, ''), ' | auto-unblocked by admin login')
+         WHERE isActive = 1
+           AND (${whereParts.join(' OR ')})`,
+        { replacements }
+    );
+
+    const [countRows] = await sequelize.query(
+        `SELECT COUNT(*) AS c
+         FROM blocked_devices
+         WHERE isActive = 0
+           AND (${whereParts.join(' OR ')})`,
+        { replacements }
+    );
+    return Number(countRows?.[0]?.c || 0);
+}
+
+async function targetHasAdminHistory({ email = '', deviceId = '', ipAddress = '' }) {
+    const normalizedEmail = sanitizeText(email, 255).toLowerCase();
+    if (normalizedEmail) {
+        const directAdmin = await User.findOne({ where: { email: normalizedEmail, role: 'admin' } });
+        if (directAdmin) return true;
+    }
+
+    if (!deviceId && !ipAddress) return false;
+
+    const cols = await getAccountSessionsColumns();
+    const targetFilters = [];
+    const targetReplacements = [];
+
+    if (cols.has('deviceId') && deviceId) {
+        targetFilters.push('s.deviceId = ?');
+        targetReplacements.push(deviceId);
+    }
+    if (cols.has('ipAddress') && ipAddress) {
+        targetFilters.push('s.ipAddress = ?');
+        targetReplacements.push(ipAddress);
+    }
+
+    if (targetFilters.length === 0) return false;
+
+    if (cols.has('userId')) {
+        const [rowsByUserId] = await sequelize.query(
+            `SELECT 1
+             FROM account_sessions s
+             JOIN users u ON u.id = s.userId
+             WHERE (${targetFilters.join(' OR ')})
+               AND u.role = 'admin'
+               AND u.deletedAt IS NULL
+             LIMIT 1`,
+            { replacements: targetReplacements }
+        );
+        if (rowsByUserId && rowsByUserId.length > 0) return true;
+    }
+
+    if (cols.has('email')) {
+        const [rowsByEmail] = await sequelize.query(
+            `SELECT 1
+             FROM account_sessions s
+             JOIN users u ON u.email = s.email
+             WHERE (${targetFilters.join(' OR ')})
+               AND COALESCE(s.email, '') <> ''
+               AND u.role = 'admin'
+               AND u.deletedAt IS NULL
+             LIMIT 1`,
+            { replacements: targetReplacements }
+        );
+        if (rowsByEmail && rowsByEmail.length > 0) return true;
+    }
+
+    return false;
+}
+
 // ============================================
 //   دالة مساعدة: التحقق من توكن Google
 // ============================================
@@ -407,6 +501,12 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
         const ipAddress = getClientIp(req);
         const deviceId = sanitizeText(req.body?.deviceId || req.get('x-device-id'), 120);
         const deviceName = sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
+        const normalizedGoogleEmail = sanitizeText(googleData.email, 255).toLowerCase();
+
+        let user = await User.findOne({ where: { email: googleData.email } });
+        const isAdminIdentity =
+            ADMIN_EMAILS.includes(normalizedGoogleEmail) ||
+            (user && user.role === 'admin');
 
         const blockedEntry = await findActiveBlock({
             email: googleData.email,
@@ -414,21 +514,36 @@ router.post('/google', validateGoogleLogin, async (req, res) => {
             ipAddress
         });
         if (blockedEntry) {
-            logger.warn('🚫 محاولة دخول بحساب/جهاز/آيبي محظور', {
-                email: sanitizeText(googleData.email, 255).toLowerCase(),
-                deviceId,
-                ipAddress,
-                blockId: blockedEntry.id
-            });
-            return res.status(403).json({
-                error: 'تم حظر هذا الحساب أو الجهاز من الدخول إلى المنصة.',
-                reason: blockedEntry.reason || 'سبب غير محدد'
-            });
+            if (isAdminIdentity) {
+                await releaseBlocksForSession({
+                    email: normalizedGoogleEmail,
+                    deviceId,
+                    ipAddress
+                });
+                logger.warn('🔓 تم فك الحظر تلقائياً بعد دخول أدمن', {
+                    email: normalizedGoogleEmail,
+                    deviceId,
+                    ipAddress
+                });
+            } else {
+                logger.warn('🚫 محاولة دخول بحساب/جهاز/آيبي محظور', {
+                    email: normalizedGoogleEmail,
+                    deviceId,
+                    ipAddress,
+                    blockId: blockedEntry.id
+                });
+                return res.status(403).json({
+                    error: 'تم حظر هذا الحساب أو الجهاز من الدخول إلى المنصة.',
+                    reason: blockedEntry.reason || 'سبب غير محدد'
+                });
+            }
+        }
+
+        if (!user) {
+            user = await User.findOne({ where: { email: googleData.email } });
         }
 
         // البحث عن المستخدم بالإيميل
-        let user = await User.findOne({ where: { email: googleData.email } });
-
         if (user) {
             // === مستخدم موجود → تسجيل دخول ===
             if ((!user.fname || !user.lname) && googleData.name) {
@@ -846,6 +961,13 @@ router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => 
         if (targetsCurrentAdminSession) {
             return res.status(400).json({
                 error: 'لا يمكنك حظر جهازك/جلسة الأدمن الحالية حتى لا تفقد الوصول للإدارة.'
+            });
+        }
+
+        const hasAdminHistory = await targetHasAdminHistory({ email, deviceId, ipAddress });
+        if (hasAdminHistory) {
+            return res.status(400).json({
+                error: 'لا يمكن حظر هذا الجهاز/الـIP لأنه مرتبط بسجل دخول أدمن.'
             });
         }
 
