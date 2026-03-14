@@ -14,9 +14,19 @@ const SHEET_CLOSE_MS = 340;
 export function _syncMainInteractionState() {
     logFunctionStatus('_syncMainInteractionState', false);
 
+    const body = document.body;
+    const root = document.documentElement;
     const dashboard = document.getElementById('dashboard-view');
     const quiz = document.getElementById('quiz-container');
     const onHome = !!dashboard && !dashboard.classList.contains('hidden') && (!!quiz && quiz.classList.contains('hidden'));
+
+    // Failsafe: if accounts modal is hidden, clear stale lock classes from previous sessions.
+    const accountsModal = document.getElementById('accounts-management-modal');
+    const accountsModalActuallyOpen = !!(accountsModal && !accountsModal.classList.contains('hidden'));
+    if (!accountsModalActuallyOpen) {
+        body.classList.remove('accounts-modal-open');
+        root.classList.remove('accounts-modal-open');
+    }
 
     // قائمة أساسية + كشف عام لأي مودال جديد ينتهي id الخاص به بـ "-modal".
     const listedOverlaysOpen = [
@@ -40,10 +50,9 @@ export function _syncMainInteractionState() {
         const gm = document.getElementById('guest-modal');
         return gm ? gm.style.display !== 'none' && gm.style.display !== '' : false;
     })();
-    const body = document.body;
-    const root = document.documentElement;
     const accountsModalLockActive = body.classList.contains('accounts-modal-open')
-        || root.classList.contains('accounts-modal-open');
+        || root.classList.contains('accounts-modal-open')
+        || accountsModalActuallyOpen;
     const blocked = listedOverlaysOpen || dynamicModalOpen || sheetOpen || guestModalOpen || accountsModalLockActive;
     const allowHomeScroll = onHome && !blocked;
 
@@ -59,18 +68,35 @@ export function _syncMainInteractionState() {
     // Keep scroll-lock writes minimal and avoid any computed-style/layout reads here.
     // `scrollbar-gutter: stable` is already enabled in CSS, so compensation reads are unnecessary.
     try {
-        const releaseGlobalScrollLock = () => {
-            if (!body.hasAttribute('data-scroll-lock')) return;
+        const releaseGlobalScrollLock = (force = false) => {
+            if (!force && !body.hasAttribute('data-scroll-lock')) return;
 
             const origOverflow = body.getAttribute('data-orig-overflow');
-            body.style.overflow = origOverflow || '';
+            body.style.overflow = (origOverflow !== null)
+                ? (origOverflow || '')
+                : (force && body.style.overflow === 'hidden' ? '' : body.style.overflow);
             body.removeAttribute('data-orig-overflow');
             body.removeAttribute('data-scroll-lock');
 
             const rootOrigOverflow = root.getAttribute('data-orig-overflow');
-            root.style.overflow = rootOrigOverflow || '';
+            root.style.overflow = (rootOrigOverflow !== null)
+                ? (rootOrigOverflow || '')
+                : (force && root.style.overflow === 'hidden' ? '' : root.style.overflow);
             root.removeAttribute('data-orig-overflow');
             root.removeAttribute('data-scroll-lock');
+        };
+
+        const clearStaleViewportLock = () => {
+            // accounts modal viewport lock is managed in index.html.
+            // If its class is gone but inline fixed lock remains, release it to restore touch scroll.
+            if (accountsModalLockActive) return;
+            if (body.style.position === 'fixed') {
+                body.style.position = '';
+                body.style.top = '';
+                body.style.left = '';
+                body.style.right = '';
+                body.style.width = '';
+            }
         };
 
         if (accountsModalLockActive) {
@@ -92,7 +118,8 @@ export function _syncMainInteractionState() {
             // ويتجاهل CSS overflow ويُحرِّك الصفحة خلف المودال
             try { getLenisInstance()?.stop?.(); } catch (e) {}
         } else {
-            releaseGlobalScrollLock();
+            releaseGlobalScrollLock(true);
+            clearStaleViewportLock();
             // استئناف Lenis بعد إغلاق المودال
             try { getLenisInstance()?.start?.(); } catch (e) {}
         }

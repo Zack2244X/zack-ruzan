@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="lenis lenis-smooth">
+<html lang="ar" dir="rtl">
 <head>
         <!-- Apply theme class before first paint to avoid flash of wrong color scheme -->
         <script>
@@ -733,7 +733,7 @@
         /* Make Lenis class additions layout-stable */
         html.lenis, html.lenis-smooth {
             scrollbar-gutter: stable;
-            overflow-y: hidden !important;
+            overflow-y: auto;
             -webkit-font-smoothing: antialiased;
             -webkit-text-size-adjust: 100%;
         }
@@ -1079,7 +1079,7 @@
                         // ensure bootstrap loader is present so queued calls will be flushed
                         if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
-                            s.src = '/js/bootstrap.min.js?v=49';
+                            s.src = '/js/bootstrap.min.js?v=51';
                             s.defer = true;
                             document.head.appendChild(s);
                         }
@@ -1695,7 +1695,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=50" defer></script>
+    <script src="/js/bootstrap.min.js?v=51" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
