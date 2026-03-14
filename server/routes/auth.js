@@ -830,9 +830,30 @@ router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => 
         const ipAddress = sanitizeText(req.body?.ipAddress, 64);
         const deviceName = sanitizeText(req.body?.deviceName, 120);
         const reason = sanitizeText(req.body?.reason, 255) || 'تم الحظر بواسطة الإدارة';
+        const currentAdminEmail = sanitizeText(req.user?.email, 255).toLowerCase();
+        const currentDeviceId = sanitizeText(req.get('x-device-id') || '', 120);
+        const currentIpAddress = getClientIp(req);
 
         if (!email && !deviceId && !ipAddress) {
             return res.status(400).json({ error: 'يجب توفير email أو deviceId أو ipAddress للحظر.' });
+        }
+
+        const targetsCurrentAdminSession =
+            (email && currentAdminEmail && email === currentAdminEmail) ||
+            (deviceId && currentDeviceId && deviceId === currentDeviceId) ||
+            (ipAddress && currentIpAddress && ipAddress === currentIpAddress);
+
+        if (targetsCurrentAdminSession) {
+            return res.status(400).json({
+                error: 'لا يمكنك حظر جهازك/جلسة الأدمن الحالية حتى لا تفقد الوصول للإدارة.'
+            });
+        }
+
+        if (email) {
+            const targetUser = await User.findOne({ where: { email } });
+            if (targetUser && targetUser.role === 'admin') {
+                return res.status(400).json({ error: 'لا يمكن حظر حساب معلم (admin) من هذه الشاشة.' });
+            }
         }
 
         const cols = await getBlockedDevicesColumns();

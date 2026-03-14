@@ -1431,15 +1431,17 @@
             var actions = document.createElement('div');
             actions.className = 'mt-4 flex flex-wrap gap-2';
 
-            var blockBtn = document.createElement('button');
-            blockBtn.type = 'button';
-            blockBtn.className = 'js-block-device px-3 py-2 text-xs font-bold rounded-xl bg-gray-900 text-white hover:bg-black transition';
-            blockBtn.dataset.deviceId = String(item.deviceId || '');
-            blockBtn.dataset.ipAddress = String(item.ipAddress || '');
-            blockBtn.dataset.deviceName = String(item.deviceName || '');
-            blockBtn.dataset.email = String(item.email || '');
-            blockBtn.textContent = 'حظر هذا الجهاز';
-            actions.appendChild(blockBtn);
+            if (!(item.role === 'admin' && !isGuest)) {
+                var blockBtn = document.createElement('button');
+                blockBtn.type = 'button';
+                blockBtn.className = 'js-block-device px-3 py-2 text-xs font-bold rounded-xl bg-gray-900 text-white hover:bg-black transition';
+                blockBtn.dataset.deviceId = String(item.deviceId || '');
+                blockBtn.dataset.ipAddress = String(item.ipAddress || '');
+                blockBtn.dataset.deviceName = String(item.deviceName || '');
+                blockBtn.dataset.email = String(item.email || '');
+                blockBtn.textContent = 'حظر هذا الجهاز';
+                actions.appendChild(blockBtn);
+            }
 
             if (!isGuest && item.role !== 'admin') {
                 var delBtn = document.createElement('button');
