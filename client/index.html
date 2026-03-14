@@ -1072,7 +1072,7 @@
                     </div>
                 </div>
             </div>
-            <script src="/js/guest-login.min.js?v=2" defer></script>
+            <script src="/js/guest-login.min.js?v=1" defer></script>
         </div>
     </div>
 
@@ -1939,6 +1939,7 @@
 
                 var ln = document.createElement('script');
                 ln.src = '/js/vendor/lenis.min.js';
+                ln.defer = true;
                 document.head.appendChild(ln);
             };
         })();
