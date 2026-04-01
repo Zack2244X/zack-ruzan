@@ -21,37 +21,43 @@ function bindForcedTouchScroll() {
     let startX = 0;
     let startTop = 0;
     let active = false;
+    let activePointerId = null;
 
-    scroller.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
-        const t = e.touches[0];
-        startY = t.clientY;
-        startX = t.clientX;
+    scroller.addEventListener('pointerdown', (e) => {
+        if (!e.isPrimary) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        startY = e.clientY;
+        startX = e.clientX;
         startTop = scroller.scrollTop;
         active = true;
+        activePointerId = e.pointerId;
+        try { scroller.setPointerCapture(e.pointerId); } catch (_) {}
     }, { passive: true });
 
-    scroller.addEventListener('touchmove', (e) => {
-        if (!active || e.touches.length !== 1) return;
-        const t = e.touches[0];
-        const dy = t.clientY - startY;
-        const dx = t.clientX - startX;
+    scroller.addEventListener('pointermove', (e) => {
+        if (!active || !e.isPrimary || e.pointerId !== activePointerId) return;
+
+        const dy = e.clientY - startY;
+        const dx = e.clientX - startX;
 
         // Force vertical scrolling inside modal when browser gesture handling is inconsistent.
         if (Math.abs(dy) > Math.abs(dx)) {
             scroller.scrollTop = startTop - dy;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             scheduleTreeScrollIndicatorUpdate();
         }
     }, { passive: false });
 
-    scroller.addEventListener('touchend', () => {
+    const endPointer = (e) => {
+        if (!e.isPrimary || e.pointerId !== activePointerId) return;
         active = false;
-    }, { passive: true });
+        try { scroller.releasePointerCapture(e.pointerId); } catch (_) {}
+        activePointerId = null;
+    };
 
-    scroller.addEventListener('touchcancel', () => {
-        active = false;
-    }, { passive: true });
+    scroller.addEventListener('pointerup', endPointer, { passive: true });
+    scroller.addEventListener('pointercancel', endPointer, { passive: true });
 }
 
 function getTreeScrollTarget() {
