@@ -4,7 +4,7 @@
 
 :80 {
   # التخديم لأي هوست (IP أو دومين) على HTTP
-  reverse_proxy app:${PORT}
+  reverse_proxy app:10000
 
   log {
     output file /data/caddy/access.log
