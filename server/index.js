@@ -7,6 +7,12 @@
  */
 
 // ============================================
+//   New Relic APM — مراقبة الأداء
+// ============================================
+// Initialize New Relic agent (loads automatically with license key)
+require('newrelic');
+
+// ============================================
 //   سيرفر منصة الاختبارات التفاعلية
 //   بسم الله الرحمن الرحيم
 //   — Sequelize + TiDB (MySQL) —
@@ -41,6 +47,13 @@ if (missingEnv.length > 0) {
     logger.error(`❌ متغيرات البيئة الناقصة: ${missingEnv.join(', ')}`);
     if (process.env.NODE_ENV === 'production') process.exit(1);
     logger.warn('⚠️ متابعة في وضع التطوير بدون بعض المتغيرات...');
+}
+
+// Optional: Log New Relic status
+if (process.env.NEW_RELIC_LICENSE_KEY) {
+    logger.info('✅ New Relic APM مفعل');
+} else {
+    logger.warn('⚠️ New Relic APM غير مفعل - NEW_RELIC_LICENSE_KEY غير محدد');
 }
 
 // --- Sequelize + Models ---
@@ -148,8 +161,10 @@ app.use(cors({
     credentials: true
 }));
 
-// 4. منع HTTP Parameter Pollution
-app.use(hpp());
+// 4. منع HTTP Parameter Pollution — مع استثناءات آمنة
+app.use(hpp({
+    whitelist: ['page', 'limit', 'sort', 'q', 'search'],
+}));
 
 // 4.5. Cookie Parser — لقراءة JWT من الكوكيز
 app.use(cookieParser());
@@ -518,6 +533,21 @@ let server;
  * Handles TiDB quirks where sequelize.sync({ alter }) may fail.
  */
 async function runSafeMigrations() {
+    // Helper: create index only if it does not already exist (MySQL lacks CREATE INDEX IF NOT EXISTS)
+    const ensureIndex = async (table, indexName, columns) => {
+        const [rows] = await sequelize.query(
+            `SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND INDEX_NAME = ?
+             LIMIT 1`,
+            { replacements: [table, indexName] }
+        );
+        if (!rows || rows.length === 0) {
+            await sequelize.query(`CREATE INDEX \`${indexName}\` ON \`${table}\` (${columns})`);
+        }
+    };
+
     const migrations = [
         // paranoid deletedAt columns
         `ALTER TABLE \`users\`   ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
@@ -564,7 +594,6 @@ async function runSafeMigrations() {
             INDEX \`idx_account_sessions_type\` (\`loginType\`)
         )`,
         `ALTER TABLE \`account_sessions\` ADD COLUMN IF NOT EXISTS \`deviceId\` VARCHAR(120) NULL`,
-        `CREATE INDEX IF NOT EXISTS \`idx_account_sessions_device\` ON \`account_sessions\` (\`deviceId\`)`,
         `CREATE TABLE IF NOT EXISTS \`blocked_devices\` (
             \`id\` BIGINT NOT NULL AUTO_INCREMENT,
             \`email\` VARCHAR(255) NULL,
@@ -583,9 +612,7 @@ async function runSafeMigrations() {
             INDEX \`idx_blocked_devices_active\` (\`isActive\`)
         )`,
         `ALTER TABLE \`blocked_devices\` ADD COLUMN IF NOT EXISTS \`email\` VARCHAR(255) NULL`,
-        `CREATE INDEX IF NOT EXISTS \`idx_blocked_devices_email\` ON \`blocked_devices\` (\`email\`)`,
         // index for leaderboard query: WHERE deletedAt IS NULL GROUP BY userId
-        `CREATE INDEX IF NOT EXISTS \`idx_scores_user_deleted\` ON \`scores\` (\`userId\`, \`deletedAt\`)`,
     ];
     for (const sql of migrations) {
         try {
@@ -593,6 +620,15 @@ async function runSafeMigrations() {
         } catch (e) {
             logger.warn(`⚠️ Migration skipped: ${e.message.substring(0, 80)}`);
         }
+    }
+
+    // Create indexes in a MySQL-compatible way
+    try {
+        await ensureIndex('account_sessions', 'idx_account_sessions_device', '\`deviceId\`');
+        await ensureIndex('blocked_devices', 'idx_blocked_devices_email', '\`email\`');
+        await ensureIndex('scores', 'idx_scores_user_deleted', '\`userId\`, \`deletedAt\`');
+    } catch (e) {
+        logger.warn(`⚠️ Migration index skipped: ${e.message.substring(0, 80)}`);
     }
 
     // Drop legacy UNIQUE(userId, quizId) index to allow multiple attempts per quiz.
