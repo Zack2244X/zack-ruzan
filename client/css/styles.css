@@ -1006,6 +1006,12 @@ a:focus:not(:focus-visible) {
     scrollbar-color: rgba(59, 130, 246, 0.45) rgba(148, 163, 184, 0.18);
 }
 
+[data-lenis-prevent] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+
 .modal-scrollbar::-webkit-scrollbar {
     width: 8px;
 }
