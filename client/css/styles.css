@@ -1012,6 +1012,12 @@ a:focus:not(:focus-visible) {
     touch-action: pan-y;
 }
 
+/* Tree modal uses many clickable buttons; force vertical pan to keep scrolling usable on touch devices. */
+#tree-scroll-area,
+#tree-scroll-area * {
+    touch-action: pan-y !important;
+}
+
 .modal-scrollbar::-webkit-scrollbar {
     width: 8px;
 }
