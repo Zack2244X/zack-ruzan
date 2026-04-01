@@ -543,6 +543,21 @@ let server;
  * Handles TiDB quirks where sequelize.sync({ alter }) may fail.
  */
 async function runSafeMigrations() {
+    // Helper: add column only if missing (MySQL-safe)
+    const ensureColumn = async (table, column, definition) => {
+        const [rows] = await sequelize.query(
+            `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = ?
+             LIMIT 1`,
+            { replacements: [table, column] }
+        );
+        if (!rows || rows.length === 0) {
+            await sequelize.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+        }
+    };
+
     // Helper: create index only if it does not already exist (MySQL lacks CREATE INDEX IF NOT EXISTS)
     const ensureIndex = async (table, indexName, columns) => {
         const [rows] = await sequelize.query(
@@ -558,28 +573,8 @@ async function runSafeMigrations() {
         }
     };
 
-    const migrations = [
-        // paranoid deletedAt columns
-        `ALTER TABLE \`users\`   ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
-        `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
-        `ALTER TABLE \`scores\`  ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
-        `ALTER TABLE \`notes\`   ADD COLUMN IF NOT EXISTS \`deletedAt\` DATETIME NULL DEFAULT NULL`,
-        // tokenVersion on users
-        `ALTER TABLE \`users\` ADD COLUMN IF NOT EXISTS \`tokenVersion\` INT NOT NULL DEFAULT 0`,
-        // percentage on scores
-        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`percentage\` FLOAT DEFAULT 0`,
-        // timeTaken on scores
-        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`timeTaken\` INT DEFAULT 0`,
-        // isOfficial and attemptNumber for multi-attempt support
-        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`isOfficial\` TINYINT(1) DEFAULT 1`,
-        `ALTER TABLE \`scores\` ADD COLUMN IF NOT EXISTS \`attemptNumber\` INT DEFAULT 1`,
-        // isActive on quizzes
-        `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`isActive\` TINYINT(1) DEFAULT 1`,
-        // createdBy on quizzes
-        `ALTER TABLE \`quizzes\` ADD COLUMN IF NOT EXISTS \`createdBy\` INT NULL DEFAULT NULL`,
-        // createdBy on notes
-        `ALTER TABLE \`notes\` ADD COLUMN IF NOT EXISTS \`createdBy\` INT NULL DEFAULT NULL`,
-        // brute force tracking table (persists across restarts & instances)
+    // Tables that are safe to create if missing
+    const tableCreates = [
         `CREATE TABLE IF NOT EXISTS \`login_attempts\` (
             \`ip\`           VARCHAR(45)  NOT NULL,
             \`count\`        INT          NOT NULL DEFAULT 1,
@@ -603,7 +598,6 @@ async function runSafeMigrations() {
             INDEX \`idx_account_sessions_device\` (\`deviceId\`),
             INDEX \`idx_account_sessions_type\` (\`loginType\`)
         )`,
-        `ALTER TABLE \`account_sessions\` ADD COLUMN IF NOT EXISTS \`deviceId\` VARCHAR(120) NULL`,
         `CREATE TABLE IF NOT EXISTS \`blocked_devices\` (
             \`id\` BIGINT NOT NULL AUTO_INCREMENT,
             \`email\` VARCHAR(255) NULL,
@@ -621,14 +615,41 @@ async function runSafeMigrations() {
             INDEX \`idx_blocked_devices_ip\` (\`ipAddress\`),
             INDEX \`idx_blocked_devices_active\` (\`isActive\`)
         )`,
-        `ALTER TABLE \`blocked_devices\` ADD COLUMN IF NOT EXISTS \`email\` VARCHAR(255) NULL`,
-        // index for leaderboard query: WHERE deletedAt IS NULL GROUP BY userId
     ];
-    for (const sql of migrations) {
+
+    // Columns to ensure exist
+    const columnAdds = [
+        ['users', 'deletedAt', 'DATETIME NULL DEFAULT NULL'],
+        ['quizzes', 'deletedAt', 'DATETIME NULL DEFAULT NULL'],
+        ['scores', 'deletedAt', 'DATETIME NULL DEFAULT NULL'],
+        ['notes', 'deletedAt', 'DATETIME NULL DEFAULT NULL'],
+        ['users', 'tokenVersion', 'INT NOT NULL DEFAULT 0'],
+        ['scores', 'percentage', 'FLOAT DEFAULT 0'],
+        ['scores', 'timeTaken', 'INT DEFAULT 0'],
+        ['scores', 'isOfficial', 'TINYINT(1) DEFAULT 1'],
+        ['scores', 'attemptNumber', 'INT DEFAULT 1'],
+        ['quizzes', 'isActive', 'TINYINT(1) DEFAULT 1'],
+        ['quizzes', 'createdBy', 'INT NULL DEFAULT NULL'],
+        ['notes', 'createdBy', 'INT NULL DEFAULT NULL'],
+        ['account_sessions', 'deviceId', 'VARCHAR(120) NULL'],
+        ['blocked_devices', 'email', 'VARCHAR(255) NULL'],
+    ];
+
+    // Create tables
+    for (const sql of tableCreates) {
         try {
             await sequelize.query(sql);
         } catch (e) {
             logger.warn(`⚠️ Migration skipped: ${e.message.substring(0, 80)}`);
+        }
+    }
+
+    // Add columns safely
+    for (const [table, column, def] of columnAdds) {
+        try {
+            await ensureColumn(table, column, def);
+        } catch (e) {
+            logger.warn(`⚠️ Migration skipped: ${table}.${column} -> ${e.message.substring(0, 80)}`);
         }
     }
 
