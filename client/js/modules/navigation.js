@@ -12,6 +12,48 @@ let treeScrollIndicatorRaf = null;
 let treeScrollIndicatorObserver = null;
 let treeScrollIndicatorScroller = null;
 
+function bindForcedTouchScroll() {
+    const scroller = document.getElementById('tree-scroll-area');
+    if (!scroller || scroller._forceTouchScrollBound) return;
+
+    scroller._forceTouchScrollBound = true;
+    let startY = 0;
+    let startX = 0;
+    let startTop = 0;
+    let active = false;
+
+    scroller.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        const t = e.touches[0];
+        startY = t.clientY;
+        startX = t.clientX;
+        startTop = scroller.scrollTop;
+        active = true;
+    }, { passive: true });
+
+    scroller.addEventListener('touchmove', (e) => {
+        if (!active || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        const dy = t.clientY - startY;
+        const dx = t.clientX - startX;
+
+        // Force vertical scrolling inside modal when browser gesture handling is inconsistent.
+        if (Math.abs(dy) > Math.abs(dx)) {
+            scroller.scrollTop = startTop - dy;
+            e.preventDefault();
+            scheduleTreeScrollIndicatorUpdate();
+        }
+    }, { passive: false });
+
+    scroller.addEventListener('touchend', () => {
+        active = false;
+    }, { passive: true });
+
+    scroller.addEventListener('touchcancel', () => {
+        active = false;
+    }, { passive: true });
+}
+
 function getTreeScrollTarget() {
     const inner = document.getElementById('tree-scroll-area');
     const outer = document.getElementById('tree-content');
@@ -318,6 +360,7 @@ export function openBottomSheet() {
     requestAnimationFrame(() => {
         overlay?.classList.add('active');
         content?.classList.add('active');
+        bindForcedTouchScroll();
         bindTreeScrollIndicator();
         scheduleTreeScrollIndicatorUpdate();
         setTimeout(scheduleTreeScrollIndicatorUpdate, 120);

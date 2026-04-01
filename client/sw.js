@@ -3,7 +3,7 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v91';
+const CACHE_NAME = 'quiz-platform-v92';
 const STATIC_ASSETS = [
     '/',                              // SPA shell — pre-cached for instant HTML on repeat visits
     '/css/styles.min.css?v=42',
@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
     '/css/icons.css?v=3',
     '/js/app.admin.bundle.min.js',
     '/js/app.features.bundle.min.js',
-    '/js/bootstrap.min.js?v=51',
+    '/js/bootstrap.min.js?v=52',
     '/js/guest-login.min.js?v=1',
     '/js/lamp-animation.min.js?v=2',
     '/manifest.json',
@@ -65,22 +65,16 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // HTML & JS bundles — Cache-First with background revalidation (SWR)
-    // Serves instantly from cache on repeat visits (LCP ~200ms instead of ~700ms+)
-    // Revalidates in background so next visit always gets latest code.
+    // HTML & JS bundles — Network-First to avoid stale frontend logic after deploy.
     if ((url.pathname.endsWith('.js') && !url.pathname.endsWith('sw.js')) || url.pathname.endsWith('.html') || url.pathname === '/') {
         event.respondWith(
-            caches.match(request).then((cached) => {
-                const networkUpdate = fetch(request).then((response) => {
+            fetch(request).then((response) => {
                     if (response && response.status === 200 && response.type === 'basic') {
                         const clone = response.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                     }
                     return response;
-                }).catch(() => cached || new Response('', { status: 408 }));
-                // Serve cache immediately if available; update runs in background
-                return cached || networkUpdate;
-            })
+                }).catch(() => caches.match(request).then((cached) => cached || new Response('', { status: 408 })))
         );
         return;
     }
