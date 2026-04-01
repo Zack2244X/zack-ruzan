@@ -10,9 +10,23 @@ const SHEET_CLOSE_MS = 340;
 let treeScrollIndicatorBound = false;
 let treeScrollIndicatorRaf = null;
 let treeScrollIndicatorObserver = null;
+let treeScrollIndicatorScroller = null;
+
+function getTreeScrollTarget() {
+    const inner = document.getElementById('tree-scroll-area');
+    const outer = document.getElementById('tree-content');
+    if (!inner && !outer) return null;
+
+    const innerMax = inner ? inner.scrollHeight - inner.clientHeight : -1;
+    const outerMax = outer ? outer.scrollHeight - outer.clientHeight : -1;
+
+    // Use the element that actually has meaningful overflow.
+    if (innerMax >= outerMax) return inner || outer;
+    return outer || inner;
+}
 
 function updateTreeScrollIndicator() {
-    const scroller = document.getElementById('tree-scroll-area');
+    const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
     const rail = document.getElementById('tree-scroll-rail');
     const thumb = document.getElementById('tree-scroll-thumb');
     if (!scroller || !rail || !thumb) return;
@@ -42,13 +56,29 @@ function scheduleTreeScrollIndicatorUpdate() {
 }
 
 function bindTreeScrollIndicator() {
-    if (treeScrollIndicatorBound) return;
-    const scroller = document.getElementById('tree-scroll-area');
+    if (treeScrollIndicatorObserver) {
+        treeScrollIndicatorObserver.disconnect();
+        treeScrollIndicatorObserver = null;
+    }
+
+    const scroller = getTreeScrollTarget();
     if (!scroller) return;
 
-    treeScrollIndicatorBound = true;
-    scroller.addEventListener('scroll', scheduleTreeScrollIndicatorUpdate, { passive: true });
-    window.addEventListener('resize', scheduleTreeScrollIndicatorUpdate, { passive: true });
+    if (treeScrollIndicatorBound && treeScrollIndicatorScroller !== scroller) {
+        treeScrollIndicatorScroller.removeEventListener('scroll', scheduleTreeScrollIndicatorUpdate);
+        treeScrollIndicatorBound = false;
+    }
+
+    treeScrollIndicatorScroller = scroller;
+
+    if (!treeScrollIndicatorBound) {
+        treeScrollIndicatorBound = true;
+        scroller.addEventListener('scroll', scheduleTreeScrollIndicatorUpdate, { passive: true });
+        window.addEventListener('resize', () => {
+            treeScrollIndicatorScroller = getTreeScrollTarget();
+            scheduleTreeScrollIndicatorUpdate();
+        }, { passive: true });
+    }
 
     const historyTree = document.getElementById('history-tree');
     const subjectFilters = document.getElementById('subject-filters-container');

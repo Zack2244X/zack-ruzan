@@ -892,6 +892,15 @@ a:focus:not(:focus-visible) {
     padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom)));
     max-height: 85vh;
     max-height: 85dvh;
+}
+
+/* Keep tree sheet container fixed and let the dedicated inner area handle scrolling. */
+#tree-content {
+    overflow: hidden;
+}
+
+/* Admin sheet still scrolls on its own container. */
+#admin-content {
     overflow-y: auto;
 }
 
