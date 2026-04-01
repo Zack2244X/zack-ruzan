@@ -1016,6 +1016,37 @@ a:focus:not(:focus-visible) {
     background: linear-gradient(180deg, rgba(37, 99, 235, 0.75), rgba(8, 145, 178, 0.75));
 }
 
+/* Tree modal: explicit visual scrollbar indicator for mobile browsers. */
+.tree-scroll-rail {
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    right: 8px;
+    width: 4px;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.25);
+    pointer-events: none;
+    z-index: 8;
+}
+
+.tree-scroll-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.95), rgba(14, 116, 144, 0.95));
+    box-shadow: 0 0 10px rgba(14, 116, 144, 0.35);
+    transform: translateY(0);
+}
+
+@media (min-width: 641px) {
+    .tree-scroll-rail {
+        display: none !important;
+    }
+}
+
 /* ============================================
    Dark Mode: Input Fields
    ============================================ */

@@ -42,16 +42,16 @@
             window.__loadCoreCss = function(){
                 if (loaded) return;
                 loaded = true;
-                addStylesheet('/css/tailwind.min.css?v=32');
-                addStylesheet('/css/styles.min.css?v=32');
+                addStylesheet('/css/tailwind.min.css?v=33');
+                addStylesheet('/css/styles.min.css?v=33');
             };
             document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
             document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
         })();
         </script>
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=32">
-            <link rel="stylesheet" href="/css/styles.min.css?v=32">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=33">
+            <link rel="stylesheet" href="/css/styles.min.css?v=33">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
             <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
@@ -765,9 +765,14 @@
                 </div>
                 <button onclick="closeBottomSheet()" aria-label="إغلاق سجل الامتحانات" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
-            <div class="p-6 overflow-y-auto flex-1 pb-24 modal-scrollbar">
-                <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
-                <div id="history-tree" class="space-y-2"></div>
+            <div class="relative flex-1 min-h-0">
+                <div id="tree-scroll-area" class="p-6 overflow-y-auto h-full pb-24 modal-scrollbar">
+                    <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
+                    <div id="history-tree" class="space-y-2"></div>
+                </div>
+                <div id="tree-scroll-rail" class="tree-scroll-rail hidden" aria-hidden="true">
+                    <div id="tree-scroll-thumb" class="tree-scroll-thumb"></div>
+                </div>
             </div>
         </div>
     </div>

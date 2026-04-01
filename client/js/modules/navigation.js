@@ -7,6 +7,61 @@ import { logFunctionStatus } from './helpers.js';
 import { getLenisInstance } from './scroll.js';
 
 const SHEET_CLOSE_MS = 340;
+let treeScrollIndicatorBound = false;
+let treeScrollIndicatorRaf = null;
+let treeScrollIndicatorObserver = null;
+
+function updateTreeScrollIndicator() {
+    const scroller = document.getElementById('tree-scroll-area');
+    const rail = document.getElementById('tree-scroll-rail');
+    const thumb = document.getElementById('tree-scroll-thumb');
+    if (!scroller || !rail || !thumb) return;
+
+    const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+    if (maxScroll <= 2) {
+        rail.classList.add('hidden');
+        return;
+    }
+
+    rail.classList.remove('hidden');
+    const ratio = scroller.clientHeight / scroller.scrollHeight;
+    const thumbHeight = Math.max(42, Math.floor(scroller.clientHeight * ratio));
+    const maxThumbTop = Math.max(0, scroller.clientHeight - thumbHeight);
+    const thumbTop = maxScroll > 0 ? Math.floor((scroller.scrollTop / maxScroll) * maxThumbTop) : 0;
+
+    thumb.style.height = `${thumbHeight}px`;
+    thumb.style.transform = `translateY(${thumbTop}px)`;
+}
+
+function scheduleTreeScrollIndicatorUpdate() {
+    if (treeScrollIndicatorRaf) cancelAnimationFrame(treeScrollIndicatorRaf);
+    treeScrollIndicatorRaf = requestAnimationFrame(() => {
+        treeScrollIndicatorRaf = null;
+        updateTreeScrollIndicator();
+    });
+}
+
+function bindTreeScrollIndicator() {
+    if (treeScrollIndicatorBound) return;
+    const scroller = document.getElementById('tree-scroll-area');
+    if (!scroller) return;
+
+    treeScrollIndicatorBound = true;
+    scroller.addEventListener('scroll', scheduleTreeScrollIndicatorUpdate, { passive: true });
+    window.addEventListener('resize', scheduleTreeScrollIndicatorUpdate, { passive: true });
+
+    const historyTree = document.getElementById('history-tree');
+    const subjectFilters = document.getElementById('subject-filters-container');
+    treeScrollIndicatorObserver = new MutationObserver(scheduleTreeScrollIndicatorUpdate);
+    if (historyTree) {
+        treeScrollIndicatorObserver.observe(historyTree, { childList: true, subtree: true, attributes: true });
+    }
+    if (subjectFilters) {
+        treeScrollIndicatorObserver.observe(subjectFilters, { childList: true, subtree: true, attributes: true });
+    }
+
+    scheduleTreeScrollIndicatorUpdate();
+}
 
 /**
  * مزامنة حالة التفاعل مع العناصر الرئيسية (منع التفاعل عند فتح نوافذ)
@@ -208,6 +263,9 @@ export function openBottomSheet() {
     requestAnimationFrame(() => {
         overlay?.classList.add('active');
         content?.classList.add('active');
+        bindTreeScrollIndicator();
+        scheduleTreeScrollIndicatorUpdate();
+        setTimeout(scheduleTreeScrollIndicatorUpdate, 120);
     });
     _attachSwipeToClose(content, closeBottomSheet);
     _showThemeToggle(false);
@@ -421,4 +479,5 @@ export function toggleTreeNode(contentId, btn) {
             icon.classList.remove('rotate-180');
         }
     }
+    scheduleTreeScrollIndicatorUpdate();
 }
