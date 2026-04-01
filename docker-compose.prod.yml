@@ -34,8 +34,7 @@ services:
       - app
     ports:
       - "80:80"
-      # Uncomment to expose HTTPS when you set up a real domain and TLS
-      # - "443:443"
+      - "443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
