@@ -145,7 +145,8 @@ export function _syncMainInteractionState() {
         'create-section-modal', 'add-note-modal', 'edit-selection-modal',
         'grades-modal', 'stats-modal', 'admin-auth-modal',
         'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
-        'results-screen', 'confirm-modal-overlay', 'delete-exam-modal'
+        'results-screen', 'confirm-modal-overlay', 'delete-exam-modal',
+        'accounts-management-modal'
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
@@ -228,7 +229,8 @@ export function initOverlayScrollLock() {
         'admin-auth-modal', 'student-menu-modal',
         'delete-subject-modal', 'rename-subject-modal',
         'results-screen', 'confirm-modal-overlay',
-        'guest-modal', 'delete-exam-modal'
+        'guest-modal', 'delete-exam-modal',
+        'accounts-management-modal'
     ];
     const SHEET_IDS = ['tree-content', 'admin-content'];
 
@@ -386,7 +388,8 @@ export function closeAllOverlays() {
     const modalsToClose = [
         'admin-auth-modal', 'create-section-modal', 'add-note-modal',
         'edit-selection-modal', 'grades-modal', 'stats-modal',
-        'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal'
+        'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
+        'accounts-management-modal'
     ];
     modalsToClose.forEach(id => {
         const el = document.getElementById(id);
