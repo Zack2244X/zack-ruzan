@@ -1,5 +1,8 @@
 services:
   app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: ${IMAGE_NAME}
     restart: always
     environment:
