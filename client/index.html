@@ -42,16 +42,16 @@
             window.__loadCoreCss = function(){
                 if (loaded) return;
                 loaded = true;
-                addStylesheet('/css/tailwind.min.css?v=40');
-                addStylesheet('/css/styles.min.css?v=40');
+                addStylesheet('/css/tailwind.min.css?v=41');
+                addStylesheet('/css/styles.min.css?v=41');
             };
             document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
             document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
         })();
         </script>
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=40">
-            <link rel="stylesheet" href="/css/styles.min.css?v=40">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=41">
+            <link rel="stylesheet" href="/css/styles.min.css?v=41">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
             <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
@@ -159,10 +159,7 @@
         justify-content: center;
         pointer-events: none;
     }
-    /* touch-action: manipulation eliminates the 300ms tap delay on all interactive elements */
-    a, button, [onclick], [role="button"], input, select, textarea, label {
-        touch-action: manipulation;
-    }
+    /* Keep touch behavior native to avoid blocking vertical pan in modal content on mobile. */
     /* Prevent FOUC: elements with Tailwind 'hidden' class must be invisible
        from first paint — before tailwind.min.css loads (async).
        Without this, #ios-bottom-nav, #dashboard-view etc. render briefly
@@ -1061,7 +1058,7 @@
                         // ensure bootstrap loader is present so queued calls will be flushed
                         if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
-                            s.src = '/js/bootstrap.min.js?v=50';
+                            s.src = '/js/bootstrap.min.js?v=51';
                             s.defer = true;
                             document.head.appendChild(s);
                         }
@@ -1940,7 +1937,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=50" defer></script>
+    <script src="/js/bootstrap.min.js?v=51" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>

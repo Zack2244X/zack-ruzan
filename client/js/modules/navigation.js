@@ -322,7 +322,7 @@ export function openBottomSheet() {
         scheduleTreeScrollIndicatorUpdate();
         setTimeout(scheduleTreeScrollIndicatorUpdate, 120);
     });
-    _attachSwipeToClose(content, closeBottomSheet);
+    // Swipe-to-close disabled to keep touch scrolling fully native inside modal content.
     _showThemeToggle(false);
     _syncMainInteractionState();
 }
@@ -485,7 +485,7 @@ export function openAdminAuthOrPanel() {
         // إخفاء الشريط السفلي عند فتح لوحة الأدمن
         const dock = document.getElementById('ios-bottom-nav');
         if (dock) dock.classList.add('hidden');
-        _attachSwipeToClose(adminContent, closeAdminSheet);
+        // Swipe-to-close disabled to keep touch scrolling fully native inside modal content.
     } else {
         document.getElementById('student-menu-modal').classList.remove('hidden');
     }
