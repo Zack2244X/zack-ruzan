@@ -9,8 +9,18 @@
 // ============================================
 //   New Relic APM — مراقبة الأداء
 // ============================================
-// Initialize New Relic agent (loads automatically with license key)
-require('newrelic');
+// Initialize New Relic agent (optional). Skip if package not installed or license not set.
+try {
+    if (process.env.NEW_RELIC_LICENSE_KEY) {
+        require('newrelic');
+    }
+} catch (err) {
+    // Only warn in production if license is set but module missing.
+    if (process.env.NEW_RELIC_LICENSE_KEY) {
+        // eslint-disable-next-line no-console
+        console.warn('New Relic module not found; APM disabled:', err.message);
+    }
+}
 
 // ============================================
 //   سيرفر منصة الاختبارات التفاعلية
