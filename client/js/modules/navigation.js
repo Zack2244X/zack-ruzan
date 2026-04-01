@@ -4,6 +4,7 @@
  */
 import state, { THEME_KEY } from './state.js';
 import { logFunctionStatus } from './helpers.js';
+import { getLenisInstance } from './scroll.js';
 
 const SHEET_CLOSE_MS = 340;
 let treeScrollIndicatorBound = false;
@@ -169,47 +170,21 @@ export function _syncMainInteractionState() {
     try {
         if (blocked) {
             if (!body.hasAttribute('data-scroll-lock')) {
-                const scrollY = window.scrollY || window.pageYOffset || 0;
                 body.setAttribute('data-scroll-lock', '1');
                 body.setAttribute('data-orig-overflow', body.style.overflow || '');
-                body.setAttribute('data-orig-position', body.style.position || '');
-                body.setAttribute('data-orig-top', body.style.top || '');
-                body.setAttribute('data-orig-left', body.style.left || '');
-                body.setAttribute('data-orig-right', body.style.right || '');
-                body.setAttribute('data-orig-width', body.style.width || '');
-                body.setAttribute('data-lock-scroll-y', String(scrollY));
                 body.style.overflow = 'hidden';
-                body.style.position = 'fixed';
-                body.style.top = `-${scrollY}px`;
-                body.style.left = '0';
-                body.style.right = '0';
-                body.style.width = '100%';
+                document.documentElement.style.overflow = 'hidden';
             }
+            try { getLenisInstance()?.stop?.(); } catch (e) {}
         } else {
             if (body.hasAttribute('data-scroll-lock')) {
                 const origOverflow = body.getAttribute('data-orig-overflow');
-                const origPosition = body.getAttribute('data-orig-position');
-                const origTop = body.getAttribute('data-orig-top');
-                const origLeft = body.getAttribute('data-orig-left');
-                const origRight = body.getAttribute('data-orig-right');
-                const origWidth = body.getAttribute('data-orig-width');
-                const lockScrollY = parseInt(body.getAttribute('data-lock-scroll-y') || '0', 10) || 0;
                 body.style.overflow = origOverflow || '';
-                body.style.position = origPosition || '';
-                body.style.top = origTop || '';
-                body.style.left = origLeft || '';
-                body.style.right = origRight || '';
-                body.style.width = origWidth || '';
+                document.documentElement.style.overflow = '';
                 body.removeAttribute('data-orig-overflow');
-                body.removeAttribute('data-orig-position');
-                body.removeAttribute('data-orig-top');
-                body.removeAttribute('data-orig-left');
-                body.removeAttribute('data-orig-right');
-                body.removeAttribute('data-orig-width');
-                body.removeAttribute('data-lock-scroll-y');
                 body.removeAttribute('data-scroll-lock');
-                window.scrollTo(0, lockScrollY);
             }
+            try { getLenisInstance()?.start?.(); } catch (e) {}
         }
     } catch (e) {
         document.body.style.overflow = blocked ? 'hidden' : '';
