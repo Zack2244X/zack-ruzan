@@ -1,4 +1,4 @@
-zackpro.codes {
+zackpro.codes, www.zackpro.codes {
   # ي terminates TLS تلقائياً ويعكس الطلبات للتطبيق
   reverse_proxy app:10000
 
