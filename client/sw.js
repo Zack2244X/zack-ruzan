@@ -3,14 +3,14 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v80';
+const CACHE_NAME = 'quiz-platform-v81';
 const STATIC_ASSETS = [
     '/',                              // SPA shell — pre-cached for instant HTML on repeat visits
-    '/css/styles.min.css',
-    '/css/tailwind.min.css',
+    '/css/styles.min.css?v=32',
+    '/css/tailwind.min.css?v=32',
     '/css/dark-fixes.min.css',
     '/css/login-extra.min.css?v=3',
-    '/css/icons.min.css?v=2',
+    '/css/icons.css?v=3',
     '/js/app.admin.bundle.min.js',
     '/js/app.features.bundle.min.js',
     '/js/bootstrap.min.js?v=49',
