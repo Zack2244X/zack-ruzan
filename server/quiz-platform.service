@@ -1,0 +1,18 @@
+[Unit]
+Description=Quiz Platform Server
+After=network.target
+
+[Service]
+Type=simple
+User=zack
+WorkingDirectory=/home/zack/Desktop/zack@ruzan/server
+EnvironmentFile=/home/zack/Desktop/zack@ruzan/server/.env
+ExecStart=/usr/bin/env node --experimental-loader=newrelic/esm-loader.mjs index.js
+Restart=always
+RestartSec=5
+SyslogIdentifier=quiz-platform
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

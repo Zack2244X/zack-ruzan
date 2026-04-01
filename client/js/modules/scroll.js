@@ -222,19 +222,25 @@ function _initWithClass(LenisClass, options) {
 export function setScrollTierOptions(tier, isMobile = false) {
     if (!_lenis) return;
     try {
-        if (tier === 'low') {
-            // موارد منخفضة — اترك التمرير native تماماً
-            if (_lenis.options) _lenis.options.smoothWheel = false;
-        } else if (tier === 'medium' || isMobile) {
-            // موبايل متوسط: مدة أقصر = شعور أكثر مباشرة، أقل مقاومة
+        if (tier === 'low' || isMobile) {
+            // Mobile or Low tier: disable JS smooth scrolling entirely to save GPU/CPU
             if (_lenis.options) {
-                _lenis.options.duration       = isMobile ? 0.8 : 1.0;
-                _lenis.options.touchMultiplier = isMobile ? 1.0 : 1.5;
+                _lenis.options.smoothWheel = false;
+                _lenis.options.smoothTouch = false;
+                _lenis.options.orientation = 'native'; // or just destroy the instance usually
+            }
+            disableSmoothScroll();
+            document.documentElement.style.scrollBehavior = 'smooth';
+        } else if (tier === 'medium') {
+            // Medium tier desktop
+            if (_lenis.options) {
+                _lenis.options.duration       = 1.0;
+                _lenis.options.touchMultiplier = 1.5;
             }
         }
         console.log(`[scroll] tier=${tier} mobile=${isMobile} → Lenis options updated`);
     } catch (e) {
-        // بعض إصدارات Lenis لا تكشف options مباشرة
+        // Some Lenis versions do not expose options directly
     }
 }
 

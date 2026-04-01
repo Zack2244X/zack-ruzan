@@ -8,7 +8,7 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node --experimental-loader=newrelic/esm-loader.mjs index.js",
     "dev": "nodemon index.js",
     "test": "jest --forceExit --detectOpenHandles --coverage"
   },
@@ -25,6 +25,7 @@
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.18.2",
+    "newrelic": "^13.17.0",
     "sanitize-html": "^2.17.1",
     "sequelize": "^6.37.7",
     "winston": "^3.19.0"

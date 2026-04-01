@@ -1,0 +1,10 @@
+{
+  email youssefhas620@gmail.com
+}
+
+zackpro.codes, www.zackpro.codes {
+  tls {
+    dns digitalocean {env.DIGITALOCEAN_TOKEN}
+  }
+  reverse_proxy 127.0.0.1:3000
+}
