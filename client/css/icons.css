@@ -86,6 +86,7 @@
 .fa-moon::before             { content: "\f186"; }
 .fa-check-circle::before     { content: "\f058"; }
 .fa-exclamation-circle::before { content: "\f06a"; }
+.fa-exclamation-triangle::before { content: "\f071"; }
 .fa-fire::before             { content: "\f06d"; }
 .fa-bolt::before             { content: "\f0e7"; }
 .fa-chart-line::before       { content: "\f201"; }
@@ -106,6 +107,7 @@
 .fa-sign-out-alt::before     { content: "\f2f5"; }
 .fa-shield-alt::before       { content: "\f3ed"; }
 .fa-user-cog::before         { content: "\f4fe"; }
+.fa-users::before            { content: "\f0c0"; }
 .fa-clock::before            { content: "\f017"; }
 
 /* -- Brand icon ------------------------------------------- */

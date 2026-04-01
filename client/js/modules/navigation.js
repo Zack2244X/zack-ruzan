@@ -339,10 +339,10 @@ export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
     const iconEl = document.getElementById('sheet-icon');
     if (section === 'exams') {
         titleEl.innerText = "سجل الامتحانات";
-        iconEl.className = "fas fa-bolt text-blue-600 bg-blue-100 p-2 rounded-xl ml-3 text-lg";
+        iconEl.className = "bi bi-lightning-charge-fill text-blue-600 bg-blue-100 p-2 rounded-xl ml-3 text-lg";
     } else {
         titleEl.innerText = "المذكرات والملفات";
-        iconEl.className = "fas fa-file-pdf text-orange-600 bg-orange-100 p-2 rounded-xl ml-3 text-lg";
+        iconEl.className = "bi bi-file-earmark-pdf-fill text-orange-600 bg-orange-100 p-2 rounded-xl ml-3 text-lg";
     }
     renderSubjectFilters();
     renderHistoryTree();
@@ -407,14 +407,18 @@ export function showLoginScreenWithDesktop() {
 export function toggleTreeNode(contentId, btn) {
     logFunctionStatus('toggleTreeNode', false);
     const content = document.getElementById(contentId);
-    const icon = btn.querySelector('.fa-chevron-down');
+    const icon = btn.querySelector('.fa-chevron-down, .bi-chevron-down');
     if (content.classList.contains('hidden')) {
         content.classList.remove('hidden');
         content.classList.add('block');
-        icon.classList.add('rotate-180');
+        if (icon) {
+            icon.classList.add('rotate-180');
+        }
     } else {
         content.classList.remove('block');
         content.classList.add('hidden');
-        icon.classList.remove('rotate-180');
+        if (icon) {
+            icon.classList.remove('rotate-180');
+        }
     }
 }

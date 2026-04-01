@@ -17,6 +17,38 @@ const DEFAULT_SUBJECTS = [
     'نصوص الأدب الجاهلي'
 ];
 
+function expandFirstTreeBranch(treeRoot) {
+    if (!treeRoot) return;
+
+    const firstYearButton = treeRoot.querySelector("button[onclick*='content-year-'], button[onclick*='edit-content-year-']");
+    if (!firstYearButton) return;
+
+    const firstYearContent = firstYearButton.nextElementSibling;
+    if (firstYearContent && firstYearContent.classList.contains('hidden')) {
+        firstYearContent.classList.remove('hidden');
+        firstYearContent.classList.add('block');
+    }
+
+    const firstYearIcon = firstYearButton.querySelector('.fa-chevron-down, .bi-chevron-down');
+    if (firstYearIcon) {
+        firstYearIcon.classList.add('rotate-180');
+    }
+
+    const firstMonthButton = firstYearContent?.querySelector("button[onclick*='content-month-'], button[onclick*='edit-content-month-']");
+    if (!firstMonthButton) return;
+
+    const firstMonthContent = firstMonthButton.nextElementSibling;
+    if (firstMonthContent && firstMonthContent.classList.contains('hidden')) {
+        firstMonthContent.classList.remove('hidden');
+        firstMonthContent.classList.add('block');
+    }
+
+    const firstMonthIcon = firstMonthButton.querySelector('.fa-chevron-down, .bi-chevron-down');
+    if (firstMonthIcon) {
+        firstMonthIcon.classList.add('rotate-180');
+    }
+}
+
 /**
  * استخراج قائمة المواد الديناميكية من الاختبارات والمذكرات مع الافتراضية
  * @returns {Array<string>} مصفوفة المواد مع "الكل" في البداية
@@ -185,8 +217,8 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
         html += `
             <div id="year-${year}" class="mb-2">
                 <button onclick="toggleTreeNode('content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-xl hover:bg-gray-200 transition">
-                    <span><i class="far fa-calendar text-${themeColor}-500 ml-2"></i> ${year}</span>
-                    <i class="fas fa-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
+                    <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
+                    <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
                 <div id="content-year-${year}" class="pr-4 mt-2 space-y-2 border-r-2 border-gray-200 hidden">
         `;
@@ -199,8 +231,8 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
             html += `
                 <div id="month-${monthId}" class="mb-2">
                     <button onclick="toggleTreeNode('content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-2 hover:bg-${themeColor}-50 rounded-lg transition">
-                        <span><i class="fas fa-folder-open text-yellow-400 ml-2"></i> ${monthName}</span>
-                        <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
+                        <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
+                        <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
                     </button>
                     <div id="content-month-${monthId}" class="pr-5 mt-1 space-y-3 border-r-2 border-${themeColor}-100 hidden">
             `;
@@ -234,14 +266,14 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                             </div>
                         `;
                     } else {
-                        const iconClass = config.type === 'ppt' ? 'fa-file-powerpoint text-red-500' : 'fa-file-pdf text-orange-500';
+                        const iconClass = config.type === 'ppt' ? 'bi-file-earmark-slides-fill text-red-500' : 'bi-file-earmark-pdf-fill text-orange-500';
                         const safeLink = encodeURI(config.link || '');
                         html += `
                             <div class="group mb-2">
                                 <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-300 transition cursor-pointer">
                                     <div class="flex justify-between items-start">
                                         <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
-                                        <i class="fas ${iconClass} text-lg"></i>
+                                        <i class="bi ${iconClass} text-lg"></i>
                                     </div>
                                     ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
                                     <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
@@ -260,6 +292,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
         html += `</div></div>`;
     });
     historyTree.innerHTML = html;
+    expandFirstTreeBranch(historyTree);
 }
 
 /**
@@ -308,8 +341,8 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
         html += `
             <div id="edit-year-${year}" class="mb-2">
                 <button onclick="toggleTreeNode('edit-content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-white shadow-sm border border-gray-100 p-3 rounded-xl hover:bg-gray-50 transition">
-                    <span><i class="far fa-calendar text-${themeColor}-500 ml-2"></i> ${year}</span>
-                    <i class="fas fa-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
+                    <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
+                    <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
                 <div id="edit-content-year-${year}" class="pr-4 mt-2 space-y-2 border-r-2 border-gray-200 hidden">
         `;
@@ -322,8 +355,8 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
             html += `
                 <div id="edit-month-${monthId}" class="mb-2">
                     <button onclick="toggleTreeNode('edit-content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-2 hover:bg-${themeColor}-50 rounded-lg transition">
-                        <span><i class="fas fa-folder-open text-yellow-400 ml-2"></i> ${monthName}</span>
-                        <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
+                        <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
+                        <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
                     </button>
                     <div id="edit-content-month-${monthId}" class="pr-5 mt-1 space-y-2 border-r-2 border-${themeColor}-100 hidden">
             `;
@@ -406,6 +439,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
         html += `</div></div>`;
     });
     editTree.innerHTML = html;
+    expandFirstTreeBranch(editTree);
 }
 
 // ==========================================
