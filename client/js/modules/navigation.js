@@ -318,22 +318,23 @@ function _attachSwipeToClose(el, closeFn) {
     logFunctionStatus('_attachSwipeToClose', false);
     if (!el || el._swipeAttached) return;
     el._swipeAttached = true;
+    const dragSurface = el.querySelector('.sheet-handle') || el;
     let startY = 0;
     let isDragging = false;
 
-    el.addEventListener('touchstart', (e) => {
+    dragSurface.addEventListener('touchstart', (e) => {
         startY = e.touches[0].clientY;
         isDragging = true;
         el.style.transition = 'none';
     }, { passive: true });
 
-    el.addEventListener('touchmove', (e) => {
+    dragSurface.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         const dy = e.touches[0].clientY - startY;
         if (dy > 0) el.style.transform = `translateY(${dy}px)`;
     }, { passive: true });
 
-    el.addEventListener('touchend', (e) => {
+    dragSurface.addEventListener('touchend', (e) => {
         if (!isDragging) return;
         isDragging = false;
         const dy = e.changedTouches[0].clientY - startY;

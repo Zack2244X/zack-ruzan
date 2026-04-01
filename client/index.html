@@ -42,16 +42,16 @@
             window.__loadCoreCss = function(){
                 if (loaded) return;
                 loaded = true;
-                addStylesheet('/css/tailwind.min.css?v=37');
-                addStylesheet('/css/styles.min.css?v=37');
+                addStylesheet('/css/tailwind.min.css?v=38');
+                addStylesheet('/css/styles.min.css?v=38');
             };
             document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
             document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
         })();
         </script>
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=37">
-            <link rel="stylesheet" href="/css/styles.min.css?v=37">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=38">
+            <link rel="stylesheet" href="/css/styles.min.css?v=38">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
             <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
@@ -783,7 +783,7 @@
     <div id="admin-bottom-sheet" class="hidden fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
         <div id="admin-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay" onclick="closeAdminSheet()"></div>
         <div id="admin-content" class="relative w-full md:max-w-md bg-white rounded-t-3xl p-6 pb-24 flex flex-col bottom-sheet-content shadow-2xl pointer-events-auto">
-            <div class="w-full flex justify-center mb-4 cursor-pointer" onclick="closeAdminSheet()">
+            <div class="w-full flex justify-center mb-4 cursor-pointer sheet-handle" onclick="closeAdminSheet()">
                 <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
             <h2 class="text-xl font-black text-purple-700 mb-6 flex items-center"><i class="fas fa-shield-alt ml-2 text-2xl"></i> لوحة تحكم المعلم</h2>
