@@ -165,29 +165,16 @@ export function _syncMainInteractionState() {
         dashboard.classList.toggle('pointer-events-none', blocked);
         dashboard.classList.toggle('select-none', blocked);
     }
-    // Keep scroll-lock writes minimal and avoid any computed-style/layout reads here.
-    // `scrollbar-gutter: stable` is already enabled in CSS, so compensation reads are unnecessary.
+    // Temporary diagnostic mode: do NOT lock global scroll while modals are open.
+    // This helps isolate whether scroll-lock logic is the root cause of modal scroll issues.
     try {
-        if (blocked) {
-            if (!body.hasAttribute('data-scroll-lock')) {
-                body.setAttribute('data-scroll-lock', '1');
-                body.setAttribute('data-orig-overflow', body.style.overflow || '');
-                body.style.overflow = 'hidden';
-                document.documentElement.style.overflow = 'hidden';
-            }
-            try { getLenisInstance()?.stop?.(); } catch (e) {}
-        } else {
-            if (body.hasAttribute('data-scroll-lock')) {
-                const origOverflow = body.getAttribute('data-orig-overflow');
-                body.style.overflow = origOverflow || '';
-                document.documentElement.style.overflow = '';
-                body.removeAttribute('data-orig-overflow');
-                body.removeAttribute('data-scroll-lock');
-            }
-            try { getLenisInstance()?.start?.(); } catch (e) {}
-        }
+        body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+        body.removeAttribute('data-orig-overflow');
+        body.removeAttribute('data-scroll-lock');
+        try { getLenisInstance()?.start?.(); } catch (e) {}
     } catch (e) {
-        document.body.style.overflow = blocked ? 'hidden' : '';
+        // no-op in diagnostic mode
     }
 
     const t = document.getElementById('theme-toggle');
