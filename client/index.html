@@ -42,16 +42,16 @@
             window.__loadCoreCss = function(){
                 if (loaded) return;
                 loaded = true;
-                addStylesheet('/css/tailwind.min.css?v=35');
-                addStylesheet('/css/styles.min.css?v=35');
+                addStylesheet('/css/tailwind.min.css?v=36');
+                addStylesheet('/css/styles.min.css?v=36');
             };
             document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
             document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
         })();
         </script>
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=35">
-            <link rel="stylesheet" href="/css/styles.min.css?v=35">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=36">
+            <link rel="stylesheet" href="/css/styles.min.css?v=36">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
             <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
@@ -774,6 +774,9 @@
                     <div id="tree-scroll-thumb" class="tree-scroll-thumb"></div>
                 </div>
             </div>
+        </div>
+        <div id="tree-fixed-scrollbar" class="tree-fixed-scrollbar" aria-hidden="true">
+            <div id="tree-fixed-scroll-thumb" class="tree-fixed-scroll-thumb"></div>
         </div>
     </div>
 

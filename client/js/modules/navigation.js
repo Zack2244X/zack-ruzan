@@ -29,6 +29,9 @@ function updateTreeScrollIndicator() {
     const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
     const rail = document.getElementById('tree-scroll-rail');
     const thumb = document.getElementById('tree-scroll-thumb');
+    const fixedRail = document.getElementById('tree-fixed-scrollbar');
+    const fixedThumb = document.getElementById('tree-fixed-scroll-thumb');
+    const treeContent = document.getElementById('tree-content');
     if (!scroller || !rail || !thumb) return;
 
     rail.style.display = 'block';
@@ -37,6 +40,19 @@ function updateTreeScrollIndicator() {
         thumb.style.height = `${Math.max(44, scroller.clientHeight - 8)}px`;
         thumb.style.transform = 'translateY(0px)';
         thumb.style.opacity = '0.7';
+
+        if (fixedRail && fixedThumb && treeContent?.classList.contains('active')) {
+            const scrollRect = scroller.getBoundingClientRect();
+            const railTop = Math.max(0, scrollRect.top + 8);
+            const railHeight = Math.max(40, scrollRect.height - 16);
+            fixedRail.style.top = `${railTop}px`;
+            fixedRail.style.height = `${railHeight}px`;
+            fixedRail.style.left = `${Math.max(0, scrollRect.right - 10)}px`;
+            fixedThumb.style.height = `${Math.max(44, railHeight - 4)}px`;
+            fixedThumb.style.transform = 'translateY(0px)';
+            fixedThumb.style.opacity = '0.7';
+            fixedRail.classList.add('visible');
+        }
         return;
     }
 
@@ -48,6 +64,23 @@ function updateTreeScrollIndicator() {
 
     thumb.style.height = `${thumbHeight}px`;
     thumb.style.transform = `translateY(${thumbTop}px)`;
+
+    if (fixedRail && fixedThumb && treeContent?.classList.contains('active')) {
+        const scrollRect = scroller.getBoundingClientRect();
+        const railTop = Math.max(0, scrollRect.top + 8);
+        const railHeight = Math.max(40, scrollRect.height - 16);
+        const fixedThumbHeight = Math.max(42, Math.floor(railHeight * ratio));
+        const fixedMaxThumbTop = Math.max(0, railHeight - fixedThumbHeight);
+        const fixedThumbTop = maxScroll > 0 ? Math.floor((scroller.scrollTop / maxScroll) * fixedMaxThumbTop) : 0;
+
+        fixedRail.style.top = `${railTop}px`;
+        fixedRail.style.height = `${railHeight}px`;
+        fixedRail.style.left = `${Math.max(0, scrollRect.right - 10)}px`;
+        fixedThumb.style.height = `${fixedThumbHeight}px`;
+        fixedThumb.style.transform = `translateY(${fixedThumbTop}px)`;
+        fixedThumb.style.opacity = '1';
+        fixedRail.classList.add('visible');
+    }
 }
 
 function scheduleTreeScrollIndicatorUpdate() {
@@ -311,8 +344,10 @@ export function closeBottomSheet() {
     const sheet = document.getElementById('tree-bottom-sheet');
     const overlay = document.getElementById('tree-overlay');
     const content = document.getElementById('tree-content');
+    const fixedRail = document.getElementById('tree-fixed-scrollbar');
     overlay?.classList.remove('active');
     content?.classList.remove('active');
+    fixedRail?.classList.remove('visible');
     if (sheet) {
         clearTimeout(sheet._hideTimer);
         sheet._hideTimer = setTimeout(() => {
