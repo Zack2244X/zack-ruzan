@@ -47,7 +47,7 @@ function updateTreeScrollIndicator() {
             const railHeight = Math.max(40, scrollRect.height - 16);
             fixedRail.style.top = `${railTop}px`;
             fixedRail.style.height = `${railHeight}px`;
-            fixedRail.style.left = `${Math.max(0, scrollRect.right - 10)}px`;
+            fixedRail.style.left = `${Math.max(0, scrollRect.left + 2)}px`;
             fixedThumb.style.height = `${Math.max(44, railHeight - 4)}px`;
             fixedThumb.style.transform = 'translateY(0px)';
             fixedThumb.style.opacity = '0.7';
@@ -75,7 +75,7 @@ function updateTreeScrollIndicator() {
 
         fixedRail.style.top = `${railTop}px`;
         fixedRail.style.height = `${railHeight}px`;
-        fixedRail.style.left = `${Math.max(0, scrollRect.right - 10)}px`;
+        fixedRail.style.left = `${Math.max(0, scrollRect.left + 2)}px`;
         fixedThumb.style.height = `${fixedThumbHeight}px`;
         fixedThumb.style.transform = `translateY(${fixedThumbTop}px)`;
         fixedThumb.style.opacity = '1';

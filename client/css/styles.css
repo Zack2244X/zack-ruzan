@@ -1018,6 +1018,17 @@ a:focus:not(:focus-visible) {
     touch-action: pan-y !important;
 }
 
+/* Use custom indicator only: hide native scrollbars for consistent cross-device rendering. */
+#tree-scroll-area {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+#tree-scroll-area::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+}
+
 .modal-scrollbar::-webkit-scrollbar {
     width: 8px;
 }
@@ -1092,15 +1103,7 @@ a:focus:not(:focus-visible) {
     transform: translateY(0);
 }
 
-@media (min-width: 641px) {
-    .tree-scroll-rail {
-        display: none !important;
-    }
-
-    .tree-fixed-scrollbar {
-        display: none !important;
-    }
-}
+/* Keep custom indicators available on all breakpoints for consistent behavior. */
 
 /* ============================================
    Dark Mode: Input Fields
