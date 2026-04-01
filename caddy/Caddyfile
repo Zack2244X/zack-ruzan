@@ -1,0 +1,21 @@
+{
+  auto_https off  # لا توجد شهادة حالياً، نخدم HTTP فقط
+}
+
+:80 {
+  # التخديم لأي هوست (IP أو دومين) على HTTP
+  reverse_proxy app:${PORT}
+
+  log {
+    output file /data/caddy/access.log
+  }
+}
+
+# عندما تجهز دومين حقيقي وتريد HTTPS:
+# yourdomain.com {
+#   reverse_proxy app:${PORT}
+#   log {
+#     output file /data/caddy/access.log
+#   }
+# }
+
