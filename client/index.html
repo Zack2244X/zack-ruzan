@@ -42,16 +42,16 @@
             window.__loadCoreCss = function(){
                 if (loaded) return;
                 loaded = true;
-                addStylesheet('/css/tailwind.min.css?v=34');
-                addStylesheet('/css/styles.min.css?v=34');
+                addStylesheet('/css/tailwind.min.css?v=35');
+                addStylesheet('/css/styles.min.css?v=35');
             };
             document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
             document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
         })();
         </script>
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=34">
-            <link rel="stylesheet" href="/css/styles.min.css?v=34">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=35">
+            <link rel="stylesheet" href="/css/styles.min.css?v=35">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
             <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
@@ -770,7 +770,7 @@
                     <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
                     <div id="history-tree" class="space-y-2"></div>
                 </div>
-                <div id="tree-scroll-rail" class="tree-scroll-rail hidden" aria-hidden="true">
+                <div id="tree-scroll-rail" class="tree-scroll-rail" aria-hidden="true">
                     <div id="tree-scroll-thumb" class="tree-scroll-thumb"></div>
                 </div>
             </div>

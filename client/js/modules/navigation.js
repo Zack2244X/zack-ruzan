@@ -31,13 +31,16 @@ function updateTreeScrollIndicator() {
     const thumb = document.getElementById('tree-scroll-thumb');
     if (!scroller || !rail || !thumb) return;
 
+    rail.style.display = 'block';
     const maxScroll = scroller.scrollHeight - scroller.clientHeight;
     if (maxScroll <= 2) {
-        rail.classList.add('hidden');
+        thumb.style.height = `${Math.max(44, scroller.clientHeight - 8)}px`;
+        thumb.style.transform = 'translateY(0px)';
+        thumb.style.opacity = '0.7';
         return;
     }
 
-    rail.classList.remove('hidden');
+    thumb.style.opacity = '1';
     const ratio = scroller.clientHeight / scroller.scrollHeight;
     const thumbHeight = Math.max(42, Math.floor(scroller.clientHeight * ratio));
     const maxThumbTop = Math.max(0, scroller.clientHeight - thumbHeight);
