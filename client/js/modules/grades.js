@@ -169,6 +169,8 @@ export function renderGradesList() {
 export async function openStatsModal() {
     logFunctionStatus('openStatsModal', true);
     _showThemeToggle(false);
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.add('hidden');
     document.getElementById('stats-modal').classList.remove('hidden');
 
     const container = document.getElementById('stats-list-container');
@@ -234,7 +236,7 @@ export function renderStatsContent() {
 
     // 1. أول 3 في آخر امتحان
     const latestQuizTitle = state.allQuizzes.length > 0 ? state.allQuizzes[state.allQuizzes.length - 1].config.title : '';
-    const latestScores = state.allUserScores.filter(e => e.quizTitle === latestQuizTitle).sort((a, b) => b.score - a.score);
+    const latestScores = sourceScores.filter(e => e.quizTitle === latestQuizTitle).sort((a, b) => b.score - a.score);
 
     // 2. أكثر 3 جابوا درجات (مجموع النقاط)
     const topScorers = Object.keys(usersData).map(name => ({
@@ -304,6 +306,8 @@ export function renderStatsContent() {
 export function openEditSelectionModal() {
     logFunctionStatus('openEditSelectionModal', false);
     _showThemeToggle(false);
+    const dock = document.getElementById('ios-bottom-nav');
+    if (dock) dock.classList.add('hidden');
     document.getElementById('edit-selection-modal').classList.remove('hidden');
 }
 

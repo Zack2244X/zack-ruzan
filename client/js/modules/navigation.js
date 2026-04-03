@@ -11,9 +11,110 @@ let treeScrollIndicatorBound = false;
 let treeScrollIndicatorRaf = null;
 let treeScrollIndicatorObserver = null;
 let treeScrollIndicatorScroller = null;
+let modalTouchLockEnabled = false;
+let modalTouchStartY = 0;
+let bodyLockScrollY = 0;
+let activeMainSheetMode = null;
+
+function getMainSheetNodes(mode) {
+    const isNotes = mode === 'notes';
+    return {
+        mode: isNotes ? 'notes' : 'exams',
+        sheetId: isNotes ? 'notes-bottom-sheet' : 'tree-bottom-sheet',
+        overlayId: isNotes ? 'notes-overlay' : 'tree-overlay',
+        contentId: isNotes ? 'notes-content' : 'tree-content',
+        scrollerId: isNotes ? 'notes-scroll-area' : 'tree-scroll-area',
+        railId: isNotes ? 'notes-scroll-rail' : 'tree-scroll-rail',
+        thumbId: isNotes ? 'notes-scroll-thumb' : 'tree-scroll-thumb',
+        historyTreeId: isNotes ? 'notes-history-tree' : 'history-tree',
+        subjectFiltersId: isNotes ? 'notes-subject-filters-container' : 'subject-filters-container',
+        titleId: isNotes ? 'notes-sheet-title' : 'sheet-title',
+        iconId: isNotes ? 'notes-sheet-icon' : 'sheet-icon'
+    };
+}
+
+function getCurrentMainSheetNodes() {
+    if (activeMainSheetMode === 'notes') return getMainSheetNodes('notes');
+    if (activeMainSheetMode === 'exams') return getMainSheetNodes('exams');
+
+    const notesContent = document.getElementById('notes-content');
+    if (notesContent?.classList.contains('active')) return getMainSheetNodes('notes');
+
+    const examsContent = document.getElementById('tree-content');
+    if (examsContent?.classList.contains('active')) return getMainSheetNodes('exams');
+
+    return getMainSheetNodes(state.currentViewMode === 'notes' ? 'notes' : 'exams');
+}
+
+const onModalTouchStart = (e) => {
+    const activeSheet = getActiveSheetContent();
+    if (!activeSheet) return;
+    if (!activeSheet.contains(e.target)) return;
+    if (e.touches && e.touches.length > 0) {
+        modalTouchStartY = e.touches[0].clientY;
+    }
+};
+
+const onModalTouchMove = (e) => {
+    const activeSheet = getActiveSheetContent();
+    if (!activeSheet) return;
+
+    const target = e.target;
+    if (!activeSheet.contains(target)) {
+        if (e.cancelable) e.preventDefault();
+        return;
+    }
+
+    const currentY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : modalTouchStartY;
+    const deltaY = currentY - modalTouchStartY;
+    const canScrollInside = canScrollWithinActiveSheet(target, activeSheet, deltaY);
+
+    if (!canScrollInside && e.cancelable) e.preventDefault();
+    modalTouchStartY = currentY;
+};
+
+function getActiveSheetContent() {
+    const notesContent = document.getElementById('notes-content');
+    if (notesContent?.classList.contains('active')) return notesContent;
+
+    const treeContent = document.getElementById('tree-content');
+    if (treeContent?.classList.contains('active')) return treeContent;
+
+    const adminContent = document.getElementById('admin-content');
+    if (adminContent?.classList.contains('active')) return adminContent;
+
+    return null;
+}
+
+function canScrollWithinActiveSheet(target, activeSheet, deltaY) {
+    void deltaY;
+    const primaryScroller = activeSheet.querySelector('#tree-scroll-area, .modal-scrollbar[data-lenis-prevent], [data-lenis-prevent].modal-scrollbar')
+        || activeSheet.querySelector('#tree-scroll-area, .modal-scrollbar, [data-lenis-prevent], [data-lenis-prevent-touch]');
+    if (!primaryScroller) return false;
+
+    // Touch inside visible sheet but outside actual scroll area should never move the page.
+    if (!primaryScroller.contains(target)) return false;
+
+    // Keep native touch behavior inside the modal scroll area.
+    return true;
+}
+
+function setModalTouchScrollLock(enabled) {
+    if (modalTouchLockEnabled === enabled) return;
+    modalTouchLockEnabled = enabled;
+
+    if (enabled) {
+        document.addEventListener('touchstart', onModalTouchStart, { capture: true, passive: true });
+        document.addEventListener('touchmove', onModalTouchMove, { capture: true, passive: false });
+    } else {
+        document.removeEventListener('touchstart', onModalTouchStart, { capture: true });
+        document.removeEventListener('touchmove', onModalTouchMove, { capture: true });
+    }
+}
 
 function bindForcedTouchScroll() {
-    const scroller = document.getElementById('tree-scroll-area');
+    const { scrollerId } = getCurrentMainSheetNodes();
+    const scroller = document.getElementById(scrollerId);
     if (!scroller || scroller._forceTouchScrollBound) return;
 
     scroller._forceTouchScrollBound = true;
@@ -61,8 +162,9 @@ function bindForcedTouchScroll() {
 }
 
 function getTreeScrollTarget() {
-    const inner = document.getElementById('tree-scroll-area');
-    const outer = document.getElementById('tree-content');
+    const { scrollerId, contentId } = getCurrentMainSheetNodes();
+    const inner = document.getElementById(scrollerId);
+    const outer = document.getElementById(contentId);
     if (!inner && !outer) return null;
 
     const innerMax = inner ? inner.scrollHeight - inner.clientHeight : -1;
@@ -75,11 +177,9 @@ function getTreeScrollTarget() {
 
 function updateTreeScrollIndicator() {
     const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
-    const rail = document.getElementById('tree-scroll-rail');
-    const thumb = document.getElementById('tree-scroll-thumb');
-    const fixedRail = document.getElementById('tree-fixed-scrollbar');
-    const fixedThumb = document.getElementById('tree-fixed-scroll-thumb');
-    const treeContent = document.getElementById('tree-content');
+    const { railId, thumbId } = getCurrentMainSheetNodes();
+    const rail = document.getElementById(railId);
+    const thumb = document.getElementById(thumbId);
     if (!scroller || !rail || !thumb) return;
 
     rail.style.display = 'block';
@@ -88,19 +188,6 @@ function updateTreeScrollIndicator() {
         thumb.style.height = `${Math.max(44, scroller.clientHeight - 8)}px`;
         thumb.style.transform = 'translateY(0px)';
         thumb.style.opacity = '0.7';
-
-        if (fixedRail && fixedThumb && treeContent?.classList.contains('active')) {
-            const scrollRect = scroller.getBoundingClientRect();
-            const railTop = Math.max(0, scrollRect.top + 8);
-            const railHeight = Math.max(40, scrollRect.height - 16);
-            fixedRail.style.top = `${railTop}px`;
-            fixedRail.style.height = `${railHeight}px`;
-            fixedRail.style.left = `${Math.max(0, scrollRect.left + 2)}px`;
-            fixedThumb.style.height = `${Math.max(44, railHeight - 4)}px`;
-            fixedThumb.style.transform = 'translateY(0px)';
-            fixedThumb.style.opacity = '0.7';
-            fixedRail.classList.add('visible');
-        }
         return;
     }
 
@@ -112,23 +199,6 @@ function updateTreeScrollIndicator() {
 
     thumb.style.height = `${thumbHeight}px`;
     thumb.style.transform = `translateY(${thumbTop}px)`;
-
-    if (fixedRail && fixedThumb && treeContent?.classList.contains('active')) {
-        const scrollRect = scroller.getBoundingClientRect();
-        const railTop = Math.max(0, scrollRect.top + 8);
-        const railHeight = Math.max(40, scrollRect.height - 16);
-        const fixedThumbHeight = Math.max(42, Math.floor(railHeight * ratio));
-        const fixedMaxThumbTop = Math.max(0, railHeight - fixedThumbHeight);
-        const fixedThumbTop = maxScroll > 0 ? Math.floor((scroller.scrollTop / maxScroll) * fixedMaxThumbTop) : 0;
-
-        fixedRail.style.top = `${railTop}px`;
-        fixedRail.style.height = `${railHeight}px`;
-        fixedRail.style.left = `${Math.max(0, scrollRect.left + 2)}px`;
-        fixedThumb.style.height = `${fixedThumbHeight}px`;
-        fixedThumb.style.transform = `translateY(${fixedThumbTop}px)`;
-        fixedThumb.style.opacity = '1';
-        fixedRail.classList.add('visible');
-    }
 }
 
 function scheduleTreeScrollIndicatorUpdate() {
@@ -137,6 +207,62 @@ function scheduleTreeScrollIndicatorUpdate() {
         treeScrollIndicatorRaf = null;
         updateTreeScrollIndicator();
     });
+}
+
+function bindTreeScrollThumbDrag() {
+    const { thumbId } = getCurrentMainSheetNodes();
+    const thumb = document.getElementById(thumbId);
+    if (!thumb) return;
+
+    if (thumb._treeThumbDragBound) return;
+
+    thumb._treeThumbDragBound = true;
+    let active = false;
+    let pointerId = null;
+    let startY = 0;
+    let startScrollTop = 0;
+
+    const onPointerMove = (e) => {
+        if (!active || e.pointerId !== pointerId) return;
+        const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
+        if (!scroller) return;
+
+        const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+        if (maxScroll <= 0) return;
+
+        const ratio = scroller.clientHeight / scroller.scrollHeight;
+        const thumbHeight = Math.max(42, Math.floor(scroller.clientHeight * ratio));
+        const maxThumbTop = Math.max(1, scroller.clientHeight - thumbHeight);
+        const dy = e.clientY - startY;
+        const deltaScroll = (dy / maxThumbTop) * maxScroll;
+        scroller.scrollTop = Math.max(0, Math.min(maxScroll, startScrollTop + deltaScroll));
+        scheduleTreeScrollIndicatorUpdate();
+        if (e.cancelable) e.preventDefault();
+    };
+
+    const onPointerUp = (e) => {
+        if (!active || e.pointerId !== pointerId) return;
+        active = false;
+        try { thumb.releasePointerCapture(pointerId); } catch (_) {}
+        pointerId = null;
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    thumb.addEventListener('pointerdown', (e) => {
+        const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
+        if (!scroller) return;
+        active = true;
+        pointerId = e.pointerId;
+        startY = e.clientY;
+        startScrollTop = scroller.scrollTop;
+        try { thumb.setPointerCapture(pointerId); } catch (_) {}
+        window.addEventListener('pointermove', onPointerMove, { passive: false });
+        window.addEventListener('pointerup', onPointerUp, { passive: true });
+        window.addEventListener('pointercancel', onPointerUp, { passive: true });
+        if (e.cancelable) e.preventDefault();
+    }, { passive: false });
 }
 
 function bindTreeScrollIndicator() {
@@ -164,8 +290,11 @@ function bindTreeScrollIndicator() {
         }, { passive: true });
     }
 
-    const historyTree = document.getElementById('history-tree');
-    const subjectFilters = document.getElementById('subject-filters-container');
+    bindTreeScrollThumbDrag();
+
+    const { historyTreeId, subjectFiltersId } = getCurrentMainSheetNodes();
+    const historyTree = document.getElementById(historyTreeId);
+    const subjectFilters = document.getElementById(subjectFiltersId);
     treeScrollIndicatorObserver = new MutationObserver(scheduleTreeScrollIndicatorUpdate);
     if (historyTree) {
         treeScrollIndicatorObserver.observe(historyTree, { childList: true, subtree: true, attributes: true });
@@ -197,6 +326,7 @@ export function _syncMainInteractionState() {
         'accounts-management-modal'
     ].some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
     const sheetOpen = document.getElementById('tree-content')?.classList.contains('active')
+                   || document.getElementById('notes-content')?.classList.contains('active')
                    || document.getElementById('admin-content')?.classList.contains('active');
     // guest-modal uses display:none/block instead of hidden class
     // Check style.display only — offsetParent forces reflow
@@ -207,23 +337,80 @@ export function _syncMainInteractionState() {
     const blocked = anyOpen || sheetOpen || guestModalOpen;
 
     const body = document.body;
+    body.classList.toggle('modal-open', blocked);
 
     // ── DOM writes ────────────────────────────────────────────────────────────
     if (dashboard) {
         dashboard.classList.toggle('pointer-events-none', blocked);
         dashboard.classList.toggle('select-none', blocked);
     }
-    // Temporary diagnostic mode: do NOT lock global scroll while modals are open.
-    // This helps isolate whether scroll-lock logic is the root cause of modal scroll issues.
     try {
-        body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-        body.removeAttribute('data-orig-overflow');
-        body.removeAttribute('data-scroll-lock');
-        try { getLenisInstance()?.start?.(); } catch (e) {}
+        const root = document.documentElement;
+        if (blocked) {
+            if (!body.hasAttribute('data-orig-overflow')) {
+                body.setAttribute('data-orig-overflow', body.style.overflow || '');
+            }
+            if (!body.hasAttribute('data-orig-position')) {
+                body.setAttribute('data-orig-position', body.style.position || '');
+                body.setAttribute('data-orig-top', body.style.top || '');
+                body.setAttribute('data-orig-left', body.style.left || '');
+                body.setAttribute('data-orig-right', body.style.right || '');
+                body.setAttribute('data-orig-width', body.style.width || '');
+                bodyLockScrollY = window.scrollY || window.pageYOffset || 0;
+            }
+            body.style.overflow = 'hidden';
+            body.style.position = 'fixed';
+            body.style.top = `-${bodyLockScrollY}px`;
+            body.style.left = '0';
+            body.style.right = '0';
+            body.style.width = '100%';
+            root.style.overflow = 'hidden';
+            body.setAttribute('data-scroll-lock', '1');
+            try { getLenisInstance()?.stop?.(); } catch (e) {}
+        } else {
+            const origOverflow = body.getAttribute('data-orig-overflow');
+            const origPosition = body.getAttribute('data-orig-position');
+            const origTop = body.getAttribute('data-orig-top');
+            const origLeft = body.getAttribute('data-orig-left');
+            const origRight = body.getAttribute('data-orig-right');
+            const origWidth = body.getAttribute('data-orig-width');
+            body.style.overflow = origOverflow !== null ? origOverflow : '';
+            body.style.position = origPosition !== null ? origPosition : '';
+            body.style.top = origTop !== null ? origTop : '';
+            body.style.left = origLeft !== null ? origLeft : '';
+            body.style.right = origRight !== null ? origRight : '';
+            body.style.width = origWidth !== null ? origWidth : '';
+            root.style.overflow = '';
+            body.removeAttribute('data-orig-overflow');
+            body.removeAttribute('data-orig-position');
+            body.removeAttribute('data-orig-top');
+            body.removeAttribute('data-orig-left');
+            body.removeAttribute('data-orig-right');
+            body.removeAttribute('data-orig-width');
+            body.removeAttribute('data-scroll-lock');
+            if (bodyLockScrollY > 0) {
+                window.scrollTo(0, bodyLockScrollY);
+            }
+            bodyLockScrollY = 0;
+            try { getLenisInstance()?.start?.(); } catch (e) {}
+        }
     } catch (e) {
-        // no-op in diagnostic mode
+        // no-op
     }
+
+    if (dashboard) {
+        if (blocked) {
+            dashboard.setAttribute('inert', '');
+            dashboard.setAttribute('aria-hidden', 'true');
+        } else {
+            dashboard.removeAttribute('inert');
+            dashboard.removeAttribute('aria-hidden');
+        }
+    }
+
+    // Global touchmove interception can break native modal scrolling on some mobile browsers.
+    // Body lock + Lenis stop are sufficient for preventing background scroll.
+    setModalTouchScrollLock(false);
 
     const t = document.getElementById('theme-toggle');
     if (t) t.style.display = (onHome && !blocked) ? '' : 'none';
@@ -266,7 +453,7 @@ export function initOverlayScrollLock() {
         'guest-modal', 'delete-exam-modal',
         'accounts-management-modal'
     ];
-    const SHEET_IDS = ['tree-content', 'admin-content'];
+    const SHEET_IDS = ['tree-content', 'notes-content', 'admin-content'];
 
     if (typeof MutationObserver === 'undefined') return;
 
@@ -355,21 +542,32 @@ function _attachSwipeToClose(el, closeFn) {
 }
 
 /** فتح القائمة السفلية (Bottom Sheet) */
-export function openBottomSheet() {
+export function openBottomSheet(mode = null) {
     logFunctionStatus('openBottomSheet', false);
-    const sheet = document.getElementById('tree-bottom-sheet');
-    const overlay = document.getElementById('tree-overlay');
-    const content = document.getElementById('tree-content');
+    const targetMode = mode || state.currentViewMode || 'exams';
+    const nodes = getMainSheetNodes(targetMode);
+    const sheet = document.getElementById(nodes.sheetId);
+    const overlay = document.getElementById(nodes.overlayId);
+    const content = document.getElementById(nodes.contentId);
+    const otherNodes = getMainSheetNodes(nodes.mode === 'notes' ? 'exams' : 'notes');
+    const otherSheet = document.getElementById(otherNodes.sheetId);
+    const otherOverlay = document.getElementById(otherNodes.overlayId);
+    const otherContent = document.getElementById(otherNodes.contentId);
+
+    activeMainSheetMode = nodes.mode;
+
+    otherOverlay?.classList.remove('active');
+    otherContent?.classList.remove('active');
+    if (otherSheet) otherSheet.classList.add('hidden');
+
     const dock = document.getElementById('ios-bottom-nav');
     if (dock) dock.classList.add('hidden');
+    document.body.classList.add('modal-open');
     if (sheet) sheet.classList.remove('hidden');
     requestAnimationFrame(() => {
         overlay?.classList.add('active');
         content?.classList.add('active');
-        bindForcedTouchScroll();
-        bindTreeScrollIndicator();
-        scheduleTreeScrollIndicatorUpdate();
-        setTimeout(scheduleTreeScrollIndicatorUpdate, 120);
+        _syncMainInteractionState();
     });
     // Swipe-to-close disabled to keep touch scrolling fully native inside modal content.
     _showThemeToggle(false);
@@ -379,19 +577,25 @@ export function openBottomSheet() {
 /** إغلاق القائمة السفلية */
 export function closeBottomSheet() {
     logFunctionStatus('closeBottomSheet', false);
-    const sheet = document.getElementById('tree-bottom-sheet');
-    const overlay = document.getElementById('tree-overlay');
-    const content = document.getElementById('tree-content');
-    const fixedRail = document.getElementById('tree-fixed-scrollbar');
-    overlay?.classList.remove('active');
-    content?.classList.remove('active');
-    fixedRail?.classList.remove('visible');
-    if (sheet) {
-        clearTimeout(sheet._hideTimer);
-        sheet._hideTimer = setTimeout(() => {
-            if (!content?.classList.contains('active')) sheet.classList.add('hidden');
-        }, SHEET_CLOSE_MS);
-    }
+    const sheetsToClose = [getMainSheetNodes('exams'), getMainSheetNodes('notes')];
+
+    sheetsToClose.forEach((nodes) => {
+        const sheet = document.getElementById(nodes.sheetId);
+        const overlay = document.getElementById(nodes.overlayId);
+        const content = document.getElementById(nodes.contentId);
+        overlay?.classList.remove('active');
+        content?.classList.remove('active');
+        if (sheet) {
+            clearTimeout(sheet._hideTimer);
+            sheet._hideTimer = setTimeout(() => {
+                const latestContent = document.getElementById(nodes.contentId);
+                if (!latestContent?.classList.contains('active')) sheet.classList.add('hidden');
+                _syncMainInteractionState();
+            }, SHEET_CLOSE_MS);
+        }
+    });
+
+    activeMainSheetMode = null;
     const dock = document.getElementById('ios-bottom-nav');
     if (dock) dock.classList.remove('hidden');
     if (state.currentViewMode) updateDockUI('home');
@@ -410,6 +614,7 @@ export function closeAdminSheet() {
         clearTimeout(sheet._hideTimer);
         sheet._hideTimer = setTimeout(() => {
             if (!content?.classList.contains('active')) sheet.classList.add('hidden');
+            _syncMainInteractionState();
         }, SHEET_CLOSE_MS);
     }
     updateDockUI('home');
@@ -425,12 +630,17 @@ export function closeAllOverlays() {
         'admin-auth-modal', 'create-section-modal', 'add-note-modal',
         'edit-selection-modal', 'grades-modal', 'stats-modal',
         'delete-subject-modal', 'rename-subject-modal', 'student-menu-modal',
-        'accounts-management-modal'
+        'accounts-management-modal', 'results-screen', 'confirm-modal-overlay',
+        'delete-exam-modal'
     ];
     modalsToClose.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
+
+    const guestModal = document.getElementById('guest-modal');
+    if (guestModal) guestModal.style.display = 'none';
+
     _syncMainInteractionState();
 }
 
@@ -500,18 +710,19 @@ export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
     closeAllOverlays();
     state.currentViewMode = section;
     state.currentSubjectFilter = 'الكل';
-    const titleEl = document.getElementById('sheet-title');
-    const iconEl = document.getElementById('sheet-icon');
+    const nodes = getMainSheetNodes(section);
+    const titleEl = document.getElementById(nodes.titleId);
+    const iconEl = document.getElementById(nodes.iconId);
     if (section === 'exams') {
-        titleEl.innerText = "سجل الامتحانات";
-        iconEl.className = "bi bi-lightning-charge-fill text-blue-600 bg-blue-100 p-2 rounded-xl ml-3 text-lg";
+        if (titleEl) titleEl.innerText = "سجل الامتحانات";
+        if (iconEl) iconEl.className = "bi bi-lightning-charge-fill text-2xl leading-none text-emerald-600";
     } else {
-        titleEl.innerText = "المذكرات والملفات";
-        iconEl.className = "bi bi-file-earmark-pdf-fill text-orange-600 bg-orange-100 p-2 rounded-xl ml-3 text-lg";
+        if (titleEl) titleEl.innerText = "المذكرات والملفات";
+        if (iconEl) iconEl.className = "bi bi-file-earmark-pdf-fill text-2xl leading-none text-rose-600";
     }
     renderSubjectFilters();
     renderHistoryTree();
-    openBottomSheet();
+    openBottomSheet(section);
     updateDockUI(section);
 }
 
@@ -527,6 +738,7 @@ export function openAdminAuthOrPanel() {
         if (sheet) sheet.classList.remove('hidden');
         const adminOverlay = document.getElementById('admin-overlay');
         const adminContent = document.getElementById('admin-content');
+        document.body.classList.add('modal-open');
         requestAnimationFrame(() => {
             adminOverlay?.classList.add('active');
             adminContent?.classList.add('active');

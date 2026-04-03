@@ -237,6 +237,14 @@ router.post('/', authenticate, requireAdmin, validateCreateQuiz, async (req, res
             return res.status(409).json({ error: 'يوجد بالفعل امتحان بهذا العنوان. يرجى اختيار عنوان مختلف.' });
         }
 
+        // التحقق من أن questions هي array صحيح وتحتوي على عناصر
+        if (!Array.isArray(questions) || questions.length === 0) {
+            return res.status(400).json({ error: 'يجب توفير سؤال واحد على الأقل.' });
+        }
+        if (questions.length > 200) {
+            return res.status(400).json({ error: 'الحد الأقصى للأسئلة هو 200 سؤال.' });
+        }
+
         // التحقق من صحة كل سؤال + إضافة ID فريد
         const processedQuestions = [];
         for (let i = 0; i < questions.length; i++) {

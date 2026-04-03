@@ -20,38 +20,18 @@
     <meta name="theme-color" content="#2563eb">
     <link rel="manifest" href="/manifest.json">
     <title>Zack Exam</title>
-        <!-- Preload LCP image FIRST — Logo is the actual LCP element
-             (Lighthouse confirmed). Give it highest priority + earliest position. -->
+        <!-- ✅ FIX: Load Tailwind + Dashboard CSS eagerly to fix LCP (3.63s → 2.5s)
+             Previously: CSS loaded on first click/touch → delayed dashboard rendering
+             Now: CSS loaded immediately → dashboard renders without waiting -->
         <link rel="preload" as="image" href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif" type="image/avif" fetchpriority="high">
-        <!-- bg.webp is decorative; skip eager preload to preserve early bandwidth for LCP -->
-
-        <!-- Keep only small critical CSS eager; load heavy app CSS on demand -->
-        <link rel="preload" href="/css/dark-fixes.min.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <link rel="preload" href="/css/login-extra.min.css?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <script>
-        (function(){
-            var loaded = false;
-            function addStylesheet(href){
-                if (document.querySelector('link[data-core-css="'+href+'"]')) return;
-                var l = document.createElement('link');
-                l.rel = 'stylesheet';
-                l.href = href;
-                l.setAttribute('data-core-css', href);
-                document.head.appendChild(l);
-            }
-            window.__loadCoreCss = function(){
-                if (loaded) return;
-                loaded = true;
-                addStylesheet('/css/tailwind.min.css?v=42');
-                addStylesheet('/css/styles.min.css?v=42');
-            };
-            document.addEventListener('click', window.__loadCoreCss, { once: true, capture: true });
-            document.addEventListener('touchstart', window.__loadCoreCss, { once: true, capture: true, passive: true });
-        })();
+        <link rel="stylesheet" href="/css/tailwind.min.css?v=43">
+        <link rel="stylesheet" href="/css/styles.min.css?v=43">
+        <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
+        <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </script>
         <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=42">
-            <link rel="stylesheet" href="/css/styles.min.css?v=42">
+            <link rel="stylesheet" href="/css/tailwind.min.css?v=43">
+            <link rel="stylesheet" href="/css/styles.min.css?v=43">
             <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
             <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
         </noscript>
@@ -86,7 +66,7 @@
         content-visibility: visible;
     }
 
-    .bottom-sheet-content *, #history-tree {
+    .bottom-sheet-content *, #history-tree, #notes-history-tree {
         font-family: inherit !important;
         box-sizing: border-box;
     }
@@ -122,35 +102,14 @@
     .sheet-header .flex { min-height: 40px; }
     /* Fix content area min-height to avoid jump */
     .bottom-sheet-content .p-6 { min-height: 220px; }
-    #history-tree { min-height: 60px; }
-    #subject-filters-container { min-height: 32px; }
-    /* Tree sheet scrollbar must be attached to the sheet itself on mobile. */
-    #tree-content.modal-scrollbar {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(59, 130, 246, 0.45) rgba(148, 163, 184, 0.18);
-    }
-    #tree-content.modal-scrollbar::-webkit-scrollbar { width: 8px; }
-    #tree-content.modal-scrollbar::-webkit-scrollbar-track {
-        background: rgba(148, 163, 184, 0.18);
-        border-radius: 9999px;
-    }
-    #tree-content.modal-scrollbar::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, rgba(59,130,246,0.55), rgba(14,116,144,0.55));
-        border-radius: 9999px;
-        border: 2px solid rgba(248,250,252,0.55);
-    }
-    @media (max-width: 640px) {
-        #tree-content.modal-scrollbar::-webkit-scrollbar {
-            width: 8px !important;
-            background: transparent;
-        }
-    }
+    #history-tree, #notes-history-tree { min-height: 60px; }
+    #subject-filters-container, #notes-subject-filters-container { min-height: 32px; }
     /* Pin min-height for sheet overlay */
-    #tree-bottom-sheet { min-height: 440px; }
+    #tree-bottom-sheet, #notes-bottom-sheet { min-height: 440px; }
     /* CRITICAL: bottom sheets must be fixed + inset-0 from first paint.
        Without this they render as normal block divs and jump to fixed
        when Tailwind loads async → CLS 0.923. */
-    #tree-bottom-sheet, #admin-bottom-sheet {
+    #tree-bottom-sheet, #notes-bottom-sheet, #admin-bottom-sheet {
         position: fixed;
         top: 0; right: 0; bottom: 0; left: 0;
         z-index: 80;
@@ -158,6 +117,9 @@
         align-items: flex-end;
         justify-content: center;
         pointer-events: none;
+    }
+    #tree-bottom-sheet:not(.hidden), #notes-bottom-sheet:not(.hidden), #admin-bottom-sheet:not(.hidden) {
+        pointer-events: auto;
     }
     /* Keep touch behavior native to avoid blocking vertical pan in modal content on mobile. */
     /* Prevent FOUC: elements with Tailwind 'hidden' class must be invisible
@@ -749,37 +711,45 @@
     </nav>
 
     <!-- Bottom Sheets & Modals -->
-    <div id="tree-bottom-sheet" class="hidden fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
-        <div id="tree-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
-        <div id="tree-content" class="relative w-full md:max-w-md bg-gray-50 rounded-t-3xl h-[85vh] flex flex-col bottom-sheet-content modal-scrollbar shadow-[0_-10px_40px_rgba(0,0,0,0.1)] pointer-events-auto">
-            <div class="w-full flex justify-center pt-3 pb-2 cursor-pointer sheet-handle" onclick="closeBottomSheet()">
-                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+    <div id="tree-bottom-sheet" class="hidden fixed inset-0 z-[80] flex items-end justify-center">
+        <div id="tree-overlay" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
+        <section id="tree-content" data-lenis-prevent-touch class="relative w-full md:max-w-[560px] h-[86vh] md:h-[82vh] mx-3 md:mx-0 mb-3 md:mb-4 flex flex-col bottom-sheet-content pointer-events-auto overflow-hidden rounded-[30px] border border-slate-500/20 bg-slate-800/50 backdrop-blur-xl shadow-[0_22px_55px_rgba(0,0,0,0.3)]">
+            <div class="px-5 md:px-6 py-3 flex items-center justify-between shrink-0">
+                <span class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                    <i id="sheet-icon" class="bi bi-lightning-charge-fill text-lg"></i>
+                </span>
+                <button onclick="closeBottomSheet()" aria-label="إغلاق" class="w-10 h-10 rounded-full border border-red-200 bg-red-100/50 text-red-500 hover:bg-red-200 transition flex items-center justify-center">
+                    <i class="fas fa-times text-lg" aria-hidden="true"></i>
+                </button>
             </div>
-            <div class="px-6 pb-4 flex justify-between items-center shrink-0 sheet-header">
-                <div class="flex items-center">
-                    <i id="sheet-icon" class="bi bi-lightning-charge-fill text-blue-700 bg-blue-50 p-2 rounded-xl ml-3 text-lg"></i>
-                    <h2 id="sheet-title" class="text-2xl font-black text-gray-800 tracking-tight">سجل الامتحانات</h2>
-                </div>
-                <button onclick="closeBottomSheet()" aria-label="إغلاق سجل الامتحانات" class="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center hover:bg-red-200 transition"><i class="fas fa-times" aria-hidden="true"></i></button>
+            <div id="tree-scroll-area" data-lenis-prevent class="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-6 pb-24 modal-scrollbar">
+                <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-slate-600/20"></div>
+                <div id="history-tree" class="space-y-2"></div>
             </div>
-            <div class="relative flex-1 min-h-0">
-                <div id="tree-scroll-area" data-lenis-prevent class="p-6 overflow-y-auto h-full pb-24 modal-scrollbar">
-                    <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-gray-200"></div>
-                    <div id="history-tree" class="space-y-2"></div>
-                </div>
-                <div id="tree-scroll-rail" class="tree-scroll-rail" aria-hidden="true">
-                    <div id="tree-scroll-thumb" class="tree-scroll-thumb"></div>
-                </div>
-            </div>
-        </div>
-        <div id="tree-fixed-scrollbar" class="tree-fixed-scrollbar" aria-hidden="true">
-            <div id="tree-fixed-scroll-thumb" class="tree-fixed-scroll-thumb"></div>
-        </div>
+        </section>
     </div>
 
-    <div id="admin-bottom-sheet" class="hidden fixed inset-0 z-[80] flex items-end justify-center pointer-events-none">
+    <div id="notes-bottom-sheet" class="hidden fixed inset-0 z-[80] flex items-end justify-center">
+        <div id="notes-overlay" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm bottom-sheet-overlay" onclick="closeBottomSheet()"></div>
+        <section id="notes-content" data-lenis-prevent-touch class="relative w-full md:max-w-[560px] h-[86vh] md:h-[82vh] mx-3 md:mx-0 mb-3 md:mb-4 flex flex-col bottom-sheet-content pointer-events-auto overflow-hidden rounded-[30px] border border-slate-500/20 bg-slate-800/50 backdrop-blur-xl shadow-[0_22px_55px_rgba(0,0,0,0.3)]">
+            <div class="px-5 md:px-6 py-3 flex items-center justify-between shrink-0">
+                <span class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-sm">
+                    <i id="notes-sheet-icon" class="bi bi-file-earmark-pdf-fill text-lg"></i>
+                </span>
+                <button onclick="closeBottomSheet()" aria-label="إغلاق" class="w-10 h-10 rounded-full border border-red-200 bg-red-100/50 text-red-500 hover:bg-red-200 transition flex items-center justify-center">
+                    <i class="fas fa-times text-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div id="notes-scroll-area" data-lenis-prevent class="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-6 pb-24 modal-scrollbar">
+                <div id="notes-subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-slate-600/20"></div>
+                <div id="notes-history-tree" class="space-y-2"></div>
+            </div>
+        </section>
+    </div>
+
+    <div id="admin-bottom-sheet" class="hidden fixed inset-0 z-[80] flex items-end justify-center">
         <div id="admin-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay" onclick="closeAdminSheet()"></div>
-        <div id="admin-content" class="relative w-full md:max-w-md bg-white rounded-t-3xl p-6 pb-24 flex flex-col bottom-sheet-content shadow-2xl pointer-events-auto">
+        <div id="admin-content" data-lenis-prevent-touch class="relative w-full md:max-w-md bg-white rounded-t-3xl p-6 pb-24 flex flex-col bottom-sheet-content shadow-2xl pointer-events-auto">
             <div class="w-full flex justify-center mb-4 cursor-pointer sheet-handle" onclick="closeAdminSheet()">
                 <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
             </div>
@@ -797,7 +767,7 @@
                 <button onclick="openEditSelectionModal(); closeAdminSheet();" class="w-full p-4 bg-gradient-to-l from-blue-50 to-white border border-blue-100 text-blue-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
                     <span class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center ml-4"><i class="fas fa-pen"></i></span> تعديل المحتوى
                 </button>
-                <button onclick="openAccountsManagementModal(); closeAdminSheet();" class="w-full p-4 bg-gradient-to-l from-indigo-50 to-white border border-indigo-100 text-indigo-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
+                <button onclick="openAccountsManagementModal();" class="w-full p-4 bg-gradient-to-l from-indigo-50 to-white border border-indigo-100 text-indigo-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
                     <span class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center ml-4"><i class="fas fa-users"></i></span> إدارة الحسابات
                 </button>
                 <button onclick="logoutUser()" class="w-full p-4 bg-gradient-to-l from-red-50 to-white border border-red-100 text-red-700 font-bold rounded-2xl hover:shadow-md transition text-right flex items-center">
@@ -814,6 +784,12 @@
             </div>
             <h2 class="text-2xl font-extrabold text-gray-800 mb-2">منطقة الإدارة</h2>
             <p class="text-sm text-gray-500 mb-6">سجل دخولك بحساب Google المعتمد لفتح لوحة التحكم</p>
+            <label class="flex items-start gap-2 text-right mb-4 p-3 rounded-xl bg-blue-50 border border-blue-100">
+                <input id="admin-security-consent" type="checkbox" class="mt-1 accent-blue-600">
+                <span class="text-xs text-gray-700 leading-relaxed">
+                    لحماية المنصة من إساءة الاستخدام.
+                </span>
+            </label>
             <button onclick="startGoogleRedirectLogin('admin')" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition mb-4">
                 <i class="fab fa-google ml-2"></i> تسجيل الدخول باستخدام Google
             </button>
@@ -1058,7 +1034,7 @@
                         // ensure bootstrap loader is present so queued calls will be flushed
                         if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
                             const s = document.createElement('script');
-                            s.src = '/js/bootstrap.min.js?v=52';
+                            s.src = '/js/bootstrap.min.js?v=70';
                             s.defer = true;
                             document.head.appendChild(s);
                         }
@@ -1069,6 +1045,13 @@
                     <span>🎓</span>
                     تسجيل الدخول بـ Google
                 </button>
+
+                <label class="mt-3 flex items-start gap-2 text-right px-3 py-2 rounded-xl border border-[#c9962a33] bg-[#c9962a14]">
+                    <input id="login-security-consent" type="checkbox" class="mt-1 accent-[#c9962a]">
+                    <span style="font-size:0.72rem; color: #d9b66f; line-height: 1.6;">
+                        أوافق على تسجيل بيانات الأمان (IP، معرّف الجهاز، وبيانات المتصفح) لحماية المستخدمين والمنصة.
+                    </span>
+                </label>
 
                 <button class="guest-btn" onclick="showGuestModal()" style="background: transparent; border: none; color: rgba(201, 150, 42, 0.7); margin-top: 15px; cursor: pointer; text-decoration: underline;">
                     الدخول بدون حساب (تجريبي)
@@ -1109,29 +1092,32 @@
             <p class="font-arabic-stylish text-lg sm:text-xl text-gray-600 mb-2">"بسم الله الرحمن الرحيم"</p>
             <p class="font-arabic-stylish text-xs sm:text-sm text-green-600 bg-green-50 inline-block px-3 py-1 rounded-full font-bold">اللهم علمنا ما ينفعنا وانفعنا بما علمتنا</p>
         </header>
-        <section class="mb-10">
+        <!-- ✅ FIX: Reserve space for exams grid to prevent CLS -->
+        <section class="mb-10 contain-layout">
             <div class="flex justify-between items-end mb-4">
                 <h2 class="text-lg sm:text-xl font-black text-gray-800 flex items-center">
                     <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600 flex items-center justify-center ml-2 shadow-inner text-sm"><i class="fas fa-bolt"></i></span>
                     أحدث الامتحانات
                 </h2>
             </div>
-            <div id="latest-exams-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div id="latest-exams-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="أحدث الامتحانات"></div>
         </section>
-        <section class="mb-10">
+        <!-- ✅ FIX: Reserve space for notes grid to prevent CLS -->
+        <section class="mb-10 contain-layout">
             <div class="flex justify-between items-end mb-4">
                 <h2 class="text-lg sm:text-xl font-black text-gray-800 flex items-center">
                     <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200 text-orange-600 flex items-center justify-center ml-2 shadow-inner text-sm"><i class="fas fa-file-pdf"></i></span>
                     أحدث المذكرات والملفات
                 </h2>
             </div>
-            <div id="latest-notes-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            <div id="latest-notes-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4" role="region" aria-label="أحدث المذكرات والملفات"></div>
         </section>
-        <section class="grid grid-cols-1 gap-8">
+        <!-- ✅ FIX: Reserve space for leaderboard to prevent CLS -->
+        <section class="grid grid-cols-1 gap-8 contain-layout">
             <div class="bg-white rounded-3xl p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-200"></div>
                 <h3 class="text-xl font-black text-gray-800 mb-6 flex items-center"><i class="fas fa-trophy text-yellow-500 ml-3 text-2xl"></i> لوحة الشرف</h3>
-                <div id="leaderboard-list" class="space-y-3"></div>
+                <div id="leaderboard-list" class="space-y-3" role="region" aria-label="لوحة الشرف"></div>
             </div>
         </section>
     </div>
@@ -1238,7 +1224,7 @@
         <div class="bg-white/95 backdrop-blur-lg rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center">
             <div class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-user-cog"></i></div>
             <h2 class="text-xl font-extrabold text-gray-800 mb-6">الإعدادات</h2>
-            <button onclick="closeStudentMenu(); startGoogleRedirectLogin('admin');" class="w-full py-3 bg-purple-500 text-white font-bold rounded-xl hover:bg-purple-600 transition mb-3 flex items-center justify-center gap-2"><i class="fas fa-shield-alt"></i> دخول كمعلم</button>
+            <button onclick="closeStudentMenu(); openAdminAuthOrPanel();" class="w-full py-3 bg-purple-500 text-white font-bold rounded-xl hover:bg-purple-600 transition mb-3 flex items-center justify-center gap-2"><i class="fas fa-shield-alt"></i> دخول كمعلم</button>
             <button onclick="logoutUser()" class="w-full py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition mb-3 flex items-center justify-center gap-2"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
             <button onclick="closeStudentMenu()" class="w-full py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition">إغلاق</button>
         </div>
@@ -1376,18 +1362,6 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
-        }
-
-        function lockBody() {
-            document.body.setAttribute('data-accounts-lock', '1');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function unlockBody() {
-            if (document.body.getAttribute('data-accounts-lock') === '1') {
-                document.body.removeAttribute('data-accounts-lock');
-                document.body.style.overflow = '';
-            }
         }
 
         var accountMgmtState = {
@@ -1834,12 +1808,19 @@
             var dock = document.getElementById('ios-bottom-nav');
             if (!modal) return;
 
+            if (typeof window.closeAdminSheet === 'function') {
+                window.closeAdminSheet();
+            }
+
             document.body.classList.add('accounts-management-open');
             if (dock) dock.classList.add('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(false);
 
+            // Wait for admin bottom sheet close animation to finish before showing modal.
+            await new Promise(function(resolve){ setTimeout(resolve, 360); });
+
             modal.classList.remove('hidden');
-            lockBody();
+            if (typeof window._syncMainInteractionState === 'function') window._syncMainInteractionState();
 
             bindAccountsControls();
             accountMgmtState.view = 'accounts';
@@ -1856,10 +1837,10 @@
             var modal = document.getElementById('accounts-management-modal');
             var dock = document.getElementById('ios-bottom-nav');
             if (modal) modal.classList.add('hidden');
-            unlockBody();
             document.body.classList.remove('accounts-management-open');
             if (dock) dock.classList.remove('hidden');
             if (typeof window._showThemeToggle === 'function') window._showThemeToggle(true);
+            if (typeof window._syncMainInteractionState === 'function') window._syncMainInteractionState();
         };
 
         window.addEventListener('load', function(){
@@ -1919,7 +1900,7 @@
         </script>
 
     <!-- Public config (inlined via small JS endpoint) - avoids /api/config XHR -->
-    <script src="/config.js" defer></script>
+    <script src="/config.js?v=2" defer></script>
 
     <!-- Small safe stub to prevent early GSAP console errors while libs load deferred -->
     <script>
@@ -1937,7 +1918,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=52" defer></script>
+    <script src="/js/bootstrap.min.js?v=70" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>

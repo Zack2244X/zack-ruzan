@@ -277,10 +277,37 @@ body::before {
     z-index: -1;
     pointer-events: none;
     filter: saturate(0.85) brightness(1.05);
+    will-change: filter;
+    -webkit-backdrop-filter: blur(0px);
+    backdrop-filter: blur(0px);
+    transition: -webkit-backdrop-filter 300ms ease-out, backdrop-filter 300ms ease-out;
+}
 
-    /* GPU acceleration: promoted to own compositing layer.
-       filter + will-change + translate3d معاً = طبقة GPU منفصلة
-       يتم تطبيق الـ filter مرة واحدة وليس مع كل scroll */
+/* Blur main content when modal is open */
+body.modal-open > *:is(main, section, div[role="main"]),
+body.modal-open #ios-bottom-nav,
+body.modal-open #latest-exams-grid,
+body.modal-open #latest-notes-grid,
+body.modal-open .home-view,
+body.modal-open [id^="dashboard"],
+body.modal-open [id^="quiz"],
+body.modal-open [id^="admin"]:not(#admin-bottom-sheet):not(#admin-overlay):not(#admin-content) {
+    filter: blur(8px);
+    pointer-events: none;
+    transition: filter 300ms ease-out;
+}
+
+/* Exclude modals from blur */
+body.modal-open #tree-bottom-sheet,
+body.modal-open #notes-bottom-sheet,
+body.modal-open #admin-bottom-sheet,
+body.modal-open #admin-content,
+body.modal-open #admin-overlay {
+    filter: blur(0px) !important;
+    pointer-events: auto !important;
+}
+
+body::before {
     will-change: transform;
     transform: translate3d(0, 0, 0);
 }
@@ -339,6 +366,19 @@ body::before {
 
 .bottom-sheet-content.active {
     transform: translateY(0);      /* slide into view              */
+}
+
+/* Bottom-sheet wrapper should be untouchable while hidden, touchable when visible. */
+#tree-bottom-sheet,
+#notes-bottom-sheet,
+#admin-bottom-sheet {
+    pointer-events: none;
+}
+
+#tree-bottom-sheet:not(.hidden),
+#notes-bottom-sheet:not(.hidden),
+#admin-bottom-sheet:not(.hidden) {
+    pointer-events: auto;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────────── */
@@ -897,6 +937,7 @@ a:focus:not(:focus-visible) {
 /* Keep tree sheet container fixed and let the dedicated inner area handle scrolling. */
 #tree-content {
     overflow: hidden;
+    touch-action: pan-y;
 }
 
 /* Admin sheet still scrolls on its own container. */
@@ -993,40 +1034,49 @@ a:focus:not(:focus-visible) {
 .shadow-2xl { box-shadow: var(--shadow)           !important; }
 
 /* History tree buttons */
-#history-tree button {
-    background: var(--card-strong) !important;
-    color: var(--text)             !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+#history-tree button,
+#notes-history-tree button {
+    background: rgba(71, 85, 105, 0.4) !important;
+    color: #e5e7eb             !important;
+    border: 1px solid rgba(100, 116, 139, 0.3) !important;
+    border-radius: 1rem !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
 }
 
 /* Modal content scrollbar: visible, slim, and theme-aware */
 .modal-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(59, 130, 246, 0.45) rgba(148, 163, 184, 0.18);
+    scrollbar-color: rgba(148, 163, 184, 0.6) rgba(30, 41, 59, 0.3);
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 [data-lenis-prevent] {
+    overflow-y: auto;
+    max-height: 100%;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     touch-action: pan-y;
 }
 
-/* Tree modal uses many clickable buttons; force vertical pan to keep scrolling usable on touch devices. */
+/* Exams/notes modals use many clickable buttons; force vertical pan to keep scrolling usable on touch devices. */
 #tree-scroll-area,
-#tree-scroll-area * {
+#tree-scroll-area *,
+#notes-scroll-area,
+#notes-scroll-area * {
     touch-action: pan-y !important;
 }
 
-/* Use custom indicator only: hide native scrollbars for consistent cross-device rendering. */
-#tree-scroll-area {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-#tree-scroll-area::-webkit-scrollbar {
-    width: 0 !important;
-    height: 0 !important;
+/* Keep native scrollbar for stable touch behavior across mobile browsers. */
+#tree-scroll-area,
+#notes-scroll-area {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    position: relative;
+    z-index: 2;
 }
 
 .modal-scrollbar::-webkit-scrollbar {
@@ -1034,18 +1084,18 @@ a:focus:not(:focus-visible) {
 }
 
 .modal-scrollbar::-webkit-scrollbar-track {
-    background: rgba(148, 163, 184, 0.18);
+    background: rgba(30, 41, 59, 0.3);
     border-radius: 9999px;
 }
 
 .modal-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(59, 130, 246, 0.55), rgba(14, 116, 144, 0.55));
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.6), rgba(100, 116, 139, 0.55));
     border-radius: 9999px;
-    border: 2px solid rgba(248, 250, 252, 0.55);
+    border: 2px solid rgba(30, 41, 59, 0.5);
 }
 
 .modal-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, rgba(37, 99, 235, 0.75), rgba(8, 145, 178, 0.75));
+    background: linear-gradient(180deg, rgba(100, 116, 139, 0.8), rgba(71, 85, 105, 0.8));
 }
 
 /* Tree modal: explicit visual scrollbar indicator for mobile browsers. */
@@ -1057,7 +1107,7 @@ a:focus:not(:focus-visible) {
     width: 8px;
     border-radius: 9999px;
     background: rgba(148, 163, 184, 0.45);
-    pointer-events: none;
+    pointer-events: auto;
     z-index: 12;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
 }
@@ -1072,35 +1122,12 @@ a:focus:not(:focus-visible) {
     background: linear-gradient(180deg, rgba(59, 130, 246, 1), rgba(14, 116, 144, 1));
     box-shadow: 0 0 12px rgba(14, 116, 144, 0.6);
     transform: translateY(0);
+    touch-action: none;
+    cursor: grab;
 }
 
-/* Fallback: fixed scrollbar outside container clipping, always visible on mobile. */
-.tree-fixed-scrollbar {
-    position: fixed;
-    width: 10px;
-    border-radius: 9999px;
-    background: rgba(148, 163, 184, 0.55);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
-    pointer-events: none;
-    z-index: 96;
-    opacity: 0;
-    transition: opacity 120ms ease;
-}
-
-.tree-fixed-scrollbar.visible {
-    opacity: 1;
-}
-
-.tree-fixed-scroll-thumb {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 48px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, rgba(59, 130, 246, 1), rgba(14, 116, 144, 1));
-    box-shadow: 0 0 12px rgba(14, 116, 144, 0.6);
-    transform: translateY(0);
+.tree-scroll-thumb:active {
+    cursor: grabbing;
 }
 
 /* Keep custom indicators available on all breakpoints for consistent behavior. */
@@ -1188,12 +1215,24 @@ a:focus:not(:focus-visible) {
     border-color: rgba(255,255,255,0.1) !important;
 }
 
-/* Dark mode: tree content */
-#tree-content { background: var(--card); border-color: var(--border); }
-.sheet-header {
-    background: transparent !important;
-    border: 0 !important;
+/* Dark mode / global: keep sheet containers visually card-like and fully rounded */
+#tree-content,
+#notes-content {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border-color: rgba(100, 116, 139, 0.2) !important;
+    border-radius: 1.875rem !important;
+    overflow: hidden;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
 }
+
+.sheet-header {
+    background: rgba(30, 41, 59, 0.4) !important;
+    border-bottom: 1px solid rgba(100, 116, 139, 0.2) !important;
+    backdrop-filter: blur(15px) !important;
+    -webkit-backdrop-filter: blur(15px) !important;
+}
+
 .sheet-handle { background: transparent; }
 
 /* ============================================
@@ -1364,7 +1403,14 @@ select {
         padding: 2px 6px  !important;
     }
 
-    #welcome-msg { font-size: 1.15rem !important; }
+    /* ✅ FIX: Prevent font-rendering CLS by locking height */
+    #welcome-msg { 
+        font-size: 1.15rem !important;
+        height: auto;
+        line-height: 1.5;
+        min-height: 2.5rem;
+        contain: layout;  /* ← Prevent recalc when font loads */
+    }
 
     #dashboard-view .rounded-3xl.p-7 { padding: 1rem !important; }
 }
@@ -1500,6 +1546,77 @@ select {
 
     body::before { display: none; }
     body { background: white !important; color: black !important; }
+}
+
+/* ============================================
+   ✅ FIX: content-visibility for LCP optimization
+   — Delays rendering of off-screen content
+     until it's needed, reducing initial paint time
+   ============================================ */
+/* ✅ FIX: Reserve space for grids to prevent CLS (layout shift)
+   When data loads, grid expands but doesn't push other elements down */
+#latest-exams-grid,
+#latest-notes-grid {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 500px;
+    contain: layout style paint;  /* ← Isolate layout calculations */
+    min-height: 280px;  /* ← Keep a stable block height to avoid shifts */
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Show shimmer only while container is empty */
+#latest-exams-grid:empty,
+#latest-notes-grid:empty {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+}
+
+/* Stop shimmer once content arrives, but keep reserved height */
+#latest-exams-grid:not(:empty),
+#latest-notes-grid:not(:empty) {
+    animation: none;
+    background: transparent;
+}
+
+/* ✅ FIX: Reserve space for leaderboard to prevent CLS */
+#leaderboard-list {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 400px;
+    contain: layout style paint;  /* ← Isolate layout calculations */
+    min-height: 250px;  /* ← Reserve vertical space */
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Placeholder shimmer while loading */
+#leaderboard-list:empty {
+    position: relative;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 0.5rem;
+}
+
+/* For sections with dynamic content, use auto mode + preserve space */
+#history-tree,
+#edit-history-tree {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1000px;
+    contain: layout style paint;  /* ← Prevent layout thrashing */
+    min-height: 400px;  /* ← Reserve space while loading */
+}
+
+/* ============================================
+   ✅ Utility Classes for CLS Prevention
+   ============================================ */
+.contain-layout {
+    contain: layout style paint;
 }
 
 /* ============================================

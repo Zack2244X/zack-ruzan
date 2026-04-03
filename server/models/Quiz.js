@@ -1,16 +1,19 @@
 /**
- * @file Quiz model definition
+ * @file Quiz model definition + encryption hooks
  * @description Defines the Sequelize Quiz model. Questions are stored as a JSON column
- *   in TiDB, each containing answer options with correctness flags and rationale.
+ *   in TiDB with AES-256-GCM encryption for answer correctness (isCorrect flag).
  * @module models/Quiz
  */
 
 // ============================================
 //   موديل الامتحان (Quiz) — Sequelize + TiDB
 //   الأسئلة تُخزّن كـ JSON (TiDB يدعم JSON)
+//   الإجابات الصحيحة تُشفّر (AES-256-GCM)
 // ============================================
 const { DataTypes } = require('sequelize');
 const sequelize = require('./index');
+const { encrypt, decrypt } = require('../utils/encryption');
+const logger = require('../utils/logger');
 
 /**
  * @typedef {Object} AnswerOption
@@ -111,6 +114,73 @@ const Quiz = sequelize.define('Quiz', {
     createdBy: {
         type: DataTypes.INTEGER,
         allowNull: true
+    }
+}, {
+    tableName: 'quizzes',
+    timestamps: true,
+    paranoid: true,
+    indexes: [
+        { unique: true, fields: ['title'] }
+    ],
+    hooks: {
+        // ✅ Before saving to DB: encrypt answer correctness
+        beforeCreate: (quiz) => {
+            if (quiz.questions && Array.isArray(quiz.questions)) {
+                quiz.questions = quiz.questions.map(q => ({
+                    ...q,
+                    answerOptions: q.answerOptions.map(opt => ({
+                        ...opt,
+                        // Encrypt the isCorrect flag to prevent student cheating
+                        // (students cannot inspect DB to find correct answers)
+                        isCorrect: encrypt(opt.isCorrect.toString())
+                    }))
+                }));
+            }
+        },
+        beforeUpdate: (quiz) => {
+            if (quiz.questions && Array.isArray(quiz.questions)) {
+                quiz.questions = quiz.questions.map(q => ({
+                    ...q,
+                    answerOptions: q.answerOptions.map(opt => {
+                        // Only encrypt if not already encrypted (contains ':' separator)
+                        const isAlreadyEncrypted = typeof opt.isCorrect === 'string' && opt.isCorrect.includes(':');
+                        return {
+                            ...opt,
+                            isCorrect: isAlreadyEncrypted ? opt.isCorrect : encrypt(opt.isCorrect.toString())
+                        };
+                    })
+                }));
+            }
+        },
+        // ✅ After reading from DB: decrypt answer correctness
+        afterFind: (quizzes) => {
+            if (!quizzes) return;
+            
+            const quizArray = Array.isArray(quizzes) ? quizzes : [quizzes];
+            quizArray.forEach(quiz => {
+                if (quiz && quiz.questions && Array.isArray(quiz.questions)) {
+                    quiz.questions = quiz.questions.map(q => ({
+                        ...q,
+                        answerOptions: q.answerOptions.map(opt => {
+                            try {
+                                // Try to decrypt; if it fails, assume it's already decrypted
+                                const decrypted = decrypt(opt.isCorrect);
+                                return {
+                                    ...opt,
+                                    isCorrect: decrypted === 'true'
+                                };
+                            } catch (e) {
+                                // Already in plaintext or invalid format
+                                return {
+                                    ...opt,
+                                    isCorrect: opt.isCorrect === true || opt.isCorrect === 'true'
+                                };
+                            }
+                        })
+                    }));
+                }
+            });
+        }
     }
 }, {
     tableName: 'quizzes',

@@ -7,6 +7,66 @@
  */
 'use strict';
 
+// ✅ === Datadog RUM Monitoring (non-blocking) ===
+function initDatadogRumDeferred() {
+    const isDatadogEnabledByConfig = window.__PUBLIC_CONFIG?.datadogRumEnabled === true;
+    const isLocalRuntime = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
+    if (!isDatadogEnabledByConfig || isLocalRuntime) {
+        console.log('[Datadog RUM] disabled by config/runtime');
+        return;
+    }
+
+    const startRum = () => {
+        const script = document.createElement('script');
+        script.src = 'https://www.datadoghq-browser-agent.com/us5/v6/datadog-rum.js';
+        script.async = true;
+
+        script.onload = () => {
+            try {
+                const ddRum = window.DD_RUM;
+                if (!ddRum || typeof ddRum.init !== 'function') {
+                    console.warn('[Datadog RUM] agent loaded but DD_RUM is unavailable');
+                    return;
+                }
+
+                ddRum.init({
+                    applicationId: '6448291b-03d3-42ba-b7c2-601d82b6dc22',
+                    clientToken: 'pub15a8b071a3ff68888a70f256a3d12cb6',
+                    site: 'us5.datadoghq.com',
+                    service: 'quiz-platform',
+                    env: 'production',
+                    version: '1.0.0',
+                    sessionSampleRate: 100,
+                    sessionReplaySampleRate: 20,
+                    trackResources: true,
+                    trackUserInteractions: true,
+                    trackLongTasks: true,
+                    defaultPrivacyLevel: 'mask-user-input'
+                });
+                ddRum.startSessionReplayRecording();
+                console.log('[Datadog RUM] initialized and recording sessions');
+            } catch (e) {
+                console.warn('[Datadog RUM] init skipped:', e?.message || e);
+            }
+        };
+
+        script.onerror = () => {
+            console.warn('[Datadog RUM] agent script blocked/unavailable');
+        };
+
+        document.head.appendChild(script);
+    };
+
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => { startRum(); }, { timeout: 3000 });
+    } else {
+        setTimeout(() => { startRum(); }, 1500);
+    }
+}
+
+initDatadogRumDeferred();
+
 // === الوحدات (Modules) ===
 import state from './modules/state.js';
 import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray, logFunctionStatus, getQuickDeviceTier } from './modules/helpers.js';
@@ -291,7 +351,7 @@ Object.assign(window, {
     // Navigation
     navToHome, navToSection, openAdminAuthOrPanel, closeStudentMenu,
     openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
-    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle,
+    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle, _syncMainInteractionState,
 
     // Auth
     startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,
@@ -345,7 +405,7 @@ Object.assign(window, {
         if (!_adminLoadPromise) {
             _adminLoadPromise = new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = '/js/app.admin.bundle.min.js?v=40';
+                s.src = '/js/app.admin.bundle.min.js?v=41';
                 s.onload = () => { _adminLoaded = true; resolve(); };
                 s.onerror = () => reject(new Error('Admin bundle failed to load'));
                 document.head.appendChild(s);
@@ -393,7 +453,7 @@ Object.assign(window, {
         if (!_featuresPromise) {
             _featuresPromise = new Promise((resolve, reject) => {
                 const s = document.createElement('script');
-                s.src = '/js/app.features.bundle.min.js?v=40';
+                s.src = '/js/app.features.bundle.min.js?v=41';
                 s.onload = () => { _featuresLoaded = true; resolve(); };
                 s.onerror = () => reject(new Error('Features bundle failed to load'));
                 document.head.appendChild(s);
@@ -444,88 +504,22 @@ export async function startApp() {
     // Expose api singletons for admin bundle (avoids duplicating state-aware modules)
     window.__api = { apiCall, fetchScoresFromServer, fetchLeaderboardFromServer };
 
-    // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
-    // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => initOverlayScrollLock());
-    } else {
-        initOverlayScrollLock();
-    }
-
-    // ── تهيئة وحدات الحركة والتمرير ──────────────────────────────────────────
-    // يجب أن تسبق applyPerformanceBasedAnimationSettings() حتى تكون
-    // الوحدتان جاهزتين قبل استقبال أوامر الضبط
-    // Load motion libs (GSAP + Lenis) before using them
-    if (window.__loadMotionLibs) {
-        window.__loadMotionLibs();
-    }
-
-    // ── قياس مستوى الجهاز المبسّط مبكّراً ونشره لوحدات الواجهة ─────────────
-    const perf = await getDevicePerformanceTier({ skipFPSTest: true });
-    try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
-    if (perf && perf.tier === 'low') {
-        document.body.classList.add('reduced-graphics');
-    }
-
-    // تهيئة الحركات — مرّر نتيجة الأداء لتجنّب إعادة القياس
-    await initAnimations(perf);
-
-    // تهيئة التمرير: نؤجل تهيئة Lenis حتى تكون الخطوط محمّلة أو يكون المتصفح في حالة خمول
-    // هذا يمنع أي تبديل للـ classes على `<html>` أثناء الطلاء الأولي مما يسبب CLS
-    (function deferInitScroll() {
-        const run = async () => {
-            try {
-                if (document && document.fonts) {
-                    // انتظر حتى تكون الخطوط جاهزة أو أقصر من 1s حتى لا نؤخر التجربة كثيراً
-                    const fontsReady = document.fonts.ready;
-                    const timeout = new Promise((res) => setTimeout(res, 1000));
-                    await Promise.race([fontsReady, timeout]);
-                }
-            } catch (e) { /* ignore */ }
-
-            const start = () => {
-                try {
-                    const _p = window.__devicePerf;
-                    const _t = _p?.tier || 'high';
-                    const _m = navigator.maxTouchPoints > 1 &&
-                               !!window.matchMedia?.('(hover: none)').matches;
-                    // تمرير مدة مناسبة للجهاز عند إنشاء Lenis
-                    const scrollOpts = {};
-                    if (_t === 'low') {
-                        scrollOpts.smoothWheel = false;
-                        scrollOpts.duration    = 0;
-                    } else if (_t === 'medium' || _m) {
-                        scrollOpts.duration        = _m ? 0.8 : 1.0;
-                        scrollOpts.touchMultiplier = _m ? 1.0 : 1.5;
-                    }
-                    initScroll(scrollOpts);
-                } catch (err) {
-                    console.warn('[scroll] deferred init failed:', err);
-                }
-            };
-
-            if ('requestIdleCallback' in window) {
-                requestIdleCallback(start, { timeout: 2000 });
-            } else {
-                // fallback صغير إذا لم تتوفر requestIdleCallback
-                setTimeout(start, 700);
-            }
-        };
-        run();
-    })();
-
-    // ── ضبط إعدادات الحركة بناءً على أداء الجهاز ────────────────────────────
-    await applyPerformanceBasedAnimationSettings(perf);
-
-    // اقرَأ الإعدادات العامة المضمّنة بواسطة /config.js (يُحمّل غير حابس في index.html)
+    // اقرَأ الإعدادات العامة المضمّنة بواسطة /config.js مبكراً
     try {
         const cfg = (typeof window !== 'undefined' && window.__PUBLIC_CONFIG) ? window.__PUBLIC_CONFIG : null;
         if (cfg && cfg.googleClientId) {
             state.GOOGLE_CLIENT_ID = cfg.googleClientId;
         }
     } catch (e) {
-        // لا نفشل التحميل إذا لم تتوفر الإعدادات — نترك القيم الافتراضية
         console.warn('⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:', e);
+    }
+
+    // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
+    // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initOverlayScrollLock());
+    } else {
+        initOverlayScrollLock();
     }
 
     // تهيئة DOM الاختبار + ربط Enter في حقل التسمية تتم داخل app.features.bundle.min.js
@@ -548,4 +542,58 @@ export async function startApp() {
     if (!handledRedirect) {
         loadApp();
     }
+
+    // ── تهيئة وحدات الحركة والتمرير بشكل غير حاجب للعرض الأول ───────────────
+    (async function initNonCriticalRuntime() {
+        // Load motion libs (GSAP + Lenis) before using them
+        if (window.__loadMotionLibs) {
+            window.__loadMotionLibs();
+        }
+
+        // قياس مستوى الجهاز ثم تهيئة الأنيميشن في الخلفية
+        const perf = await getDevicePerformanceTier({ skipFPSTest: true });
+        try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
+        if (perf && perf.tier === 'low') {
+            document.body.classList.add('reduced-graphics');
+        }
+
+        await initAnimations(perf);
+        await applyPerformanceBasedAnimationSettings(perf);
+
+        // تهيئة Lenis بشكل مؤجل لتفادي التأثير على الطلاء الأول
+        try {
+            if (document && document.fonts) {
+                const fontsReady = document.fonts.ready;
+                const timeout = new Promise((res) => setTimeout(res, 1000));
+                await Promise.race([fontsReady, timeout]);
+            }
+        } catch (e) { /* ignore */ }
+
+        const startScroll = () => {
+            try {
+                const _p = window.__devicePerf;
+                const _t = _p?.tier || 'high';
+                const _m = navigator.maxTouchPoints > 1 && !!window.matchMedia?.('(hover: none)').matches;
+                const scrollOpts = {};
+                if (_t === 'low') {
+                    scrollOpts.smoothWheel = false;
+                    scrollOpts.duration = 0;
+                } else if (_t === 'medium' || _m) {
+                    scrollOpts.duration = _m ? 0.8 : 1.0;
+                    scrollOpts.touchMultiplier = _m ? 1.0 : 1.5;
+                }
+                initScroll(scrollOpts);
+            } catch (err) {
+                console.warn('[scroll] deferred init failed:', err);
+            }
+        };
+
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(startScroll, { timeout: 2000 });
+        } else {
+            setTimeout(startScroll, 700);
+        }
+    })().catch((e) => {
+        console.warn('[app] non-critical init skipped:', e?.message || e);
+    });
 }

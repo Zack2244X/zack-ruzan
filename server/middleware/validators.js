@@ -39,6 +39,17 @@ const validateGoogleLogin = [
     body('idToken')
         .isString().withMessage('توكن Google مطلوب.')
         .isLength({ min: 10, max: 4096 }).withMessage('توكن غير صالح.'),
+    body('securityConsent')
+        .exists({ checkNull: true }).withMessage('يجب الموافقة على سياسة الأمان والخصوصية قبل المتابعة.')
+        .custom((v) => v === true || v === 'true').withMessage('يجب الموافقة على سياسة الأمان والخصوصية قبل المتابعة.')
+        .toBoolean(),
+    body('consentVersion')
+        .optional()
+        .isString().withMessage('نسخة الموافقة غير صالحة.')
+        .isLength({ min: 1, max: 40 }).withMessage('نسخة الموافقة غير صالحة.'),
+    body('consentTs')
+        .optional()
+        .isISO8601().withMessage('تاريخ الموافقة غير صالح.'),
     validate
 ];
 
@@ -62,14 +73,15 @@ const validateCompleteProfile = [
 
 /**
  * Validation chain for creating an admin account.
- * Validates `email`, `fname`, `lname`, and `adminSecret` in the request body.
+ * Validates `email`, `fname`, and `lname` in the request body.
+ * NOTE: Authorization is now enforced via middleware (authenticate + requireAdmin).
+ * The `adminSecret` field is no longer used (deprecated as of security hardening).
  * @type {Array<import('express').RequestHandler>}
  */
 const validateCreateAdmin = [
     body('email').isEmail().withMessage('بريد إلكتروني غير صالح.').normalizeEmail(),
     body('fname').trim().isLength({ min: 2, max: 50 }).withMessage('الاسم الأول مطلوب.'),
     body('lname').trim().isLength({ min: 2, max: 50 }).withMessage('الاسم الثاني مطلوب.'),
-    body('adminSecret').isString().withMessage('كلمة السر السرية مطلوبة.'),
     validate
 ];
 
@@ -147,8 +159,21 @@ const validateCreateNote = [
     body('link').trim().notEmpty().withMessage('الرابط مطلوب.')
         .isURL({ protocols: ['https', 'http'], require_protocol: true }).withMessage('رابط غير صالح. يجب أن يبدأ بـ https://')
         .custom((val) => {
-            if (val.toLowerCase().startsWith('javascript:') || val.toLowerCase().startsWith('data:')) {
-                throw new Error('رابط غير مسموح.');
+            // Safer URI scheme validation using URL parsing
+            try {
+                const parsedUrl = new URL(val);
+                const scheme = parsedUrl.protocol.toLowerCase();
+                // Block dangerous schemes
+                const blockedSchemes = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:'];
+                if (blockedSchemes.includes(scheme)) {
+                    throw new Error('رابط غير مسموح.');
+                }
+            } catch (e) {
+                // URL parsing failed or custom error thrown above
+                if (e.message.includes('غير مسموح')) {
+                    throw e;
+                }
+                throw new Error('رابط غير صالح.');
             }
             return true;
         }),

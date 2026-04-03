@@ -17,36 +17,66 @@ const DEFAULT_SUBJECTS = [
     'نصوص الأدب الجاهلي'
 ];
 
+// ✅ FIX: Debouncing helper to prevent excessive re-renders
+const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+};
+
+function getMainSheetContainerIds() {
+    if (state.currentViewMode === 'notes') {
+        return {
+            filtersId: 'notes-subject-filters-container',
+            historyId: 'notes-history-tree'
+        };
+    }
+
+    return {
+        filtersId: 'subject-filters-container',
+        historyId: 'history-tree'
+    };
+}
+
 function expandFirstTreeBranch(treeRoot) {
     if (!treeRoot) return;
 
-    const firstYearButton = treeRoot.querySelector("button[onclick*='content-year-'], button[onclick*='edit-content-year-']");
-    if (!firstYearButton) return;
+    // ✅ FIX: Use requestAnimationFrame to batch DOM operations and prevent layout thrashing
+    requestAnimationFrame(() => {
+        const firstYearButton = treeRoot.querySelector("button[onclick*='content-year-'], button[onclick*='edit-content-year-']");
+        if (!firstYearButton) return;
 
-    const firstYearContent = firstYearButton.nextElementSibling;
-    if (firstYearContent && firstYearContent.classList.contains('hidden')) {
-        firstYearContent.classList.remove('hidden');
-        firstYearContent.classList.add('block');
-    }
+        const firstYearContent = firstYearButton.nextElementSibling;
+        if (firstYearContent && firstYearContent.classList.contains('hidden')) {
+            firstYearContent.classList.remove('hidden');
+            firstYearContent.classList.add('block');
+        }
 
-    const firstYearIcon = firstYearButton.querySelector('.fa-chevron-down, .bi-chevron-down');
-    if (firstYearIcon) {
-        firstYearIcon.classList.add('rotate-180');
-    }
+        const firstYearIcon = firstYearButton.querySelector('.fa-chevron-down, .bi-chevron-down');
+        if (firstYearIcon) {
+            firstYearIcon.classList.add('rotate-180');
+        }
 
-    const firstMonthButton = firstYearContent?.querySelector("button[onclick*='content-month-'], button[onclick*='edit-content-month-']");
-    if (!firstMonthButton) return;
+        const firstMonthButton = firstYearContent?.querySelector("button[onclick*='content-month-'], button[onclick*='edit-content-month-']");
+        if (!firstMonthButton) return;
 
-    const firstMonthContent = firstMonthButton.nextElementSibling;
-    if (firstMonthContent && firstMonthContent.classList.contains('hidden')) {
-        firstMonthContent.classList.remove('hidden');
-        firstMonthContent.classList.add('block');
-    }
+        const firstMonthContent = firstMonthButton.nextElementSibling;
+        if (firstMonthContent && firstMonthContent.classList.contains('hidden')) {
+            firstMonthContent.classList.remove('hidden');
+            firstMonthContent.classList.add('block');
+        }
 
-    const firstMonthIcon = firstMonthButton.querySelector('.fa-chevron-down, .bi-chevron-down');
-    if (firstMonthIcon) {
-        firstMonthIcon.classList.add('rotate-180');
-    }
+        const firstMonthIcon = firstMonthButton.querySelector('.fa-chevron-down, .bi-chevron-down');
+        if (firstMonthIcon) {
+            firstMonthIcon.classList.add('rotate-180');
+        }
+    });
 }
 
 /**
@@ -84,21 +114,22 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
     }
 
     // 2. تحديث شريط الفلاتر في القائمة الرئيسية
-    const mainContainer = document.getElementById('subject-filters-container');
+    const { filtersId } = getMainSheetContainerIds();
+    const mainContainer = document.getElementById(filtersId);
     if (mainContainer) {
         let filtersHtml = '';
         subjects.forEach(sub => {
             const isActive = sub === state.currentSubjectFilter;
             const activeClasses = isActive
-                ? 'bg-blue-600 text-white shadow-md border-blue-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600';
+                ? 'bg-blue-600 text-white shadow-md border-blue-500'
+                : 'bg-slate-700/40 text-gray-300 border-slate-600/30 backdrop-blur-md hover:border-slate-500/50 hover:text-gray-200';
 
             let adminTools = '';
             if (state.isAdmin && sub !== 'الكل') {
                 adminTools = `
-                    <span class="inline-flex items-center gap-2 mr-3 pr-3 border-r ${isActive ? 'border-blue-400' : 'border-gray-200'}">
-                        <i onclick="renameSubject('${escapeHtml(sub)}', event)" class="fas fa-pen text-xs hover:text-green-400 transition cursor-pointer" title="تعديل الاسم"></i>
-                        <i onclick="confirmDeleteSubject('${escapeHtml(sub)}', event)" class="fas fa-times text-xs hover:text-red-500 transition cursor-pointer" title="حذف المجلد"></i>
+                    <span class="inline-flex items-center gap-2 mr-3 pr-3 border-r ${isActive ? 'border-blue-400' : 'border-slate-500/40'}">
+                        <i onclick="renameSubject('${escapeHtml(sub)}', event)" class="fas fa-pen text-xs hover:text-blue-300 transition cursor-pointer" title="تعديل الاسم"></i>
+                        <i onclick="confirmDeleteSubject('${escapeHtml(sub)}', event)" class="fas fa-times text-xs hover:text-red-400 transition cursor-pointer" title="حذف المجلد"></i>
                     </span>
                 `;
             }
@@ -134,11 +165,17 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
  * @param {Function} [renameSubjectFn] — دالة تعديل اسم المادة
  * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
+let _renderHistoryTreeDebounced = null;
 export function setSubjectFilter(subject, renderHistoryTree, renameSubjectFn, confirmDeleteSubjectFn) {
     logFunctionStatus('setSubjectFilter', false);
     state.currentSubjectFilter = subject;
     renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
-    renderHistoryTree();
+    
+    // ✅ FIX: Use debounced render to prevent excessive DOM updates on rapid filter changes
+    if (!_renderHistoryTreeDebounced) {
+        _renderHistoryTreeDebounced = debounce(renderHistoryTree, 300);
+    }
+    _renderHistoryTreeDebounced();
 }
 
 /**
@@ -148,11 +185,17 @@ export function setSubjectFilter(subject, renderHistoryTree, renameSubjectFn, co
  * @param {Function} [renameSubjectFn] — دالة تعديل اسم المادة
  * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
+let _renderEditTreeDebounced = null;
 export function setEditSubjectFilter(subject, renderEditTree, renameSubjectFn, confirmDeleteSubjectFn) {
     logFunctionStatus('setEditSubjectFilter', false);
     state.editSubjectFilter = subject;
     renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
-    renderEditTree();
+    
+    // ✅ FIX: Use debounced render to prevent excessive DOM updates on rapid filter changes
+    if (!_renderEditTreeDebounced) {
+        _renderEditTreeDebounced = debounce(renderEditTree, 300);
+    }
+    _renderEditTreeDebounced();
 }
 
 /**
@@ -162,7 +205,8 @@ export function setEditSubjectFilter(subject, renderEditTree, renameSubjectFn, c
  */
 export function renderHistoryTree(playQuizFn, forceDownloadFn) {
     logFunctionStatus('renderHistoryTree', false);
-    const historyTree = document.getElementById('history-tree');
+    const { historyId } = getMainSheetContainerIds();
+    const historyTree = document.getElementById(historyId);
     if (!historyTree) return;
     historyTree.innerHTML = '';
 
@@ -175,7 +219,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
     }
 
     if (itemsToShow.length === 0) {
-        historyTree.innerHTML = `<div class="p-5 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-center text-gray-500 text-sm font-medium">لا توجد بيانات مسجلة هنا حالياً.</div>`;
+        historyTree.innerHTML = `<div class="p-5 rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50 text-center text-gray-500 text-sm font-medium">لا توجد بيانات مسجلة هنا حالياً.</div>`;
         return;
     }
 
@@ -210,13 +254,13 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
     // رسم الشجرة
     let html = '';
-    const themeColor = state.currentViewMode === 'notes' ? 'orange' : 'blue';
+    const themeColor = state.currentViewMode === 'notes' ? 'rose' : 'emerald';
 
     const years = Object.keys(treeData).sort((a, b) => b - a);
     years.forEach(year => {
         html += `
             <div id="year-${year}" class="mb-2">
-                <button onclick="toggleTreeNode('content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-xl hover:bg-gray-200 transition">
+                <button onclick="toggleTreeNode('content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-2xl hover:bg-gray-200 transition">
                     <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
                     <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
@@ -230,7 +274,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
             html += `
                 <div id="month-${monthId}" class="mb-2">
-                    <button onclick="toggleTreeNode('content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-2 hover:bg-${themeColor}-50 rounded-lg transition">
+                    <button onclick="toggleTreeNode('content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
                         <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
                     </button>
@@ -255,30 +299,30 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                     if (state.currentViewMode === 'exams') {
                         html += `
                             <div class="group mb-2">
-                                <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer">
-                                    <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">${escapeHtml(config.title)}</p>
-                                    ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
-                                    <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                        <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
-                                        <span class="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
+                                <div onclick="playQuiz(${item.originalIndex})" class="p-3 bg-white rounded-3xl border border-gray-200 shadow-md hover:shadow-lg hover:border-emerald-300 transition cursor-pointer">
+                                    <p class="font-bold text-gray-900 text-sm group-hover:text-emerald-600 transition truncate">${escapeHtml(config.title)}</p>
+                                    ${config.description ? `<p class="text-xs text-gray-500 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
+                                    <div class="flex gap-2 items-center mt-2 text-xs text-gray-600">
+                                        <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                        <span class="bg-gray-100 px-2 py-1 rounded text-gray-700 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
                                     </div>
                                 </div>
                             </div>
                         `;
                     } else {
-                        const iconClass = config.type === 'ppt' ? 'bi-file-earmark-slides-fill text-red-500' : 'bi-file-earmark-pdf-fill text-orange-500';
+                        const iconClass = config.type === 'ppt' ? 'bi-file-earmark-slides-fill text-emerald-500' : 'bi-file-earmark-pdf-fill text-rose-500';
                         const safeLink = encodeURI(config.link || '');
                         html += `
                             <div class="group mb-2">
-                                <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-300 transition cursor-pointer">
+                                <div onclick="forceDownload('${safeLink}')" class="p-3 bg-white rounded-3xl border border-gray-200 shadow-md hover:shadow-lg hover:border-rose-300 transition cursor-pointer">
                                     <div class="flex justify-between items-start">
-                                        <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
+                                        <p class="font-bold text-gray-900 text-sm group-hover:text-rose-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
                                         <i class="bi ${iconClass} text-lg"></i>
                                     </div>
-                                    ${config.description ? `<p class="text-xs text-gray-400 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
-                                    <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                        <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
-                                        <span class="bg-orange-50 px-2 py-1 rounded text-orange-700 font-bold hover:bg-orange-100 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
+                                    ${config.description ? `<p class="text-xs text-gray-500 mt-1 truncate">${escapeHtml(config.description)}</p>` : ''}
+                                    <div class="flex gap-2 items-center mt-2 text-xs text-gray-600">
+                                        <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
+                                        <span class="bg-rose-100 px-2 py-1 rounded text-rose-700 font-bold hover:bg-rose-200 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
                                     </div>
                                 </div>
                             </div>
@@ -314,7 +358,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
     }
 
     if (itemsToShow.length === 0) {
-        editTree.innerHTML = `<div class="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm text-center text-gray-500 text-sm font-medium">لا يوجد محتوى مسجل هنا لتعديله.</div>`;
+        editTree.innerHTML = `<div class="p-5 rounded-3xl bg-white border border-gray-100 shadow-sm text-center text-gray-500 text-sm font-medium">لا يوجد محتوى مسجل هنا لتعديله.</div>`;
         return;
     }
 
@@ -334,13 +378,13 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
     });
 
     let html = '';
-    const themeColor = state.editTabMode === 'exams' ? 'blue' : 'orange';
+    const themeColor = state.editTabMode === 'exams' ? 'emerald' : 'rose';
     const years = Object.keys(treeData).sort((a, b) => b - a);
 
     years.forEach(year => {
         html += `
             <div id="edit-year-${year}" class="mb-2">
-                <button onclick="toggleTreeNode('edit-content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-white shadow-sm border border-gray-100 p-3 rounded-xl hover:bg-gray-50 transition">
+                <button onclick="toggleTreeNode('edit-content-year-${year}', this)" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-white shadow-sm border border-gray-100 p-3 rounded-2xl hover:bg-gray-50 transition">
                     <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
                     <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
@@ -354,7 +398,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
 
             html += `
                 <div id="edit-month-${monthId}" class="mb-2">
-                    <button onclick="toggleTreeNode('edit-content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-2 hover:bg-${themeColor}-50 rounded-lg transition">
+                    <button onclick="toggleTreeNode('edit-content-month-${monthId}', this)" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
                         <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
                     </button>
@@ -369,17 +413,17 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                         <div class="mb-2 flex items-center gap-2">
 
                             <!-- ✅ زر التعديل -->
-                            <div onclick="loadQuizIntoBuilder(${item.originalIndex})"
-                                 class="group flex-1 p-3 bg-white rounded-xl border border-gray-100 shadow-sm
-                                        hover:shadow-md hover:border-blue-400 transition cursor-pointer">
+                               <div onclick="loadQuizIntoBuilder(${item.originalIndex})"
+                                   class="group flex-1 p-3 bg-white rounded-3xl border border-gray-100 shadow-sm
+                                        hover:shadow-md hover:border-emerald-400 transition cursor-pointer">
                                 <div class="flex justify-between items-center">
-                                    <p class="font-bold text-gray-800 text-sm group-hover:text-blue-600 transition truncate">
+                                    <p class="font-bold text-gray-800 text-sm group-hover:text-emerald-600 transition truncate">
                                         ${escapeHtml(config.title)}
                                     </p>
-                                    <i class="fas fa-pen text-blue-200 group-hover:text-blue-500 transition ml-2 flex-shrink-0"></i>
+                                    <i class="fas fa-pen text-emerald-200 group-hover:text-emerald-500 transition ml-2 flex-shrink-0"></i>
                                 </div>
                                 <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
+                                    <span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
                                         ${escapeHtml(config.subject || 'بدون مادة')}
                                     </span>
                                 </div>
@@ -390,7 +434,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                             <button onclick="deleteExamFromEditTree('${escapeHtml(config.id)}', event)"
                                     class="flex-shrink-0 w-9 h-9 flex items-center justify-center
                                            bg-red-50 hover:bg-red-500 text-red-500 hover:text-white
-                                           rounded-xl border border-red-100 hover:border-red-500
+                                     rounded-2xl border border-red-100 hover:border-red-500
                                            shadow-sm transition duration-200"
                                     title="حذف الامتحان">
                                 <i class="fas fa-trash text-sm"></i>
@@ -403,17 +447,17 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                         <div class="mb-2 flex items-center gap-2">
 
                             <!-- ✅ زر التعديل -->
-                            <div onclick="loadNoteIntoBuilder(${item.originalIndex})"
-                                 class="group flex-1 p-3 bg-white rounded-xl border border-gray-100 shadow-sm
-                                        hover:shadow-md hover:border-orange-400 transition cursor-pointer">
+                               <div onclick="loadNoteIntoBuilder(${item.originalIndex})"
+                                   class="group flex-1 p-3 bg-white rounded-3xl border border-gray-100 shadow-sm
+                                        hover:shadow-md hover:border-rose-400 transition cursor-pointer">
                                 <div class="flex justify-between items-center">
-                                    <p class="font-bold text-gray-800 text-sm group-hover:text-orange-600 transition truncate">
+                                    <p class="font-bold text-gray-800 text-sm group-hover:text-rose-600 transition truncate">
                                         ${escapeHtml(config.title)}
                                     </p>
-                                    <i class="fas fa-pen text-orange-200 group-hover:text-orange-500 transition ml-2 flex-shrink-0"></i>
+                                    <i class="fas fa-pen text-rose-200 group-hover:text-rose-500 transition ml-2 flex-shrink-0"></i>
                                 </div>
                                 <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
-                                    <span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
+                                    <span class="bg-rose-50 text-rose-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
                                         ${escapeHtml(config.subject || 'بدون مادة')}
                                     </span>
                                 </div>
@@ -424,7 +468,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                             <button onclick="deleteNoteFromEditTree('${escapeHtml(config.id)}', event)"
                                     class="flex-shrink-0 w-9 h-9 flex items-center justify-center
                                            bg-red-50 hover:bg-red-500 text-red-500 hover:text-white
-                                           rounded-xl border border-red-100 hover:border-red-500
+                                     rounded-2xl border border-red-100 hover:border-red-500
                                            shadow-sm transition duration-200"
                                     title="حذف المذكرة">
                                 <i class="fas fa-trash text-sm"></i>

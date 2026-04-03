@@ -45,6 +45,18 @@ const createAdminLimiter = rateLimit({
 });
 
 /**
+ * Moderate limiter for admin device/account management operations.
+ * Helps prevent accidental bursts from UI loops and abuse.
+ */
+const adminOpsLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'طلبات إدارية كثيرة جدًا. حاول بعد دقيقة.' }
+});
+
+/**
  * Pre-approved admin email addresses loaded from the ADMIN_EMAILS environment variable.
  * @type {string[]}
  */
@@ -234,7 +246,75 @@ async function recordAccountSession({ userId = null, email = '', deviceId = '', 
     try {
         const cols = await getAccountSessionsColumns();
         const normalizedDeviceName = normalizeDeviceName(deviceName, userAgent);
+        const normalizedEmail = sanitizeText(email.toLowerCase(), 255) || null;
+        const normalizedDeviceId = sanitizeText(deviceId, 120);
+        const normalizedIpAddress = sanitizeText(ipAddress, 64);
 
+        // ✅ FIX: Check for recent duplicate session from same device to prevent duplicates
+        if (userId || normalizedEmail || normalizedDeviceId || normalizedIpAddress) {
+            const checkClauses = [];
+            const checkReplacements = [];
+
+            if (userId && cols.has('userId')) {
+                checkClauses.push('userId = ?');
+                checkReplacements.push(userId);
+            }
+            if (normalizedDeviceId && cols.has('deviceId')) {
+                checkClauses.push('deviceId = ?');
+                checkReplacements.push(normalizedDeviceId);
+            }
+            if (normalizedIpAddress && cols.has('ipAddress')) {
+                checkClauses.push('ipAddress = ?');
+                checkReplacements.push(normalizedIpAddress);
+            }
+
+            // If we have at least one identifier, check for recent duplicate
+            if (checkClauses.length > 0) {
+                const [existingRows] = await sequelize.query(
+                    `SELECT id, createdAt FROM account_sessions
+                     WHERE ${checkClauses.join(' AND ')}
+                     ${cols.has('createdAt') ? 'AND createdAt > DATE_SUB(NOW(), INTERVAL 1 HOUR)' : ''}
+                     ORDER BY ${cols.has('createdAt') ? 'createdAt DESC, id DESC' : 'id DESC'}
+                     LIMIT 1`,
+                    { replacements: checkReplacements }
+                );
+
+                // If recent session found, update it instead of creating duplicate
+                if (existingRows && existingRows.length > 0) {
+                    const updateClauses = [];
+                    const updateValues = [];
+
+                    if (cols.has('loginType')) {
+                        updateClauses.push('loginType = ?');
+                        updateValues.push(sanitizeText(loginType, 30));
+                    }
+                    if (cols.has('deviceName')) {
+                        updateClauses.push('deviceName = ?');
+                        updateValues.push(normalizedDeviceName);
+                    }
+                    if (cols.has('userAgent')) {
+                        updateClauses.push('userAgent = ?');
+                        updateValues.push(sanitizeText(userAgent, 500));
+                    }
+                    if (cols.has('updatedAt')) {
+                        updateClauses.push('updatedAt = NOW()');
+                    }
+
+                    if (updateClauses.length > 0) {
+                        await sequelize.query(
+                            `UPDATE account_sessions
+                             SET ${updateClauses.join(', ')}
+                             WHERE id = ?`,
+                            { replacements: [...updateValues, existingRows[0].id] }
+                        );
+                    }
+
+                    return; // ✅ Exit - session updated, not duplicated
+                }
+            }
+        }
+
+        // ✅ No recent duplicate found, create new session record
         const insertCols = [];
         const placeholders = [];
         const replacements = [];
@@ -247,10 +327,10 @@ async function recordAccountSession({ userId = null, email = '', deviceId = '', 
         };
 
         pushVal('userId', userId);
-        pushVal('email', sanitizeText(email.toLowerCase(), 255) || null);
-        pushVal('deviceId', sanitizeText(deviceId, 120));
+        pushVal('email', normalizedEmail);
+        pushVal('deviceId', normalizedDeviceId);
         pushVal('loginType', sanitizeText(loginType, 30));
-        pushVal('ipAddress', sanitizeText(ipAddress, 64));
+        pushVal('ipAddress', normalizedIpAddress);
         pushVal('deviceName', normalizedDeviceName);
         pushVal('userAgent', sanitizeText(userAgent, 500));
 
@@ -698,17 +778,43 @@ router.post('/guest-session', async (req, res) => {
 // ============================================
 //   GET /api/auth/accounts-overview — لوحة إدارة الحسابات
 // ============================================
-router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) => {
+router.get('/accounts-overview', authenticate, requireAdmin, adminOpsLimiter, async (req, res) => {
     try {
         const q = sanitizeText(req.query?.q, 120).toLowerCase();
         const type = sanitizeText(req.query?.type, 20).toLowerCase();
         const { page, limit, offset } = parsePageLimit(req.query, 24, 100);
 
+        const usersWhereParts = ['deletedAt IS NULL'];
+        const usersWhereReplacements = [];
+        if (q) {
+            usersWhereParts.push(`(
+                LOWER(COALESCE(fname, '')) LIKE ? OR
+                LOWER(COALESCE(lname, '')) LIKE ? OR
+                LOWER(COALESCE(email, '')) LIKE ? OR
+                LOWER(COALESCE(role, '')) LIKE ?
+            )`);
+            const likeQ = `%${q}%`;
+            usersWhereReplacements.push(likeQ, likeQ, likeQ, likeQ);
+        }
+
+        const shouldLoadLargeSlice = type === 'all';
+        const usersSliceLimit = shouldLoadLargeSlice ? Math.min(1000, Math.max(200, limit * 20)) : limit;
+        const usersSliceOffset = shouldLoadLargeSlice ? 0 : offset;
+
         const [accountsOnlyRows] = await sequelize.query(
             `SELECT id, fname, lname, email, role, createdAt
              FROM users
-             WHERE deletedAt IS NULL
-             ORDER BY createdAt DESC`
+             WHERE ${usersWhereParts.join(' AND ')}
+             ORDER BY createdAt DESC
+             LIMIT ? OFFSET ?`,
+            { replacements: usersWhereReplacements.concat([usersSliceLimit, usersSliceOffset]) }
+        );
+
+        const [usersCountRows] = await sequelize.query(
+            `SELECT COUNT(*) AS c
+             FROM users
+             WHERE ${usersWhereParts.join(' AND ')}`,
+            { replacements: usersWhereReplacements }
         );
 
         const usersOnly = (accountsOnlyRows || []).map((u) => ({
@@ -753,14 +859,14 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                     hasCreatedAtCol ? 'createdAt AS lastSeenAt' : 'NULL AS lastSeenAt'
                 ].join(',\n                            ');
 
-                const [sessionRows] = await sequelize.query(
+                 const [sessionRows] = await sequelize.query(
                     `SELECT
                             ${sessionSelectFields}
                      FROM account_sessions
                      WHERE 1=1
                        ${hasLoginTypeCol ? "AND loginType <> 'guest'" : ''}
                      ORDER BY ${hasCreatedAtCol ? 'createdAt DESC, id DESC' : 'id DESC'}
-                     LIMIT 5000`
+                     LIMIT 3000`
                 );
 
                 const latestByUserId = new Map();
@@ -812,6 +918,23 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                 });
 
                 if (hasLoginTypeCol) {
+                    const guestWhereParts = ["loginType = 'guest'"];
+                    const guestWhereReplacements = [];
+                    if (q) {
+                        const likeQ = `%${q}%`;
+                        const guestSearchParts = [];
+                        if (hasIpCol) guestSearchParts.push('LOWER(COALESCE(ipAddress, \"\")) LIKE ?');
+                        if (hasDeviceIdCol) guestSearchParts.push('LOWER(COALESCE(deviceId, \"\")) LIKE ?');
+                        if (hasDeviceNameCol) guestSearchParts.push('LOWER(COALESCE(deviceName, \"\")) LIKE ?');
+                        if (guestSearchParts.length > 0) {
+                            guestWhereParts.push(`(${guestSearchParts.join(' OR ')})`);
+                            for (let i = 0; i < guestSearchParts.length; i++) guestWhereReplacements.push(likeQ);
+                        }
+                    }
+
+                    const guestSliceLimit = shouldLoadLargeSlice ? Math.min(1000, Math.max(200, limit * 20)) : limit;
+                    const guestSliceOffset = shouldLoadLargeSlice ? 0 : offset;
+
                     const [guestRows] = await sequelize.query(
                         `SELECT
                             id,
@@ -820,11 +943,20 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
                             ${hasDeviceNameCol ? 'deviceName' : "'' AS deviceName"},
                             ${guestLastSeenExpr}
                          FROM account_sessions
-                         WHERE loginType = 'guest'
+                         WHERE ${guestWhereParts.join(' AND ')}
                          ORDER BY id DESC
-                         LIMIT 200`
+                         LIMIT ? OFFSET ?`,
+                        { replacements: guestWhereReplacements.concat([guestSliceLimit, guestSliceOffset]) }
                     );
                     guestSessions = guestRows || [];
+
+                    const [guestCountRows] = await sequelize.query(
+                        `SELECT COUNT(*) AS c
+                         FROM account_sessions
+                         WHERE ${guestWhereParts.join(' AND ')}`,
+                        { replacements: guestWhereReplacements }
+                    );
+                    guestSessions._totalCount = Number(guestCountRows?.[0]?.c || 0);
                 }
             }
         } catch (sessionsErr) {
@@ -868,26 +1000,30 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
             merged = mappedGuests;
         }
 
-        if (q) {
-            merged = merged.filter((item) => {
-                const haystack = [
-                    item.fullName,
-                    item.email,
-                    item.role,
-                    item.ipAddress,
-                    item.deviceId,
-                    item.deviceName,
-                    item.loginType
-                ]
-                    .map((v) => String(v || '').toLowerCase())
-                    .join(' ');
-                return haystack.includes(q);
-            });
+        // Keep merged ordering deterministic by last activity/create time.
+        merged.sort((a, b) => {
+            const aTime = new Date(a.lastSeenAt || a.createdAt || 0).getTime() || 0;
+            const bTime = new Date(b.lastSeenAt || b.createdAt || 0).getTime() || 0;
+            return bTime - aTime;
+        });
+
+        const usersTotal = Number(usersCountRows?.[0]?.c || 0);
+        const guestsTotal = Number(guestSessions?._totalCount || 0);
+
+        let total;
+        let pageItems;
+        if (type === 'accounts') {
+            total = usersTotal;
+            pageItems = merged;
+        } else if (type === 'guests') {
+            total = guestsTotal;
+            pageItems = merged;
+        } else {
+            total = usersTotal + guestsTotal;
+            pageItems = merged.slice(offset, offset + limit);
         }
 
-        const total = merged.length;
         const pages = Math.max(1, Math.ceil(total / limit));
-        const pageItems = merged.slice(offset, offset + limit);
 
         return res.json({
             accounts: pageItems.filter((i) => i.type === 'account'),
@@ -904,16 +1040,11 @@ router.get('/accounts-overview', authenticate, requireAdmin, async (req, res) =>
         });
     } catch (error) {
         logger.error('خطأ في جلب accounts-overview:', { error: error.message, stack: error.stack });
-        return res.status(200).json({
-            accounts: [],
-            guests: [],
-            items: [],
-            pagination: { page: 1, limit: 24, total: 0, pages: 1, hasNext: false, hasPrev: false }
-        });
+        return res.status(500).json({ error: 'تعذر تحميل بيانات إدارة الحسابات.' });
     }
 });
 
-router.delete('/account-sessions/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/account-sessions/:id', authenticate, requireAdmin, adminOpsLimiter, async (req, res) => {
     try {
         const sessionId = Number(req.params.id);
         if (!Number.isInteger(sessionId) || sessionId <= 0) {
@@ -945,7 +1076,7 @@ router.delete('/account-sessions/:id', authenticate, requireAdmin, async (req, r
     }
 });
 
-router.delete('/accounts/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/accounts/:id', authenticate, requireAdmin, adminOpsLimiter, async (req, res) => {
     try {
         const targetId = Number(req.params.id);
         if (!Number.isInteger(targetId) || targetId <= 0) {
@@ -970,7 +1101,7 @@ router.delete('/accounts/:id', authenticate, requireAdmin, async (req, res) => {
     }
 });
 
-router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
+router.post('/blocked-devices', authenticate, requireAdmin, adminOpsLimiter, async (req, res) => {
     try {
         const email = sanitizeText(req.body?.email, 255).toLowerCase();
         const deviceId = sanitizeText(req.body?.deviceId, 120);
@@ -1112,7 +1243,7 @@ router.post('/blocked-devices', authenticate, requireAdmin, async (req, res) => 
     }
 });
 
-router.get('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
+router.get('/blocked-devices', authenticate, requireAdmin, adminOpsLimiter, async (req, res) => {
     try {
         const q = sanitizeText(req.query?.q, 120).toLowerCase();
         const { page, limit, offset } = parsePageLimit(req.query, 24, 100);
@@ -1163,19 +1294,26 @@ router.get('/blocked-devices', authenticate, requireAdmin, async (req, res) => {
     }
 });
 
-router.delete('/blocked-devices/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/blocked-devices/:id', authenticate, requireAdmin, adminOpsLimiter, async (req, res) => {
     try {
         const blockId = Number(req.params.id);
         if (!Number.isInteger(blockId) || blockId <= 0) {
             return res.status(400).json({ error: 'معرّف الحظر غير صالح.' });
         }
 
-        await sequelize.query(
+        const [updateResult] = await sequelize.query(
             `UPDATE blocked_devices
              SET isActive = 0, updatedAt = NOW()
              WHERE id = ?`,
             { replacements: [blockId] }
         );
+
+        const affected = Number(updateResult?.affectedRows || 0);
+        if (affected === 0) {
+            return res.status(404).json({ error: 'سجل الحظر غير موجود.' });
+        }
+
+        logger.info(`🔓 تم فك الحظر بواسطة الأدمن ${req.user.email} (blockId=${blockId})`);
 
         return res.json({ ok: true, message: 'تم فك الحظر بنجاح.' });
     } catch (error) {
@@ -1290,41 +1428,48 @@ router.get('/verify-admin', authenticate, (req, res) => {
 /**
  * @route POST /api/auth/create-admin
  * @description Creates a new admin account or promotes an existing user to admin.
- *   Requires the correct `ADMIN_CREATE_SECRET` in the request body.
- * @access Public (protected by secret).
- * @param {import('express').Request} req - Express request with `email`, `fname`, `lname`, `adminSecret` in body.
+ *   ⚠️ HARDENED: Now requires ADMIN authentication + full audit trail.
+ *   Static ADMIN_CREATE_SECRET is deprecated (was a critical security risk).
+ * @access Private — requires authentication as admin.
+ * @param {import('express').Request} req - Express request with `email`, `fname`, `lname` in body.
  * @param {import('express').Response} res - Express response.
  * @returns {Promise<void>}
  */
-router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req, res) => {
+router.post('/create-admin', authenticate, requireAdmin, createAdminLimiter, validateCreateAdmin, async (req, res) => {
     try {
-        const { email, fname, lname, adminSecret } = req.body;
+        const { email, fname, lname } = req.body;
+        const requestingAdminEmail = sanitizeText(req.user?.email, 255).toLowerCase();
+        const requestingAdminId = req.user?.id;
 
-        const expectedSecret = process.env.ADMIN_CREATE_SECRET;
-        if (!expectedSecret) {
-            return res.status(503).json({ error: 'لم يتم تكوين مفتاح إنشاء الأدمن على السيرفر.' });
-        }
-        if (adminSecret !== expectedSecret) {
-            logger.warn(`🚨 محاولة إنشاء أدمن بكلمة سر خاطئة — IP: ${req.ip}`);
-            recordFailedAttempt(req.ip);
-            return res.status(403).json({ error: 'كلمة السر السرية غير صحيحة.' });
+        // ✅ SECURITY: Full audit log for admin creation/promotion
+        logger.warn(`⚠️ ADMIN CREATION ATTEMPT by ${requestingAdminEmail} (ID=${requestingAdminId}): target=${email.toLowerCase()}, IP=${req.ip}`);
+
+        const normalizedEmail = sanitizeText(email, 255).toLowerCase();
+        const normalizedFname = sanitizeText(fname, 50).trim();
+        const normalizedLname = sanitizeText(lname, 50).trim();
+
+        // ✅ FIX: Prevent self-promotion exploit
+        if (normalizedEmail === requestingAdminEmail) {
+            logger.warn(`⛔ BLOCKED SELF-PROMOTION: ${requestingAdminEmail} attempted to promote self`);
+            return res.status(400).json({ error: 'لا يمكنك ترقية حسابك الخاص. يجب أن يقوم أدمن آخر.' });
         }
 
-        const existing = await User.findOne({ where: { email: email.toLowerCase() } });
+        const existing = await User.findOne({ where: { email: normalizedEmail } });
         if (existing) {
+            const oldRole = existing.role;
             existing.role = 'admin';
-            existing.fname = fname.trim();
-            existing.lname = lname.trim();
+            existing.fname = normalizedFname;
+            existing.lname = normalizedLname;
             existing.isProfileComplete = true;
+            // Invalidate all old sessions when promoting to admin
+            existing.tokenVersion = (existing.tokenVersion || 0) + 1;
             await existing.save();
 
-            logger.info(`👑 تم ترقية ${email} إلى أدمن`);
+            logger.warn(`👑 ADMIN PROMOTION: ${normalizedEmail} (prev: ${oldRole}) by ${requestingAdminEmail} via IP=${req.ip}`);
 
-            const token = generateToken(existing.id, existing.role, existing.tokenVersion, existing.email);
-            setTokenCookie(res, token);
-            setCsrfCookie(res);
+            // Do NOT issue token — target must log in to get new admin token
             return res.json({
-                message: 'تم ترقية الحساب لمعلم بنجاح!',
+                message: 'تم ترقية الحساب لمعلم بنجاح! يجب أن يسجل دخول مرة أخرى لتفعيل الصلاحيات.',
                 user: {
                     id: existing.id,
                     email: existing.email,
@@ -1336,29 +1481,27 @@ router.post('/create-admin', createAdminLimiter, validateCreateAdmin, async (req
             });
         }
 
-        const user = await User.create({
-            email: email.toLowerCase().trim(),
-            fname: fname.trim(),
-            lname: lname.trim(),
+        // New admin creation — must be existing user
+        const newAdmin = await User.create({
+            email: normalizedEmail,
+            fname: normalizedFname,
+            lname: normalizedLname,
             isProfileComplete: true,
             role: 'admin'
         });
 
-        logger.info(`👑 تم إنشاء حساب أدمن جديد: ${email}`);
+        logger.warn(`👑 NEW ADMIN CREATED: ${normalizedEmail} by ${requestingAdminEmail} via IP=${req.ip}`);
 
-        const token = generateToken(user.id, user.role, user.tokenVersion, user.email);
-        setTokenCookie(res, token);
-        setCsrfCookie(res);
-
+        // Target must log in themselves to get admin token
         res.status(201).json({
-            message: 'تم إنشاء حساب المعلم بنجاح!',
+            message: 'تم إنشاء حساب المعلم الجديد بنجاح! يجب أن يسجل دخول لتفعيل الحساب.',
             user: {
-                id: user.id,
-                email: user.email,
-                fname: user.fname,
-                lname: user.lname,
-                fullName: `${user.fname} ${user.lname}`,
-                role: user.role
+                id: newAdmin.id,
+                email: newAdmin.email,
+                fname: newAdmin.fname,
+                lname: newAdmin.lname,
+                fullName: `${newAdmin.fname} ${newAdmin.lname}`,
+                role: newAdmin.role
             }
         });
     } catch (error) {

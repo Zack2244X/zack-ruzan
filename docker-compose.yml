@@ -1,6 +1,4 @@
 # Docker Compose — Development
-version: '3.8'
-
 services:
   app:
     build: .
@@ -11,7 +9,36 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ./server:/app/server
       - ./client:/app/client
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const http=require('http'); const req=http.get('http://localhost:3000/api/health', res=>{process.exit(res.statusCode===200?0:1)}); req.on('error', ()=>process.exit(1));\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-quiz_platform}
+      MYSQL_USER: ${DB_USER:-qp_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ChangeMeDBPass!2026}
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:

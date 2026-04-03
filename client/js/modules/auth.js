@@ -15,6 +15,43 @@ function getClientDevicePayload() {
     };
 }
 
+function buildSecurityConsentPayload() {
+    const consentGiven = sessionStorage.getItem('security-consent') === 'true';
+    const consentVersion = sessionStorage.getItem('security-consent-version') || 'security-v1';
+    const consentTs = sessionStorage.getItem('security-consent-ts') || new Date().toISOString();
+    return {
+        securityConsent: consentGiven,
+        consentVersion,
+        consentTs
+    };
+}
+
+function ensureSecurityConsent(mode) {
+    const studentCheckbox = document.getElementById('login-security-consent');
+    const adminCheckbox = document.getElementById('admin-security-consent');
+    const isAdminMode = mode === 'admin';
+    const checkbox = isAdminMode ? adminCheckbox : studentCheckbox;
+
+    if (!checkbox || !checkbox.checked) {
+        const msg = '⚠️ لازم توافق على سياسة الأمان والخصوصية قبل تسجيل الدخول.';
+        const targetError = isAdminMode
+            ? document.getElementById('admin-auth-error')
+            : document.getElementById('login-error');
+        if (targetError) {
+            targetError.textContent = msg;
+            targetError.classList.remove('hidden');
+        } else {
+            showAlert(msg, 'warning');
+        }
+        return false;
+    }
+
+    sessionStorage.setItem('security-consent', 'true');
+    sessionStorage.setItem('security-consent-version', 'security-v1');
+    sessionStorage.setItem('security-consent-ts', new Date().toISOString());
+    return true;
+}
+
 /**
  * بدء تسجيل دخول Google عبر Redirect
  * @param {'student'|'admin'} mode — وضع التسجيل
@@ -24,6 +61,9 @@ export function startGoogleRedirectLogin(mode) {
     try {
         logFunctionStatus('startGoogleRedirectLogin', false);
         const redirectMode = mode === 'admin' ? 'admin' : 'student';
+        if (!ensureSecurityConsent(redirectMode)) {
+            return;
+        }
         const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
         // Save to both sessionStorage and localStorage (mobile compat)
         sessionStorage.setItem('googleLoginMode', redirectMode);
@@ -145,11 +185,16 @@ export async function handleGoogleAdminResponse(response) {
             credentials: 'include',
             body: JSON.stringify({
                 idToken: response.credential,
-                ...getClientDevicePayload()
+                ...getClientDevicePayload(),
+                ...buildSecurityConsentPayload()
             })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'فشل التحقق');
+        // تأكد من إنهاء أي وضع ضيف قديم قبل تهيئة جلسة Google
+        sessionStorage.removeItem('guest-mode');
+        localStorage.removeItem('guest-mode');
+        document.body.classList.remove('guest-mode');
         if (data.user.role === 'admin') {
             state.isAdmin = true;
             loadingEl.classList.add('hidden');
@@ -217,11 +262,17 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             credentials: 'include',
             body: JSON.stringify({
                 idToken: response.credential,
-                ...getClientDevicePayload()
+                ...getClientDevicePayload(),
+                ...buildSecurityConsentPayload()
             })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.debug ? `${data.error} [${data.debug}]` : (data.error || 'فشل تسجيل الدخول'));
+
+        // تأكد من إنهاء أي وضع ضيف قديم قبل متابعة التحميل بعد Google login
+        sessionStorage.removeItem('guest-mode');
+        localStorage.removeItem('guest-mode');
+        document.body.classList.remove('guest-mode');
 
         let fname = data.user.fname || '';
         let lname = data.user.lname || '';

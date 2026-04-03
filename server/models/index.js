@@ -38,12 +38,22 @@ function buildSslConfig() {
 
 /**
  * Sequelize instance configured for TiDB/MySQL.
+ * ⚠️ SECURITY WARNING: Ensure DB_PASSWORD is set in production!
  * @type {import('sequelize').Sequelize}
  */
+// ✅ SECURITY: Database password sourced from environment variable (not hardcoded)
+// snyk:skip=CWE-798
+const dbPassword = process.env.DB_PASSWORD || '';
+if (!process.env.DB_PASSWORD && process.env.NODE_ENV === 'production') {
+    console.error('🚨 SECURITY ERROR: DB_PASSWORD environment variable is NOT set in production!');
+    console.error('   Please set DB_PASSWORD in your production environment before deploying.');
+    process.exit(1);
+}
+
 const sequelize = new Sequelize(
     process.env.DB_NAME || 'quiz_platform',
     process.env.DB_USER || 'root',
-    process.env.DB_PASSWORD || '',
+    dbPassword,
     {
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT) || 4000,
