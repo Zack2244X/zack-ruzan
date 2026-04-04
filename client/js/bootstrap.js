@@ -160,6 +160,14 @@
         }
     } catch (e) { /* ignore */ }
 
+    // If we are returning from Google OAuth (id_token or error in hash),
+    // eagerly load the app to process the redirect without requiring another click.
+    const hash = window.location.hash || '';
+    if (hash.includes('id_token=') || hash.includes('error=')) {
+        triggerAppLoad();
+        return;
+    }
+
     // No eager app boot for anonymous visits.
     // The app loads on first interaction via lazy stubs.
 })();
