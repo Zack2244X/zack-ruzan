@@ -163,7 +163,15 @@ const Quiz = sequelize.define('Quiz', {
                         ...q,
                         answerOptions: q.answerOptions.map(opt => {
                             try {
-                                // Try to decrypt; if it fails, assume it's already decrypted
+                                // Only attempt decryption if isCorrect is a string
+                                if (typeof opt.isCorrect !== 'string') {
+                                    // Already a boolean or other type
+                                    return {
+                                        ...opt,
+                                        isCorrect: opt.isCorrect === true || opt.isCorrect === 'true'
+                                    };
+                                }
+                                // Try to decrypt; if it fails, assume it's already decrypted plaintext
                                 const decrypted = decrypt(opt.isCorrect);
                                 return {
                                     ...opt,
