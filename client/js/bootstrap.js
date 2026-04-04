@@ -129,14 +129,30 @@
         if (login) login.classList.add('hidden');
     }
 
+    const MIN_LOADING_MS = 6000;
+
     function showLoadingScreen() {
         const loading = document.getElementById('loading-screen');
         if (loading) loading.classList.add('show');
+        document.body.classList.add('loading-active');
+        window.__loadingStartTs = Date.now();
     }
 
     function hideLoadingScreen() {
         const loading = document.getElementById('loading-screen');
-        if (loading) loading.classList.remove('show');
+        const startedAt = window.__loadingStartTs || 0;
+        const elapsed = Date.now() - startedAt;
+        const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+        const finalize = () => {
+            if (loading) loading.classList.remove('show');
+            document.body.classList.remove('loading-active');
+            window.__loadingStartTs = 0;
+        };
+        if (remaining > 0) {
+            setTimeout(finalize, remaining);
+        } else {
+            finalize();
+        }
     }
 
     window.hideLoadingScreen = hideLoadingScreen;

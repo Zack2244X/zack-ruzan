@@ -237,6 +237,15 @@
             letter-spacing: 0.2px;
         }
         #loading-screen.show { display: flex; }
+        body.loading-active #loading-screen { display: flex; }
+        body.loading-active #login-screen,
+        body.loading-active #dashboard-view,
+        body.loading-active #ios-bottom-nav {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
         .loading-card {
             padding: 28px 32px;
             border-radius: 18px;
