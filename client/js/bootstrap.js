@@ -72,7 +72,10 @@
                 : Promise.resolve();
             startPromise
                 .catch(() => {})
-                .finally(flushQueue);
+                .finally(() => {
+                    hideLoadingScreen();
+                    flushQueue();
+                });
         };
         bundleScript.onerror = function(err) {
             console.warn('[bootstrap] bundle failed, falling back to ESM app.js:', err);
@@ -82,10 +85,14 @@
                     : Promise.resolve();
                 startPromise
                     .catch(e => console.error('startApp failed', e))
-                    .finally(flushQueue);
+                    .finally(() => {
+                        hideLoadingScreen();
+                        flushQueue();
+                    });
             }).catch(e => {
                 console.error('[bootstrap] Both bundle and ESM fallback failed:', e);
                 window.__appLoading = false;
+                hideLoadingScreen();
             });
         };
         document.head.appendChild(bundleScript);
