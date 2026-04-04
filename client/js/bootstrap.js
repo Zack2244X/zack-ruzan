@@ -19,7 +19,7 @@
     const lazyNames = [
         'toggleTheme','navToHome','navToSection','openAdminAuthOrPanel','closeStudentMenu',
         'openBottomSheet','closeBottomSheet','closeAdminSheet','closeAllOverlays','startGoogleRedirectLogin',
-        'closeAdminAuth','logoutUser','handleStudentGoogleLogin','playQuiz','selectAnswer','goToNextQuestion',
+        'closeAdminAuth','logoutUser','handleStudentGoogleLogin','loadApp','playQuiz','selectAnswer','goToNextQuestion',
         'goToPreviousQuestion','submitQuiz','exitToMain','openCreateSection','closeCreateSection','goToBuilderStep2',
         'renderBuilderQuestion','updateBuilderData','updateBuilderOptionText','setBuilderCorrectOption','addBuilderOption',
         'removeBuilderOption','addBuilderQuestion','navBuilderQuestion','saveBuiltQuiz','loadQuizIntoBuilder','updateExistingQuiz',

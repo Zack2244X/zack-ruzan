@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
     '/css/icons.css?v=3',
     '/js/app.admin.bundle.min.js',
     '/js/app.features.bundle.min.js',
-    '/js/bootstrap.min.js?v=72',
+    '/js/bootstrap.min.js?v=73',
     '/js/guest-login.min.js?v=1',
     '/js/lamp-animation.min.js?v=3',
     '/manifest.json',
