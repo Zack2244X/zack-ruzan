@@ -423,6 +423,10 @@ if (latestExams.length === 0) {
     //  3. لوحة الشرف — أعلى 3
     // ─────────────────────────────────────────────
     const leaderboardList = document.getElementById('leaderboard-list');
+    if (!leaderboardList) {
+        console.warn('[dashboard] leaderboard-list element not found');
+        return;
+    }
     leaderboardList.innerHTML = '';
 
     const totalExams    = state.allQuizzes.length || 1;
@@ -436,16 +440,17 @@ if (latestExams.length === 0) {
             sourceScores.forEach(entry => {
                 if (entry.isOfficial === false) return;
                 const userName = entry.userName || 'طالب';
+                const userKey = entry.userId ? `id:${entry.userId}` : `name:${userName}`;
                 const total    = Number(entry.total) || 0;
                 const score    = Number(entry.score) || 0;
                 if (total <= 0) return;
-                if (!scoresByUser[userName]) {
-                    scoresByUser[userName] = { userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
+                if (!scoresByUser[userKey]) {
+                    scoresByUser[userKey] = { userId: entry.userId || null, userName, totalScore: 0, totalMax: 0, examsCount: 0, fullMarksCount: 0 };
                 }
-                scoresByUser[userName].totalScore    += score;
-                scoresByUser[userName].totalMax      += total;
-                scoresByUser[userName].examsCount    += 1;
-                if (score === total) scoresByUser[userName].fullMarksCount += 1;
+                scoresByUser[userKey].totalScore    += score;
+                scoresByUser[userKey].totalMax      += total;
+                scoresByUser[userKey].examsCount    += 1;
+                if (score === total) scoresByUser[userKey].fullMarksCount += 1;
             });
             return Object.values(scoresByUser).map(u => ({
                 ...u,

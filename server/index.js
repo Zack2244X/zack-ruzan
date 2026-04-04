@@ -112,12 +112,10 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            // ✅ HARDENED: Removed 'unsafe-inline' from scriptSrc
-            // Scripts must be from self or CDN only
-            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://cdnjs.cloudflare.com"],
-            // ✅ HARDENED: Removed 'unsafe-inline' from scriptSrcAttr
-            // Inline event handlers (onclick, etc) are now blocked by default
-            scriptSrcAttr: ["'none'"],
+            // ✅ Scripts from self, Google, CDN, and Datadog (for analytics)
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://cdnjs.cloudflare.com", "https://www.datadoghq-browser-agent.com", "'unsafe-inline'"],
+            // ✅ Allow inline event handlers for interactive functionality
+            scriptSrcAttr: ["'unsafe-inline'"],
             // Styles can still use inline for critical CSS, but consider nonce in future
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],

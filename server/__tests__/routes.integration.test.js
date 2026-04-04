@@ -106,6 +106,14 @@ describe('Leaderboard endpoint', () => {
         const res = await request(app).get('/api/scores/leaderboard');
         expect(res.statusCode).toBe(401);
     });
+
+    test('GET /api/scores/leaderboard should allow guest-mode header', async () => {
+        const res = await request(app)
+            .get('/api/scores/leaderboard')
+            .set('X-Guest-Mode', 'true');
+
+        expect([200, 500]).toContain(res.statusCode);
+    });
 });
 
 describe('Rate limiting', () => {

@@ -30,19 +30,18 @@ export async function openGradesModal() {
             fetchScoresFromServer().catch(() => []),
             fetchLeaderboardFromServer().catch(() => [])
         ]);
-        if (freshScores.length > 0) {
-            state.serverScores = freshScores;
-            state.allUserScores = freshScores.map(s => ({
-                userName: s.userName || 'طالب',
-                quizTitle: s.quizTitle || 'امتحان',
-                quizSubject: s.quizSubject || '',
-                score: Number(s.score) || 0,
-                total: Number(s.total) || 0,
-                percentage: Number(s.percentage) || 0,
-                date: s.date || new Date().toISOString()
-            }));
-        }
-        if (freshLeaderboard.length > 0) state.serverLeaderboard = freshLeaderboard;
+        state.serverScores = freshScores;
+        state.allUserScores = freshScores.map(s => ({
+            userName: s.userName || 'طالب',
+            userId: s.userId || null,
+            quizTitle: s.quizTitle || 'امتحان',
+            quizSubject: s.quizSubject || '',
+            score: Number(s.score) || 0,
+            total: Number(s.total) || 0,
+            percentage: Number(s.percentage) || 0,
+            date: s.date || new Date().toISOString()
+        }));
+        state.serverLeaderboard = freshLeaderboard;
         console.log(`[grades] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف من السيرفر`);
     } catch (e) {
         console.error('[grades] ✗ فشل تحديث البيانات:', e.message);
@@ -181,19 +180,18 @@ export async function openStatsModal() {
             fetchScoresFromServer().catch(() => []),
             fetchLeaderboardFromServer().catch(() => [])
         ]);
-        if (freshScores.length > 0) {
-            state.serverScores = freshScores;
-            state.allUserScores = freshScores.map(s => ({
-                userName: s.userName || 'طالب',
-                quizTitle: s.quizTitle || 'امتحان',
-                quizSubject: s.quizSubject || '',
-                score: Number(s.score) || 0,
-                total: Number(s.total) || 0,
-                percentage: Number(s.percentage) || 0,
-                date: s.date || new Date().toISOString()
-            }));
-        }
-        if (freshLeaderboard.length > 0) state.serverLeaderboard = freshLeaderboard;
+        state.serverScores = freshScores;
+        state.allUserScores = freshScores.map(s => ({
+            userName: s.userName || 'طالب',
+            userId: s.userId || null,
+            quizTitle: s.quizTitle || 'امتحان',
+            quizSubject: s.quizSubject || '',
+            score: Number(s.score) || 0,
+            total: Number(s.total) || 0,
+            percentage: Number(s.percentage) || 0,
+            date: s.date || new Date().toISOString()
+        }));
+        state.serverLeaderboard = freshLeaderboard;
         console.log(`[stats] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف`);
     } catch (e) {
         console.error('[stats] ✗ فشل تحديث البيانات:', e.message);

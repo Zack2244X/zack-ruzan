@@ -95,7 +95,7 @@ async function resolveAttemptMeta(userId, quizId) {
  *   answer against the stored correct options, and creates a Score record.
  *   First attempt per user per quiz is marked isOfficial = true (counts for leaderboard).
  *   Subsequent attempts are marked isOfficial = false (practice only, no leaderboard effect).
- * @access Private — requires authentication.
+ * @access Public read — authenticated users or guest-mode header.
  * @param {import('express').Request}  req - body: { quizId, answers, timeTaken? }
  * @param {import('express').Response} res - { message, result, details, meta }
  * @returns {Promise<void>}
@@ -400,30 +400,34 @@ router.get('/', authenticate, async (req, res) => {
  */
 router.get('/leaderboard', authenticateOrGuest, async (req, res) => {
     try {
-        // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار
+        // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار (حتمياً حتى عند تعادل attemptNumber)
         const [rows] = await sequelize.query(`
             SELECT
                 s.userId,
                 u.fname,
                 u.lname,
+                u.email,
                 SUM(s.score)      AS totalScore,
                 SUM(s.total)      AS totalMax,
                 COUNT(s.id)       AS examsCount,
                 (SUM(s.score) / NULLIF(SUM(s.total), 0)) * 100 AS avgPercentage,
                 SUM(CASE WHEN s.score = s.total THEN 1 ELSE 0 END) AS fullMarksCount
             FROM (
-                SELECT s.*
-                FROM scores s
-                INNER JOIN (
-                    SELECT userId, quizId, MIN(attemptNumber) AS minAttempt
-                    FROM scores
-                    WHERE isOfficial = 1 AND deletedAt IS NULL
-                    GROUP BY userId, quizId
-                ) first_attempt ON s.userId = first_attempt.userId AND s.quizId = first_attempt.quizId AND s.attemptNumber = first_attempt.minAttempt
-                WHERE s.isOfficial = 1 AND s.deletedAt IS NULL
+                SELECT *
+                FROM (
+                    SELECT
+                        s.*,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY s.userId, s.quizId
+                            ORDER BY s.attemptNumber ASC, s.id ASC
+                        ) AS rn
+                    FROM scores s
+                    WHERE s.isOfficial = 1 AND s.deletedAt IS NULL
+                ) ranked_scores
+                WHERE ranked_scores.rn = 1
             ) s
             INNER JOIN users u ON s.userId = u.id AND u.deletedAt IS NULL
-            GROUP BY s.userId, u.fname, u.lname
+            GROUP BY s.userId, u.fname, u.lname, u.email
             ORDER BY fullMarksCount DESC, avgPercentage DESC, totalScore DESC
             LIMIT 50
         `);
@@ -431,7 +435,7 @@ router.get('/leaderboard', authenticateOrGuest, async (req, res) => {
         const result = rows.map(entry => ({
             userName:       entry.fname
                 ? `${entry.fname} ${entry.lname || ''}`.trim()
-                : 'مستخدم محذوف',
+                : (entry.email || 'مستخدم محذوف'),
             totalScore:     parseInt(entry.totalScore)    || 0,
             totalMax:       parseInt(entry.totalMax)      || 0,
             examsCount:     parseInt(entry.examsCount)    || 0,

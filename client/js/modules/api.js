@@ -281,6 +281,7 @@ export async function fetchScoresFromServer(officialOnly = false) {
         const data     = Array.isArray(raw) ? raw : (raw?.data || []);
         return data.map(item => ({
             userName:    item.userName || (item.user ? `${item.user.fname || ''} ${item.user.lname || ''}`.trim() : 'طالب'),
+            userId:      item.userId || item.user?.id || null,
             quizId:      item.quizId      || item.quiz?.id   || null,
             quizTitle:   item.quizTitle   || item.quiz?.title   || 'امتحان',
             quizSubject: item.quizSubject || item.quiz?.subject || '',
@@ -339,6 +340,7 @@ export async function loadDataFromServer() {
         if (state.serverScores.length > 0) {
             state.allUserScores = state.serverScores.map(s => ({
                 userName:   s.userName   || 'طالب',
+                userId:     s.userId || null,
                 quizTitle:  s.quizTitle  || 'امتحان',
                 score:      Number(s.score)      || 0,
                 total:      Number(s.total)      || 0,

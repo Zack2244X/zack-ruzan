@@ -130,8 +130,8 @@ const additionalSecurityHeaders = (req, res, next) => {
     // Disable browser MIME type inference for <script> tags
     res.set('X-Content-Type-Options', 'nosniff');
     
-    // Referrer policy: strict no-referrer
-    res.set('Referrer-Policy', 'strict-no-referrer');
+    // Referrer policy: strict-origin-when-cross-origin (valid option)
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     
     // Permissions policy (formerly Feature Policy): disable risky APIs
     res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
