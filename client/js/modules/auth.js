@@ -140,6 +140,11 @@ export function handleGoogleRedirectToken() {
         }
     }
 
+    // RE-VALIDATE security consent after callback (prevent checkbox bypass)
+    if (!ensureSecurityConsent(savedMode)) {
+        return true;
+    }
+
     state.googleLoginMode = savedMode;
     const response = { credential: idToken };
     if (savedMode === 'admin') {
