@@ -122,6 +122,11 @@ export function handleGoogleRedirectToken() {
     sessionStorage.removeItem('googleLoginMode');
     localStorage.removeItem('googleNonce');
     localStorage.removeItem('googleLoginMode');
+    
+    // ✅ CRITICAL: Clear old consent to force re-validation (prevent checkbox bypass)
+    sessionStorage.removeItem('security-consent');
+    sessionStorage.removeItem('security-consent-version');
+    sessionStorage.removeItem('security-consent-ts');
 
     if (!idToken) return false;
 
