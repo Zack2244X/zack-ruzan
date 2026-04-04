@@ -117,6 +117,11 @@
 
     }
 
+    function hideLoginScreen() {
+        const login = document.getElementById('login-screen');
+        if (login) login.classList.add('hidden');
+    }
+
     // Expose loader so inline fallbacks can force app load when needed.
     window.__triggerAppLoad = triggerAppLoad;
 
@@ -164,6 +169,7 @@
     // eagerly load the app to process the redirect without requiring another click.
     const hash = window.location.hash || '';
     if (hash.includes('id_token=') || hash.includes('error=')) {
+        hideLoginScreen();
         triggerAppLoad();
         return;
     }
