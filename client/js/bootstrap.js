@@ -40,10 +40,16 @@
 
         function flushQueue() {
             window.__appLoading = false;
-            while (window.__lazyCalls && window.__lazyCalls.length) {
-                const call = window.__lazyCalls.shift();
+            const queuedCalls = (window.__lazyCalls || []).splice(0);
+            for (const call of queuedCalls) {
                 try {
-                    if (typeof window[call.name] === 'function') window[call.name].apply(null, call.args || []);
+                    const fn = window[call.name];
+                    if (typeof fn === 'function' && !fn.__isBootstrapStub) {
+                        fn.apply(null, call.args || []);
+                    } else {
+                        // Keep calls queued until the real implementation is attached.
+                        window.__lazyCalls.push(call);
+                    }
                 } catch (e) { console.error('Error invoking queued call', call.name, e); }
             }
             try { if (typeof wrapRegisteredFunctions === 'function') wrapRegisteredFunctions(); } catch(e) {}
@@ -61,18 +67,22 @@
         bundleScript.onload = function() {
             // Bundle is a self-executing IIFE — app already initialized on script load.
             // Call window.startApp() only if the bundle explicitly exposes it.
-            if (typeof window.startApp === 'function') {
-                Promise.resolve(window.startApp()).catch(() => {});
-            }
-            flushQueue();
+            const startPromise = (typeof window.startApp === 'function')
+                ? Promise.resolve(window.startApp())
+                : Promise.resolve();
+            startPromise
+                .catch(() => {})
+                .finally(flushQueue);
         };
         bundleScript.onerror = function(err) {
             console.warn('[bootstrap] bundle failed, falling back to ESM app.js:', err);
             import(esmUrl).then(mod => {
-                if (mod && typeof mod.startApp === 'function') {
-                    mod.startApp().catch(e => console.error('startApp failed', e));
-                }
-                flushQueue();
+                const startPromise = (mod && typeof mod.startApp === 'function')
+                    ? Promise.resolve(mod.startApp())
+                    : Promise.resolve();
+                startPromise
+                    .catch(e => console.error('startApp failed', e))
+                    .finally(flushQueue);
             }).catch(e => {
                 console.error('[bootstrap] Both bundle and ESM fallback failed:', e);
                 window.__appLoading = false;
@@ -113,26 +123,43 @@
     // create stub functions that queue the call and trigger app load
     lazyNames.forEach(name => {
         if (window[name]) return;
-        window[name] = function(...args) {
+        const stub = function(...args) {
             window.__lazyCalls.push({name, args});
             // start loading app on first user interaction
             triggerAppLoad();
         };
+        stub.__isBootstrapStub = true;
+        window[name] = stub;
     });
 
-    // If user is already logged-in (sessionStorage), load app immediately
+    // If sessionStorage claims a user exists, validate cookie session first.
+    // This prevents stale local state from briefly showing dashboard/UI before login.
     try {
         const saved = sessionStorage.getItem('currentUser');
         if (saved) {
-            triggerAppLoad();
+            fetch('/api/auth/me', { credentials: 'include' })
+                .then((res) => {
+                    if (res.ok) {
+                        triggerAppLoad();
+                        return;
+                    }
+                    sessionStorage.removeItem('currentUser');
+                    sessionStorage.removeItem('isAdmin');
+                    if (typeof window.showLoginScreenWithDesktop === 'function') {
+                        window.showLoginScreenWithDesktop();
+                    }
+                })
+                .catch(() => {
+                    sessionStorage.removeItem('currentUser');
+                    sessionStorage.removeItem('isAdmin');
+                    if (typeof window.showLoginScreenWithDesktop === 'function') {
+                        window.showLoginScreenWithDesktop();
+                    }
+                });
             return;
         }
     } catch (e) { /* ignore */ }
 
-    // Load app on the next event-loop tick so the login screen renders first,
-    // then the app bundle initializes — eliminates the ~1.87s idle-callback delay
-    // that Lighthouse previously saw as "element render delay" on LCP.
-    // TBT remains 0ms (bundles don't block the main thread).
-    // SW caches everything so the 66KB bundle is served instantly on repeat visits.
-    setTimeout(triggerAppLoad, 0);
+    // No eager app boot for anonymous visits.
+    // The app loads on first interaction via lazy stubs.
 })();

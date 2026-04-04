@@ -345,7 +345,15 @@
       text-align: center;
       backdrop-filter: blur(20px);
       box-shadow: 0 0 80px rgba(0, 0, 0, 0.5);
-      transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: 50% 60%;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            transition:
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.45s ease,
+                box-shadow 0.45s ease,
+                visibility 0s linear 0s;
+            visibility: visible;
     }
     .login-card::before {
       content: '';
@@ -356,24 +364,15 @@
     }
     .login-card.off {
       opacity: 0;
-      transform: scale(0.86) translateY(30px);
-      filter: blur(8px);
+            transform: translateY(18px) scale(0.94);
       box-shadow: none;
       pointer-events: none;
-      /* contain:layout+size: children cannot affect this element's dimensions.
-         height:580px is the declared intrinsic size. Any font swap, icon load,
-         or text reflow inside the card is fully contained — the parent flex row
-         stays stable → .login-scene doesn't shift → CLS 0.
-         CRITICAL DIFFERENCE from content-visibility:hidden:
-           content-visibility:hidden skips ALL rendering (removes element from
-           LCP candidate pool entirely) → Chrome picks bg.webp as LCP instead
-           of the preloaded logo → LCP 7s even though logo is only 7KB.
-           contain:layout+size keeps the element rendered but size-contained.
-           With opacity:0 (not visibility:hidden), Chrome DOES measure the logo
-           as an LCP candidate → the fetchpriority="high" preload benefits LCP
-           → logo loads in ~100ms → LCP drops to ~100-300ms on warm cache. */
-      contain: layout size;
-      height: 580px;
+            visibility: hidden;
+            transition:
+                transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.35s ease,
+                box-shadow 0.35s ease,
+                visibility 0s linear 0.45s;
     }
     .login-card.appear {
       animation: cardAppear 0.85s cubic-bezier(0.34,1.52,0.64,1) forwards;
@@ -576,8 +575,7 @@
                 border-radius: 20px;
             }
             .login-card.off {
-                contain: layout size;
-                height: 290px;
+                transform: translateY(14px) scale(0.95);
             }
 
             .logo-wrap {
@@ -600,7 +598,7 @@
                         .login-card { width: 200px; padding: 18px 12px; min-height: 270px; }
                         /* Mobile: column layout, no height needed — contain:layout isolates
                              internal font/icon changes from .login-scene centring */
-                        .login-card.off { height: 270px; contain: layout size; }
+                        .login-card.off { transform: translateY(12px) scale(0.96); }
                                 /* mobile: reduced logo size */
                                 .logo-wrap { width: 130px; height: 130px; }
                 /* Adjust decorative ring for smaller logo: slightly reduced thickness, less blur */
@@ -938,12 +936,12 @@
         <div class="bg-pattern">
                 <img src="/icons/bg.webp" alt="" loading="eager" width="1200" height="900">
             </div>
-        <div id="floor-glow" class="off"></div>
+                <div id="floor-glow" class="off"></div>
 
         <div class="login-scene">
             <!-- المصباح -->
             <div class="lamp-wrapper">
-                <div class="light-cone off" id="light-cone"></div>
+                                <div class="light-cone off" id="light-cone"></div>
 
                 <svg id="lamp-svg" class="off" width="170" height="260" viewBox="0 0 170 260">
                     <defs>
@@ -1032,9 +1030,9 @@
                         window.__lazyCalls.push({name:'startGoogleRedirectLogin', args: Array.prototype.slice.call(arguments)});
                         if (typeof window.__triggerAppLoad === 'function') window.__triggerAppLoad();
                         // ensure bootstrap loader is present so queued calls will be flushed
-                        if (!document.querySelector('script[src^="/js/bootstrap.min.js"]')){
+                        if (!document.querySelector('script[src^="/js/bootstrap"]')){
                             const s = document.createElement('script');
-                            s.src = '/js/bootstrap.min.js?v=70';
+                            s.src = '/js/bootstrap.min.js?v=72';
                             s.defer = true;
                             document.head.appendChild(s);
                         }
@@ -1918,7 +1916,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=70" defer></script>
+    <script src="/js/bootstrap.min.js?v=72" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
