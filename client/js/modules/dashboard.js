@@ -299,6 +299,7 @@ if (latestExams.length === 0) {
         const safeTitle       = escapeHtml(q.config.title);
         const safeDesc        = escapeHtml(q.config.description || '');
         const safeSubject     = escapeHtml(q.config.subject || 'عام');
+        const shareUrl        = `${window.location.origin}/?quiz=${encodeURIComponent(String(q.config.id ?? q.id ?? ''))}`;
         const quizMaxOfficial = q.config.maxOfficialAttempts ?? globalMaxOfficial;
 
         // attempts: number → عدد المحاولات | null → خطأ شبكة
@@ -342,6 +343,16 @@ if (latestExams.length === 0) {
                                      font-bold truncate max-w-[120px]">${safeSubject}</span>
                         <span class="text-xs text-gray-500 font-bold bg-gray-50 px-2.5 py-1.5
                                      rounded-md">${q.questions.length} أسئلة</span>
+                    </div>
+
+                    <div class="mt-3 flex items-center gap-2 text-xs" onclick="event.stopPropagation()">
+                        <span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 font-bold">رابط</span>
+                        <div class="flex-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 truncate" dir="ltr">
+                            ${escapeHtml(shareUrl)}
+                        </div>
+                        <button class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-bold hover:bg-blue-700 transition" onclick="copyQuizLink('${escapeHtml(String(q.config.id ?? q.id ?? ''))}', event)">
+                            نسخ
+                        </button>
                     </div>
 
                     ${state.currentUser ? buildAttemptsHtml(attempts, willBePractice) : ''}

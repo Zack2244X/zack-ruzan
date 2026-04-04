@@ -252,6 +252,35 @@ function deleteQuiz(index) {
     _deleteQuiz(index, renderDashboard);
 }
 
+/** @private نسخ رابط الامتحان */
+function copyQuizLink(quizId, event) {
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    try {
+        const base = window.location.origin;
+        const url = `${base}/?quiz=${encodeURIComponent(String(quizId))}`;
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(url).then(() => {
+                showAlert('✅ تم نسخ رابط الامتحان.', 'success');
+            }).catch(() => {
+                showAlert('⚠️ تعذر نسخ الرابط تلقائياً.', 'warning');
+            });
+        } else {
+            const temp = document.createElement('textarea');
+            temp.value = url;
+            temp.setAttribute('readonly', '');
+            temp.style.position = 'absolute';
+            temp.style.left = '-9999px';
+            document.body.appendChild(temp);
+            temp.select();
+            try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+            document.body.removeChild(temp);
+            showAlert('✅ تم نسخ رابط الامتحان.', 'success');
+        }
+    } catch (e) {
+        showAlert('⚠️ تعذر نسخ رابط الامتحان.', 'warning');
+    }
+}
+
 /** @private الانتقال لقسم — يستخدم window.X للحزمة الكسولة */
 function navToSection(section) {
     _navToSection(section, window.renderSubjectFilters, window.renderHistoryTree);
@@ -384,6 +413,7 @@ Object.assign(window, {
     // Dashboard
     renderDashboard,
     deleteQuiz,
+    copyQuizLink,
 
     // Helpers
     escapeHtml, showAlert, showConfirm, showLoading,

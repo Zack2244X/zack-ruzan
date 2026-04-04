@@ -295,6 +295,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
                 treeData[year][monthNum].days[day].forEach(item => {
                     const config = item.data.config;
+                    const shareUrl = `${window.location.origin}/?quiz=${encodeURIComponent(String(config.id))}`;
 
                     if (state.currentViewMode === 'exams') {
                         html += `
@@ -305,6 +306,15 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                                     <div class="flex gap-2 items-center mt-2 text-xs text-gray-600">
                                         <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || 'بدون مادة')}</span>
                                         <span class="bg-gray-100 px-2 py-1 rounded text-gray-700 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
+                                    </div>
+                                    <div class="mt-2 flex items-center gap-2 text-xs" onclick="event.stopPropagation()">
+                                        <span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 font-bold">رابط</span>
+                                        <div class="flex-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 truncate" dir="ltr">
+                                            ${escapeHtml(shareUrl)}
+                                        </div>
+                                        <button class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition" onclick="copyQuizLink('${escapeHtml(String(config.id))}', event)">
+                                            نسخ
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -407,6 +417,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
 
             treeData[year][monthNum].items.forEach(item => {
                 const config = item.data.config;
+                const shareUrl = `${window.location.origin}/?quiz=${encodeURIComponent(String(config.id))}`;
 
                 if (state.editTabMode === 'exams') {
                     html += `
@@ -426,6 +437,15 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                                     <span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
                                         ${escapeHtml(config.subject || 'بدون مادة')}
                                     </span>
+                                </div>
+                                <div class="mt-2 flex items-center gap-2 text-xs" onclick="event.stopPropagation()">
+                                    <span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 font-bold">رابط</span>
+                                    <div class="flex-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 truncate" dir="ltr">
+                                        ${escapeHtml(shareUrl)}
+                                    </div>
+                                    <button class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition" onclick="copyQuizLink('${escapeHtml(String(config.id))}', event)">
+                                        نسخ
+                                    </button>
                                 </div>
                             </div>
 
