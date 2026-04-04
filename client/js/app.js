@@ -325,6 +325,7 @@ async function loadApp() {
                 window.renderHistoryTree?.();
                 renderDashboard();
                 console.log('[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر');
+                window.openPendingQuizIfAny?.();
             });
             return;
         }
@@ -333,6 +334,26 @@ async function loadApp() {
         console.warn("تعذر الوصول للذاكرة المحلية:", e);
         showLoginScreenWithDesktop();
     }
+}
+
+// Try to launch a deep-linked quiz after data is loaded.
+function openPendingQuizIfAny() {
+    try {
+        const quizId = sessionStorage.getItem('pending-quiz-id');
+        if (!quizId) return false;
+        const idx = (state.allQuizzes || []).findIndex(q => String(q?.id ?? q?.config?.id) === String(quizId));
+        if (idx === -1) return false;
+        sessionStorage.removeItem('pending-quiz-id');
+        const run = () => {
+            if (typeof window.playQuiz === 'function') window.playQuiz(idx);
+        };
+        if (typeof window.__loadFeatures === 'function') {
+            window.__loadFeatures().then(run).catch(run);
+        } else {
+            run();
+        }
+        return true;
+    } catch (e) { return false; }
 }
 
 /** إغلاق نافذة تعديل المحتوى وإعادة تشغيل Lenis عبر _syncMainInteractionState */
@@ -374,7 +395,8 @@ Object.assign(window, {
     playEntranceAnimation, playExitAnimation, animateElement,
     pauseAllAnimations, resumeAllAnimations,
     // Expose startApp so bootstrap.js can invoke it after bundle injection
-    startApp
+    startApp,
+    openPendingQuizIfAny
 });
 
 // ============================================

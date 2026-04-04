@@ -1,6 +1,18 @@
 // Lightweight bootstrap: set minimal fallbacks and lazily load the full app when needed.
 // Goal: avoid sending the large bundled app to anonymous users and defer heavy modules.
 (function(){
+    // Capture deep-link quiz id early so it survives OAuth redirect.
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        const quizId = params.get('quiz');
+        if (quizId) {
+            sessionStorage.setItem('pending-quiz-id', String(quizId));
+            params.delete('quiz');
+            const next = params.toString();
+            const cleanUrl = `${window.location.pathname}${next ? `?${next}` : ''}${window.location.hash || ''}`;
+            history.replaceState({}, document.title, cleanUrl);
+        }
+    } catch (e) { /* ignore */ }
     // queue for calls made before the real app loads
     // Keep any calls queued by inline fallbacks before bootstrap executes.
     window.__lazyCalls = window.__lazyCalls || [];

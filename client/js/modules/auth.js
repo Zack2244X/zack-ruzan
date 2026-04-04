@@ -301,6 +301,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             if (typeof renderSubjectFilters === 'function') renderSubjectFilters();
             if (typeof renderHistoryTree === 'function') renderHistoryTree();
             if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof window.openPendingQuizIfAny === 'function') window.openPendingQuizIfAny();
             
             // Start automatic data polling (refresh every 30 seconds)
             startDataPolling(30000);
