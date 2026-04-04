@@ -154,16 +154,14 @@ window.addEventListener('storage', (e) => {
     }
 });
 
-// ─── مسح الجلسة قبل أي reload/إغلاق للتبويب ───
+// ─── تنظيف وضع الضيف فقط قبل أي reload/إغلاق للتبويب ───
 // pagehide يُطلَق قبل أن تبدأ الصفحة الجديدة بالتحميل.
-// نمسح sessionStorage دائماً — لجلسة الضيف والمستخدم العادي على حدٍّ سواء.
-// sessionStorage تبقى عند F5/Ctrl+R (reload)، فلو لم نمسحها سيدخل المستخدم
-// مباشرةً للداشبورد دون المرور بشاشة تسجيل الدخول.
-// كذلك نمسح guest-mode من localStorage لأنها لا تُعيَّن من جديد إلا بعد
-// الموافقة الصريحة من المستخدم في نافذة "الدخول كضيف".
+// إبقاء sessionStorage للمستخدم العادي يسمح باستمرار الجلسة بعد تسجيل Google
+// ويمنع الرجوع للوجين بسبب reload أو SW update.
 window.addEventListener('pagehide', () => {
-    sessionStorage.removeItem('currentUser');
-    sessionStorage.removeItem('isAdmin');
+    const isGuest = sessionStorage.getItem('guest-mode') === 'true'
+        || localStorage.getItem('guest-mode') === 'true';
+    if (!isGuest) return;
     sessionStorage.removeItem('guest-mode');
     // مسح guest-mode من localStorage أيضاً حتى لا يبقى الوضع
     // معلقاً بعد الريفريش أو إغلاق التاب
