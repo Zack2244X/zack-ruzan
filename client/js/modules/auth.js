@@ -72,11 +72,9 @@ export function startGoogleRedirectLogin(mode) {
         localStorage.setItem('googleNonce', nonce);
 
         const currentUrl = new URL(window.location.href);
-        let redirectUri = currentUrl.origin + currentUrl.pathname;
-        if (redirectUri.endsWith('/')) redirectUri = redirectUri.slice(0, -1);
-        if (redirectUri.toLowerCase().endsWith('/index.html')) {
-            redirectUri = redirectUri.slice(0, -'/index.html'.length);
-        }
+        // Use a stable redirect URI that exactly matches Google Console.
+        // For this app we always return to site root and parse id_token from hash.
+        const redirectUri = currentUrl.origin + '/';
         const oauthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
         oauthUrl.searchParams.set('client_id', state.GOOGLE_CLIENT_ID);
         oauthUrl.searchParams.set('redirect_uri', redirectUri);

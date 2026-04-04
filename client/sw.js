@@ -3,7 +3,7 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v116';
+const CACHE_NAME = 'quiz-platform-v117';
 const STATIC_ASSETS = [
     '/',                              // SPA shell — pre-cached for instant HTML on repeat visits
     '/css/styles.min.css?v=53',
@@ -13,7 +13,7 @@ const STATIC_ASSETS = [
     '/css/icons.css?v=3',
     '/js/app.admin.bundle.min.js',
     '/js/app.features.bundle.min.js',
-    '/js/bootstrap.min.js?v=73',
+    '/js/bootstrap.min.js?v=74',
     '/js/guest-login.min.js?v=1',
     '/js/lamp-animation.min.js?v=3',
     '/manifest.json',
