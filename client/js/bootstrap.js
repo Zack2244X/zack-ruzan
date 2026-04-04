@@ -142,6 +142,7 @@
     try {
         const saved = sessionStorage.getItem('currentUser');
         if (saved) {
+            hideLoginScreen();
             fetch('/api/auth/me', { credentials: 'include' })
                 .then((res) => {
                     if (res.ok) {
