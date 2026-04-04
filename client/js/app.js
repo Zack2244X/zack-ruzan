@@ -83,7 +83,7 @@ import {
 import {
     startGoogleRedirectLogin, handleGoogleRedirectToken, initGoogleSignIn,
     handleGoogleAdminResponse, handleStudentGoogleLogin as _handleStudentGoogleLogin,
-    closeAdminAuth, showAdminToast, logoutUser, startTokenRefresh
+    closeAdminAuth, showAdminToast, logoutUser, startTokenRefresh, ensureSecurityConsent
 } from './modules/auth.js';
 // quiz.js, tree.js, notes.js — loaded lazily via app.features.bundle.min.js on first feature interaction
 // grades.js — loaded lazily via app.admin.bundle.min.js on first admin interaction
@@ -353,8 +353,8 @@ Object.assign(window, {
     openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
     toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle, _syncMainInteractionState,
 
-    // Auth
-    startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,
+    // Auth — include internal validation function to ensure esbuild keeps it
+    startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp, ensureSecurityConsent,
 
     // Quiz / Tree / Notes — stubs installed by registerFeatureStubs() below;
     // real implementations loaded lazily via app.features.bundle.min.js

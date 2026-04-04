@@ -26,7 +26,12 @@ function buildSecurityConsentPayload() {
     };
 }
 
-function ensureSecurityConsent(mode) {
+/**
+ * التحقق من موافقة الأمان والخصوصية
+ * @param {'student'|'admin'} mode — وضع التسجيل
+ * @returns {boolean} هل تم الموافقة
+ */
+export function ensureSecurityConsent(mode) {
     const studentCheckbox = document.getElementById('login-security-consent');
     const adminCheckbox = document.getElementById('admin-security-consent');
     const isAdminMode = mode === 'admin';
