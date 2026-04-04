@@ -122,6 +122,18 @@
         if (login) login.classList.add('hidden');
     }
 
+    function showLoadingScreen() {
+        const loading = document.getElementById('loading-screen');
+        if (loading) loading.classList.add('show');
+    }
+
+    function hideLoadingScreen() {
+        const loading = document.getElementById('loading-screen');
+        if (loading) loading.classList.remove('show');
+    }
+
+    window.hideLoadingScreen = hideLoadingScreen;
+
     // Expose loader so inline fallbacks can force app load when needed.
     window.__triggerAppLoad = triggerAppLoad;
 
@@ -143,6 +155,7 @@
         const saved = sessionStorage.getItem('currentUser');
         if (saved) {
             hideLoginScreen();
+            showLoadingScreen();
             fetch('/api/auth/me', { credentials: 'include' })
                 .then((res) => {
                     if (res.ok) {
@@ -151,6 +164,7 @@
                     }
                     sessionStorage.removeItem('currentUser');
                     sessionStorage.removeItem('isAdmin');
+                    hideLoadingScreen();
                     if (typeof window.showLoginScreenWithDesktop === 'function') {
                         window.showLoginScreenWithDesktop();
                     }
@@ -158,6 +172,7 @@
                 .catch(() => {
                     sessionStorage.removeItem('currentUser');
                     sessionStorage.removeItem('isAdmin');
+                    hideLoadingScreen();
                     if (typeof window.showLoginScreenWithDesktop === 'function') {
                         window.showLoginScreenWithDesktop();
                     }
@@ -171,6 +186,7 @@
     const hash = window.location.hash || '';
     if (hash.includes('id_token=') || hash.includes('error=')) {
         hideLoginScreen();
+        showLoadingScreen();
         triggerAppLoad();
         return;
     }

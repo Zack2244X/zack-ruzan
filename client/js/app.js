@@ -497,6 +497,11 @@ export async function startApp() {
     // تهيئة الثيم
     initTheme();
 
+    // Hide any bootstrap loading overlay once the app bootstraps
+    if (typeof window.hideLoadingScreen === 'function') {
+        window.hideLoadingScreen();
+    }
+
     // Expose shared state for lazy-loaded admin bundle (builder.js / grades.js)
     window.__appState = state;
     // Expose api singletons for admin bundle (avoids duplicating state-aware modules)

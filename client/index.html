@@ -220,6 +220,42 @@
          of the entire scene → visible shift. */
     }
 
+        /* ═══ شاشة تحميل خفيفة بعد تسجيل الدخول ═══ */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 120;
+            background: radial-gradient(circle at 50% 35%, rgba(24, 40, 64, 0.95) 0%, rgba(8, 12, 20, 0.98) 65%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #f5d98b;
+            font-family: 'Cairo', sans-serif;
+            letter-spacing: 0.2px;
+        }
+        #loading-screen.show { display: flex; }
+        .loading-card {
+            padding: 28px 32px;
+            border-radius: 18px;
+            background: rgba(10, 14, 22, 0.7);
+            border: 1px solid rgba(201, 150, 42, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+            min-width: 240px;
+        }
+        .loading-spinner {
+            width: 38px;
+            height: 38px;
+            margin: 0 auto 12px;
+            border: 3px solid rgba(201, 150, 42, 0.25);
+            border-top-color: rgba(201, 150, 42, 0.95);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         /* bg-pattern: absolute fill inside #login-screen (position:fixed inset-0).
            Kept simple — no contain/will-change so Chrome's LCP algorithm measures
            the <img> child correctly. */
@@ -922,6 +958,14 @@
                     <i class="fas fa-save ml-2"></i> حفظ الامتحان في السجل
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- شاشة التحميل -->
+    <div id="loading-screen" class="fixed inset-0">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <div class="text-sm font-bold">جاري تجهيز المنصة...</div>
         </div>
     </div>
 
