@@ -539,8 +539,19 @@ export async function startApp() {
     // معالجة Google redirect أو تحميل التطبيق
     const handledRedirect = handleGoogleRedirectToken();
     initGoogleSignIn();
+    
+    // IMPORTANT: Always call loadApp initialization code, even after Google redirect
+    // This ensures state setup, theme initialization, and DOM setup happen
     if (!handledRedirect) {
         loadApp();
+    } else {
+        // After Google redirect is handled, ensure minimal setup is done
+        // (theme init, overlay lock) that would normally run in loadApp()
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => initOverlayScrollLock());
+        } else {
+            initOverlayScrollLock();
+        }
     }
 
     // ── تهيئة وحدات الحركة والتمرير بشكل غير حاجب للعرض الأول ───────────────

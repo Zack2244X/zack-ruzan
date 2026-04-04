@@ -221,6 +221,7 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
     const loadingEl = document.getElementById('login-loading');
     errorEl.classList.add('hidden');
     loadingEl.classList.remove('hidden');
+    
     try {
         const res = await fetch('/api/auth/google', {
             method: 'POST',
@@ -276,6 +277,10 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         // Load core CSS immediately before showing dashboard
         if (window.__loadCoreCss) window.__loadCoreCss();
 
+        // Store user info immediately to prevent losing state
+        sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
+        sessionStorage.setItem('isAdmin', state.isAdmin.toString());
+
         const safeName = (state.currentUser.fname || state.currentUser.fullName || state.currentUser.email || 'صديقنا').trim();
         const greetings = [
             `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}، قال تعالى: ﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾`,
@@ -290,10 +295,6 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
         navToHome();
         if (typeof renderDashboard === 'function') renderDashboard();
         if (typeof startTokenRefresh === 'function') startTokenRefresh();
-
-        // Store user info in sessionStorage (token is in httpOnly cookie only)
-        sessionStorage.setItem('currentUser', JSON.stringify(state.currentUser));
-        sessionStorage.setItem('isAdmin', state.isAdmin.toString());
 
         loadDataFromServer().then(() => {
             state.dataLoaded = true;
