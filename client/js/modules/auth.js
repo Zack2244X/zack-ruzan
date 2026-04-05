@@ -31,11 +31,14 @@ export function startGoogleRedirectLogin(mode) {
         logFunctionStatus('startGoogleRedirectLogin', false);
         const redirectMode = mode === 'admin' ? 'admin' : 'student';
         const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        const stateToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
         // Save to both sessionStorage and localStorage (mobile compat)
         sessionStorage.setItem('googleLoginMode', redirectMode);
         sessionStorage.setItem('googleNonce', nonce);
+        sessionStorage.setItem('googleState', stateToken);
         localStorage.setItem('googleLoginMode', redirectMode);
         localStorage.setItem('googleNonce', nonce);
+        localStorage.setItem('googleState', stateToken);
 
         const currentUrl = new URL(window.location.href);
         // Use a stable redirect URI that exactly matches Google Console.
@@ -47,6 +50,7 @@ export function startGoogleRedirectLogin(mode) {
         oauthUrl.searchParams.set('response_type', 'id_token');
         oauthUrl.searchParams.set('scope', 'openid email profile');
         oauthUrl.searchParams.set('nonce', nonce);
+        oauthUrl.searchParams.set('state', stateToken);
         oauthUrl.searchParams.set('prompt', 'select_account');
         window.location.href = oauthUrl.toString();
     } catch (err) {
@@ -67,6 +71,12 @@ export function handleGoogleRedirectToken() {
         const error = hashParams.get('error');
         const errorDesc = hashParams.get('error_description') || error;
         history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        sessionStorage.removeItem('googleNonce');
+        sessionStorage.removeItem('googleLoginMode');
+        sessionStorage.removeItem('googleState');
+        localStorage.removeItem('googleNonce');
+        localStorage.removeItem('googleLoginMode');
+        localStorage.removeItem('googleState');
         console.error('❌ Google OAuth error:', error, errorDesc);
         const errorEl = document.getElementById('login-error');
         if (errorEl) {
@@ -79,15 +89,19 @@ export function handleGoogleRedirectToken() {
     if (!window.location.hash || !window.location.hash.includes('id_token=')) return false;
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const idToken = hashParams.get('id_token');
+    const returnedState = hashParams.get('state');
     // Try both sessionStorage and localStorage for nonce (mobile compat)
     const expectedNonce = sessionStorage.getItem('googleNonce') || localStorage.getItem('googleNonce');
+    const expectedState = sessionStorage.getItem('googleState') || localStorage.getItem('googleState');
     const savedMode = sessionStorage.getItem('googleLoginMode') || localStorage.getItem('googleLoginMode') || 'student';
 
     history.replaceState({}, document.title, window.location.pathname + window.location.search);
     sessionStorage.removeItem('googleNonce');
     sessionStorage.removeItem('googleLoginMode');
+    sessionStorage.removeItem('googleState');
     localStorage.removeItem('googleNonce');
     localStorage.removeItem('googleLoginMode');
+    localStorage.removeItem('googleState');
     
     // ✅ CRITICAL: Clear old consent to force re-validation (prevent checkbox bypass)
     sessionStorage.removeItem('security-consent');
@@ -95,6 +109,11 @@ export function handleGoogleRedirectToken() {
     sessionStorage.removeItem('security-consent-ts');
 
     if (!idToken) return false;
+
+    if (expectedState && returnedState && expectedState !== returnedState) {
+        showAlert('❌ فشل التحقق من تسجيل Google (state mismatch). حاول مرة أخرى.', 'error');
+        return true;
+    }
 
     // Nonce verification: decode the JWT payload to extract the nonce
     // (Google implicit flow embeds nonce inside the id_token, not as a URL parameter)
@@ -237,7 +256,10 @@ export async function handleStudentGoogleLogin(response, renderSubjectFilters, r
             })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.debug ? `${data.error} [${data.debug}]` : (data.error || 'فشل تسجيل الدخول'));
+        if (!res.ok) {
+            if (data && data.debug) console.warn('[auth] Login debug:', data.debug);
+            throw new Error(data.error || 'فشل تسجيل الدخول');
+        }
 
         // تأكد من إنهاء أي وضع ضيف قديم قبل متابعة التحميل بعد Google login
         sessionStorage.removeItem('guest-mode');

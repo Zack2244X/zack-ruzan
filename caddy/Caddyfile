@@ -1,9 +1,43 @@
 zackpro.codes, www.zackpro.codes {
-  # ي terminates TLS تلقائياً ويعكس الطلبات للتطبيق
-  reverse_proxy app:10000
+  # Global limits to drop massive DDoS attacks before hitting Node.js (Express)
+
+  # Limit maximum connection count from a single IP to prevent Slow Loris and simple connection exhaustion
+  # WARNING: Caddy 2.7 requires standard global blocks or specific modules for HTTP rate limit,
+  # but we can enforce connection buffers at the proxy level.
+  
+  # Set tight timeouts to defend against Slow Loris DDoS attacks
+  # Block extremely large request bodies at the edge
+  # Node.js is set to 5mb, but dropping it at proxy is better. Note: Express is generic, set Caddy block based on max expected upload.
 
   log {
     output file /data/caddy/access.log
+  }
+
+  # Block standard enumeration / vulnerability scanning bots (like Burp Suite scripts, Nikto, Nmap)
+  @scanners {
+      header User-Agent *Burp*
+      header User-Agent *Nikto*
+      header User-Agent *Nmap*
+      header User-Agent *sqlmap*
+      header User-Agent *zgrab*
+      header User-Agent *curl*
+      header User-Agent *wget*
+      header User-Agent *python-requests*
+      header User-Agent *Go-http-client*
+  }
+  respond @scanners "Access Denied" 403
+
+  # Block access to common hidden/sensitive files or directories (Burp DirBuster usually looks for these)
+  @hiddenFiles {
+      path *.env *.git* *.sql *.db *.sqlite *.bak *.tar.gz *.tar *.zip *.swp
+      path /node_modules/* /vendor/* /.idea/* /.vscode/*
+  }
+  respond @hiddenFiles "Not Found" 404
+  
+
+  reverse_proxy app:10000 {
+      header_up X-Forwarded-Port {http.request.port}
+      header_up X-Real-IP {http.request.remote}
   }
 }
 

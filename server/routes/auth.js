@@ -67,6 +67,18 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim
  * Used to harden first-step auth flows that are exempt from CSRF.
  */
 function isTrustedRequestOrigin(req) {
+    function isLikelyLegacyClient(request) {
+        const ua = String(request.get('user-agent') || '').toLowerCase();
+        const xrw = String(request.get('x-requested-with') || '').toLowerCase();
+        if (xrw && xrw !== 'null') return true;
+        return (
+            ua.includes('wv') ||
+            ua.includes('webview') ||
+            ua.includes('okhttp') ||
+            ua.includes('cfnetwork')
+        );
+    }
+
     const allowed = new Set(
         (process.env.ALLOWED_ORIGINS || '')
             .split(',')
@@ -99,6 +111,7 @@ function isTrustedRequestOrigin(req) {
     if (!referer) {
         const fetchSite = (req.get('sec-fetch-site') || '').toLowerCase();
         if (fetchSite === 'same-origin' || fetchSite === 'same-site') return true;
+        if (sameOrigin && isLikelyLegacyClient(req)) return true;
         return process.env.NODE_ENV !== 'production';
     }
 

@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" class="lenis lenis-smooth">
 <head>
+    <!-- طبقات الحماية الأمنية للواجهة الأمامية 🛡️ -->
+    <!-- 1. منع اختطاف النقرات (Anti-Clickjacking Framebreaker) -->
+    <style id="antiClickjack">body{display:none !important;}</style>
+    <script>
+        if (self === top) {
+            var antiClickjack = document.getElementById("antiClickjack");
+            antiClickjack.parentNode.removeChild(antiClickjack);
+        } else {
+            top.location = self.location;
+        }
+    </script>
+    
+    <!-- 2. ترقية الطلبات غير الآمنة والتحكم في المُحيل (Referrer Policy) -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests; object-src 'none';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
         <!-- Apply theme class before first paint to avoid flash of wrong color scheme -->
         <script>
         (function(){
@@ -28,13 +45,6 @@
         <link rel="stylesheet" href="/css/styles.min.css?v=43">
         <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
         <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
-        </script>
-        <noscript>
-            <link rel="stylesheet" href="/css/tailwind.min.css?v=43">
-            <link rel="stylesheet" href="/css/styles.min.css?v=43">
-            <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3">
-            <link rel="stylesheet" href="/css/login-extra.min.css?v=3">
-        </noscript>
 
     <!-- Fonts use font-display:optional — browser fetches them on its own
          when @font-face is parsed. No preload needed (saves 537 KB bandwidth for LCP). -->
@@ -141,7 +151,7 @@
 
     <!-- Icon fonts: load reliably on mobile (no deferred/preload-only icon CSS) -->
     <link rel="stylesheet" href="/css/icons.css?v=3">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
     <!-- ALL @font-face deferred to window.load.
          font-family names are set inline (below) so the browser knows which font
          stack to use at first paint. @font-face only tells the browser WHERE to
@@ -281,17 +291,6 @@
             object-position: center;
             display: block;
         }
-
-    .bg-pattern::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(
-        circle,
-        rgba(8, 12, 20, 0.85) 0%,
-        rgba(5, 7, 12, 0.98) 100%
-      );
-    }
 
     .bg-pattern::after {
       content: '';
@@ -640,7 +639,9 @@
             .lamp-hint { display: none; }
         }
                 @media (max-width: 480px) {
-                        .login-card { width: 200px; padding: 18px 12px; min-height: 270px; }
+                        .login-scene { flex-direction: column; gap: 20px; }
+                        .login-card { width: 260px; padding: 18px 12px; min-height: 270px; margin: 0 auto; }
+                        .lamp-wrapper { margin: 0 auto; }
                         /* Mobile: column layout, no height needed — contain:layout isolates
                              internal font/icon changes from .login-scene centring */
                         .login-card.off { transform: translateY(12px) scale(0.96); }
@@ -730,6 +731,11 @@
         </style>
     </head>
     <body class="p-4 sm:p-8">
+    <noscript>
+        <div style="position:fixed; z-index:99999; top:0; left:0; right:0; padding:20px; background:#ff4444; color:#fff; text-align:center; font-family:sans-serif; font-size:18px; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+            ⚠️ لكي تعمل المنصة، الرجاء تفعيل الجافاسكريبت (JavaScript) في المتصفح الخاص بك!
+        </div>
+    </noscript>
     <!-- Hidden by default — shown only on dashboard home by _syncMainInteractionState() -->
     <button id="theme-toggle" onclick="toggleTheme()" title="تبديل الثيم" aria-label="تبديل الثيم" class="icon-btn" style="display:none"><i class="fas fa-moon"></i></button>
 
@@ -990,7 +996,7 @@
             <div class="lamp-wrapper">
                                 <div class="light-cone off" id="light-cone"></div>
 
-                <svg id="lamp-svg" class="off" width="170" height="260" viewBox="0 0 170 260">
+                <svg id="lamp-svg" class="off" width="170" height="260" viewBox="0 0 170 260" role="button" tabindex="0" aria-label="أشعل المصباح لفتح بوابة الدخول" title="أشعل المصباح لفتح بوابة الدخول">
                     <defs>
                         <pattern id="arabicPattern" x="0" y="0" width="18" height="18" patternUnits="userSpaceOnUse">
                             <g fill="none" stroke="rgba(255,220,120,0.18)" stroke-width="0.7">
@@ -1073,6 +1079,17 @@
                     if (window.startGoogleRedirectLogin) return;
                     window.__lazyCalls = window.__lazyCalls || [];
                     window.startGoogleRedirectLogin = function(){
+                        const btn = document.getElementById('login-btn');
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.7';
+                            btn.style.cursor = 'not-allowed';
+                        }
+                        const loadingMsg = document.getElementById('login-loading');
+                        const errorMsg = document.getElementById('login-error');
+                        if (loadingMsg) loadingMsg.classList.remove('hidden');
+                        if (errorMsg) errorMsg.classList.add('hidden');
+                        
                         if (window.__loadCoreCss) window.__loadCoreCss();
                         window.__lazyCalls.push({name:'startGoogleRedirectLogin', args: Array.prototype.slice.call(arguments)});
                         if (typeof window.__triggerAppLoad === 'function') window.__triggerAppLoad();
@@ -1086,17 +1103,17 @@
                     };
                 })();
                 </script>
-                <button class="login-btn-fancy" id="login-btn" onclick="startGoogleRedirectLogin('student')">
+                <button type="button" class="login-btn-fancy" id="login-btn" onclick="startGoogleRedirectLogin('student')">
                     <span>🎓</span>
                     تسجيل الدخول بـ Google
                 </button>
 
-                <button class="guest-btn" onclick="showGuestModal()" style="background: transparent; border: none; color: rgba(201, 150, 42, 0.7); margin-top: 15px; cursor: pointer; text-decoration: underline;">
+                <button type="button" class="guest-btn" onclick="showGuestModal()" style="background: transparent; border: none; color: rgba(201, 150, 42, 0.7); margin-top: 15px; cursor: pointer; text-decoration: underline;">
                     الدخول بدون حساب (تجريبي)
                 </button>
 
-                <p id="login-error" class="login-error-msg hidden"></p>
-                <p id="login-loading" class="login-loading-msg hidden">
+                <p id="login-error" class="login-error-msg hidden" aria-live="polite"></p>
+                <p id="login-loading" class="login-loading-msg hidden" aria-live="polite" aria-atomic="true">
                     <i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...
                 </p>
 
@@ -1105,18 +1122,20 @@
                     <span>اسحب الحبل أو انقر المصباح للتحكم في الإضاءة</span>
                 </p>
             </div>
-            <!-- مودال التحذير للضيف -->
-            <div id="guest-modal" class="guest-modal" role="dialog" aria-modal="true" aria-labelledby="guest-modal-title">
-                <div class="guest-modal-card">
-                    <h3 id="guest-modal-title" class="guest-modal-title">تنبيه هام</h3>
-                    <p class="guest-modal-text">لن يتم تسجيل أي بيانات أو درجات لك في المنصة.<br>لن تظهر في قائمة الشرف أو رصد الدرجات.</p>
-                    <div class="guest-modal-actions">
-                        <button onclick="agreeGuestLogin()" class="guest-btn-ok">موافق</button>
-                        <button onclick="closeGuestModal()" class="guest-btn-cancel">إلغاء</button>
-                    </div>
-                </div>
-            </div>
+            
             <script src="/js/guest-login.min.js?v=1" defer></script>
+        </div>
+    </div>
+
+    <!-- مودال التحذير للضيف -->
+    <div id="guest-modal" class="guest-modal" role="dialog" aria-modal="true" aria-labelledby="guest-modal-title">
+        <div class="guest-modal-card">
+            <h3 id="guest-modal-title" class="guest-modal-title">تنبيه هام</h3>
+            <p class="guest-modal-text">لن يتم تسجيل أي بيانات أو درجات لك في المنصة.<br>لن تظهر في قائمة الشرف أو رصد الدرجات.</p>
+            <div class="guest-modal-actions">
+                <button type="button" onclick="agreeGuestLogin()" class="guest-btn-ok">موافق</button>
+                <button type="button" onclick="closeGuestModal()" class="guest-btn-cancel">إلغاء</button>
+            </div>
         </div>
     </div>
 

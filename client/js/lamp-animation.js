@@ -2,6 +2,121 @@ requestAnimationFrame(function() {
   setTimeout(function() {
     (function() {
       // ============================================
+      // LAMP STATE + ANIMATION LOCK
+      // ============================================
+      let lampOn = false;
+      let isAnimating = false;  // ← NEW: Animation lock to prevent rapid toggles
+
+      window.toggleLamp = function() {
+        // Guard: if animation in progress, ignore this toggle
+        if (isAnimating) {
+          return;
+        }
+
+        // Set lock
+        isAnimating = true;
+
+        // Toggle state
+        lampOn = !lampOn;
+        apply();
+
+        // Release lock after longest animation completes (900ms = .appear duration)
+        setTimeout(() => {
+          isAnimating = false;
+        }, 950);  // 50ms buffer beyond animation
+      };
+
+      const svg = document.getElementById('lamp-svg');
+      if (svg) {
+        svg.addEventListener('click', window.toggleLamp);
+        svg.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            window.toggleLamp();
+          }
+        });
+      }
+
+      function apply() {
+        const shade = document.getElementById('shade-body');
+        const rim = document.getElementById('shade-rim');
+        const inner = document.getElementById('inner-light');
+        const eyeL = document.getElementById('eye-l');
+        const eyeR = document.getElementById('eye-r');
+        const mouth = document.getElementById('mouth');
+        const cone = document.getElementById('light-cone');
+        const glow = document.getElementById('floor-glow');
+        const card = document.getElementById('login-card');
+
+        if (!shade || !rim || !inner || !eyeL || !eyeR || !mouth || !cone || !glow || !card) return;
+
+        if (lampOn) {
+          // Turn ON
+          shade.setAttribute('fill', 'url(#shadeOn)');
+          rim.setAttribute('fill', '#7a5820');
+          inner.setAttribute('opacity', '1');
+          svg && svg.classList.remove('off');
+
+          eyeL.setAttribute('rx', '5.5');
+          eyeL.setAttribute('ry', '5.5');
+          eyeR.setAttribute('rx', '5.5');
+          eyeR.setAttribute('ry', '5.5');
+          eyeL.setAttribute('fill', '#1a0e00');
+          eyeR.setAttribute('fill', '#1a0e00');
+          mouth.setAttribute('d', 'M 76 97 Q 85 108 94 97');
+
+          cone.classList.remove('off');
+          glow.classList.remove('off');
+          card.classList.remove('off');
+          card.classList.add('appear');
+        } else {
+          // Turn OFF
+          shade.setAttribute('fill', 'url(#shadeOff)');
+          rim.setAttribute('fill', '#1a1510');
+          inner.setAttribute('opacity', '0');
+          svg && svg.classList.add('off');
+
+          eyeL.setAttribute('rx', '5.5');
+          eyeL.setAttribute('ry', '1.5');
+          eyeR.setAttribute('rx', '5.5');
+          eyeR.setAttribute('ry', '1.5');
+          eyeL.setAttribute('fill', '#444');
+          eyeR.setAttribute('fill', '#444');
+          mouth.setAttribute('d', 'M 76 100 Q 85 95 94 100');
+
+          cone.classList.add('off');
+          glow.classList.add('off');
+          card.classList.remove('appear');
+          card.classList.add('off');
+        }
+      }
+
+      // ============================================
+      // BLINK ANIMATION
+      // ============================================
+      (function blink() {
+        const timeout = Math.random() * 4500 + 2000;
+        setTimeout(function() {
+          if (lampOn) {
+            const eyeL = document.getElementById('eye-l');
+            const eyeR = document.getElementById('eye-r');
+            if (eyeL && eyeR) {
+              eyeL.setAttribute('ry', '1');
+              eyeR.setAttribute('ry', '1');
+
+              setTimeout(() => {
+                if (lampOn) {
+                  eyeL.setAttribute('ry', '5.5');
+                  eyeR.setAttribute('ry', '5.5');
+                }
+              }, 130);
+            }
+          }
+          blink();
+        }, timeout);
+      })();
+
+      // ============================================
       // ROPE PHYSICS + CANVAS
       // ============================================
       const canvas = document.getElementById('rope-canvas');
@@ -54,9 +169,11 @@ requestAnimationFrame(function() {
       const getCoords = (evt) => {
         const touch = evt.touches ? evt.touches[0] : evt;
         const rect = getRect();
+        const scaleX = rect.width ? canvas.width / rect.width : 1;
+        const scaleY = rect.height ? canvas.height / rect.height : 1;
         return {
-          x: touch.clientX - rect.left,
-          y: touch.clientY - rect.top
+          x: (touch.clientX - rect.left) * scaleX,
+          y: (touch.clientY - rect.top) * scaleY
         };
       };
 
@@ -268,122 +385,6 @@ requestAnimationFrame(function() {
         requestAnimationFrame(loop);
       })();
 
-      // ============================================
-      // LAMP STATE + ANIMATION LOCK
-      // ============================================
-      let lampOn = false;
-      let isAnimating = false;  // ← NEW: Animation lock to prevent rapid toggles
-
-      window.toggleLamp = function() {
-        // Guard: if animation in progress, ignore this toggle
-        if (isAnimating) {
-          return;
-        }
-
-        // Set lock
-        isAnimating = true;
-
-        // Toggle state
-        lampOn = !lampOn;
-        apply();
-
-        // Release lock after longest animation completes (900ms = .appear duration)
-        setTimeout(() => {
-          isAnimating = false;
-        }, 950);  // 50ms buffer beyond animation
-      };
-
-      const svg = document.getElementById('lamp-svg');
-      if (svg) {
-        svg.addEventListener('click', toggleLamp);
-      }
-
-      function apply() {
-        const shade = document.getElementById('shade-body');
-        const rim = document.getElementById('shade-rim');
-        const inner = document.getElementById('inner-light');
-        const eyeL = document.getElementById('eye-l');
-        const eyeR = document.getElementById('eye-r');
-        const mouth = document.getElementById('mouth');
-        const cone = document.getElementById('light-cone');
-        const glow = document.getElementById('floor-glow');
-        const card = document.getElementById('login-card');
-
-        if (!shade || !rim || !inner || !eyeL || !eyeR || !mouth || !cone || !glow || !card) return;
-
-        if (lampOn) {
-          // Turn ON
-          shade.setAttribute('fill', 'url(#shadeOn)');
-          rim.setAttribute('fill', '#7a5820');
-          inner.setAttribute('opacity', '1');
-          svg && svg.classList.remove('off');
-
-          eyeL.setAttribute('rx', '5.5');
-          eyeL.setAttribute('ry', '5.5');
-          eyeR.setAttribute('rx', '5.5');
-          eyeR.setAttribute('ry', '5.5');
-          eyeL.setAttribute('fill', '#1a0e00');
-          eyeR.setAttribute('fill', '#1a0e00');
-          mouth.setAttribute('d', 'M 76 97 Q 85 108 94 97');
-
-          cone.classList.remove('off');
-          glow.classList.remove('off');
-          card.classList.remove('off');
-          card.classList.add('appear');
-
-          setTimeout(() => {
-            card.classList.remove('appear');
-          }, 900);
-        } else {
-          // Turn OFF
-          shade.setAttribute('fill', 'url(#shadeOff)');
-          rim.setAttribute('fill', '#1a1510');
-          inner.setAttribute('opacity', '0');
-          svg && svg.classList.add('off');
-
-          eyeL.setAttribute('rx', '5.5');
-          eyeL.setAttribute('ry', '1.5');
-          eyeR.setAttribute('rx', '5.5');
-          eyeR.setAttribute('ry', '1.5');
-          eyeL.setAttribute('fill', '#444');
-          eyeR.setAttribute('fill', '#444');
-          mouth.setAttribute('d', 'M 76 100 Q 85 95 94 100');
-
-          cone.classList.add('off');
-          glow.classList.add('off');
-          card.classList.add('off');
-        }
-      }
-
-      // Initialize
-      try {
-        apply();
-      } catch (e) {}
-
-      // ============================================
-      // BLINK ANIMATION
-      // ============================================
-      (function blink() {
-        const timeout = Math.random() * 4500 + 2000;
-        setTimeout(function() {
-          if (lampOn) {
-            const eyeL = document.getElementById('eye-l');
-            const eyeR = document.getElementById('eye-r');
-            if (eyeL && eyeR) {
-              eyeL.setAttribute('ry', '1');
-              eyeR.setAttribute('ry', '1');
-
-              setTimeout(() => {
-                if (lampOn) {
-                  eyeL.setAttribute('ry', '5.5');
-                  eyeR.setAttribute('ry', '5.5');
-                }
-              }, 130);
-            }
-          }
-          blink();
-        }, timeout);
-      })();
     })();
   }, 0);
 });
