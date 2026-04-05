@@ -731,6 +731,16 @@
         </style>
     </head>
     <body class="p-4 sm:p-8">
+    <!-- حماية من وميض (Flicker) صفحة تسجيل الدخول أثناء معالجة تسجيل الدخول أو عند وجود جلسة سابقة -->
+    <script>
+        (function() {
+            var hasHashToken = window.location.hash && (window.location.hash.includes('id_token=') || window.location.hash.includes('error='));
+            var hasLocalToken = !!localStorage.getItem('token');
+            if (hasHashToken || hasLocalToken) {
+                document.body.classList.add('loading-active');
+            }
+        })();
+    </script>
     <noscript>
         <div style="position:fixed; z-index:99999; top:0; left:0; right:0; padding:20px; background:#ff4444; color:#fff; text-align:center; font-family:sans-serif; font-size:18px; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
             ⚠️ لكي تعمل المنصة، الرجاء تفعيل الجافاسكريبت (JavaScript) في المتصفح الخاص بك!
