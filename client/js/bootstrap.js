@@ -184,6 +184,17 @@
         window[name] = stub;
     });
 
+    // If we are returning from Google OAuth (id_token or error in hash),
+    // eagerly load the app to process the redirect without requiring another click.
+    // CRITICAL: MUST BE CHECKED BEFORE ANY SESSION STORAGE LOCAL CHECKS!
+    const hash = window.location.hash || '';
+    if (hash.includes('id_token=') || hash.includes('error=')) {
+        hideLoginScreen();
+        showLoadingScreen();
+        triggerAppLoad();
+        return;
+    }
+
     // If sessionStorage claims a user exists, validate cookie session first.
     // This prevents stale local state from briefly showing dashboard/UI before login.
     try {
@@ -215,16 +226,6 @@
             return;
         }
     } catch (e) { /* ignore */ }
-
-    // If we are returning from Google OAuth (id_token or error in hash),
-    // eagerly load the app to process the redirect without requiring another click.
-    const hash = window.location.hash || '';
-    if (hash.includes('id_token=') || hash.includes('error=')) {
-        hideLoginScreen();
-        showLoadingScreen();
-        triggerAppLoad();
-        return;
-    }
 
     // No eager app boot for anonymous visits.
     // The app loads on first interaction via lazy stubs.

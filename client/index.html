@@ -734,9 +734,11 @@
     <!-- حماية من وميض (Flicker) صفحة تسجيل الدخول أثناء معالجة تسجيل الدخول أو عند وجود جلسة سابقة -->
     <script>
         (function() {
-            var hasHashToken = window.location.hash && (window.location.hash.includes('id_token=') || window.location.hash.includes('error='));
-            var hasLocalToken = !!localStorage.getItem('token');
-            if (hasHashToken || hasLocalToken) {
+            var hash = window.location.hash || '';
+            var hasHashToken = hash.includes('id_token=') || hash.includes('error=');
+            var hasSessionUser = false;
+            try { hasSessionUser = !!sessionStorage.getItem('currentUser'); } catch(e) {}
+            if (hasHashToken || hasSessionUser) {
                 document.body.classList.add('loading-active');
             }
         })();
