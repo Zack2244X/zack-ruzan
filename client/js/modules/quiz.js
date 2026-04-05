@@ -714,11 +714,13 @@ export function renderQuestion() {
 
         if (state.userAnswers[state.currentQuestionIndex] !== null) {
             const { selectedIndex } = state.userAnswers[state.currentQuestionIndex];
-            disableOptions();
+            // disableOptions();
             if (index === selectedIndex) {
                 optionEl.classList.add('selected');
-                optionEl.style.borderColor = '#3b82f6';
-                optionEl.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
+                optionEl.style.borderColor = '#10b981';
+                optionEl.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                optionEl.style.color = '#10b981';
+                optionEl.style.fontWeight = 'bold';
             }
         }
     });
@@ -731,12 +733,11 @@ export function renderQuestion() {
 
 export function selectAnswer(selectedIndex) {
     logFunctionStatus('selectAnswer', false);
-    if (state.userAnswers[state.currentQuestionIndex] !== null) return;
 
     const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
     const isCorrect = currentQ.answerOptions[selectedIndex].isCorrect;
 
-    // Save answer silently
+    // Save answer silently (overwrite previous if any)
     state.userAnswers[state.currentQuestionIndex] = { 
         selectedIndex, 
         isCorrect, 
@@ -744,17 +745,27 @@ export function selectAnswer(selectedIndex) {
         feedbackMessage: ''
     };
 
-    if (isCorrect) state.score++;
+    // Recalculate score from all answers
+    state.score = state.userAnswers.reduce((total, answer) => {
+        return total + (answer && answer.isCorrect ? 1 : 0);
+    }, 0);
 
     // Only mark visually as selected, without correct/incorrect colors
     Array.from(optionsContainerEl.children).forEach(el => {
         const index = parseInt(el.getAttribute('data-index'));
         el.classList.remove('selected');
-        el.onclick = null; // disable further clicks
+        // Clear previous styles inline
+        el.style.borderColor = '';
+        el.style.backgroundColor = '';
+        el.style.color = '';
+        el.style.fontWeight = '';
+        
         if (index === selectedIndex) {
             el.classList.add('selected'); 
-            el.style.borderColor = '#3b82f6'; /* Tailwind blue-500 */
-            el.style.backgroundColor = 'rgba(59, 130, 246, 0.15)'; /* transparent blue for dark/light mode */
+            el.style.borderColor = '#10b981'; /* Tailwind emerald-500 */
+            el.style.backgroundColor = 'rgba(16, 185, 129, 0.2)'; /* transparent emerald for dark/light mode */
+            el.style.color = '#10b981';
+            el.style.fontWeight = 'bold';
         }
     });
 
