@@ -589,15 +589,15 @@ function addQuizExitButton() {
     const btn = document.createElement('button');
     btn.id = 'quiz-exit-btn';
     btn.textContent = 'خروج';
-    // أضف className حسب تصميمك
-    btn.className = 'fixed top-4 left-4 z-50 px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow';
+    // Position fixed to screen edge on mobile to avoid overlapping quiz card
+    btn.className = 'fixed top-2 left-2 sm:top-6 sm:left-6 z-50 px-4 py-2 bg-red-600 text-white rounded-xl font-bold shadow-lg text-sm sm:text-base';
 
     btn.onclick = () => {
         showCustomExitModal();
     };
 
-    const quizContainer = document.getElementById('quiz-container');
-    if (quizContainer) quizContainer.appendChild(btn);
+    // Attach to body relative to viewport instead of quiz-container so it stays strictly fixed outside the card on mobile
+    document.body.appendChild(btn);
 }
 
 function showCustomExitModal() {
