@@ -104,4 +104,97 @@ router.post('/', authenticate, async (req, res) => {
     }
 });
 
+
+
+// GET /api/attempts/progress/:quizId
+router.get('/progress/:quizId', authenticate, async (req, res) => {
+    try {
+        const { quizId } = req.params;
+        const { deviceId } = req.query;
+        const { Op } = require('sequelize');
+        
+        const conditions = [{ userId: req.user.id }];
+        if (deviceId) conditions.push({ deviceId });
+
+        const progress = await require('../models/QuizProgress').findOne({
+            where: { 
+                quizId,
+                [Op.or]: conditions
+            },
+            order: [['updatedAt', 'DESC']]
+        });
+        res.json(progress || { answers: [], timeRemaining: null, currentQuestionIndex: 0 });
+    } catch (error) {
+        require('../utils/logger').error('خطأ في GET /progress:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ أثناء جلب التقدم' });
+    }
+});
+
+// POST /api/attempts/progress
+router.post('/progress', authenticate, async (req, res) => {
+    try {
+        const { quizId, answers, timeRemaining, currentQuestionIndex, deviceId } = req.body;
+        if (!quizId) return res.status(400).json({ error: 'quizId مطلوب' });
+
+        const QuizProgress = require('../models/QuizProgress');
+        const { Op } = require('sequelize');
+
+        const conditions = [{ userId: req.user.id }];
+        if (deviceId) conditions.push({ deviceId });
+
+        let progress = await QuizProgress.findOne({ 
+            where: { 
+                quizId,
+                [Op.or]: conditions
+            },
+            order: [['updatedAt', 'DESC']]
+        });
+        
+        if (progress) {
+            progress.answers = answers;
+            progress.timeRemaining = timeRemaining;
+            progress.currentQuestionIndex = currentQuestionIndex;
+            progress.userId = req.user.id;
+            progress.deviceId = deviceId || progress.deviceId;
+            await progress.save();
+        } else {
+            progress = await QuizProgress.create({
+                userId: req.user.id,
+                deviceId,
+                quizId,
+                answers,
+                timeRemaining,
+                currentQuestionIndex
+            });
+        }
+        res.json({ message: 'تم حفظ التقدم' });
+    } catch (error) {
+        require('../utils/logger').error('خطأ في POST /progress:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ أثناء حفظ التقدم' });
+    }
+});
+
+// DELETE /api/attempts/progress/:quizId
+router.delete('/progress/:quizId', authenticate, async (req, res) => {
+    try {
+        const { quizId } = req.params;
+        const { deviceId } = req.query;
+        const { Op } = require('sequelize');
+
+        const conditions = [{ userId: req.user.id }];
+        if (deviceId) conditions.push({ deviceId });
+
+        await require('../models/QuizProgress').destroy({
+            where: { 
+                quizId,
+                [Op.or]: conditions
+            }
+        });
+        res.json({ message: 'تم الحذف' });
+    } catch (error) {
+        require('../utils/logger').error('خطأ في DELETE /progress:', { error: error.message });
+        res.status(500).json({ error: 'حدث خطأ أثناء حذف التقدم' });
+    }
+});
+
 module.exports = router;

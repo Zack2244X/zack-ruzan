@@ -1603,14 +1603,6 @@ select {
     border-radius: 0.5rem;
 }
 
-/* For sections with dynamic content, use auto mode + preserve space */
-#history-tree,
-#edit-history-tree {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 1000px;
-    contain: layout style paint;  /* ← Prevent layout thrashing */
-    min-height: 400px;  /* ← Reserve space while loading */
-}
 
 /* ============================================
    ✅ Utility Classes for CLS Prevention

@@ -1,3 +1,11 @@
+function getClientDeviceId() {
+    let id = localStorage.getItem('device_id_progress');
+    if (!id) {
+        id = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('device_id_progress', id);
+    }
+    return id;
+}
 /**
  * @module quiz
  * @description محرك الاختبارات التفاعلي — يتحكم في تشغيل الاختبار، الأسئلة، المؤقت، النتائج والتغذية الراجعة
@@ -211,6 +219,11 @@ function validateQuizData(quizData) {
  * @returns {Promise<Object>}
  */
 async function submitScoreWithRetry(payload, maxRetries = MAX_SCORE_RETRIES, baseDelayMs = SCORE_RETRY_BASE_DELAY_MS) {
+    try {
+        await apiCall('DELETE', `/api/attempts/progress/${payload.quizId}?deviceId=${getClientDeviceId()}`);
+    } catch(e) {
+        console.error('Failed to cleanup progress', e);
+    }
     let lastError;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -458,7 +471,7 @@ export function initQuizDOM() {
  * يتحقق من عدد المحاولات السابقة ويعرض لافتة توضيحية دون حجب إعادة المحاولة.
  * @param {number} index — فهرس الاختبار في allQuizzes
  */
-export function playQuiz(index) {
+export async function playQuiz(index) {
     logFunctionStatus('playQuiz', false);
 
     // 1. التحقق من صحة البيانات
@@ -497,6 +510,14 @@ export function playQuiz(index) {
     state.userAnswers          = new Array(state.totalQuestions).fill(null);
     state.timeRemaining        = state.currentQuizData.config.timeLimit;
     state.quizStarted          = false;
+
+    // Reset button from review mode
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+        submitBtn.textContent = 'تسليم الاختبار';
+        submitBtn.onclick = window.submitQuiz || function() { submitQuiz(); };
+    }
+
     state.lastSubmitMeta       = null;
 
     // 5. إدارة الواجهة
@@ -518,7 +539,24 @@ export function playQuiz(index) {
     // 6. عرض لافتة المحاولة — توضيح قبل البدء
     renderAttemptBanner(attemptCount);
 
-    // 7. بدء الاختبار
+    // 7. استعادة التقدم إن وجد
+    try {
+        const progressObj = await apiCall('GET', `/api/attempts/progress/${quizId}?deviceId=${getClientDeviceId()}`);
+        if (progressObj && progressObj.timeRemaining !== null && progressObj.answers && progressObj.answers.length > 0) {
+            console.log('Restoring progress', progressObj);
+            
+            // Validate length matches
+            if (progressObj.answers.length === state.totalQuestions) {
+                state.userAnswers = progressObj.answers;
+                state.timeRemaining = progressObj.timeRemaining;
+                state.currentQuestionIndex = progressObj.currentQuestionIndex || 0;
+            }
+        }
+    } catch(e) {
+        console.error('Failed to load progress', e);
+    }
+
+    // 8. بدء الاختبار
     initializeQuiz();
 }
 
@@ -599,7 +637,26 @@ function showCustomExitModal() {
         modal.remove();
     };
 
-    document.getElementById('exit-ok-btn').onclick = () => {
+    document.getElementById('exit-ok-btn').onclick = async () => {
+        const exitBtn = document.getElementById('exit-ok-btn');
+        exitBtn.textContent = 'جارٍ الحفظ...';
+        exitBtn.disabled = true;
+
+        try {
+            const quizId = getQuizId(state.currentQuizData);
+            if (quizId) {
+                await apiCall('POST', '/api/attempts/progress', {
+                    quizId: String(quizId),
+                    answers: state.userAnswers,
+                    timeRemaining: state.timeRemaining,
+                    currentQuestionIndex: state.currentQuestionIndex,
+                    deviceId: getClientDeviceId()
+                });
+            }
+        } catch(e) {
+            console.error('Failed to save progress', e);
+        }
+
         modal.remove();
         clearInterval(state.timerInterval);  // ✅ إيقاف التايمر عند الخروج
         state.quizStarted = false;
@@ -655,74 +712,53 @@ export function renderQuestion() {
         optionsContainerEl.appendChild(optionEl);
 
         if (state.userAnswers[state.currentQuestionIndex] !== null) {
-            const { selectedIndex, isCorrect } = state.userAnswers[state.currentQuestionIndex];
+            const { selectedIndex } = state.userAnswers[state.currentQuestionIndex];
             disableOptions();
-            if (index === selectedIndex) optionEl.classList.add('selected', isCorrect ? 'correct-answer' : 'incorrect-answer');
-            if (option.isCorrect) optionEl.classList.add('correct-answer');
+            if (index === selectedIndex) {
+                optionEl.classList.add('selected');
+                optionEl.style.borderColor = '#007bff';
+                optionEl.style.backgroundColor = '#e6f2ff';
+            }
         }
     });
 
-    if (state.userAnswers[state.currentQuestionIndex] !== null) {
-        const { isCorrect, rationale, feedbackMessage } = state.userAnswers[state.currentQuestionIndex];
-        showFeedback(isCorrect, rationale, feedbackMessage);
-    }
+    // Feedback disabled in normal running
 
     nextButton.disabled = state.userAnswers[state.currentQuestionIndex] === null;
-    if (state.userAnswers[state.currentQuestionIndex] === null) hideFeedback();
+    hideFeedback();
 }
 
 export function selectAnswer(selectedIndex) {
     logFunctionStatus('selectAnswer', false);
     if (state.userAnswers[state.currentQuestionIndex] !== null) return;
 
-    const currentQ       = state.currentQuizData.questions[state.currentQuestionIndex];
-    const isCorrect      = currentQ.answerOptions[selectedIndex].isCorrect;
-    const rationale      = escapeHtml(currentQ.answerOptions[selectedIndex].rationale || 'لا يوجد تبرير متاح لهذا الخيار.');
-    const feedbackConfig = state.currentQuizData?.config?.feedback || {};
-    const correctFeedback   = feedbackConfig.correct   || {};
-    const incorrectFeedback = feedbackConfig.incorrect || {};
-    const streakGoal     = Number(state.currentQuizData?.config?.streakGoal) || 0;
+    const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
+    const isCorrect = currentQ.answerOptions[selectedIndex].isCorrect;
 
-    let newStreak    = isCorrect ? state.streak + 1 : 0;
-    let feedbackMsg  = isCorrect
-        ? escapeHtml(correctFeedback.message   || '✅ إجابة صحيحة')
-        : escapeHtml(incorrectFeedback.message || '❌ إجابة غير صحيحة');
+    // Save answer silently
+    state.userAnswers[state.currentQuestionIndex] = { 
+        selectedIndex, 
+        isCorrect, 
+        rationale: '', 
+        feedbackMessage: ''
+    };
 
-    if (isCorrect) {
-        state.score++;
-        if (streakGoal > 0 && newStreak % streakGoal === 0) {
-            const streakMsg = escapeHtml(correctFeedback.onStreak || '🔥 سلسلة إجابات صحيحة رائعة');
-            feedbackMsg += `<br><span class="text-xl font-black block mt-2 text-green-700">${streakMsg}</span>`;
-        }
-    }
+    if (isCorrect) state.score++;
 
-    state.streak = newStreak;
-    scoreDisplayEl.textContent = `النقاط: ${state.score}`;
-
-    if (isCorrect) {
-        showToastMessage(pickRandom(toastPraise), 'success');
-        if (newStreak >= 2) {
-            const streakBucket = newStreak >= 5 ? streakToasts[5] : (streakToasts[newStreak] || []);
-            if (streakBucket.length > 0) showToastMessage(pickRandom(streakBucket), 'streak');
-        }
-    } else {
-        showToastMessage(pickRandom(toastOops), 'error');
-    }
-
-    state.userAnswers[state.currentQuestionIndex] = { selectedIndex, isCorrect, rationale, feedbackMessage: feedbackMsg };
-
-    disableOptions();
-    showFeedback(isCorrect, rationale, feedbackMsg);
-
+    // Only mark visually as selected, without correct/incorrect colors
     Array.from(optionsContainerEl.children).forEach(el => {
         const index = parseInt(el.getAttribute('data-index'));
         el.classList.remove('selected');
-        el.onclick = null;
-        if (currentQ.answerOptions[index].isCorrect) el.classList.add('correct-answer');
-        if (index === selectedIndex && !isCorrect)   el.classList.add('incorrect-answer');
+        el.onclick = null; // disable further clicks
+        if (index === selectedIndex) {
+            el.classList.add('selected'); 
+            el.style.borderColor = '#007bff';
+            el.style.backgroundColor = '#e6f2ff';
+        }
     });
 
     nextButton.disabled = false;
+    // Auto proceed after short delay (optional, let's just let user click next)
 }
 
 export function showFeedback(isCorrect, rationale, message) {
@@ -904,6 +940,19 @@ export async function submitQuiz() {
         // ========================
         document.getElementById('quiz-container').classList.add('hidden');
         document.getElementById('results-screen').classList.remove('hidden');
+        
+        // Show result modal
+        if (window.Swal) {
+            Swal.fire({
+                title: 'انتهى الاختبار!',
+                html: `لقد حصلت على <b>${state.score}</b> من <b>${state.totalQuestions}</b>`,
+                icon: 'success',
+                confirmButtonText: 'مراجعة الإجابات',
+                confirmButtonColor: '#007bff',
+                allowOutsideClick: false
+            });
+        }
+
 
         const percentage = (state.score / state.totalQuestions) * 100;
         document.getElementById('final-score').textContent = state.score;
@@ -953,4 +1002,99 @@ export function exitToMain(renderDashboard) {
     document.getElementById('dashboard-view').classList.remove('hidden');
     renderDashboard();
     _showThemeToggle(true);
+}
+
+window.reviewQuiz = function() {
+    state.isReviewMode = true;
+    
+    document.getElementById('results-screen').classList.add('hidden');
+    document.getElementById('quiz-container').classList.remove('hidden');
+    
+    // Hide timer
+    const timerDisplayEl = document.getElementById('timer-display');
+    if (timerDisplayEl) timerDisplayEl.classList.add('hidden');
+    
+    // Disable submit
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+        submitBtn.textContent = 'إنهاء المراجعة';
+        submitBtn.onclick = () => window.exitToMain();
+    }
+    
+    state.currentQuestionIndex = 0;
+    renderReviewQuestion();
+};
+
+function renderReviewQuestion() {
+    const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
+    document.getElementById('current-question-number').textContent = state.currentQuestionIndex + 1;
+    document.getElementById('question-text').innerHTML = `<span class="quiz-question-gradient">${state.currentQuestionIndex + 1}. ${currentQ.question}</span>`;
+    const hintEl = document.getElementById('question-hint');
+    if (currentQ.hint) {
+        hintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${currentQ.hint}`;
+        hintEl.classList.remove('hidden');
+    } else {
+        hintEl.classList.add('hidden');
+    }
+
+    const previousBtn = document.getElementById('previous-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+
+    previousBtn.disabled = state.currentQuestionIndex === 0;
+
+    if (state.currentQuestionIndex === state.totalQuestions - 1) {
+        nextBtn.classList.add('hidden');
+        submitBtn.classList.remove('hidden');
+    } else {
+        nextBtn.classList.remove('hidden');
+        submitBtn.classList.add('hidden');
+    }
+
+    // Set next and previous cleanly for review mode
+    nextBtn.onclick = () => {
+        if (state.currentQuestionIndex < state.totalQuestions - 1) {
+            state.currentQuestionIndex++;
+            renderReviewQuestion();
+        }
+    };
+
+    previousBtn.onclick = () => {
+        if (state.currentQuestionIndex > 0) {
+            state.currentQuestionIndex--;
+            renderReviewQuestion();
+        }
+    };
+    
+    // ensure it is enabled in review
+    nextBtn.disabled = false;
+
+    const optContainer = document.getElementById('options-container');
+    optContainer.innerHTML = '';
+    
+    const ans = state.userAnswers[state.currentQuestionIndex];
+    const selectedIdx = ans ? ans.selectedIndex : -1;
+
+    currentQ.answerOptions.forEach((option, index) => {
+        const optionEl = document.createElement('div');
+        optionEl.className = 'answer-option p-4 border-2 border-gray-300 rounded-xl m-1 font-medium text-arabic';
+        optionEl.textContent = option.text;
+
+        // No clicking in review mode
+        optionEl.onclick = null;
+        
+        if (option.isCorrect) {
+            optionEl.classList.add('correct-answer');
+            optionEl.style.backgroundColor = '#d4edda';
+            optionEl.style.borderColor = '#28a745';
+        }
+        
+        if (index === selectedIdx && !option.isCorrect) {
+            optionEl.classList.add('incorrect-answer');
+            optionEl.style.backgroundColor = '#f8d7da';
+            optionEl.style.borderColor = '#dc3545';
+        }
+        
+        optContainer.appendChild(optionEl);
+    });
 }

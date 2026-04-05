@@ -230,14 +230,14 @@ requestAnimationFrame(function() {
 
       // Touch
       canvas.addEventListener('touchstart', (evt) => {
-        evt.preventDefault();
+        if (evt.cancelable) evt.preventDefault();
         const coords = getCoords(evt);
         dragIdx = findNearestPoint(coords.x, coords.y);
         if (dragIdx >= 0) pullDistance = 0;
       }, { passive: false });
 
       canvas.addEventListener('touchmove', (evt) => {
-        evt.preventDefault();
+        if (evt.cancelable) evt.preventDefault();
         if (dragIdx < 0) return;
         const coords = getCoords(evt);
         points[dragIdx].x = Math.max(4, Math.min(W - 4, coords.x));

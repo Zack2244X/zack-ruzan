@@ -78,6 +78,11 @@ const User = require('./models/User');
 const Quiz = require('./models/Quiz');
 const Score = require('./models/Score');
 const Note = require('./models/Note');
+const QuizProgress = require('./models/QuizProgress');
+QuizProgress.belongsTo(User, { as: 'user', foreignKey: 'userId', onDelete: 'CASCADE' });
+QuizProgress.belongsTo(Quiz, { as: 'quiz', foreignKey: 'quizId', onDelete: 'CASCADE' });
+User.hasMany(QuizProgress, { foreignKey: 'userId', onDelete: 'CASCADE' });
+Quiz.hasMany(QuizProgress, { foreignKey: 'quizId', onDelete: 'CASCADE' });
 
 // --- العلاقات (Associations) ---
 Quiz.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });

@@ -350,6 +350,10 @@
             position: relative; z-index: 20;
             filter: drop-shadow(0 0 24px rgba(201,150,42,0.55));
             transition: filter 0.6s;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            will-change: filter, transform;
+            transform: translateZ(0); 
         }
     #lamp-svg.off { filter: drop-shadow(0 0 0 transparent); }
 
@@ -371,6 +375,8 @@
             transform: translateX(-50%);
             cursor: grab; z-index: 1;
             touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
         }
     #rope-canvas:active { cursor: grabbing; }
 
@@ -638,15 +644,17 @@
             .login-loading-msg { font-size: 0.62rem; margin-top: 8px; padding: 6px; }
             .lamp-hint { display: none; }
         }
-                @media (max-width: 480px) {
-                        .login-scene { flex-direction: column; gap: 20px; }
-                        .login-card { width: 260px; padding: 18px 12px; min-height: 270px; margin: 0 auto; }
-                        .lamp-wrapper { margin: 0 auto; }
-                        /* Mobile: column layout, no height needed — contain:layout isolates
-                             internal font/icon changes from .login-scene centring */
+        @media (max-width: 480px) {
+                        .login-scene { flex-direction: row; gap: 8px; padding: 6px 4px; }
+                        .login-card { width: 225px; padding: 14px 10px; min-height: 240px; margin: 0; }
+                        .lamp-wrapper { width: 85px; margin: 0; }
+                        #lamp-svg { width: 85px; height: 130px; }
+                        .light-cone { top: 62px; width: 105px; height: 160px; }
+                        #rope-canvas { top: 62px; transform: translateX(-50%) scale(0.65); transform-origin: top center; }
+                        /* Mobile: row layout, isolated animation for off-card */
                         .login-card.off { transform: translateY(12px) scale(0.96); }
                                 /* mobile: reduced logo size */
-                                .logo-wrap { width: 130px; height: 130px; }
+                                .logo-wrap { width: 110px; height: 110px; }
                 /* Adjust decorative ring for smaller logo: slightly reduced thickness, less blur */
                 .logo-wrap::before {
                     inset: -8px;
@@ -783,9 +791,9 @@
                     <i class="fas fa-times text-lg" aria-hidden="true"></i>
                 </button>
             </div>
-            <div id="tree-scroll-area" data-lenis-prevent class="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-6 pb-8 modal-scrollbar">
+            <div id="tree-scroll-area" data-lenis-prevent class="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 pt-6 modal-scrollbar">
                 <div id="subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-slate-600/20"></div>
-                <div id="history-tree" class="space-y-2"></div>
+                <div id="history-tree" class="space-y-2 pb-8"></div>
             </div>
         </section>
     </div>
@@ -801,9 +809,9 @@
                     <i class="fas fa-times text-lg" aria-hidden="true"></i>
                 </button>
             </div>
-            <div id="notes-scroll-area" data-lenis-prevent class="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-6 pb-8 modal-scrollbar">
+            <div id="notes-scroll-area" data-lenis-prevent class="flex-1 min-h-0 overflow-y-auto px-5 md:px-6 pt-6 modal-scrollbar">
                 <div id="notes-subject-filters-container" class="flex flex-wrap gap-2 pb-4 mb-4 border-b border-slate-600/20"></div>
-                <div id="notes-history-tree" class="space-y-2"></div>
+                <div id="notes-history-tree" class="space-y-2 pb-8"></div>
             </div>
         </section>
     </div>
@@ -1248,7 +1256,8 @@
             </div>
             <p id="custom-closing-text" class="text-md text-gray-600 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100"></p>
             <p id="save-score-error" class="hidden text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4"></p>
-            <button onclick="exitToMain()" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition duration-300">
+            <button onclick="reviewQuiz()" class="px-8 py-3 bg-green-600 text-white font-bold rounded-full shadow-lg hover:bg-green-700 transition duration-300 ml-4 mb-4">مراجعة الإجابات</button>
+			<button onclick="exitToMain()" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition duration-300">
                 الخروج للشاشة الرئيسية
             </button>
         </div>
