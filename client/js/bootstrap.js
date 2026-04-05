@@ -70,7 +70,7 @@
         // Primary: minified IIFE bundle (one request, all modules pre-bundled).
         // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
         // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
-        const bundleUrl = '/js/app.bundle.min.js?v=75';
+        const bundleUrl = '/js/app.bundle.min.js?v=76';
         const esmUrl    = '/js/app.js';
 
         const bundleScript = document.createElement('script');
