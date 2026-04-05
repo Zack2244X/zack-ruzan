@@ -163,7 +163,12 @@ export function setBuilderCorrectOption(idx) {
  */
 export function addBuilderOption() {
     logFunctionStatus('addBuilderOption', false);
-    state.quizDraft.questions[state.bCurrentQIndex].answerOptions.push({ text: '', isCorrect: false });
+    const q = state.quizDraft.questions[state.bCurrentQIndex];
+    if (q.answerOptions.length >= 6) {
+        showAlert('⚠️ الحد الأقصى للخيارات هو 6!', 'warning');
+        return;
+    }
+    q.answerOptions.push({ text: '', isCorrect: false });
     renderBuilderQuestion();
 }
 
@@ -218,11 +223,26 @@ export async function saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDas
     updateBuilderData();
 
     for (let i = 0; i < state.quizDraft.questions.length; i++) {
-        if (!state.quizDraft.questions[i].question.trim()) {
+        const q = state.quizDraft.questions[i];
+        if (!q.question.trim()) {
             showAlert(`⚠️ السؤال رقم ${i + 1} فارغ! يرجى كتابته قبل الحفظ.`, 'warning');
             state.bCurrentQIndex = i;
             renderBuilderQuestion();
             return;
+        }
+        if (q.answerOptions.length < 2) {
+            showAlert(`⚠️ السؤال رقم ${i + 1} يحتوي على أقل من خيارين!`, 'warning');
+            state.bCurrentQIndex = i;
+            renderBuilderQuestion();
+            return;
+        }
+        for (let j = 0; j < q.answerOptions.length; j++) {
+            if (!q.answerOptions[j].text.trim()) {
+                showAlert(`⚠️ الخيار رقم ${j + 1} في السؤال رقم ${i + 1} فارغ!`, 'warning');
+                state.bCurrentQIndex = i;
+                renderBuilderQuestion();
+                return;
+            }
         }
     }
 
@@ -297,11 +317,26 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
     updateBuilderData();
 
     for (let i = 0; i < state.quizDraft.questions.length; i++) {
-        if (!state.quizDraft.questions[i].question.trim()) {
+        const q = state.quizDraft.questions[i];
+        if (!q.question.trim()) {
             showAlert(`⚠️ السؤال رقم ${i + 1} فارغ! يرجى كتابته قبل الحفظ.`, 'warning');
             state.bCurrentQIndex = i;
             renderBuilderQuestion();
             return;
+        }
+        if (q.answerOptions.length < 2) {
+            showAlert(`⚠️ السؤال رقم ${i + 1} يحتوي على أقل من خيارين!`, 'warning');
+            state.bCurrentQIndex = i;
+            renderBuilderQuestion();
+            return;
+        }
+        for (let j = 0; j < q.answerOptions.length; j++) {
+            if (!q.answerOptions[j].text.trim()) {
+                showAlert(`⚠️ الخيار رقم ${j + 1} في السؤال رقم ${i + 1} فارغ!`, 'warning');
+                state.bCurrentQIndex = i;
+                renderBuilderQuestion();
+                return;
+            }
         }
     }
 
@@ -440,7 +475,13 @@ export function parseIconQuestions(rawText) {
 
     const pushCurrent = () => {
         if (!current) return;
-        if (!current.answerOptions.length) return;
+        if (current.answerOptions.length < 2) {
+            console.warn(`تم تخطي السؤال "${current.question}" لعدم وجود خيارات كافية.`);
+            return;
+        }
+        if (current.answerOptions.length > 6) {
+            current.answerOptions = current.answerOptions.slice(0, 6);
+        }
         if (!current.answerOptions.some(o => o.isCorrect)) {
             current.answerOptions[0].isCorrect = true;
         }
