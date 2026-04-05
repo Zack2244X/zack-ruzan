@@ -717,8 +717,8 @@ export function renderQuestion() {
             disableOptions();
             if (index === selectedIndex) {
                 optionEl.classList.add('selected');
-                optionEl.style.borderColor = '#007bff';
-                optionEl.style.backgroundColor = '#e6f2ff';
+                optionEl.style.borderColor = '#3b82f6';
+                optionEl.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
             }
         }
     });
@@ -753,8 +753,8 @@ export function selectAnswer(selectedIndex) {
         el.onclick = null; // disable further clicks
         if (index === selectedIndex) {
             el.classList.add('selected'); 
-            el.style.borderColor = '#007bff';
-            el.style.backgroundColor = '#e6f2ff';
+            el.style.borderColor = '#3b82f6'; /* Tailwind blue-500 */
+            el.style.backgroundColor = 'rgba(59, 130, 246, 0.15)'; /* transparent blue for dark/light mode */
         }
     });
 
