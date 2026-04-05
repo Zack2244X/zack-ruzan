@@ -667,8 +667,9 @@ function showCustomExitModal() {
         const dockBar = document.getElementById('ios-bottom-nav');
         if (dockBar) dockBar.classList.remove('hidden');
 
-        const exitBtn = document.getElementById('quiz-exit-btn');
-        if (exitBtn) exitBtn.remove();
+        const outBtn = document.getElementById('quiz-exit-btn');
+        if (outBtn) outBtn.remove();
+        
 
         _showThemeToggle(true);
     };
