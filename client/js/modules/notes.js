@@ -83,30 +83,20 @@ export async function saveNote(renderEditTree, renderSubjectFilters, renderHisto
         state.allNotes.push(newNote);
         console.log(`[saveNote] ✓ تم الحفظ على السيرفر — ID: ${serverId}`);
         showAlert('✅ تم إضافة الملف بنجاح!');
+
+        closeAddNoteModal();
+        if (renderEditTree) renderEditTree();
+
+        if (state.currentViewMode !== 'notes' && navToSectionFn) {
+            navToSectionFn('notes');
+        } else {
+            if (renderSubjectFilters) renderSubjectFilters();
+            if (renderHistoryTree) renderHistoryTree();
+            if (renderEditTree) renderEditTree();
+        }
     } catch (e) {
         console.error(`[saveNote] ✗ فشل الحفظ:`, e.message);
-        const newNote = {
-            config: {
-                id: 'note-' + Date.now(),
-                title,
-                subject,
-                link,
-                type: noteData.type,
-                description: noteData.description
-            }
-        };
-        state.allNotes.push(newNote);
         showAlert('⚠️ تعذر الحفظ على السيرفر: ' + e.message, 'warning');
-    }
-    closeAddNoteModal();
-    if (renderEditTree) renderEditTree();
-
-    if (state.currentViewMode !== 'notes' && navToSectionFn) {
-        navToSectionFn('notes');
-    } else {
-        if (renderSubjectFilters) renderSubjectFilters();
-        if (renderHistoryTree) renderHistoryTree();
-        if (renderEditTree) renderEditTree();
     }
 }
 
@@ -165,21 +155,21 @@ export async function updateExistingNote(renderHistoryTree, renderEditTree, rend
         await apiCall('PUT', '/api/notes/' + noteId, noteUpdateData);
         console.log(`[updateNote] ✓ تم التحديث على السيرفر — ID: ${noteId}`);
         showAlert('✅ تم تحديث المذكرة بنجاح!');
+
+        state.allNotes[state.editingNoteIndex].config.title = title;
+        state.allNotes[state.editingNoteIndex].config.subject = subject;
+        state.allNotes[state.editingNoteIndex].config.link = link;
+        state.allNotes[state.editingNoteIndex].config.description = document.getElementById('new-n-desc').value.trim();
+        state.allNotes[state.editingNoteIndex].config.type = document.getElementById('new-n-type').value;
+
+        closeAddNoteModal();
+        if (renderHistoryTree) renderHistoryTree();
+        if (renderEditTree) renderEditTree();
+        if (renderDashboard) renderDashboard();
     } catch (e) {
         console.error(`[updateNote] ✗ فشل التحديث:`, e.message);
         showAlert('⚠️ تعذر التحديث على السيرفر: ' + e.message, 'warning');
     }
-
-    state.allNotes[state.editingNoteIndex].config.title = title;
-    state.allNotes[state.editingNoteIndex].config.subject = subject;
-    state.allNotes[state.editingNoteIndex].config.link = link;
-    state.allNotes[state.editingNoteIndex].config.description = document.getElementById('new-n-desc').value.trim();
-    state.allNotes[state.editingNoteIndex].config.type = document.getElementById('new-n-type').value;
-
-    closeAddNoteModal();
-    if (renderHistoryTree) renderHistoryTree();
-    if (renderEditTree) renderEditTree();
-    if (renderDashboard) renderDashboard();
 }
 
 /**

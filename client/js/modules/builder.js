@@ -248,16 +248,15 @@ export async function saveBuiltQuiz(renderHistoryTree, renderEditTree, renderDas
 
         console.log(`[saveQuiz] ✓ تم الحفظ على السيرفر — ID: ${serverId}, العنوان: "${state.quizDraft.config.title}", أسئلة بـ UUID: ${!!serverQuiz.questions}`);
         showAlert('✅ تم بناء الاختبار وحفظه بنجاح!');
+
+        closeCreateSection();
+        renderHistoryTree();
+        renderEditTree();
+        renderDashboard();
     } catch (e) {
         console.error(`[saveQuiz] ✗ فشل الحفظ على السيرفر:`, e.message);
-        state.allQuizzes.push(state.quizDraft);
         showAlert('⚠️ تعذر الحفظ على السيرفر: ' + e.message, 'warning');
     }
-
-    closeCreateSection();
-    renderHistoryTree();
-    renderEditTree();
-    renderDashboard();
 }
 
 /**
@@ -325,20 +324,20 @@ export async function updateExistingQuiz(index, renderHistoryTree, renderEditTre
         }
         console.log(`[updateQuiz] ✓ تم التحديث على السيرفر — ID: ${quizId}, أسئلة بـ UUID: ${!!serverQuiz.questions}`);
         showAlert('✅ تم تحديث الامتحان بنجاح!');
+
+        state.allQuizzes[index] = state.quizDraft;
+        closeCreateSection();
+        if (renderHistoryTree) renderHistoryTree();
+        if (renderEditTree) renderEditTree();
+        if (renderDashboard) renderDashboard();
+
+        const saveBtn = document.getElementById('btn-save-final');
+        saveBtn.innerText = 'حفظ الامتحان في السجل';
+        saveBtn.onclick = null;
     } catch (e) {
         console.error(`[updateQuiz] ✗ فشل التحديث:`, e.message);
         showAlert('⚠️ تعذر التحديث على السيرفر: ' + e.message, 'warning');
     }
-
-    state.allQuizzes[index] = state.quizDraft;
-    closeCreateSection();
-    if (renderHistoryTree) renderHistoryTree();
-    if (renderEditTree) renderEditTree();
-    if (renderDashboard) renderDashboard();
-
-    const saveBtn = document.getElementById('btn-save-final');
-    saveBtn.innerText = 'حفظ الامتحان في السجل';
-    saveBtn.onclick = null;
 }
 
 /**
