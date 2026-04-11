@@ -172,7 +172,16 @@ app.use((req, res, next) => {
 // 2. Helmet — هيدرز أمان شاملة
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "connect-src": ["'self'"],
+        "frame-ancestors": ["'none'"]
+      }
+    },
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
@@ -452,9 +461,19 @@ app.use((req, res, next) => {
   next();
 });
 
+
 // 7. Static files مع Cache headers
+const renderSPA = (req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  require("fs").readFile(require("path").join(__dirname, "../client/index.html"), "utf8", (err, html) => {
+    if (err) return res.status(500).send("HTML Load Error");
+    res.send(html.replace(/<script\b/g, `<script nonce="${res.locals.nonce}"`));
+  });
+};
+app.get(["/", "/index.html"], renderSPA);
+
 app.use(
-  express.static(path.join(__dirname, "../client"), {
+  express.static(path.join(__dirname, "../client"), { index: false,
     maxAge: process.env.NODE_ENV === "production" ? "1d" : "0",
     etag: true,
     lastModified: true,
@@ -695,7 +714,7 @@ app.get("*", (req, res, next) => {
     "Link",
     "</icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif>; rel=preload; as=image; type=image/avif; fetchpriority=high",
   );
-  res.sendFile(path.join(__dirname, "../client/index.html"));
+  return renderSPA(req, res, next);
 });
 
 // --- 404 API ---
