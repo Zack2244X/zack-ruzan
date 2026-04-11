@@ -292,7 +292,6 @@ export async function renderDashboard(forceRefresh = false) {
   //  1. آخر 4 امتحانات
   // ─────────────────────────────────────────────
   const latestExamsGrid = document.getElementById("latest-exams-grid");
-  latestExamsGrid.innerHTML = "";
 
   if (latestExams.length === 0) {
     latestExamsGrid.innerHTML = `
@@ -385,7 +384,6 @@ export async function renderDashboard(forceRefresh = false) {
   //  2. آخر 3 مذكرات
   // ─────────────────────────────────────────────
   const latestNotesGrid = document.getElementById("latest-notes-grid");
-  latestNotesGrid.innerHTML = "";
 
   const latestNotes = state.allNotes.slice(-3).reverse();
   if (latestNotes.length === 0) {
@@ -464,7 +462,6 @@ export async function renderDashboard(forceRefresh = false) {
     console.warn("[dashboard] leaderboard-list element not found");
     return;
   }
-  leaderboardList.innerHTML = "";
 
   const totalExams = state.allQuizzes.length || 1;
   // Prefer leaderboard from server if available (always includes names)

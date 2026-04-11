@@ -69,7 +69,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
       offset,
     });
 
-    // للطلاب: إخفاء التبريرات فقط (isCorrect لازم يتبعت عشان التغذية الراجعة الفورية)
+    // للطلاب: إخفاء التبريرات والأجوبة الصحيحة لمنع الغش (يتم التقييم في الخادم)
     if (req.user.role === "student") {
       const sanitized = quizzes.map((quiz) => {
         const q = quiz.toJSON();
@@ -77,8 +77,6 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
           ...question,
           answerOptions: question.answerOptions.map((opt) => ({
             text: opt.text,
-            isCorrect: !!opt.isCorrect,
-            rationale: opt.rationale || "",
           })),
         }));
         return q;
@@ -133,6 +131,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
         [sequelize.fn("DISTINCT", sequelize.col("subject")), "subject"],
       ],
       raw: true,
+      limit: 100,
     });
     const subjects = results.map((r) => r.subject);
     res.json(subjects);
@@ -244,8 +243,6 @@ router.get("/:id", authenticate, async (req, res) => {
         ...question,
         answerOptions: question.answerOptions.map((opt) => ({
           text: opt.text,
-          isCorrect: !!opt.isCorrect,
-          rationale: opt.rationale || "",
         })),
       }));
       return res.json(q);

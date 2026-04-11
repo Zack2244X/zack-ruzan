@@ -94,6 +94,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
         [sequelize.fn("DISTINCT", sequelize.col("subject")), "subject"],
       ],
       raw: true,
+      limit: 100,
     });
     const subjects = results.map((r) => r.subject);
     res.json(subjects);

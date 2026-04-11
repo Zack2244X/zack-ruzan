@@ -14,6 +14,7 @@
     "start": "node server/index.js",
     "dev": "npm --prefix server run dev",
     "test": "npm --prefix server test",
+    "lint": "npm --prefix server run lint",
     "test:client": "vitest run --config client/vitest.config.js --coverage",
     "audit:deps": "npm ls --depth=0 && npm audit --omit=dev",
     "audit:server": "npm --prefix server ls --depth=0 && npm --prefix server audit --omit=dev",

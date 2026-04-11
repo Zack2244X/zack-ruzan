@@ -17,7 +17,7 @@ try {
 } catch (err) {
   // Only warn in production if license is set but module missing.
   if (process.env.NEW_RELIC_LICENSE_KEY) {
-    // eslint-disable-next-line no-console
+     
     logger.warn("New Relic module not found; APM disabled:", err.message);
   }
 }
@@ -551,7 +551,7 @@ app.use((req, res, next) => {
  */
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 3000, // مرفوع ليتحمل معامل المدارس (Shared IPs NAT)
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {

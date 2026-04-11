@@ -95,6 +95,7 @@ const Score = sequelize.define(
       { fields: ["userId", "quizId"] },
       { fields: ["quizId", "percentage"] },
       { fields: ["userId"] },
+      { fields: ["createdAt"] },
     ],
     hooks: {
       beforeCreate(score) {

@@ -217,7 +217,7 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: "توكن غير صالح." });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
 
     if (!decoded.userId || !decoded.role) {
       return res.status(401).json({ error: "توكن غير صالح." });

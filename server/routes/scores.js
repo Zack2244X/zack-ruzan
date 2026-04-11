@@ -34,6 +34,10 @@ const {
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
 
+// --- In-Memory Cache للوحة المتصدرين ---
+const leaderboardCache = { data: null, timestamp: 0 };
+const CACHE_TTL = 120000; // صلاحية 120 ثانية
+
 function isTrustedGuestOrigin(req) {
   const allowed = new Set(
     (process.env.ALLOWED_ORIGINS || "")
@@ -117,13 +121,7 @@ const handleGuestMode = (req, res, next) => {
         .status(403)
         .json({ error: "مصدر الطلب غير موثوق لوضع الضيف." });
     }
-    return res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    res.status(200).json({
+    return res.status(200).json({
       message: "تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.",
       result: null,
       meta: { isOfficial: false, attemptNumber: 0 },
@@ -205,6 +203,11 @@ router.post(
         };
       });
 
+      // 3️⃣ إبطال صلاحية الكاش عند تحقيق درجة جديدة (لو كانت رسمية)
+      if (isOfficial) {
+        leaderboardCache.data = null;
+        leaderboardCache.timestamp = 0;
+      }
       res.status(201).json({
         message: isOfficial
           ? "تم تسليم الامتحان بنجاح! تم احتساب نتيجتك في لوحة الشرف."
@@ -250,16 +253,26 @@ router.post(
  * @param {import('express').Response} res - Array of score objects with isOfficial, attemptNumber.
  * @returns {Promise<void>}
  */
-router.get("/my", authenticate, async (req, res) => {
+router.get("/my", authenticate, validatePagination, async (req, res) => {
   try {
-    const scores = await Score.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
+    const { count, rows: scores } = await Score.findAndCountAll({
       where: { userId: req.user.id },
       include: [{ model: Quiz, as: "quiz", attributes: ["title", "subject"] }],
       order: [["createdAt", "DESC"]],
+      limit,
+      offset,
     });
 
-    // يُرجع كل الحقول من نموذج Score (بما فيها isOfficial وattemptNumber)
-    res.json(scores);
+    res.json({
+      data: scores,
+      total_count: count,
+      current_page: page,
+      total_pages: Math.ceil(count / limit),
+    });
   } catch (error) {
     const dbMsg =
       error.original?.message || error.parent?.message || error.message;
@@ -304,6 +317,10 @@ router.get("/my/attempts", authenticate, async (req, res) => {
       hasOfficial: Boolean(parseInt(r.hasOfficial)),
     }));
 
+    // 2️⃣ تحديث الكاش مع ختم زمني
+    leaderboardCache.data = result;
+    leaderboardCache.timestamp = Date.now();
+    res.setHeader("X-Cache-Hit", "false");
     res.json(result);
   } catch (error) {
     const dbMsg = error.original?.message || error.message;
@@ -436,6 +453,12 @@ router.get("/", authenticate, async (req, res) => {
  */
 router.get("/leaderboard", authenticateOrGuest, async (req, res) => {
   try {
+    // 1️⃣ استخدام الكاش المتوفر وتقليل الحمل
+    if (leaderboardCache.data && Date.now() - leaderboardCache.timestamp < CACHE_TTL) {
+      res.setHeader("X-Cache-Hit", "true");
+      return res.json(leaderboardCache.data);
+    }
+    
     // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار (حتمياً حتى عند تعادل attemptNumber)
     const [rows] = await sequelize.query(`
             SELECT
@@ -512,9 +535,16 @@ router.get(
   authenticate,
   requireAdmin,
   validateQuizIdParam,
+  validatePagination,
   async (req, res) => {
     try {
-      const scores = await Score.findAll({
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = (page - 1) * limit;
+
+      const { count, rows: scores } = await Score.findAndCountAll({
+        limit,
+        offset,
         where: { quizId: req.params.quizId },
         include: [{ model: User, as: "user", attributes: ["fname", "lname"] }],
         order: [
@@ -535,7 +565,12 @@ router.get(
         date: s.createdAt,
       }));
 
-      res.json(results);
+      res.json({
+        data: results,
+        total_count: count,
+        current_page: page,
+        total_pages: Math.ceil(count / limit)
+      });
     } catch (error) {
       logger.error("خطأ في جلب نتائج الامتحان:", { error: error.message });
       res.status(500).json({ error: "حدث خطأ." });

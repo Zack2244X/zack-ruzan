@@ -3,7 +3,7 @@
  * @description وحدة رسم الشجرة — عرض الامتحانات والمذكرات بتنسيق شجري حسب التاريخ
  */
 import state from "./state.js";
-import { escapeHtml, showAlert, logFunctionStatus } from "./helpers.js";
+import { sanitizeHTML, showAlert, logFunctionStatus } from "./helpers.js";
 import { apiCall } from "./api.js";
 
 /** @constant {Array<string>} المواد الافتراضية */
@@ -200,7 +200,7 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
   if (dataList) {
     let dlHtml = "";
     subjects.forEach((sub) => {
-      if (sub !== "الكل") dlHtml += `<option value="${escapeHtml(sub)}">`;
+      if (sub !== "الكل") dlHtml += `<option value="${sanitizeHTML(sub)}">`;
     });
     dataList.innerHTML = dlHtml;
   }
@@ -220,15 +220,15 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
       if (state.isAdmin && sub !== "الكل") {
         adminTools = `
                     <span class="inline-flex items-center gap-2 mr-3 pr-3 border-r ${isActive ? "border-blue-400" : "border-slate-500/40"}">
-                        <i data-tree-action="rename-subject" data-tree-value="${escapeHtml(sub)}" class="fas fa-pen text-xs hover:text-blue-300 transition cursor-pointer" title="تعديل الاسم"></i>
-                        <i data-tree-action="delete-subject" data-tree-value="${escapeHtml(sub)}" class="fas fa-times text-xs hover:text-red-400 transition cursor-pointer" title="حذف المجلد"></i>
+                        <i data-tree-action="rename-subject" data-tree-value="${sanitizeHTML(sub)}" class="fas fa-pen text-xs hover:text-blue-300 transition cursor-pointer" title="تعديل الاسم"></i>
+                        <i data-tree-action="delete-subject" data-tree-value="${sanitizeHTML(sub)}" class="fas fa-times text-xs hover:text-red-400 transition cursor-pointer" title="حذف المجلد"></i>
                     </span>
                 `;
       }
 
       filtersHtml += `
-                <button data-tree-action="set-subject-filter" data-tree-value="${escapeHtml(sub)}" class="flex items-center whitespace-nowrap px-4 py-2 rounded-full border text-sm font-bold transition duration-300 ${activeClasses}">
-                    ${escapeHtml(sub)} ${adminTools}
+                <button data-tree-action="set-subject-filter" data-tree-value="${sanitizeHTML(sub)}" class="flex items-center whitespace-nowrap px-4 py-2 rounded-full border text-sm font-bold transition duration-300 ${activeClasses}">
+                    ${sanitizeHTML(sub)} ${adminTools}
                 </button>
             `;
     });
@@ -247,7 +247,7 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
       const activeClasses = isActive
         ? "bg-purple-600 text-white shadow-md border-purple-600"
         : "bg-white text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-purple-600";
-      editHtml += `<button data-tree-action="set-edit-subject-filter" data-tree-value="${escapeHtml(sub)}" class="whitespace-nowrap px-3 py-1.5 rounded-full border text-xs font-bold transition duration-300 ${activeClasses}">${escapeHtml(sub)}</button>`;
+      editHtml += `<button data-tree-action="set-edit-subject-filter" data-tree-value="${sanitizeHTML(sub)}" class="whitespace-nowrap px-3 py-1.5 rounded-full border text-xs font-bold transition duration-300 ${activeClasses}">${sanitizeHTML(sub)}</button>`;
     });
     editContainer.innerHTML = editHtml;
     bindDelegatedTreeActions(editContainer);
@@ -375,7 +375,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
   years.forEach((year) => {
     html += `
             <div id="year-${year}" class="mb-2">
-                <button data-tree-action="toggle-node" data-tree-value="content-year-${year}" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-2xl hover:bg-gray-200 transition">
+                <button data-tree-action="toggle-node" data-tree-value="content-year-${year}" aria-expanded="false" aria-controls="content-year-${year}" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-2xl hover:bg-gray-200 transition">
                     <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
                     <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
@@ -389,7 +389,7 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
 
       html += `
                 <div id="month-${monthId}" class="mb-2">
-                    <button data-tree-action="toggle-node" data-tree-value="content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
+                    <button data-tree-action="toggle-node" data-tree-value="content-month-${monthId}" aria-expanded="false" aria-controls="content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
                         <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
                     </button>
@@ -418,18 +418,18 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
             html += `
                             <div class="group mb-2">
                                 <div data-tree-action="play-quiz" data-tree-value="${item.originalIndex}" class="p-3 bg-white rounded-3xl border border-gray-200 shadow-md hover:shadow-lg hover:border-emerald-300 transition cursor-pointer">
-                                    <p class="font-bold text-gray-900 text-sm group-hover:text-emerald-600 transition truncate">${escapeHtml(config.title)}</p>
-                                    ${config.description ? `<p class="text-xs text-gray-500 mt-1 truncate">${escapeHtml(config.description)}</p>` : ""}
+                                    <p class="font-bold text-gray-900 text-sm group-hover:text-emerald-600 transition truncate">${sanitizeHTML(config.title)}</p>
+                                    ${config.description ? `<p class="text-xs text-gray-500 mt-1 truncate">${sanitizeHTML(config.description)}</p>` : ""}
                                     <div class="flex gap-2 items-center mt-2 text-xs text-gray-600">
-                                        <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || "بدون مادة")}</span>
+                                        <span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${sanitizeHTML(config.subject || "بدون مادة")}</span>
                                         <span class="bg-gray-100 px-2 py-1 rounded text-gray-700 font-medium"><i class="far fa-clock"></i> ${config.timeLimit / 60} د</span>
                                     </div>
                                     <div class="mt-2 flex items-center gap-2 text-xs" data-tree-action="stop-propagation">
                                         <span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 font-bold">رابط</span>
                                         <div class="flex-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 truncate" dir="ltr">
-                                            ${escapeHtml(shareUrl)}
+                                            ${sanitizeHTML(shareUrl)}
                                         </div>
-                                        <button class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition" data-tree-action="copy-quiz-link" data-tree-value="${escapeHtml(String(config.id))}">
+                                        <button class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition" data-tree-action="copy-quiz-link" data-tree-value="${sanitizeHTML(String(config.id))}">
                                             نسخ
                                         </button>
                                     </div>
@@ -446,12 +446,12 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
                             <div class="group mb-2">
                                 <div data-tree-action="download-note" data-tree-value="${safeLink}" class="p-3 bg-white rounded-3xl border border-gray-200 shadow-md hover:shadow-lg hover:border-rose-300 transition cursor-pointer">
                                     <div class="flex justify-between items-start">
-                                        <p class="font-bold text-gray-900 text-sm group-hover:text-rose-600 transition truncate pr-2">${escapeHtml(config.title)}</p>
+                                        <p class="font-bold text-gray-900 text-sm group-hover:text-rose-600 transition truncate pr-2">${sanitizeHTML(config.title)}</p>
                                         <i class="bi ${iconClass} text-lg"></i>
                                     </div>
-                                    ${config.description ? `<p class="text-xs text-gray-500 mt-1 truncate">${escapeHtml(config.description)}</p>` : ""}
+                                    ${config.description ? `<p class="text-xs text-gray-500 mt-1 truncate">${sanitizeHTML(config.description)}</p>` : ""}
                                     <div class="flex gap-2 items-center mt-2 text-xs text-gray-600">
-                                        <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${escapeHtml(config.subject || "بدون مادة")}</span>
+                                        <span class="bg-rose-100 text-rose-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">${sanitizeHTML(config.subject || "بدون مادة")}</span>
                                         <span class="bg-rose-100 px-2 py-1 rounded text-rose-700 font-bold hover:bg-rose-200 transition">تحميل مباشر <i class="fas fa-download ml-1"></i></span>
                                     </div>
                                 </div>
@@ -526,7 +526,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
   years.forEach((year) => {
     html += `
             <div id="edit-year-${year}" class="mb-2">
-                <button data-tree-action="toggle-node" data-tree-value="edit-content-year-${year}" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-white shadow-sm border border-gray-100 p-3 rounded-2xl hover:bg-gray-50 transition">
+                <button data-tree-action="toggle-node" data-tree-value="edit-content-year-${year}" aria-expanded="false" aria-controls="edit-content-year-${year}" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-white shadow-sm border border-gray-100 p-3 rounded-2xl hover:bg-gray-50 transition">
                     <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
                     <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
@@ -540,7 +540,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
 
       html += `
                 <div id="edit-month-${monthId}" class="mb-2">
-                    <button data-tree-action="toggle-node" data-tree-value="edit-content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
+                    <button data-tree-action="toggle-node" data-tree-value="edit-content-month-${monthId}" aria-expanded="false" aria-controls="edit-content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
                         <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
                         <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
                     </button>
@@ -561,21 +561,21 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                                         hover:shadow-md hover:border-emerald-400 transition cursor-pointer">
                                 <div class="flex justify-between items-center">
                                     <p class="font-bold text-gray-800 text-sm group-hover:text-emerald-600 transition truncate">
-                                        ${escapeHtml(config.title)}
+                                        ${sanitizeHTML(config.title)}
                                     </p>
                                     <i class="fas fa-pen text-emerald-200 group-hover:text-emerald-500 transition ml-2 flex-shrink-0"></i>
                                 </div>
                                 <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
                                     <span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
-                                        ${escapeHtml(config.subject || "بدون مادة")}
+                                        ${sanitizeHTML(config.subject || "بدون مادة")}
                                     </span>
                                 </div>
                                 <div class="mt-2 flex items-center gap-2 text-xs" data-tree-action="stop-propagation">
                                     <span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 font-bold">رابط</span>
                                     <div class="flex-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 truncate" dir="ltr">
-                                        ${escapeHtml(shareUrl)}
+                                        ${sanitizeHTML(shareUrl)}
                                     </div>
-                                    <button class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition" data-tree-action="copy-quiz-link" data-tree-value="${escapeHtml(String(config.id))}">
+                                    <button class="px-2.5 py-1 rounded-md bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition" data-tree-action="copy-quiz-link" data-tree-value="${sanitizeHTML(String(config.id))}">
                                         نسخ
                                     </button>
                                 </div>
@@ -585,7 +585,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                             ${
                               state.isAdmin
                                 ? `
-                                <button data-tree-action="delete-exam-edit" data-tree-value="${escapeHtml(config.id)}"
+                                <button data-tree-action="delete-exam-edit" data-tree-value="${sanitizeHTML(config.id)}"
                                     class="flex-shrink-0 w-9 h-9 flex items-center justify-center
                                            bg-red-50 hover:bg-red-500 text-red-500 hover:text-white
                                      rounded-2xl border border-red-100 hover:border-red-500
@@ -608,13 +608,13 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                                         hover:shadow-md hover:border-rose-400 transition cursor-pointer">
                                 <div class="flex justify-between items-center">
                                     <p class="font-bold text-gray-800 text-sm group-hover:text-rose-600 transition truncate">
-                                        ${escapeHtml(config.title)}
+                                        ${sanitizeHTML(config.title)}
                                     </p>
                                     <i class="fas fa-pen text-rose-200 group-hover:text-rose-500 transition ml-2 flex-shrink-0"></i>
                                 </div>
                                 <div class="flex gap-2 items-center mt-2 text-xs text-gray-500">
                                     <span class="bg-rose-50 text-rose-700 px-2 py-1 rounded-md font-bold truncate max-w-[100px]">
-                                        ${escapeHtml(config.subject || "بدون مادة")}
+                                        ${sanitizeHTML(config.subject || "بدون مادة")}
                                     </span>
                                 </div>
                             </div>
@@ -623,7 +623,7 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
                             ${
                               state.isAdmin
                                 ? `
-                                <button data-tree-action="delete-note-edit" data-tree-value="${escapeHtml(config.id)}"
+                                <button data-tree-action="delete-note-edit" data-tree-value="${sanitizeHTML(config.id)}"
                                     class="flex-shrink-0 w-9 h-9 flex items-center justify-center
                                            bg-red-50 hover:bg-red-500 text-red-500 hover:text-white
                                      rounded-2xl border border-red-100 hover:border-red-500

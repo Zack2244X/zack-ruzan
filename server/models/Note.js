@@ -65,6 +65,7 @@ const Note = sequelize.define(
     tableName: "notes",
     timestamps: true,
     paranoid: true,
+    indexes: [{ fields: ["subject"] }, { fields: ["createdAt"] }],
   },
 );
 

@@ -23,6 +23,7 @@ function getClientDeviceId() {
 import state from "./state.js";
 import {
   escapeHtml,
+  sanitizeHTML,
   showAlert,
   showConfirm,
   formatTime,
@@ -801,13 +802,13 @@ export function renderQuestion() {
   const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
 
   currentQuestionNumberEl.textContent = state.currentQuestionIndex + 1;
-  questionTextEl.innerHTML = `<span class="quiz-question-gradient">${state.currentQuestionIndex + 1}. ${escapeHtml(currentQ.question)}</span>`;
-  const safeHint = escapeHtml(currentQ.hint || "").trim();
+  questionTextEl.innerHTML = `<span class="quiz-question-gradient">${state.currentQuestionIndex + 1}. ${sanitizeHTML(currentQ.question)}</span>`;
+  const safeHint = sanitizeHTML(currentQ.hint || "").trim();
   if (safeHint) {
     questionHintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${safeHint}`;
     questionHintEl.classList.remove("hidden");
   } else {
-    questionHintEl.innerHTML = "";
+    questionHintEl.textContent = "";
     questionHintEl.classList.add("hidden");
   }
 
@@ -1217,10 +1218,10 @@ function renderReviewQuestion() {
   document.getElementById("current-question-number").textContent =
     state.currentQuestionIndex + 1;
   document.getElementById("question-text").innerHTML =
-    `<span class="quiz-question-gradient">${state.currentQuestionIndex + 1}. ${escapeHtml(currentQ.question)}</span>`;
+    `<span class="quiz-question-gradient">${state.currentQuestionIndex + 1}. ${sanitizeHTML(currentQ.question)}</span>`;
   const hintEl = document.getElementById("question-hint");
   if (currentQ.hint) {
-    hintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${escapeHtml(currentQ.hint)}`;
+    hintEl.innerHTML = `<span class="font-bold">تلميح:</span> ${sanitizeHTML(currentQ.hint)}`;
     hintEl.classList.remove("hidden");
   } else {
     hintEl.classList.add("hidden");

@@ -395,7 +395,7 @@ export async function handleStudentGoogleLogin(
         window.openPendingQuizIfAny();
 
       // Start automatic data polling (refresh every 30 seconds)
-      startDataPolling(30000);
+      startDataPolling(180000);
     });
   } catch (err) {
     loadingEl.classList.add("hidden");

@@ -329,25 +329,31 @@ export async function loadDataFromServer() {
   }
   console.log("[loadData] بدء تحميل البيانات من السيرفر...");
   try {
-    const [quizzesRes, notesRes, leaderboardRemote, scoresRemote] =
-      await Promise.all([
-        apiCall("GET", "/api/quizzes").catch((e) => {
-          console.error("[loadData] ✗ فشل تحميل الامتحانات:", e.message);
-          return { data: [] };
-        }),
-        apiCall("GET", "/api/notes").catch((e) => {
-          console.error("[loadData] ✗ فشل تحميل المذكرات:", e.message);
-          return { data: [] };
-        }),
-        fetchLeaderboardFromServer().catch((e) => {
-          console.error("[loadData] ✗ فشل تحميل لوحة الشرف:", e.message);
-          return [];
-        }),
-        fetchScoresFromServer().catch((e) => {
-          console.error("[loadData] ✗ فشل تحميل الدرجات:", e.message);
-          return [];
-        }),
-      ]);
+    // Staggered Requests - توجيه الطلبات بفارق زمني لتقليل حمل السيرفر اللحظي (Spike)
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    
+    const quizzesRes = await apiCall("GET", "/api/quizzes").catch((e) => {
+      console.error("[loadData] ✗ فشل تحميل الامتحانات:", e.message);
+      return { data: [] };
+    });
+    await delay(300);
+    
+    const notesRes = await apiCall("GET", "/api/notes").catch((e) => {
+      console.error("[loadData] ✗ فشل تحميل المذكرات:", e.message);
+      return { data: [] };
+    });
+    await delay(300);
+    
+    const leaderboardRemote = await fetchLeaderboardFromServer().catch((e) => {
+      console.error("[loadData] ✗ فشل تحميل لوحة الشرف:", e.message);
+      return [];
+    });
+    await delay(300);
+    
+    const scoresRemote = await fetchScoresFromServer().catch((e) => {
+      console.error("[loadData] ✗ فشل تحميل الدرجات:", e.message);
+      return [];
+    });
 
     const quizzes = Array.isArray(quizzesRes)
       ? quizzesRes
@@ -417,17 +423,33 @@ let dataPollingTimer = null;
  * @example
  * startDataPolling(30000); // تحديث كل 30 ثانية
  */
-export function startDataPolling(interval = 30000) {
+export function startDataPolling(interval = 180000) { // زادت المدة لـ 3 دقائق כحد أدنى
   logFunctionStatus("startDataPolling", false);
 
-  // إيقاف أي polling موجود بالفعل
-  if (dataPollingTimer) {
-    clearInterval(dataPollingTimer);
+  if (window.dataPollingTimer) {
+    clearInterval(window.dataPollingTimer);
+  }
+
+  // دعم الـ Visibility API لمنع Polling والخلفية غير نشطة
+  if (!window._visibilityListenerAdded) {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        console.log("[polling] 👁 عاد المستخدم متاحاً، سيتم التحديث قريباً...");
+        // لا نريد أن نغرق السيرفر بمجرد العودة، نعتمد على استئناف الـ interval مع تأخير بسيط
+        setTimeout(() => loadDataFromServer().catch(()=>console.warn("تخطى")), 500);
+        startDataPolling(interval); // استئناف
+      } else {
+        console.log("[polling] 💤 تبويب في الخلفية، إيقاف التحديث...");
+        if (window.dataPollingTimer) clearInterval(window.dataPollingTimer);
+      }
+    });
+    window._visibilityListenerAdded = true;
   }
 
   console.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
 
-  dataPollingTimer = setInterval(() => {
+  window.dataPollingTimer = setInterval(() => {
+    if (document.visibilityState === "hidden") return; // خط دفاع إضافي
     console.log("[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...");
     loadDataFromServer().catch((err) => {
       console.warn("[polling] ⚠️ فشل جلب البيانات:", err.message);

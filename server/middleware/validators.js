@@ -184,7 +184,7 @@ const validateRenameSubject = [
  * @type {Array<import('express').RequestHandler>}
  */
 const validateSubmitScore = [
-  body("quizId").notEmpty().withMessage("معرّف الامتحان مطلوب."),
+  body("quizId").isInt({ min: 1 }).withMessage("معرّف الامتحان يجب أن يكون رقماً صحيحاً موجباً."),
   body("answers").isArray({ min: 1 }).withMessage("الإجابات مطلوبة."),
   body("timeTaken").optional().isInt({ min: 0 }),
   validate,

@@ -1260,6 +1260,10 @@
     </style>
   </head>
   <body class="p-4 sm:p-8">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-lg z-50 shadow-xl transition" tabindex="0">
+      تخطي إلى المحتوى
+    </a>
+    <main id="main-content" role="main">
     <!-- حماية من وميض (Flicker) صفحة تسجيل الدخول أثناء معالجة تسجيل الدخول أو عند وجود جلسة سابقة -->
     <script>
       (function () {
@@ -1289,7 +1293,7 @@
       aria-label="تبديل الثيم"
       class="icon-btn"
     >
-      <i class="fas fa-moon"></i>
+      <i class="fas fa-moon" aria-hidden="true"></i>
     </button>
 
     <!-- iOS Bottom Nav -->
@@ -1302,7 +1306,7 @@
         id="dock-home"
         class="dock-btn active flex flex-col items-center gap-1 w-16 p-1.5 text-blue-600 transition-all"
       >
-        <i class="fas fa-home text-xl dock-icon"></i>
+        <i class="fas fa-home text-xl dock-icon" aria-hidden="true"></i>
         <span class="text-[10px] font-bold">الرئيسية</span>
       </button>
       <button
@@ -1310,7 +1314,7 @@
         id="dock-exams"
         class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-600 hover:text-blue-500 transition-all"
       >
-        <i class="bi bi-lightning-charge-fill text-xl dock-icon"></i>
+        <i class="bi bi-lightning-charge-fill text-xl dock-icon" aria-hidden="true"></i>
         <span class="text-[10px] font-bold">امتحانات</span>
       </button>
       <button
@@ -1318,7 +1322,7 @@
         id="dock-notes"
         class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-600 hover:text-orange-500 transition-all"
       >
-        <i class="bi bi-file-earmark-pdf-fill text-xl dock-icon"></i>
+        <i class="bi bi-file-earmark-pdf-fill text-xl dock-icon" aria-hidden="true"></i>
         <span class="text-[10px] font-bold">مذكرات</span>
       </button>
       <button
@@ -1326,7 +1330,7 @@
         id="dock-settings"
         class="dock-btn flex flex-col items-center gap-1 w-16 p-1.5 text-gray-600 hover:text-purple-500 transition-all"
       >
-        <i class="fas fa-cog text-xl dock-icon"></i>
+        <i class="fas fa-cog text-xl dock-icon" aria-hidden="true"></i>
         <span class="text-[10px] font-bold">إدارة</span>
       </button>
     </nav>
@@ -1340,7 +1344,7 @@
         id="tree-overlay"
         class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm bottom-sheet-overlay"
         data-inline-onclick="closeBottomSheet()"
-      ></div>
+       role="button" tabindex="0"></div>
       <section
         id="tree-content"
         data-lenis-prevent-touch
@@ -1352,7 +1356,7 @@
           <span
             class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm"
           >
-            <i id="sheet-icon" class="bi bi-lightning-charge-fill text-lg"></i>
+            <i id="sheet-icon" class="bi bi-lightning-charge-fill text-lg" aria-hidden="true"></i>
           </span>
           <button
             data-inline-onclick="closeBottomSheet()"
@@ -1384,7 +1388,7 @@
         id="notes-overlay"
         class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm bottom-sheet-overlay"
         data-inline-onclick="closeBottomSheet()"
-      ></div>
+       role="button" tabindex="0"></div>
       <section
         id="notes-content"
         data-lenis-prevent-touch
@@ -1399,7 +1403,7 @@
             <i
               id="notes-sheet-icon"
               class="bi bi-file-earmark-pdf-fill text-lg"
-            ></i>
+             aria-hidden="true"></i>
           </span>
           <button
             data-inline-onclick="closeBottomSheet()"
@@ -1431,7 +1435,7 @@
         id="admin-overlay"
         class="absolute inset-0 bg-black/40 backdrop-blur-sm bottom-sheet-overlay"
         data-inline-onclick="closeAdminSheet()"
-      ></div>
+       role="button" tabindex="0"></div>
       <div
         id="admin-content"
         data-lenis-prevent-touch
@@ -1440,11 +1444,11 @@
         <div
           class="w-full flex justify-center mb-4 cursor-pointer sheet-handle"
           data-inline-onclick="closeAdminSheet()"
-        >
+         role="button" tabindex="0">
           <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
         </div>
         <h2 class="text-xl font-black text-purple-700 mb-6 flex items-center">
-          <i class="fas fa-shield-alt ml-2 text-2xl"></i> لوحة تحكم المعلم
+          <i class="fas fa-shield-alt ml-2 text-2xl" aria-hidden="true"></i> لوحة تحكم المعلم
         </h2>
         <div class="space-y-3">
           <button
@@ -1453,7 +1457,7 @@
           >
             <span
               class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center ml-4"
-              ><i class="fas fa-chart-line"></i
+              ><i class="fas fa-chart-line" aria-hidden="true"></i
             ></span>
             متابعة الدرجات
           </button>
@@ -1463,7 +1467,7 @@
           >
             <span
               class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center ml-4"
-              ><i class="fas fa-plus"></i
+              ><i class="fas fa-plus" aria-hidden="true"></i
             ></span>
             إضافة امتحان جديد
           </button>
@@ -1473,7 +1477,7 @@
           >
             <span
               class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center ml-4"
-              ><i class="fas fa-file-pdf"></i
+              ><i class="fas fa-file-pdf" aria-hidden="true"></i
             ></span>
             إضافة مذكرة / ملف
           </button>
@@ -1483,7 +1487,7 @@
           >
             <span
               class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center ml-4"
-              ><i class="fas fa-pen"></i
+              ><i class="fas fa-pen" aria-hidden="true"></i
             ></span>
             تعديل المحتوى
           </button>
@@ -1493,7 +1497,7 @@
           >
             <span
               class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center ml-4"
-              ><i class="fas fa-users"></i
+              ><i class="fas fa-users" aria-hidden="true"></i
             ></span>
             إدارة الحسابات
           </button>
@@ -1503,7 +1507,7 @@
           >
             <span
               class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center ml-4"
-              ><i class="fas fa-sign-out-alt"></i
+              ><i class="fas fa-sign-out-alt" aria-hidden="true"></i
             ></span>
             تسجيل الخروج
           </button>
@@ -1521,7 +1525,7 @@
         <div
           class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
         >
-          <i class="fas fa-lock"></i>
+          <i class="fas fa-lock" aria-hidden="true"></i>
         </div>
         <h2 class="text-2xl font-extrabold text-gray-800 mb-2">
           منطقة الإدارة
@@ -1533,7 +1537,7 @@
           data-inline-onclick="startGoogleRedirectLogin('admin')"
           class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition mb-4"
         >
-          <i class="fab fa-google ml-2"></i> تسجيل الدخول باستخدام Google
+          <i class="fab fa-google ml-2" aria-hidden="true"></i> تسجيل الدخول باستخدام Google
         </button>
         <p
           id="admin-auth-error"
@@ -1543,7 +1547,7 @@
           id="admin-auth-loading"
           class="text-blue-500 text-sm font-bold hidden mb-4"
         >
-          <i class="fas fa-spinner fa-spin ml-2"></i> جاري التحقق...
+          <i class="fas fa-spinner fa-spin ml-2" aria-hidden="true"></i> جاري التحقق...
         </p>
         <button
           data-inline-onclick="closeAdminAuth()"
@@ -1568,7 +1572,7 @@
             <h2
               class="text-2xl font-extrabold text-orange-700 flex items-center"
             >
-              <i class="fas fa-file-upload ml-2"></i> إضافة ملف / مذكرة
+              <i class="fas fa-file-upload ml-2" aria-hidden="true"></i> إضافة ملف / مذكرة
             </h2>
             <p class="text-gray-500 text-sm mt-1">
               اربط ملفات OneDrive أو Drive لتظهر للطلاب
@@ -1659,7 +1663,7 @@
             data-inline-onclick="saveNote()"
             class="px-8 py-3 bg-orange-600 text-white font-bold rounded-xl shadow-lg hover:bg-orange-700 transition flex items-center"
           >
-            <i class="fas fa-save ml-2"></i> حفظ في السجل
+            <i class="fas fa-save ml-2" aria-hidden="true"></i> حفظ في السجل
           </button>
         </div>
       </div>
@@ -1679,7 +1683,7 @@
             <h2
               class="text-2xl font-extrabold text-green-700 flex items-center"
             >
-              <i class="fas fa-plus-circle ml-2"></i> إنشاء امتحان جديد
+              <i class="fas fa-plus-circle ml-2" aria-hidden="true"></i> إنشاء امتحان جديد
             </h2>
             <p id="builder-subtitle" class="text-gray-500 text-sm mt-1">
               الخطوة 1: الإعدادات الأساسية
@@ -1787,7 +1791,7 @@
                     data-inline-onclick="triggerImportExamFile()"
                     class="px-4 py-2 bg-green-600 text-white font-bold rounded-lg shadow hover:bg-green-700 transition flex items-center gap-2"
                   >
-                    <i class="fas fa-file-import"></i> استيراد امتحان
+                    <i class="fas fa-file-import" aria-hidden="true"></i> استيراد امتحان
                   </button>
                   <button
                     data-inline-onclick="reshuffleImportedAnswers()"
@@ -1808,7 +1812,7 @@
           >
             <div class="flex justify-between items-center mb-4">
               <h3 class="font-bold text-gray-700 text-lg">
-                <i class="fas fa-edit text-blue-500 ml-1"></i> محرر الأسئلة
+                <i class="fas fa-edit text-blue-500 ml-1" aria-hidden="true"></i> محرر الأسئلة
               </h3>
               <div
                 class="text-sm font-bold text-blue-700 bg-blue-100 px-4 py-2 rounded-xl shadow-sm border border-blue-200"
@@ -1837,7 +1841,7 @@
               <h4
                 class="text-sm font-extrabold text-gray-500 mb-3 flex items-center"
               >
-                <i class="fas fa-check-circle text-green-500 ml-2"></i> الخيارات
+                <i class="fas fa-check-circle text-green-500 ml-2" aria-hidden="true"></i> الخيارات
                 (حدد الدائرة للإجابة الصحيحة):
               </h4>
               <div
@@ -1848,7 +1852,7 @@
                 data-inline-onclick="addBuilderOption()"
                 class="mt-auto w-full py-3 border-2 border-dashed border-blue-300 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition flex items-center justify-center"
               >
-                <i class="fas fa-plus ml-2"></i> إضافة خيار آخر
+                <i class="fas fa-plus ml-2" aria-hidden="true"></i> إضافة خيار آخر
               </button>
             </div>
             <div class="flex justify-between items-center mt-6">
@@ -1857,20 +1861,20 @@
                 id="b-prev-btn"
                 class="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 disabled:opacity-50 transition"
               >
-                <i class="fas fa-arrow-right ml-2"></i> السابق
+                <i class="fas fa-arrow-right ml-2" aria-hidden="true"></i> السابق
               </button>
               <button
                 data-inline-onclick="addBuilderQuestion()"
                 class="px-6 py-3 bg-purple-100 text-purple-700 font-extrabold rounded-xl hover:bg-purple-200 border border-purple-200 shadow-sm transition"
               >
-                <i class="fas fa-plus-circle ml-2"></i> سؤال جديد
+                <i class="fas fa-plus-circle ml-2" aria-hidden="true"></i> سؤال جديد
               </button>
               <button
                 data-inline-onclick="navBuilderQuestion(1)"
                 id="b-next-btn"
                 class="px-6 py-3 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 disabled:opacity-50 transition"
               >
-                التالي <i class="fas fa-arrow-left mr-2"></i>
+                التالي <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>
               </button>
             </div>
           </div>
@@ -1881,14 +1885,14 @@
             data-inline-onclick="goToBuilderStep2()"
             class="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition flex items-center"
           >
-            التالي: كتابة الأسئلة <i class="fas fa-arrow-left mr-2"></i>
+            التالي: كتابة الأسئلة <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>
           </button>
           <button
             id="btn-save-final"
             data-inline-onclick="saveBuiltQuiz()"
             class="hidden px-8 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg hover:bg-green-700 transition flex items-center"
           >
-            <i class="fas fa-save ml-2"></i> حفظ الامتحان في السجل
+            <i class="fas fa-save ml-2" aria-hidden="true"></i> حفظ الامتحان في السجل
           </button>
         </div>
       </div>
@@ -2161,7 +2165,7 @@
             aria-live="polite"
             aria-atomic="true"
           >
-            <i class="fas fa-spinner fa-spin ml-2"></i> جاري تسجيل الدخول...
+            <i class="fas fa-spinner fa-spin ml-2" aria-hidden="true"></i> جاري تسجيل الدخول...
           </p>
 
           <p class="lamp-hint">
@@ -2242,7 +2246,7 @@
           >
             <span
               class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600 flex items-center justify-center ml-2 shadow-inner text-sm"
-              ><i class="fas fa-bolt"></i
+              ><i class="fas fa-bolt" aria-hidden="true"></i
             ></span>
             أحدث الامتحانات
           </h2>
@@ -2262,7 +2266,7 @@
           >
             <span
               class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-100 to-orange-200 text-orange-600 flex items-center justify-center ml-2 shadow-inner text-sm"
-              ><i class="fas fa-file-pdf"></i
+              ><i class="fas fa-file-pdf" aria-hidden="true"></i
             ></span>
             أحدث المذكرات والملفات
           </h2>
@@ -2283,7 +2287,7 @@
             class="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-200"
           ></div>
           <h3 class="text-xl font-black text-gray-800 mb-6 flex items-center">
-            <i class="fas fa-trophy text-yellow-500 ml-3 text-2xl"></i> لوحة
+            <i class="fas fa-trophy text-yellow-500 ml-3 text-2xl" aria-hidden="true"></i> لوحة
             الشرف
           </h3>
           <div
@@ -2485,7 +2489,7 @@
             <h2
               class="text-2xl font-extrabold text-purple-700 flex items-center"
             >
-              <i class="fas fa-chart-line ml-2"></i> متابعة أداء الطلاب
+              <i class="fas fa-chart-line ml-2" aria-hidden="true"></i> متابعة أداء الطلاب
             </h2>
             <p class="text-gray-500 text-sm mt-1">
               تحليل شامل لنتائج الامتحانات
@@ -2497,7 +2501,7 @@
               title="لوحة الشرف والإحصائيات"
               class="w-10 h-10 bg-white rounded-full border border-gray-200 text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition shadow-sm flex items-center justify-center text-xl"
             >
-              <i class="fas fa-trophy"></i>
+              <i class="fas fa-trophy" aria-hidden="true"></i>
             </button>
             <button
               data-inline-onclick="closeGradesModal()"
@@ -2529,7 +2533,7 @@
             <h2
               class="text-2xl font-extrabold text-yellow-700 flex items-center"
             >
-              <i class="fas fa-award ml-2"></i> لوحة الشرف والتميز
+              <i class="fas fa-award ml-2" aria-hidden="true"></i> لوحة الشرف والتميز
             </h2>
             <p class="text-gray-500 text-sm mt-1">أبرز الطلاب والمتميزين</p>
           </div>
@@ -2558,20 +2562,20 @@
         <div
           class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"
         >
-          <i class="fas fa-user-cog"></i>
+          <i class="fas fa-user-cog" aria-hidden="true"></i>
         </div>
         <h2 class="text-xl font-extrabold text-gray-800 mb-6">الإعدادات</h2>
         <button
           data-inline-onclick="closeStudentMenu(); openAdminAuthOrPanel();"
           class="w-full py-3 bg-purple-500 text-white font-bold rounded-xl hover:bg-purple-600 transition mb-3 flex items-center justify-center gap-2"
         >
-          <i class="fas fa-shield-alt"></i> دخول كمعلم
+          <i class="fas fa-shield-alt" aria-hidden="true"></i> دخول كمعلم
         </button>
         <button
           data-inline-onclick="logoutUser()"
           class="w-full py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition mb-3 flex items-center justify-center gap-2"
         >
-          <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+          <i class="fas fa-sign-out-alt" aria-hidden="true"></i> تسجيل الخروج
         </button>
         <button
           data-inline-onclick="closeStudentMenu()"
@@ -2594,7 +2598,7 @@
         >
           <div>
             <h2 class="text-2xl font-extrabold text-blue-700 flex items-center">
-              <i class="fas fa-edit ml-2"></i> إدارة وتعديل المحتوى
+              <i class="fas fa-edit ml-2" aria-hidden="true"></i> إدارة وتعديل المحتوى
             </h2>
             <p class="text-gray-500 text-sm mt-1">
               اختر القسم ثم اضغط على الكارت لتعديله
@@ -2614,14 +2618,14 @@
             data-inline-onclick="switchEditTab('exams')"
             class="flex-1 py-4 font-bold text-blue-600 border-b-4 border-blue-600 bg-blue-50/50 transition flex justify-center items-center gap-2"
           >
-            <i class="fas fa-file-alt"></i> الامتحانات
+            <i class="fas fa-file-alt" aria-hidden="true"></i> الامتحانات
           </button>
           <button
             id="edit-tab-notes"
             data-inline-onclick="switchEditTab('notes')"
             class="flex-1 py-4 font-bold text-gray-500 border-b-4 border-transparent hover:bg-gray-100 transition flex justify-center items-center gap-2"
           >
-            <i class="fas fa-file-pdf"></i> المذكرات والمراجعات
+            <i class="fas fa-file-pdf" aria-hidden="true"></i> المذكرات والمراجعات
           </button>
         </div>
         <div
@@ -2647,7 +2651,7 @@
         <div
           class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm"
         >
-          <i class="fas fa-trash-alt"></i>
+          <i class="fas fa-trash-alt" aria-hidden="true"></i>
         </div>
         <h2 class="text-2xl font-extrabold text-gray-800 mb-2">تأكيد الحذف</h2>
         <p class="text-gray-500 mb-8 font-medium" id="delete-subject-msg">
@@ -2658,13 +2662,13 @@
             data-inline-onclick="closeDeleteModal()"
             class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-red-50 hover:text-red-600 transition flex justify-center items-center gap-2"
           >
-            <i class="fas fa-times text-lg"></i> إلغاء
+            <i class="fas fa-times text-lg" aria-hidden="true"></i> إلغاء
           </button>
           <button
             data-inline-onclick="executeDeleteSubject()"
             class="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition flex justify-center items-center gap-2"
           >
-            <i class="fas fa-check text-lg"></i> متأكد
+            <i class="fas fa-check text-lg" aria-hidden="true"></i> متأكد
           </button>
         </div>
       </div>
@@ -2680,7 +2684,7 @@
         <div
           class="w-16 h-16 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm"
         >
-          <i class="fas fa-pen"></i>
+          <i class="fas fa-pen" aria-hidden="true"></i>
         </div>
         <h2 class="text-2xl font-extrabold text-gray-800 mb-2">
           تعديل اسم المجلد
@@ -2688,9 +2692,7 @@
         <p class="text-gray-500 mb-6 text-sm">
           أدخل الاسم الجديد للمادة لتحديث جميع الامتحانات:
         </p>
-        <input
-          type="text"
-          id="rename-subject-input"
+        <input type="text" id="rename-subject-input" aria-label="اسم المادة الجديد"
           class="w-full p-4 border-2 border-gray-200 rounded-xl mb-6 text-center text-xl font-bold text-gray-800 focus:border-purple-500 outline-none transition"
           placeholder="اكتب الاسم الجديد هنا..."
         />
@@ -2699,13 +2701,13 @@
             data-inline-onclick="closeRenameModal()"
             class="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-red-50 hover:text-red-600 transition flex justify-center items-center gap-2"
           >
-            <i class="fas fa-times text-lg"></i> إلغاء
+            <i class="fas fa-times text-lg" aria-hidden="true"></i> إلغاء
           </button>
           <button
             data-inline-onclick="executeRenameSubject()"
             class="flex-1 py-3 bg-purple-500 text-white font-bold rounded-xl shadow-md hover:bg-purple-600 transition flex justify-center items-center gap-2"
           >
-            <i class="fas fa-check text-lg"></i> حفظ
+            <i class="fas fa-check text-lg" aria-hidden="true"></i> حفظ
           </button>
         </div>
       </div>
@@ -2777,7 +2779,7 @@
             <h2
               class="text-xl sm:text-2xl font-extrabold text-indigo-700 flex items-center"
             >
-              <i class="fas fa-users ml-2"></i> إدارة الحسابات
+              <i class="fas fa-users ml-2" aria-hidden="true"></i> إدارة الحسابات
             </h2>
             <p class="text-xs sm:text-sm text-gray-500 mt-1">
               عرض جميع الحسابات المسجلة وآخر بيانات الجهاز والدخول.
@@ -2816,9 +2818,7 @@
               المحظورون
             </button>
             <div class="mr-auto"></div>
-            <input
-              id="accounts-management-search"
-              type="search"
+            <input id="accounts-management-search" type="search" aria-label="بحث في الحسابات"
               placeholder="بحث بالبريد، الاسم، IP، Device..."
               class="w-full sm:w-80 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
@@ -3658,5 +3658,6 @@
         console.debug = noop;
       }
     </script>
+  </main>
   </body>
 </html>

@@ -1,4 +1,4 @@
-if (process.env.NODE_ENV === 'production') {
+if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') {
   console.log = () => {};
   console.warn = () => {};
 }
@@ -85,7 +85,9 @@ initDatadogRumDeferred();
 // === الوحدات (Modules) ===
 import state from "./modules/state.js";
 import {
-  escapeHtml,
+  addManagedListener,
+  cleanupListeners,
+  sanitizeHTML,
   showAlert,
   showConfirm,
   showLoading,
@@ -386,7 +388,7 @@ function showGlobalCrashFallback(message) {
   panel.innerHTML = `
         <div style="max-width:520px;width:100%;background:#fff;border-radius:16px;padding:20px;text-align:center;box-shadow:0 20px 45px rgba(0,0,0,.25);font-family:Cairo,system-ui,sans-serif;">
             <h2 style="margin:0 0 8px;color:#b91c1c;">حدث خطأ غير متوقع</h2>
-            <p style="margin:0 0 16px;color:#334155;line-height:1.8;">${escapeHtml(message || "تعذر إكمال العملية. يمكنك إعادة تحميل الصفحة.")}</p>
+            <p style="margin:0 0 16px;color:#334155;line-height:1.8;">${sanitizeHTML(message || "تعذر إكمال العملية. يمكنك إعادة تحميل الصفحة.")}</p>
             <button id="global-crash-reload" style="background:#1d4ed8;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;">إعادة تحميل الصفحة</button>
         </div>
     `;
@@ -642,7 +644,7 @@ async function loadApp() {
       document.getElementById("ios-bottom-nav").classList.remove("hidden");
 
       const isGuest = state.currentUser.role === "guest";
-      const safeName = escapeHtml(
+      const safeName = sanitizeHTML(
         state.currentUser.fname || state.currentUser.fullName || "صديقنا",
       );
       document.getElementById("welcome-msg").innerText = isGuest
@@ -794,7 +796,7 @@ Object.assign(window, {
   copyQuizLink,
 
   // Helpers
-  escapeHtml,
+  sanitizeHTML,
   showAlert,
   showConfirm,
   showLoading,

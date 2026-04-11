@@ -1,3 +1,33 @@
+
+// ============================================
+// نظام إدارة دورة حياة الأحداث وتجنب تسرب الذاكرة (Lifecycle Management)
+// ============================================
+const _eventRegistry = new Map();
+
+/**
+ * إضافة مستمع حدث مسجل يمكن تنظيفه لاحقاً بناءً على مجموعة (Group)
+ */
+export function addManagedListener(group, target, type, listener, options = false) {
+    if (!_eventRegistry.has(group)) {
+        _eventRegistry.set(group, []);
+    }
+    target.addEventListener(type, listener, options);
+    _eventRegistry.get(group).push({ target, type, listener, options });
+}
+
+/**
+ * تنظيف جميع الأحداث المرتبطة بمجموعة معينة لإخلاء الذاكرة
+ */
+export function cleanupListeners(group) {
+    if (_eventRegistry.has(group)) {
+        const listeners = _eventRegistry.get(group);
+        listeners.forEach(({ target, type, listener, options }) => {
+            target.removeEventListener(type, listener, options);
+        });
+        _eventRegistry.delete(group);
+    }
+}
+
 /**
  * @module navigation
  * @description دوال التنقل، إدارة النوافذ، الثيم، والشريط السفلي
@@ -354,11 +384,8 @@ function bindTreeScrollIndicator() {
   const scroller = getTreeScrollTarget();
   if (!scroller) return;
 
-  if (treeScrollIndicatorBound && treeScrollIndicatorScroller !== scroller) {
-    treeScrollIndicatorScroller.removeEventListener(
-      "scroll",
-      scheduleTreeScrollIndicatorUpdate,
-    );
+  if (treeScrollIndicatorScroller !== scroller) {
+    cleanupListeners("tree-scroll");
     treeScrollIndicatorBound = false;
   }
 
@@ -366,17 +393,13 @@ function bindTreeScrollIndicator() {
 
   if (!treeScrollIndicatorBound) {
     treeScrollIndicatorBound = true;
-    scroller.addEventListener("scroll", scheduleTreeScrollIndicatorUpdate, {
+    addManagedListener("tree-scroll", scroller, "scroll", scheduleTreeScrollIndicatorUpdate, {
       passive: true,
     });
-    window.addEventListener(
-      "resize",
-      () => {
+    addManagedListener("tree-scroll", window, "resize", () => {
         treeScrollIndicatorScroller = getTreeScrollTarget();
         scheduleTreeScrollIndicatorUpdate();
-      },
-      { passive: true },
-    );
+      }, { passive: true });
   }
 
   bindTreeScrollThumbDrag();
@@ -878,6 +901,10 @@ export function navToHome() {
  * @param {Function} renderHistoryTree — دالة رسم الشجرة
  */
 export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
+  // التنظيف عند تغيير الأقسام في تطبيق SPA
+  cleanupListeners("view-navigation");
+  cleanupListeners("tree-scroll");
+
   logFunctionStatus("navToSection", false);
   closeAllOverlays();
   state.currentViewMode = section;
@@ -964,15 +991,95 @@ export function toggleTreeNode(contentId, btn) {
   if (content.classList.contains("hidden")) {
     content.classList.remove("hidden");
     content.classList.add("block");
+    btn.setAttribute("aria-expanded", "true");
     if (icon) {
       icon.classList.add("rotate-180");
     }
   } else {
     content.classList.remove("block");
+    btn.setAttribute("aria-expanded", "false");
     content.classList.add("hidden");
     if (icon) {
       icon.classList.remove("rotate-180");
     }
   }
   scheduleTreeScrollIndicatorUpdate();
+}
+
+
+
+/** Focus Trap Utility for Accessibility */
+let trapListener = null;
+
+export function setupFocusTrap(modalElement) {
+  removeFocusTrap(); // Remove existing
+  if (!modalElement) return;
+
+  const focusableSelectors = [
+    'a[href]', 'area[href]', 'input:not([disabled])', 'select:not([disabled])',
+    'textarea:not([disabled])', 'button:not([disabled])', 'iframe', 'object', 'embed',
+    '[tabindex="0"]', '[contenteditable]'
+  ];
+  
+  const focusableElements = Array.from(modalElement.querySelectorAll(focusableSelectors.join(',')))
+    .filter(el => !el.closest('[aria-hidden="true"]'));
+    
+  if (focusableElements.length === 0) return;
+  
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  firstElement.focus();
+  
+  trapListener = function(e) {
+    if (e.key !== 'Tab') return;
+    if (e.shiftKey) {
+      if (document.activeElement === firstElement) {
+        lastElement.focus();
+        e.preventDefault();
+      }
+    } else {
+      if (document.activeElement === lastElement) {
+        firstElement.focus();
+        e.preventDefault();
+      }
+    }
+  };
+  
+  document.addEventListener('keydown', trapListener);
+}
+
+export function removeFocusTrap() {
+  if (trapListener) {
+    document.removeEventListener('keydown', trapListener);
+    trapListener = null;
+  }
+}
+
+
+
+/** Global Modal Focus Trap Observer */
+function initModalObserver() {
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      if (m.attributeName === 'class') {
+        const target = m.target;
+        if ((target.classList.contains('fixed') && target.classList.contains('inset-0')) || target.id?.includes('modal')) {
+          if (!target.classList.contains('hidden')) {
+            setupFocusTrap(target);
+          } else {
+            removeFocusTrap();
+          }
+        }
+      }
+    });
+  });
+
+  const modals = document.querySelectorAll('.fixed.inset-0, [id*="modal"]');
+  modals.forEach(m => observer.observe(m, { attributes: true }));
+}
+
+// Call on startup
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', initModalObserver);
 }

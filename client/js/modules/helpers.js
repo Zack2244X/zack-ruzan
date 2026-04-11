@@ -8,14 +8,18 @@
  * @param {string} str — النص المدخل
  * @returns {string} النص الآمن
  */
-export function escapeHtml(str) {
-  if (!str) return "";
+export function sanitizeHTML(str) {
+  if (str === null || str === undefined) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+export function escapeHtml(str) {
+  return sanitizeHTML(str);
 }
 
 /**

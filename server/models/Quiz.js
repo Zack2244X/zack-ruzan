@@ -122,7 +122,7 @@ const Quiz = sequelize.define(
     tableName: "quizzes",
     timestamps: true,
     paranoid: true,
-    indexes: [{ unique: true, fields: ["title"] }],
+    indexes: [{ unique: true, fields: ["title"] }, { fields: ["subject"] }, { fields: ["isActive"] }, { fields: ["createdAt"] }],
     hooks: {
       // ✅ Before saving to DB: encrypt answer correctness
       beforeCreate: (quiz) => {
