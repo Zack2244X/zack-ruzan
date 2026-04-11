@@ -134,19 +134,13 @@ export function handleGoogleRedirectToken() {
   // Nonce verification: decode the JWT payload to extract the nonce
   // (Google implicit flow embeds nonce inside the id_token, not as a URL parameter)
   if (expectedNonce) {
-    try {
-      const payload = JSON.parse(
-        atob(idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
-      );
-      if (payload.nonce !== expectedNonce) {
-        showAlert(
-          "❌ فشل التحقق من تسجيل Google (nonce mismatch). حاول مرة أخرى.",
-          "error",
-        );
-        return true;
-      }
-    } catch {
-      showAlert("❌ فشل التحقق من تسجيل Google. حاول مرة أخرى.", "error");
+    const payload = safeParseToken(idToken);
+    if (!payload) {
+      logoutUser().catch(() => {});
+      return true;
+    }
+    if (payload.nonce !== expectedNonce) {
+      showAlert("❌ فشل التحقق من تسجيل Google (nonce mismatch). حاول مرة أخرى.", "error");
       return true;
     }
   }
@@ -319,7 +313,11 @@ export async function handleStudentGoogleLogin(
     let fname = data.user.fname || "";
     let lname = data.user.lname || "";
     if (!fname) {
-      const payload = JSON.parse(atob(response.credential.split(".")[1]));
+      const payload = safeParseToken(response.credential);
+      if (!payload) {
+        logoutUser().catch(() => {});
+        return;
+      }
       const fullName = payload.name || payload.email.split("@")[0];
       const parts = fullName.trim().split(/\s+/);
       fname = parts[0] || "";
