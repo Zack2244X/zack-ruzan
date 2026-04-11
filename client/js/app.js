@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV === 'production') {
+  console.log = () => {};
+  console.warn = () => {};
+}
 /**
  * منصة الاختبارات التفاعلية — app.js (Entry Point)
  * بسم الله الرحمن الرحيم
@@ -5,168 +9,473 @@
  *
  * @description نقطة الدخول الرئيسية — يجمع كل الوحدات ويربطها بالـ DOM والـ window
  */
-'use strict';
+"use strict";
 
 // ✅ === Datadog RUM Monitoring (non-blocking) ===
 function initDatadogRumDeferred() {
-    const isDatadogEnabledByConfig = window.__PUBLIC_CONFIG?.datadogRumEnabled === true;
-    const isLocalRuntime = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const isDatadogEnabledByConfig =
+    window.__PUBLIC_CONFIG?.datadogRumEnabled === true;
+  const isLocalRuntime = ["localhost", "127.0.0.1", "::1"].includes(
+    window.location.hostname,
+  );
 
-    if (!isDatadogEnabledByConfig || isLocalRuntime) {
-        console.log('[Datadog RUM] disabled by config/runtime');
-        return;
-    }
+  if (!isDatadogEnabledByConfig || isLocalRuntime) {
+    console.log("[Datadog RUM] disabled by config/runtime");
+    return;
+  }
 
-    const startRum = () => {
-        const script = document.createElement('script');
-        script.src = 'https://www.datadoghq-browser-agent.com/us5/v6/datadog-rum.js';
-        script.async = true;
+  const startRum = () => {
+    const script = document.createElement("script");
+    script.src =
+      "https://www.datadoghq-browser-agent.com/us5/v6/datadog-rum.js";
+    script.async = true;
 
-        script.onload = () => {
-            try {
-                const ddRum = window.DD_RUM;
-                if (!ddRum || typeof ddRum.init !== 'function') {
-                    console.warn('[Datadog RUM] agent loaded but DD_RUM is unavailable');
-                    return;
-                }
+    script.onload = () => {
+      try {
+        const ddRum = window.DD_RUM;
+        if (!ddRum || typeof ddRum.init !== "function") {
+          console.warn("[Datadog RUM] agent loaded but DD_RUM is unavailable");
+          return;
+        }
 
-                ddRum.init({
-                    applicationId: '6448291b-03d3-42ba-b7c2-601d82b6dc22',
-                    clientToken: 'pub15a8b071a3ff68888a70f256a3d12cb6',
-                    site: 'us5.datadoghq.com',
-                    service: 'quiz-platform',
-                    env: 'production',
-                    version: '1.0.0',
-                    sessionSampleRate: 100,
-                    sessionReplaySampleRate: 20,
-                    trackResources: true,
-                    trackUserInteractions: true,
-                    trackLongTasks: true,
-                    defaultPrivacyLevel: 'mask-user-input'
-                });
-                ddRum.startSessionReplayRecording();
-                console.log('[Datadog RUM] initialized and recording sessions');
-            } catch (e) {
-                console.warn('[Datadog RUM] init skipped:', e?.message || e);
-            }
-        };
-
-        script.onerror = () => {
-            console.warn('[Datadog RUM] agent script blocked/unavailable');
-        };
-
-        document.head.appendChild(script);
+        ddRum.init({
+          applicationId: "6448291b-03d3-42ba-b7c2-601d82b6dc22",
+          clientToken: "pub15a8b071a3ff68888a70f256a3d12cb6",
+          site: "us5.datadoghq.com",
+          service: "quiz-platform",
+          env: "production",
+          version: "1.0.0",
+          sessionSampleRate: 100,
+          sessionReplaySampleRate: 20,
+          trackResources: true,
+          trackUserInteractions: true,
+          trackLongTasks: true,
+          defaultPrivacyLevel: "mask-user-input",
+        });
+        ddRum.startSessionReplayRecording();
+        console.log("[Datadog RUM] initialized and recording sessions");
+      } catch (e) {
+        console.warn("[Datadog RUM] init skipped:", e?.message || e);
+      }
     };
 
-    if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => { startRum(); }, { timeout: 3000 });
-    } else {
-        setTimeout(() => { startRum(); }, 1500);
-    }
+    script.onerror = () => {
+      console.warn("[Datadog RUM] agent script blocked/unavailable");
+    };
+
+    document.head.appendChild(script);
+  };
+
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(
+      () => {
+        startRum();
+      },
+      { timeout: 3000 },
+    );
+  } else {
+    setTimeout(() => {
+      startRum();
+    }, 1500);
+  }
 }
 
 initDatadogRumDeferred();
 
 // === الوحدات (Modules) ===
-import state from './modules/state.js';
-import { escapeHtml, showAlert, showConfirm, showLoading, formatTime, showToastMessage, pickRandom, shuffleArray, logFunctionStatus, getQuickDeviceTier } from './modules/helpers.js';
-import { apiCall, loadDataFromServer, fetchLeaderboardFromServer, fetchScoresFromServer } from './modules/api.js';
+import state from "./modules/state.js";
 import {
-    _syncMainInteractionState, _showThemeToggle, updateDockUI,
-    openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
-    applyTheme, toggleTheme, initTheme, navToHome,
-    navToSection as _navToSection, openAdminAuthOrPanel,
-    showLoginScreenWithDesktop,
-    closeStudentMenu, showLoginScreen, toggleTreeNode,
-    initOverlayScrollLock
-} from './modules/navigation.js';
+  escapeHtml,
+  showAlert,
+  showConfirm,
+  showLoading,
+  formatTime,
+  showToastMessage,
+  pickRandom,
+  shuffleArray,
+  logFunctionStatus,
+  getQuickDeviceTier,
+} from "./modules/helpers.js";
 import {
-    startGoogleRedirectLogin, handleGoogleRedirectToken, initGoogleSignIn,
-    handleGoogleAdminResponse, handleStudentGoogleLogin as _handleStudentGoogleLogin,
-    closeAdminAuth, showAdminToast, logoutUser, startTokenRefresh
-} from './modules/auth.js';
+  apiCall,
+  loadDataFromServer,
+  fetchLeaderboardFromServer,
+  fetchScoresFromServer,
+} from "./modules/api.js";
+import {
+  _syncMainInteractionState,
+  _showThemeToggle,
+  updateDockUI,
+  openBottomSheet,
+  closeBottomSheet,
+  closeAdminSheet,
+  closeAllOverlays,
+  applyTheme,
+  toggleTheme,
+  initTheme,
+  navToHome,
+  navToSection as _navToSection,
+  openAdminAuthOrPanel,
+  showLoginScreenWithDesktop,
+  closeStudentMenu,
+  showLoginScreen,
+  toggleTreeNode,
+  initOverlayScrollLock,
+} from "./modules/navigation.js";
+import {
+  startGoogleRedirectLogin,
+  handleGoogleRedirectToken,
+  initGoogleSignIn,
+  handleGoogleAdminResponse,
+  handleStudentGoogleLogin as _handleStudentGoogleLogin,
+  closeAdminAuth,
+  showAdminToast,
+  logoutUser,
+  startTokenRefresh,
+} from "./modules/auth.js";
 // quiz.js, tree.js, notes.js — loaded lazily via app.features.bundle.min.js on first feature interaction
 // grades.js — loaded lazily via app.admin.bundle.min.js on first admin interaction
-import { renderDashboard as _renderDashboard, deleteQuiz as _deleteQuiz } from './modules/dashboard.js';
+import {
+  renderDashboard as _renderDashboard,
+  deleteQuiz as _deleteQuiz,
+} from "./modules/dashboard.js";
 
 // === وحدات الحركة والتمرير ===
 import {
-    initAnimations, playEntranceAnimation, playExitAnimation,
-    animateElement, pauseAllAnimations, resumeAllAnimations,
-    setAnimationSpeed, setReducedMotion
-} from './modules/animation.js';
+  initAnimations,
+  playEntranceAnimation,
+  playExitAnimation,
+  animateElement,
+  pauseAllAnimations,
+  resumeAllAnimations,
+  setAnimationSpeed,
+  setReducedMotion,
+} from "./modules/animation.js";
 import {
-    initScroll, scrollToTop, scrollToElement,
-    enableSmoothScroll, disableSmoothScroll,
-    onScrollEnter, offScrollEnter,
-    setScrollTierOptions
-} from './modules/scroll.js';
+  initScroll,
+  scrollToTop,
+  scrollToElement,
+  enableSmoothScroll,
+  disableSmoothScroll,
+  onScrollEnter,
+  offScrollEnter,
+  setScrollTierOptions,
+} from "./modules/scroll.js";
 
 // === أداة أداء الجهاز ===
-import { getDevicePerformanceTier } from './modules/helpers.js';
+import { getDevicePerformanceTier } from "./modules/helpers.js";
+
+// === CSP Nonce + Inline Handler Bridge ===
+function patchDynamicScriptNonce() {
+  if (window.__cspNoncePatched) return;
+  const nonce =
+    document.querySelector('meta[name="csp-nonce"]')?.getAttribute("content") ||
+    "";
+  if (!nonce) return;
+
+  const originalCreateElement = document.createElement.bind(document);
+  document.createElement = function patchedCreateElement(tagName, options) {
+    const el = originalCreateElement(tagName, options);
+    if (
+      String(tagName).toLowerCase() === "script" &&
+      !el.getAttribute("nonce")
+    ) {
+      el.setAttribute("nonce", nonce);
+    }
+    return el;
+  };
+
+  window.__cspNoncePatched = true;
+}
+
+function splitInlineArgs(argsText) {
+  const out = [];
+  let current = "";
+  let quote = null;
+
+  for (let i = 0; i < argsText.length; i += 1) {
+    const ch = argsText[i];
+    if ((ch === '"' || ch === "'") && argsText[i - 1] !== "\\") {
+      if (!quote) quote = ch;
+      else if (quote === ch) quote = null;
+      current += ch;
+      continue;
+    }
+
+    if (ch === "," && !quote) {
+      out.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += ch;
+  }
+
+  const last = current.trim();
+  if (last) out.push(last);
+  return out;
+}
+
+function decodeInlineArg(token, element, event) {
+  const t = token.trim();
+  if (t === "this") return element;
+  if (t === "event") return event;
+  if (t === "true") return true;
+  if (t === "false") return false;
+  if (t === "null") return null;
+  if (t === "undefined") return undefined;
+  if (/^-?\d+(?:\.\d+)?$/.test(t)) return Number(t);
+
+  if (
+    (t.startsWith("'") && t.endsWith("'")) ||
+    (t.startsWith('"') && t.endsWith('"'))
+  ) {
+    return t.slice(1, -1).replace(/\\'/g, "'").replace(/\\"/g, '"');
+  }
+
+  return t;
+}
+
+const INLINE_BRIDGE_ALLOWED_FUNCTIONS = new Set([
+  "addBuilderOption",
+  "addBuilderQuestion",
+  "agreeGuestLogin",
+  "closeAccountsManagementModal",
+  "closeAddNoteModal",
+  "closeAdminAuth",
+  "closeAdminSheet",
+  "closeBottomSheet",
+  "closeCreateSection",
+  "closeDeleteExamModal",
+  "closeDeleteModal",
+  "closeEditSelectionModal",
+  "closeGradesModal",
+  "closeGuestModal",
+  "closeRenameModal",
+  "closeStatsModal",
+  "closeStudentMenu",
+  "confirmDeleteExamOrNote",
+  "executeDeleteSubject",
+  "executeRenameSubject",
+  "exitToMain",
+  "goToBuilderStep2",
+  "goToNextQuestion",
+  "goToPreviousQuestion",
+  "handleImportFileChange",
+  "logoutUser",
+  "navBuilderQuestion",
+  "navToHome",
+  "navToSection",
+  "openAccountsManagementModal",
+  "openAddNoteModal",
+  "openAdminAuthOrPanel",
+  "openCreateSection",
+  "openEditSelectionModal",
+  "openGradesModal",
+  "openStatsModal",
+  "reshuffleImportedAnswers",
+  "reviewQuiz",
+  "saveBuiltQuiz",
+  "saveNote",
+  "showGuestModal",
+  "startGoogleRedirectLogin",
+  "submitQuiz",
+  "switchEditTab",
+  "toggleTheme",
+  "triggerImportExamFile",
+  "updateBuilderData",
+]);
+
+function invokeInlineCode(code, element, event) {
+  const statements = String(code || "")
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  let lastResult;
+
+  for (const stmt of statements) {
+    const callMatch = stmt.match(/^([A-Za-z_$][\w$]*)\s*\((.*)\)$/);
+    const bareCallMatch = stmt.match(/^([A-Za-z_$][\w$]*)$/);
+    const fnName = callMatch
+      ? callMatch[1]
+      : bareCallMatch
+        ? bareCallMatch[1]
+        : "";
+    if (!fnName || !INLINE_BRIDGE_ALLOWED_FUNCTIONS.has(fnName)) continue;
+
+    const fn = window[fnName];
+    if (typeof fn !== "function") continue;
+
+    const rawArgs = callMatch ? splitInlineArgs(callMatch[2]) : [];
+    const args = rawArgs.map((arg) => decodeInlineArg(arg, element, event));
+    lastResult = fn(...args);
+  }
+
+  return lastResult;
+}
+
+function installInlineHandlerBridge() {
+  if (window.__inlineBridgeInstalled) return;
+
+  const migrate = () => {
+    const attrs = ["onclick", "onchange", "onsubmit", "oninput", "onblur"];
+    attrs.forEach((attr) => {
+      document.querySelectorAll(`[${attr}]`).forEach((el) => {
+        const val = el.getAttribute(attr);
+        if (!val) return;
+        el.setAttribute(`data-inline-${attr}`, val);
+        el.removeAttribute(attr);
+      });
+    });
+  };
+
+  const handleAttr = (event, domEventName) => {
+    const attrName = `data-inline-on${domEventName}`;
+    const inlineAttrName = `on${domEventName}`;
+    const selector = `[${attrName}], [${inlineAttrName}]`;
+    const target = event.target?.closest?.(selector);
+    if (!target) return;
+
+    let code = target.getAttribute(attrName);
+    if (!code) {
+      code = target.getAttribute(inlineAttrName);
+      if (code) {
+        target.setAttribute(attrName, code);
+        target.removeAttribute(inlineAttrName);
+      }
+    }
+    const result = invokeInlineCode(code, target, event);
+    if (result === false) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  migrate();
+  document.addEventListener("click", (e) => handleAttr(e, "click"), true);
+  document.addEventListener("change", (e) => handleAttr(e, "change"), true);
+  document.addEventListener("input", (e) => handleAttr(e, "input"), true);
+  document.addEventListener("submit", (e) => handleAttr(e, "submit"), true);
+  document.addEventListener("blur", (e) => handleAttr(e, "blur"), true);
+  window.__inlineBridgeInstalled = true;
+}
+
+patchDynamicScriptNonce();
+installInlineHandlerBridge();
 
 // === Global Error Boundary ===
-window.addEventListener('error', (e) => {
-    console.error('❌ خطأ غير متوقع:', e.message, e.filename, e.lineno);
+function showGlobalCrashFallback(message) {
+  const existing = document.getElementById("global-crash-fallback");
+  if (existing) return;
+
+  const panel = document.createElement("div");
+  panel.id = "global-crash-fallback";
+  panel.setAttribute("role", "alert");
+  panel.style.cssText = [
+    "position:fixed",
+    "inset:0",
+    "z-index:130",
+    "display:flex",
+    "align-items:center",
+    "justify-content:center",
+    "padding:16px",
+    "background:rgba(15,23,42,0.86)",
+    "backdrop-filter:blur(4px)",
+  ].join(";");
+
+  panel.innerHTML = `
+        <div style="max-width:520px;width:100%;background:#fff;border-radius:16px;padding:20px;text-align:center;box-shadow:0 20px 45px rgba(0,0,0,.25);font-family:Cairo,system-ui,sans-serif;">
+            <h2 style="margin:0 0 8px;color:#b91c1c;">حدث خطأ غير متوقع</h2>
+            <p style="margin:0 0 16px;color:#334155;line-height:1.8;">${escapeHtml(message || "تعذر إكمال العملية. يمكنك إعادة تحميل الصفحة.")}</p>
+            <button id="global-crash-reload" style="background:#1d4ed8;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;">إعادة تحميل الصفحة</button>
+        </div>
+    `;
+
+  document.body.appendChild(panel);
+  const reloadBtn = document.getElementById("global-crash-reload");
+  if (reloadBtn)
+    reloadBtn.addEventListener("click", () => window.location.reload());
+}
+
+window.addEventListener("error", (e) => {
+  console.error("❌ خطأ غير متوقع:", e.message, e.filename, e.lineno);
+  showGlobalCrashFallback(e.message || "تعذر تشغيل التطبيق بشكل صحيح.");
 });
-window.addEventListener('unhandledrejection', (e) => {
-    console.error('❌ Promise مرفوض:', e.reason);
-    e.preventDefault();
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("❌ Promise مرفوض:", e.reason);
+  const reason =
+    typeof e.reason === "string"
+      ? e.reason
+      : e.reason?.message || "تعذر إكمال الطلب.";
+  showGlobalCrashFallback(reason);
+  e.preventDefault();
 });
 
 // quick startup instrumentation check
-try { logFunctionStatus('app_init', typeof navigator !== 'undefined' ? navigator.onLine : true); } catch (e) { /* ignore */ }
+try {
+  logFunctionStatus(
+    "app_init",
+    typeof navigator !== "undefined" ? navigator.onLine : true,
+  );
+} catch (e) {
+  /* ignore */
+}
 
 // === Service Worker Registration (PWA) ===
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(reg => {
-                // لما يكون في تحديث جديد للـ SW، اعمل reload تلقائي
-                reg.addEventListener('updatefound', () => {
-                    const newWorker = reg.installing;
-                    if (newWorker) {
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                                console.log('[SW] ✓ تحديث جديد — إعادة تحميل...');
-                                window.location.reload();
-                            }
-                        });
-                    }
-                });
-            })
-            .catch(err => console.warn('⚠️ SW registration failed:', err));
-    });
-    // لو الـ controller اتغير (SW جديد استلم)، اعمل reload
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        window.location.reload();
-    });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        // لما يكون في تحديث جديد للـ SW، اعمل reload تلقائي
+        reg.addEventListener("updatefound", () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "activated" &&
+                navigator.serviceWorker.controller
+              ) {
+                console.log("[SW] ✓ تحديث جديد — إعادة تحميل...");
+                window.location.reload();
+              }
+            });
+          }
+        });
+      })
+      .catch((err) => console.warn("⚠️ SW registration failed:", err));
+  });
+  // لو الـ controller اتغير (SW جديد استلم)، اعمل reload
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    window.location.reload();
+  });
 }
 
 // === Multi-tab Sync: Logout ===
-window.addEventListener('storage', (e) => {
-    if (e.key === 'logout_event') {
-        state.currentUser = null;
-        state.isAdmin = false;
-        sessionStorage.removeItem('currentUser');
-        sessionStorage.removeItem('isAdmin');
-        showLoginScreenWithDesktop();
-    }
+window.addEventListener("storage", (e) => {
+  if (e.key === "logout_event") {
+    state.currentUser = null;
+    state.isAdmin = false;
+    sessionStorage.removeItem("currentUser");
+    sessionStorage.removeItem("isAdmin");
+    showLoginScreenWithDesktop();
+  }
 });
 
 // ─── تنظيف وضع الضيف فقط قبل أي reload/إغلاق للتبويب ───
 // pagehide يُطلَق قبل أن تبدأ الصفحة الجديدة بالتحميل.
 // إبقاء sessionStorage للمستخدم العادي يسمح باستمرار الجلسة بعد تسجيل Google
 // ويمنع الرجوع للوجين بسبب reload أو SW update.
-window.addEventListener('pagehide', () => {
-    const isGuest = sessionStorage.getItem('guest-mode') === 'true'
-        || localStorage.getItem('guest-mode') === 'true';
-    if (!isGuest) return;
-    sessionStorage.removeItem('guest-mode');
-    // مسح guest-mode من localStorage أيضاً حتى لا يبقى الوضع
-    // معلقاً بعد الريفريش أو إغلاق التاب
-    localStorage.removeItem('guest-mode');
-    document.body.classList.remove('guest-mode');
+window.addEventListener("pagehide", () => {
+  const isGuest =
+    sessionStorage.getItem("guest-mode") === "true" ||
+    localStorage.getItem("guest-mode") === "true";
+  if (!isGuest) return;
+  sessionStorage.removeItem("guest-mode");
+  // مسح guest-mode من localStorage أيضاً حتى لا يبقى الوضع
+  // معلقاً بعد الريفريش أو إغلاق التاب
+  localStorage.removeItem("guest-mode");
+  document.body.classList.remove("guest-mode");
 });
 
 // ============================================
@@ -183,58 +492,62 @@ window.addEventListener('pagehide', () => {
  *  - 'low'    → reduced-motion كامل + تعطيل التمرير الناعم توفيراً للموارد
  */
 async function applyPerformanceBasedAnimationSettings(perf) {
-    logFunctionStatus('applyPerformanceBasedAnimationSettings', true);
-    if (!perf) perf = await getDevicePerformanceTier();
-    const tier   = (perf && perf.tier) ? perf.tier : (typeof perf === 'string' ? perf : 'low');
-    const gpu    = perf?.gpu;
-    const dpr    = perf?.dpr  || window.devicePixelRatio || 1;
-    const bat    = perf?.batteryLevel ?? -1;
-    const webgl2 = gpu?.webgl2 ?? false;
+  logFunctionStatus("applyPerformanceBasedAnimationSettings", true);
+  if (!perf) perf = await getDevicePerformanceTier();
+  const tier =
+    perf && perf.tier ? perf.tier : typeof perf === "string" ? perf : "low";
+  const gpu = perf?.gpu;
+  const dpr = perf?.dpr || window.devicePixelRatio || 1;
+  const bat = perf?.batteryLevel ?? -1;
+  const webgl2 = gpu?.webgl2 ?? false;
 
-    console.log(
-        `[app] 🖥️ أداء الجهاز — tier:${tier} / GPU:${gpu?.tier}(${gpu?.renderer || '?'}) `
-      + `/ DPR:${dpr.toFixed(1)} / WebGL2:${webgl2} / 🔋${bat === -1 ? 'N/A' : Math.round(bat*100)+'%'}`,
-        perf
-    );
+  console.log(
+    `[app] 🖥️ أداء الجهاز — tier:${tier} / GPU:${gpu?.tier}(${gpu?.renderer || "?"}) ` +
+      `/ DPR:${dpr.toFixed(1)} / WebGL2:${webgl2} / 🔋${bat === -1 ? "N/A" : Math.round(bat * 100) + "%"}`,
+    perf,
+  );
 
-    // ── تطبيق CSS classes على body لتفعيل قواعد styles.css المشروطة ──────────
-    document.body.classList.remove('gpu-high', 'gpu-medium', 'gpu-low');
-    document.body.classList.add(`gpu-${gpu?.tier || tier}`);
-    if (tier === 'low') document.body.classList.add('reduced-graphics');
+  // ── تطبيق CSS classes على body لتفعيل قواعد styles.css المشروطة ──────────
+  document.body.classList.remove("gpu-high", "gpu-medium", "gpu-low");
+  document.body.classList.add(`gpu-${gpu?.tier || tier}`);
+  if (tier === "low") document.body.classList.add("reduced-graphics");
 
-    // ── ضبط Lenis بناءً على tier والجهاز ──────────────────────────────────────
-    const _isMobile = navigator.maxTouchPoints > 1 &&
-                      !!window.matchMedia?.('(hover: none)').matches;
-    setScrollTierOptions(tier, _isMobile);
+  // ── ضبط Lenis بناءً على tier والجهاز ──────────────────────────────────────
+  const _isMobile =
+    navigator.maxTouchPoints > 1 &&
+    !!window.matchMedia?.("(hover: none)").matches;
+  setScrollTierOptions(tier, _isMobile);
 
-    switch (tier) {
-        case 'high':
-            setReducedMotion(false);
-            setAnimationSpeed(1.0);
-            enableSmoothScroll();
-            onScrollEnter();
-            console.log('[app] ✓ إعدادات الحركة: وضع الأداء العالي');
-            break;
+  switch (tier) {
+    case "high":
+      setReducedMotion(false);
+      setAnimationSpeed(1.0);
+      enableSmoothScroll();
+      onScrollEnter();
+      console.log("[app] ✓ إعدادات الحركة: وضع الأداء العالي");
+      break;
 
-        case 'medium':
-            setReducedMotion(false);
-            // DPR عالٍ على GPU متوسط = pixel fill pressure → سرعة أقل
-            setAnimationSpeed(dpr > 2.5 ? 0.5 : 0.75);
+    case "medium":
+      setReducedMotion(false);
+      // DPR عالٍ على GPU متوسط = pixel fill pressure → سرعة أقل
+      setAnimationSpeed(dpr > 2.5 ? 0.5 : 0.75);
 
-            enableSmoothScroll();
-            offScrollEnter();
-            console.log('[app] ✓ إعدادات الحركة: وضع الأداء المتوسط');
-            break;
+      enableSmoothScroll();
+      offScrollEnter();
+      console.log("[app] ✓ إعدادات الحركة: وضع الأداء المتوسط");
+      break;
 
-        case 'low':
-        default:
-            setReducedMotion(true);
-            setAnimationSpeed(0);
-            disableSmoothScroll();
-            offScrollEnter();
-            console.log('[app] ✓ إعدادات الحركة: وضع الأداء المنخفض (reduced-motion)');
-            break;
-    }
+    case "low":
+    default:
+      setReducedMotion(true);
+      setAnimationSpeed(0);
+      disableSmoothScroll();
+      offScrollEnter();
+      console.log(
+        "[app] ✓ إعدادات الحركة: وضع الأداء المنخفض (reduced-motion)",
+      );
+      break;
+  }
 }
 
 // ============================================
@@ -244,51 +557,68 @@ async function applyPerformanceBasedAnimationSettings(perf) {
 
 /** @private رسم لوحة القيادة مع ربط الدوال — يستخدم window.X للحزمة الكسولة */
 function renderDashboard() {
-    _renderDashboard(window.playQuiz, window.forceDownload);
+  _renderDashboard(window.playQuiz, window.forceDownload);
 }
 
 /** @private حذف امتحان */
 function deleteQuiz(index) {
-    _deleteQuiz(index, renderDashboard);
+  _deleteQuiz(index, renderDashboard);
 }
 
 /** @private نسخ رابط الامتحان */
 function copyQuizLink(quizId, event) {
-    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-    try {
-        const base = window.location.origin;
-        const url = `${base}/?quiz=${encodeURIComponent(String(quizId))}`;
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            navigator.clipboard.writeText(url).then(() => {
-                showAlert('✅ تم نسخ رابط الامتحان.', 'success');
-            }).catch(() => {
-                showAlert('⚠️ تعذر نسخ الرابط تلقائياً.', 'warning');
-            });
-        } else {
-            const temp = document.createElement('textarea');
-            temp.value = url;
-            temp.setAttribute('readonly', '');
-            temp.style.position = 'absolute';
-            temp.style.left = '-9999px';
-            document.body.appendChild(temp);
-            temp.select();
-            try { document.execCommand('copy'); } catch (e) { /* ignore */ }
-            document.body.removeChild(temp);
-            showAlert('✅ تم نسخ رابط الامتحان.', 'success');
-        }
-    } catch (e) {
-        showAlert('⚠️ تعذر نسخ رابط الامتحان.', 'warning');
+  if (event && typeof event.stopPropagation === "function")
+    event.stopPropagation();
+  try {
+    const base = window.location.origin;
+    const url = `${base}/?quiz=${encodeURIComponent(String(quizId))}`;
+    if (
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === "function"
+    ) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          showAlert("✅ تم نسخ رابط الامتحان.", "success");
+        })
+        .catch(() => {
+          showAlert("⚠️ تعذر نسخ الرابط تلقائياً.", "warning");
+        });
+    } else {
+      const temp = document.createElement("textarea");
+      temp.value = url;
+      temp.setAttribute("readonly", "");
+      temp.style.position = "absolute";
+      temp.style.left = "-9999px";
+      document.body.appendChild(temp);
+      temp.select();
+      try {
+        document.execCommand("copy");
+      } catch (e) {
+        /* ignore */
+      }
+      document.body.removeChild(temp);
+      showAlert("✅ تم نسخ رابط الامتحان.", "success");
     }
+  } catch (e) {
+    showAlert("⚠️ تعذر نسخ رابط الامتحان.", "warning");
+  }
 }
 
 /** @private الانتقال لقسم — يستخدم window.X للحزمة الكسولة */
 function navToSection(section) {
-    _navToSection(section, window.renderSubjectFilters, window.renderHistoryTree);
+  _navToSection(section, window.renderSubjectFilters, window.renderHistoryTree);
 }
 
 /** @private معالجة تسجيل دخول الطالب */
 function handleStudentGoogleLogin(response) {
-    _handleStudentGoogleLogin(response, window.renderSubjectFilters, window.renderHistoryTree, renderDashboard, startTokenRefresh);
+  _handleStudentGoogleLogin(
+    response,
+    window.renderSubjectFilters,
+    window.renderHistoryTree,
+    renderDashboard,
+    startTokenRefresh,
+  );
 }
 
 // ============================================
@@ -297,136 +627,191 @@ function handleStudentGoogleLogin(response) {
 
 /** @description تحميل التطبيق عند بدء التشغيل */
 async function loadApp() {
-    logFunctionStatus('loadApp', true);
-    console.log('[app] بدء تحميل التطبيق...');
-    try {
-        // Scores are loaded from server via loadAllDataFromServer() — no localStorage fallback
+  logFunctionStatus("loadApp", true);
+  console.log("[app] بدء تحميل التطبيق...");
+  try {
+    // Scores are loaded from server via loadAllDataFromServer() — no localStorage fallback
 
-        const savedUser = sessionStorage.getItem('currentUser');
-        if (savedUser) {
-            state.currentUser = JSON.parse(savedUser);
-            state.isAdmin = sessionStorage.getItem('isAdmin') === 'true';
+    const savedUser = sessionStorage.getItem("currentUser");
+    if (savedUser) {
+      state.currentUser = JSON.parse(savedUser);
+      state.isAdmin = sessionStorage.getItem("isAdmin") === "true";
 
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('dashboard-view').classList.remove('hidden');
-            document.getElementById('ios-bottom-nav').classList.remove('hidden');
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("dashboard-view").classList.remove("hidden");
+      document.getElementById("ios-bottom-nav").classList.remove("hidden");
 
-            const isGuest = state.currentUser.role === 'guest';
-            const safeName = escapeHtml(state.currentUser.fname || state.currentUser.fullName || 'صديقنا');
-            document.getElementById('welcome-msg').innerText = isGuest
-                ? 'مَرْحَبًا بِكَ يَا ضَيْفَنَا الكَرِيم — الدخول تجريبي ولن تُحفظ الدرجات'
-                : `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
+      const isGuest = state.currentUser.role === "guest";
+      const safeName = escapeHtml(
+        state.currentUser.fname || state.currentUser.fullName || "صديقنا",
+      );
+      document.getElementById("welcome-msg").innerText = isGuest
+        ? "مَرْحَبًا بِكَ يَا ضَيْفَنَا الكَرِيم — الدخول تجريبي ولن تُحفظ الدرجات"
+        : `مَرْحَبًا بِكَ يَا أَيُّهَا الدَّرْعَمِيُّ ${safeName}`;
 
-            navToHome();
-            renderDashboard(); // يعرض spinner أولاً ريثما تُحمَّل البيانات
+      navToHome();
+      renderDashboard(); // يعرض spinner أولاً ريثما تُحمَّل البيانات
 
-            // ── تحميل الحزمة الكسولة للميزات مبكّراً (قبل الاشتباك مع السيرفر) ──
-            // بحلول وقت وصول البيانات تكون الحزمة جاهزة بالفعل
-            window.__loadFeatures?.();
+      // ── تحميل الحزمة الكسولة للميزات مبكّراً (قبل الاشتباك مع السيرفر) ──
+      // بحلول وقت وصول البيانات تكون الحزمة جاهزة بالفعل
+      window.__loadFeatures?.();
 
-            if (isGuest) {
-                // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
-                console.log('[app] ✓ وضع الضيف — تحميل البيانات العامة...');
-                
-                // Import polling function
-                const { startDataPolling } = await import('./modules/api.js');
-                
-                loadDataFromServer().then(() => {
-                    state.dataLoaded = true;
-                    window.renderSubjectFilters?.();
-                    window.renderHistoryTree?.();
-                    renderDashboard();
-                    // Start auto-polling for guest mode too
-                    startDataPolling(30000);
-                    console.log('[app] ✓ الضيف — البيانات العامة جاهزة + polling نشط');
-                }).catch(e => {
-                    console.warn('[app] ⚠️ فشل جلب البيانات للضيف:', e);
-                    state.dataLoaded = true;
-                    renderDashboard();
-                });
-                return;
+      if (isGuest) {
+        // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
+        console.log("[app] ✓ وضع الضيف — تحميل البيانات العامة...");
+
+        // Import polling function
+        const { startDataPolling } = await import("./modules/api.js");
+
+        loadDataFromServer()
+          .then(() => {
+            state.dataLoaded = true;
+
+            try {
+              window.renderSubjectFilters?.();
+            } catch (e) {
+              console.error("Sidebar/Filters failed:", e);
             }
+            try {
+              window.renderHistoryTree?.();
+            } catch (e) {
+              console.error("History Tree failed:", e);
+            }
+            try {
+              renderDashboard();
+            } catch (e) {
+              console.error("Dashboard failed:", e);
+            }
+            // Start auto-polling for guest mode too
+            startDataPolling(30000);
+            console.log("[app] ✓ الضيف — البيانات العامة جاهزة + polling نشط");
+          })
+          .catch((e) => {
+            console.warn("[app] ⚠️ فشل جلب البيانات للضيف:", e);
+            state.dataLoaded = true;
+            renderDashboard();
+          });
+        return;
+      }
 
-            startTokenRefresh();
-            loadDataFromServer().then(() => {
-                state.dataLoaded = true;
-                window.renderSubjectFilters?.();
-                window.renderHistoryTree?.();
-                renderDashboard();
-                console.log('[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر');
-                window.openPendingQuizIfAny?.();
-            });
-            return;
+      startTokenRefresh();
+      loadDataFromServer().then(() => {
+        state.dataLoaded = true;
+
+        try {
+          window.renderSubjectFilters?.();
+        } catch (e) {
+          console.error("Sidebar/Filters failed:", e);
         }
-        showLoginScreenWithDesktop();
-    } catch (e) {
-        console.warn("تعذر الوصول للذاكرة المحلية:", e);
-        showLoginScreenWithDesktop();
+        try {
+          window.renderHistoryTree?.();
+        } catch (e) {
+          console.error("History Tree failed:", e);
+        }
+        try {
+          renderDashboard();
+        } catch (e) {
+          console.error("Dashboard failed:", e);
+        }
+        console.log("[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر");
+        window.openPendingQuizIfAny?.();
+      });
+      return;
     }
+    showLoginScreenWithDesktop();
+  } catch (e) {
+    console.warn("تعذر الوصول للذاكرة المحلية:", e);
+    showLoginScreenWithDesktop();
+  }
 }
 
 // Try to launch a deep-linked quiz after data is loaded.
 function openPendingQuizIfAny() {
-    try {
-        const quizId = sessionStorage.getItem('pending-quiz-id');
-        if (!quizId) return false;
-        const idx = (state.allQuizzes || []).findIndex(q => String(q?.id ?? q?.config?.id) === String(quizId));
-        if (idx === -1) return false;
-        sessionStorage.removeItem('pending-quiz-id');
-        const run = () => {
-            if (typeof window.playQuiz === 'function') window.playQuiz(idx);
-        };
-        if (typeof window.__loadFeatures === 'function') {
-            window.__loadFeatures().then(run).catch(run);
-        } else {
-            run();
-        }
-        return true;
-    } catch (e) { return false; }
+  try {
+    const quizId = sessionStorage.getItem("pending-quiz-id");
+    if (!quizId) return false;
+    const idx = (state.allQuizzes || []).findIndex(
+      (q) => String(q?.id ?? q?.config?.id) === String(quizId),
+    );
+    if (idx === -1) return false;
+    sessionStorage.removeItem("pending-quiz-id");
+    const run = () => {
+      if (typeof window.playQuiz === "function") window.playQuiz(idx);
+    };
+    if (typeof window.__loadFeatures === "function") {
+      window.__loadFeatures().then(run).catch(run);
+    } else {
+      run();
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /** إغلاق نافذة تعديل المحتوى وإعادة تشغيل Lenis عبر _syncMainInteractionState */
 function closeEditSelectionModal() {
-    const el = document.getElementById('edit-selection-modal');
-    if (el) el.classList.add('hidden');
-    _syncMainInteractionState();
+  const el = document.getElementById("edit-selection-modal");
+  if (el) el.classList.add("hidden");
+  _syncMainInteractionState();
 }
 
 // ============================================
 //  ربط الدوال بـ window (للاستدعاء من HTML onclick)
 // ============================================
 Object.assign(window, {
-    // Navigation
-    navToHome, navToSection, openAdminAuthOrPanel, closeStudentMenu,
-    openBottomSheet, closeBottomSheet, closeAdminSheet, closeAllOverlays,
-    toggleTheme, updateDockUI, toggleTreeNode, _showThemeToggle, _syncMainInteractionState,
+  // Navigation
+  navToHome,
+  navToSection,
+  openAdminAuthOrPanel,
+  closeStudentMenu,
+  openBottomSheet,
+  closeBottomSheet,
+  closeAdminSheet,
+  closeAllOverlays,
+  toggleTheme,
+  updateDockUI,
+  toggleTreeNode,
+  _showThemeToggle,
+  _syncMainInteractionState,
 
-    // Auth
-    startGoogleRedirectLogin, closeAdminAuth, logoutUser, handleStudentGoogleLogin, loadApp,
+  // Auth
+  startGoogleRedirectLogin,
+  closeAdminAuth,
+  logoutUser,
+  handleStudentGoogleLogin,
+  loadApp,
 
-    // Quiz / Tree / Notes — stubs installed by registerFeatureStubs() below;
-    // real implementations loaded lazily via app.features.bundle.min.js
+  // Quiz / Tree / Notes — stubs installed by registerFeatureStubs() below;
+  // real implementations loaded lazily via app.features.bundle.min.js
 
-    // Admin UI (closeEditSelectionModal is a core fn; rest loaded lazily)
-    closeEditSelectionModal,
+  // Admin UI (closeEditSelectionModal is a core fn; rest loaded lazily)
+  closeEditSelectionModal,
 
-    // Dashboard
-    renderDashboard,
-    deleteQuiz,
-    copyQuizLink,
+  // Dashboard
+  renderDashboard,
+  deleteQuiz,
+  copyQuizLink,
 
-    // Helpers
-    escapeHtml, showAlert, showConfirm, showLoading,
-    // Quick perf helper for inline scripts
-    getQuickDeviceTier,
+  // Helpers
+  escapeHtml,
+  showAlert,
+  showConfirm,
+  showLoading,
+  // Quick perf helper for inline scripts
+  getQuickDeviceTier,
 
-    // Animations & Scroll (exposed for use from HTML/other scripts if needed)
-    scrollToTop, scrollToElement,
-    playEntranceAnimation, playExitAnimation, animateElement,
-    pauseAllAnimations, resumeAllAnimations,
-    // Expose startApp so bootstrap.js can invoke it after bundle injection
-    startApp,
-    openPendingQuizIfAny
+  // Animations & Scroll (exposed for use from HTML/other scripts if needed)
+  scrollToTop,
+  scrollToElement,
+  playEntranceAnimation,
+  playExitAnimation,
+  animateElement,
+  pauseAllAnimations,
+  resumeAllAnimations,
+  // Expose startApp so bootstrap.js can invoke it after bundle injection
+  startApp,
+  openPendingQuizIfAny,
 });
 
 // ============================================
@@ -436,41 +821,61 @@ Object.assign(window, {
 //  Admin bundle overrides these stubs with real implementations.
 // ============================================
 (function registerAdminStubs() {
-    const ADMIN_FNS = [
-        'openCreateSection', 'closeCreateSection', 'goToBuilderStep2',
-        'renderBuilderQuestion', 'updateBuilderData', 'updateBuilderOptionText',
-        'setBuilderCorrectOption', 'addBuilderOption', 'removeBuilderOption',
-        'addBuilderQuestion', 'navBuilderQuestion', 'saveBuiltQuiz',
-        'loadQuizIntoBuilder', 'updateExistingQuiz', 'triggerImportExamFile',
-        'reshuffleImportedAnswers', 'handleImportFileChange',
-        'openGradesModal', 'closeGradesModal', 'openStatsModal', 'closeStatsModal',
-        'openEditSelectionModal', 'switchEditTab'
-    ];
+  const ADMIN_FNS = [
+    "openCreateSection",
+    "closeCreateSection",
+    "goToBuilderStep2",
+    "renderBuilderQuestion",
+    "updateBuilderData",
+    "updateBuilderOptionText",
+    "setBuilderCorrectOption",
+    "addBuilderOption",
+    "removeBuilderOption",
+    "addBuilderQuestion",
+    "navBuilderQuestion",
+    "saveBuiltQuiz",
+    "loadQuizIntoBuilder",
+    "updateExistingQuiz",
+    "triggerImportExamFile",
+    "reshuffleImportedAnswers",
+    "handleImportFileChange",
+    "openGradesModal",
+    "closeGradesModal",
+    "openStatsModal",
+    "closeStatsModal",
+    "openEditSelectionModal",
+    "switchEditTab",
+  ];
 
-    let _adminLoaded = false;
-    let _adminLoadPromise = null;
+  let _adminLoaded = false;
+  let _adminLoadPromise = null;
 
-    function _loadAdmin() {
-        if (_adminLoaded) return Promise.resolve();
-        if (!_adminLoadPromise) {
-            _adminLoadPromise = new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = '/js/app.admin.bundle.min.js?v=42';
-                s.onload = () => { _adminLoaded = true; resolve(); };
-                s.onerror = () => reject(new Error('Admin bundle failed to load'));
-                document.head.appendChild(s);
-            });
-        }
-        return _adminLoadPromise;
-    }
-
-    ADMIN_FNS.forEach(name => {
-        window[name] = function (...args) {
-            _loadAdmin()
-                .then(() => { if (typeof window[name] === 'function') window[name](...args); })
-                .catch(err => console.error('[admin]', err));
+  function _loadAdmin() {
+    if (_adminLoaded) return Promise.resolve();
+    if (!_adminLoadPromise) {
+      _adminLoadPromise = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "/js/app.admin.bundle.min.js?v=42";
+        s.onload = () => {
+          _adminLoaded = true;
+          resolve();
         };
-    });
+        s.onerror = () => reject(new Error("Admin bundle failed to load"));
+        document.head.appendChild(s);
+      });
+    }
+    return _adminLoadPromise;
+  }
+
+  ADMIN_FNS.forEach((name) => {
+    window[name] = function (...args) {
+      _loadAdmin()
+        .then(() => {
+          if (typeof window[name] === "function") window[name](...args);
+        })
+        .catch((err) => console.error("[admin]", err));
+    };
+  });
 })();
 
 // ============================================
@@ -480,186 +885,225 @@ Object.assign(window, {
 //  Features bundle overrides these stubs with real implementations.
 // ============================================
 (function registerFeatureStubs() {
-    const FEATURE_FNS = [
-        // Quiz
-        'playQuiz', 'selectAnswer', 'goToNextQuestion', 'goToPreviousQuestion',
-        'submitQuiz', 'exitToMain', 'showFeedback', 'hideFeedback',
-        // Tree & Subjects
-        'getDynamicSubjects',
-        'setSubjectFilter', 'setEditSubjectFilter', 'renderSubjectFilters',
-        'renderHistoryTree', 'renderEditTree',
-        'renameSubject', 'closeRenameModal', 'executeRenameSubject',
-        'confirmDeleteSubject', 'closeDeleteModal', 'executeDeleteSubject',
-        // Notes
-        'openAddNoteModal', 'closeAddNoteModal', 'saveNote',
-        'loadNoteIntoBuilder', 'updateExistingNote', 'forceDownload'
-    ];
+  const FEATURE_FNS = [
+    // Quiz
+    "playQuiz",
+    "selectAnswer",
+    "goToNextQuestion",
+    "goToPreviousQuestion",
+    "submitQuiz",
+    "exitToMain",
+    "showFeedback",
+    "hideFeedback",
+    // Tree & Subjects
+    "getDynamicSubjects",
+    "setSubjectFilter",
+    "setEditSubjectFilter",
+    "renderSubjectFilters",
+    "renderHistoryTree",
+    "renderEditTree",
+    "renameSubject",
+    "closeRenameModal",
+    "executeRenameSubject",
+    "confirmDeleteSubject",
+    "closeDeleteModal",
+    "executeDeleteSubject",
+    // Notes
+    "openAddNoteModal",
+    "closeAddNoteModal",
+    "saveNote",
+    "loadNoteIntoBuilder",
+    "updateExistingNote",
+    "forceDownload",
+  ];
 
-    let _featuresLoaded = false;
-    let _featuresPromise = null;
+  let _featuresLoaded = false;
+  let _featuresPromise = null;
 
-    function _loadFeatures() {
-        if (_featuresLoaded) return Promise.resolve();
-        if (!_featuresPromise) {
-            _featuresPromise = new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = '/js/app.features.bundle.min.js?v=41';
-                s.onload = () => { _featuresLoaded = true; resolve(); };
-                s.onerror = () => reject(new Error('Features bundle failed to load'));
-                document.head.appendChild(s);
-            });
-        }
-        return _featuresPromise;
-    }
-
-    // Expose loader so loadApp() can trigger proactive prefetch
-    window.__loadFeatures = _loadFeatures;
-
-    FEATURE_FNS.forEach(name => {
-        window[name] = function (...args) {
-            _loadFeatures()
-                .then(() => { if (typeof window[name] === 'function') window[name](...args); })
-                .catch(err => console.error('[features]', err));
+  function _loadFeatures() {
+    if (_featuresLoaded) return Promise.resolve();
+    if (!_featuresPromise) {
+      _featuresPromise = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "/js/app.features.bundle.min.js?v=41";
+        s.onload = () => {
+          _featuresLoaded = true;
+          resolve();
         };
-    });
+        s.onerror = () => reject(new Error("Features bundle failed to load"));
+        document.head.appendChild(s);
+      });
+    }
+    return _featuresPromise;
+  }
+
+  // Expose loader so loadApp() can trigger proactive prefetch
+  window.__loadFeatures = _loadFeatures;
+
+  FEATURE_FNS.forEach((name) => {
+    window[name] = function (...args) {
+      _loadFeatures()
+        .then(() => {
+          if (typeof window[name] === "function") window[name](...args);
+        })
+        .catch((err) => console.error("[features]", err));
+    };
+  });
 })();
 
 // Fallback: addEventListener for login button (in case onclick doesn't fire)
-document.addEventListener('DOMContentLoaded', () => {
-    const loginBtn = document.getElementById('login-btn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            try {
-                startGoogleRedirectLogin('student');
-            } catch (err) {
-                console.error('❌ Login error:', err);
-                alert('خطأ في تسجيل الدخول: ' + err.message);
-            }
-        });
-    }
+document.addEventListener("DOMContentLoaded", () => {
+  const loginBtn = document.getElementById("login-btn");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      try {
+        startGoogleRedirectLogin("student");
+      } catch (err) {
+        console.error("❌ Login error:", err);
+        alert("خطأ في تسجيل الدخول: " + err.message);
+      }
+    });
+  }
 });
 
 // ============================================
 //  نقطة البداية
 // ============================================
 export async function startApp() {
-    logFunctionStatus('window.onload', false);
+  logFunctionStatus("window.onload", false);
 
-    // تهيئة الثيم
-    initTheme();
+  // تهيئة الثيم
+  initTheme();
 
-    // Hide any bootstrap loading overlay once the app bootstraps
-    if (typeof window.hideLoadingScreen === 'function') {
-        window.hideLoadingScreen();
+  // Hide any bootstrap loading overlay once the app bootstraps
+  if (typeof window.hideLoadingScreen === "function") {
+    window.hideLoadingScreen();
+  }
+
+  // Expose shared state for lazy-loaded admin bundle (builder.js / grades.js)
+  window.__appState = state;
+  // Expose api singletons for admin bundle (avoids duplicating state-aware modules)
+  window.__api = { apiCall, fetchScoresFromServer, fetchLeaderboardFromServer };
+
+  // اقرَأ الإعدادات العامة المضمّنة بواسطة /config.js مبكراً
+  try {
+    const cfg =
+      typeof window !== "undefined" && window.__PUBLIC_CONFIG
+        ? window.__PUBLIC_CONFIG
+        : null;
+    if (cfg && cfg.googleClientId) {
+      state.GOOGLE_CLIENT_ID = cfg.googleClientId;
     }
+  } catch (e) {
+    console.warn("⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:", e);
+  }
 
-    // Expose shared state for lazy-loaded admin bundle (builder.js / grades.js)
-    window.__appState = state;
-    // Expose api singletons for admin bundle (avoids duplicating state-aware modules)
-    window.__api = { apiCall, fetchScoresFromServer, fetchLeaderboardFromServer };
+  // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
+  // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () =>
+      initOverlayScrollLock(),
+    );
+  } else {
+    initOverlayScrollLock();
+  }
 
-    // اقرَأ الإعدادات العامة المضمّنة بواسطة /config.js مبكراً
-    try {
-        const cfg = (typeof window !== 'undefined' && window.__PUBLIC_CONFIG) ? window.__PUBLIC_CONFIG : null;
-        if (cfg && cfg.googleClientId) {
-            state.GOOGLE_CLIENT_ID = cfg.googleClientId;
-        }
-    } catch (e) {
-        console.warn('⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:', e);
+  // تهيئة DOM الاختبار + ربط Enter في حقل التسمية تتم داخل app.features.bundle.min.js
+  // (quiz.js + tree.js + notes.js محمَّلة كسولاً — لا initQuizDOM هنا)
+
+  // Patch: Inject guest-mode header for score submission
+  const originalSubmitScore = window.submitScore;
+  window.submitScore = function (data) {
+    const isGuest =
+      localStorage.getItem("guest-mode") === "true" ||
+      sessionStorage.getItem("guest-mode") === "true";
+    if (isGuest) {
+      if (!data.headers) data.headers = {};
+      data.headers["x-guest-mode"] = "true";
     }
+    return originalSubmitScore ? originalSubmitScore(data) : null;
+  };
 
-    // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
-    // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => initOverlayScrollLock());
+  // معالجة Google redirect أو تحميل التطبيق
+  const handledRedirect = handleGoogleRedirectToken();
+  initGoogleSignIn();
+
+  // IMPORTANT: Always call loadApp initialization code, even after Google redirect
+  // This ensures state setup, theme initialization, and DOM setup happen
+  if (!handledRedirect) {
+    loadApp();
+  } else {
+    // After Google redirect is handled, ensure minimal setup is done
+    // (theme init, overlay lock) that would normally run in loadApp()
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () =>
+        initOverlayScrollLock(),
+      );
     } else {
-        initOverlayScrollLock();
+      initOverlayScrollLock();
+    }
+  }
+
+  // ── تهيئة وحدات الحركة والتمرير بشكل غير حاجب للعرض الأول ───────────────
+  (async function initNonCriticalRuntime() {
+    // Load motion libs (GSAP + Lenis) before using them
+    if (window.__loadMotionLibs) {
+      window.__loadMotionLibs();
     }
 
-    // تهيئة DOM الاختبار + ربط Enter في حقل التسمية تتم داخل app.features.bundle.min.js
-    // (quiz.js + tree.js + notes.js محمَّلة كسولاً — لا initQuizDOM هنا)
+    // قياس مستوى الجهاز ثم تهيئة الأنيميشن في الخلفية
+    const perf = await getDevicePerformanceTier({ skipFPSTest: true });
+    try {
+      window.__devicePerf = perf;
+    } catch (e) {
+      /* ignore */
+    }
+    if (perf && perf.tier === "low") {
+      document.body.classList.add("reduced-graphics");
+    }
 
-    // Patch: Inject guest-mode header for score submission
-    const originalSubmitScore = window.submitScore;
-    window.submitScore = function(data) {
-        const isGuest = localStorage.getItem('guest-mode') === 'true' || sessionStorage.getItem('guest-mode') === 'true';
-        if (isGuest) {
-            if (!data.headers) data.headers = {};
-            data.headers['x-guest-mode'] = 'true';
+    await initAnimations(perf);
+    await applyPerformanceBasedAnimationSettings(perf);
+
+    // تهيئة Lenis بشكل مؤجل لتفادي التأثير على الطلاء الأول
+    try {
+      if (document && document.fonts) {
+        const fontsReady = document.fonts.ready;
+        const timeout = new Promise((res) => setTimeout(res, 1000));
+        await Promise.race([fontsReady, timeout]);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+
+    const startScroll = () => {
+      try {
+        const _p = window.__devicePerf;
+        const _t = _p?.tier || "high";
+        const _m =
+          navigator.maxTouchPoints > 1 &&
+          !!window.matchMedia?.("(hover: none)").matches;
+        const scrollOpts = {};
+        if (_t === "low") {
+          scrollOpts.smoothWheel = false;
+          scrollOpts.duration = 0;
+        } else if (_t === "medium" || _m) {
+          scrollOpts.duration = _m ? 0.8 : 1.0;
+          scrollOpts.touchMultiplier = _m ? 1.0 : 1.5;
         }
-        return originalSubmitScore ? originalSubmitScore(data) : null;
+        initScroll(scrollOpts);
+      } catch (err) {
+        console.warn("[scroll] deferred init failed:", err);
+      }
     };
 
-    // معالجة Google redirect أو تحميل التطبيق
-    const handledRedirect = handleGoogleRedirectToken();
-    initGoogleSignIn();
-    
-    // IMPORTANT: Always call loadApp initialization code, even after Google redirect
-    // This ensures state setup, theme initialization, and DOM setup happen
-    if (!handledRedirect) {
-        loadApp();
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(startScroll, { timeout: 2000 });
     } else {
-        // After Google redirect is handled, ensure minimal setup is done
-        // (theme init, overlay lock) that would normally run in loadApp()
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => initOverlayScrollLock());
-        } else {
-            initOverlayScrollLock();
-        }
+      setTimeout(startScroll, 700);
     }
-
-    // ── تهيئة وحدات الحركة والتمرير بشكل غير حاجب للعرض الأول ───────────────
-    (async function initNonCriticalRuntime() {
-        // Load motion libs (GSAP + Lenis) before using them
-        if (window.__loadMotionLibs) {
-            window.__loadMotionLibs();
-        }
-
-        // قياس مستوى الجهاز ثم تهيئة الأنيميشن في الخلفية
-        const perf = await getDevicePerformanceTier({ skipFPSTest: true });
-        try { window.__devicePerf = perf; } catch (e) { /* ignore */ }
-        if (perf && perf.tier === 'low') {
-            document.body.classList.add('reduced-graphics');
-        }
-
-        await initAnimations(perf);
-        await applyPerformanceBasedAnimationSettings(perf);
-
-        // تهيئة Lenis بشكل مؤجل لتفادي التأثير على الطلاء الأول
-        try {
-            if (document && document.fonts) {
-                const fontsReady = document.fonts.ready;
-                const timeout = new Promise((res) => setTimeout(res, 1000));
-                await Promise.race([fontsReady, timeout]);
-            }
-        } catch (e) { /* ignore */ }
-
-        const startScroll = () => {
-            try {
-                const _p = window.__devicePerf;
-                const _t = _p?.tier || 'high';
-                const _m = navigator.maxTouchPoints > 1 && !!window.matchMedia?.('(hover: none)').matches;
-                const scrollOpts = {};
-                if (_t === 'low') {
-                    scrollOpts.smoothWheel = false;
-                    scrollOpts.duration = 0;
-                } else if (_t === 'medium' || _m) {
-                    scrollOpts.duration = _m ? 0.8 : 1.0;
-                    scrollOpts.touchMultiplier = _m ? 1.0 : 1.5;
-                }
-                initScroll(scrollOpts);
-            } catch (err) {
-                console.warn('[scroll] deferred init failed:', err);
-            }
-        };
-
-        if ('requestIdleCallback' in window) {
-            requestIdleCallback(startScroll, { timeout: 2000 });
-        } else {
-            setTimeout(startScroll, 700);
-        }
-    })().catch((e) => {
-        console.warn('[app] non-critical init skipped:', e?.message || e);
-    });
+  })().catch((e) => {
+    console.warn("[app] non-critical init skipped:", e?.message || e);
+  });
 }

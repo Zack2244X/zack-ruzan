@@ -3,34 +3,32 @@
    font-display:swap → icons always render (brief invisible then FA glyphs).
    Family names cover both FA 5 (used by icons.min.css) and FA 6 aliases. */
 @font-face {
-    font-family: 'Font Awesome 6 Free';
-    font-style: normal;
-    font-weight: 900;
-    /* optional: no swap, no LCP-blocking wait, no CLS from icon glyph swap.
-       Icons render with fallback on cold cache; switch silently on warm cache. */
-    font-display: optional;
-    src: url('/fonts/fa-solid-900.woff2') format('woff2');
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/fa-solid-900.woff2") format("woff2");
 }
 @font-face {
-    font-family: 'Font Awesome 6 Brands';
-    font-style: normal;
-    font-weight: 400;
-    font-display: optional;
-    src: url('/fonts/fa-brands-400.woff2') format('woff2');
+  font-family: "Font Awesome 6 Brands";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/fa-brands-400.woff2") format("woff2");
 }
 @font-face {
-    font-family: 'Font Awesome 5 Free';
-    font-style: normal;
-    font-weight: 900;
-    font-display: optional;
-    src: url('/fonts/fa-solid-900.woff2') format('woff2');
+  font-family: "Font Awesome 5 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/fa-solid-900.woff2") format("woff2");
 }
 @font-face {
-    font-family: 'Font Awesome 5 Brands';
-    font-style: normal;
-    font-weight: 400;
-    font-display: optional;
-    src: url('/fonts/fa-brands-400.woff2') format('woff2');
+  font-family: "Font Awesome 5 Brands";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/fa-brands-400.woff2") format("woff2");
 }
 
 /* ═══ Cairo + Amiri — @font-face ONLY ═══
@@ -39,27 +37,27 @@
    Cold cache: optional block expires → system-ui fallback inline → no swap.
    Warm cache: Cairo/Amiri instantly from disk → used on first recalc. */
 @font-face {
-    font-family: 'Cairo';
-    src: url('/fonts/Cairo-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-display: optional;
+  font-family: "Cairo";
+  src: url("/fonts/Cairo-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
 }
 @font-face {
-    font-family: 'Cairo';
-    src: url('/fonts/Cairo-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-display: optional;
+  font-family: "Cairo";
+  src: url("/fonts/Cairo-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
 }
 @font-face {
-    font-family: 'Amiri';
-    src: url('/fonts/Amiri-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-display: optional;
+  font-family: "Amiri";
+  src: url("/fonts/Amiri-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
 }
 @font-face {
-    font-family: 'Amiri';
-    src: url('/fonts/Amiri-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-display: optional;
+  font-family: "Amiri";
+  src: url("/fonts/Amiri-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
 }
 /* NO font-family rules here — font-family is fixed in inline CSS, never overridden. */

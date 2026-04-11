@@ -8,8 +8,8 @@
 // ============================================
 //   موديل المستخدم (User) — Sequelize + TiDB
 // ============================================
-const { DataTypes } = require('sequelize');
-const sequelize = require('./index');
+const { DataTypes } = require("sequelize");
+const sequelize = require("./index");
 
 /**
  * @typedef {Object} UserAttributes
@@ -31,62 +31,66 @@ const sequelize = require('./index');
  * Sequelize model representing a platform user.
  * @type {import('sequelize').ModelStatic<import('sequelize').Model<UserAttributes>>}
  */
-const User = sequelize.define('User', {
+const User = sequelize.define(
+  "User",
+  {
     id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
     email: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        unique: true,
-        validate: { isEmail: true }
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+      validate: { isEmail: true },
     },
     googleId: {
-        type: DataTypes.STRING(255),
-        unique: true,
-        allowNull: true
+      type: DataTypes.STRING(255),
+      unique: true,
+      allowNull: true,
     },
     avatar: {
-        type: DataTypes.STRING(500),
-        defaultValue: ''
+      type: DataTypes.STRING(500),
+      defaultValue: "",
     },
     fname: {
-        type: DataTypes.STRING(50),
-        defaultValue: ''
+      type: DataTypes.STRING(50),
+      defaultValue: "",
     },
     lname: {
-        type: DataTypes.STRING(50),
-        defaultValue: ''
+      type: DataTypes.STRING(50),
+      defaultValue: "",
     },
     isProfileComplete: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
     role: {
-        type: DataTypes.ENUM('student', 'admin'),
-        defaultValue: 'student'
+      type: DataTypes.ENUM("student", "admin"),
+      defaultValue: "student",
     },
     tokenVersion: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0,
-        allowNull: false,
-        comment: 'Incremented on logout/revoke to invalidate all existing tokens'
-    }
-}, {
-    tableName: 'users',
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      allowNull: false,
+      comment: "Incremented on logout/revoke to invalidate all existing tokens",
+    },
+  },
+  {
+    tableName: "users",
     timestamps: true,
-    paranoid: true
-});
+    paranoid: true,
+  },
+);
 
 /**
  * Returns the user's full name, or their email if names are not set.
  * @returns {string} The full name or email.
  */
 User.prototype.getFullName = function () {
-    if (this.fname && this.lname) return `${this.fname} ${this.lname}`;
-    return this.email;
+  if (this.fname && this.lname) return `${this.fname} ${this.lname}`;
+  return this.email;
 };
 
 module.exports = User;

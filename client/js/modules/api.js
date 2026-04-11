@@ -1,30 +1,29 @@
-
 // 1. الاستيرادات أولاً في أعلى الملف
-import state from './state.js';
-import { logFunctionStatus } from './helpers.js';
+import state from "./state.js";
+import { logFunctionStatus } from "./helpers.js";
 
-const DEVICE_ID_KEY = 'client-device-id';
+const DEVICE_ID_KEY = "client-device-id";
 
 export function getClientDeviceId() {
-    try {
-        let id = localStorage.getItem(DEVICE_ID_KEY);
-        if (id && id.length >= 12) return id;
-        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-            id = `dev-${crypto.randomUUID()}`;
-        } else {
-            id = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-        }
-        localStorage.setItem(DEVICE_ID_KEY, id);
-        return id;
-    } catch {
-        return `dev-fallback-${Math.random().toString(36).slice(2, 12)}`;
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (id && id.length >= 12) return id;
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      id = `dev-${crypto.randomUUID()}`;
+    } else {
+      id = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
     }
+    localStorage.setItem(DEVICE_ID_KEY, id);
+    return id;
+  } catch {
+    return `dev-fallback-${Math.random().toString(36).slice(2, 12)}`;
+  }
 }
 
 // 2. تعريف الدوال والتصدير
 // Provide a fetch-like wrapper for dashboard.js compatibility
 export async function apiFetch(url) {
-    return await apiCall('GET', url);
+  return await apiCall("GET", url);
 }
 
 /**
@@ -37,12 +36,17 @@ export async function apiFetch(url) {
  * @returns {string}
  */
 function getCsrfToken() {
-    try {
-        return document.cookie.split(';')
-            .map(c => c.trim())
-            .find(c => c.startsWith('csrf_token='))
-            ?.split('=')[1] || '';
-    } catch { return ''; }
+  try {
+    return (
+      document.cookie
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("csrf_token="))
+        ?.split("=")[1] || ""
+    );
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -50,24 +54,28 @@ function getCsrfToken() {
  * @returns {Object}
  */
 export function getAuthHeaders() {
-    const headers = { 'Content-Type': 'application/json' };
-    headers['X-Device-Id'] = getClientDeviceId();
-    const csrf = getCsrfToken();
-    if (csrf) headers['X-CSRF-Token'] = csrf;
-    // إرسال هيدر الضيف إذا كانت الجلسة الحالية جلسة ضيف
-    try {
-        const isGuestFlag = sessionStorage.getItem('guest-mode') === 'true' || localStorage.getItem('guest-mode') === 'true';
-        const isCurrentUserGuest = state.currentUser?.role === 'guest';
-        // لا ترسل هيدر الضيف إذا أصبح المستخدم مسجلاً بحساب فعلي
-        if (isGuestFlag && isCurrentUserGuest) {
-            headers['X-Guest-Mode'] = 'true';
-        } else if (isGuestFlag && !isCurrentUserGuest) {
-            sessionStorage.removeItem('guest-mode');
-            localStorage.removeItem('guest-mode');
-            document.body.classList.remove('guest-mode');
-        }
-    } catch (e) { /* تجاهل خطأ sessionStorage */ }
-    return headers;
+  const headers = { "Content-Type": "application/json" };
+  headers["X-Device-Id"] = getClientDeviceId();
+  const csrf = getCsrfToken();
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+  // إرسال هيدر الضيف إذا كانت الجلسة الحالية جلسة ضيف
+  try {
+    const isGuestFlag =
+      sessionStorage.getItem("guest-mode") === "true" ||
+      localStorage.getItem("guest-mode") === "true";
+    const isCurrentUserGuest = state.currentUser?.role === "guest";
+    // لا ترسل هيدر الضيف إذا أصبح المستخدم مسجلاً بحساب فعلي
+    if (isGuestFlag && isCurrentUserGuest) {
+      headers["X-Guest-Mode"] = "true";
+    } else if (isGuestFlag && !isCurrentUserGuest) {
+      sessionStorage.removeItem("guest-mode");
+      localStorage.removeItem("guest-mode");
+      document.body.classList.remove("guest-mode");
+    }
+  } catch (e) {
+    /* تجاهل خطأ sessionStorage */
+  }
+  return headers;
 }
 
 /**
@@ -80,25 +88,25 @@ export function getAuthHeaders() {
  * @throws {Error} في حالة فشل الاتصال
  */
 export async function apiCall(method, url, body) {
-    logFunctionStatus(`apiCall ${method} ${url}`, true);
-    const tag = `[API] ${method} ${url}`;
-    console.log(`${tag} — إرسال...`, body ?? '');
-    const opts = {
-        method,
-        headers: getAuthHeaders(),
-        credentials: 'include'
-    };
-    if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(url, opts);
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const errMsg = data.error || `HTTP ${res.status}`;
-        console.error(`${tag} ✗ فشل — ${res.status}:`, data);
-        throw new Error(errMsg);
-    }
-    const data = await res.json();
-    console.log(`${tag} ✓ نجح — ${res.status}`, data);
-    return data;
+  logFunctionStatus(`apiCall ${method} ${url}`, true);
+  const tag = `[API] ${method} ${url}`;
+  console.log(`${tag} — إرسال...`, body ?? "");
+  const opts = {
+    method,
+    headers: getAuthHeaders(),
+    credentials: "include",
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const errMsg = data.error || `HTTP ${res.status}`;
+    console.error(`${tag} ✗ فشل — ${res.status}:`, data);
+    throw new Error(errMsg);
+  }
+  const data = await res.json();
+  console.log(`${tag} ✓ نجح — ${res.status}`, data);
+  return data;
 }
 
 // ─────────────────────────────────────────────
@@ -123,23 +131,25 @@ export async function apiCall(method, url, body) {
  * // أدمن يجلب محاولات طالب آخر
  * const count = await getAttempts('quiz_01', 'student@example.com');
  */
-export async function getAttempts(quizId, email = '') {
-    logFunctionStatus('getAttempts', true);
-    if (!quizId) {
-        console.warn('[getAttempts] quizId مطلوب');
-        return 0;
-    }
-    try {
-        const params = new URLSearchParams({ quizId });
-        if (email) params.append('email', email);
-        const data = await apiCall('GET', `/api/attempts?${params.toString()}`);
-        const count = Number(data?.attempts) || 0;
-        console.log(`[getAttempts] quizId=${quizId} email=${email || 'self'} → ${count} محاولة`);
-        return count;
-    } catch (err) {
-        console.warn('⚠️ [getAttempts] تعذر جلب المحاولات:', err.message);
-        return 0;
-    }
+export async function getAttempts(quizId, email = "") {
+  logFunctionStatus("getAttempts", true);
+  if (!quizId) {
+    console.warn("[getAttempts] quizId مطلوب");
+    return 0;
+  }
+  try {
+    const params = new URLSearchParams({ quizId });
+    if (email) params.append("email", email);
+    const data = await apiCall("GET", `/api/attempts?${params.toString()}`);
+    const count = Number(data?.attempts) || 0;
+    console.log(
+      `[getAttempts] quizId=${quizId} email=${email || "self"} → ${count} محاولة`,
+    );
+    return count;
+  } catch (err) {
+    console.warn("⚠️ [getAttempts] تعذر جلب المحاولات:", err.message);
+    return 0;
+  }
 }
 
 /**
@@ -156,20 +166,20 @@ export async function getAttempts(quizId, email = '') {
  * const newCount = await saveAttempt('quiz_01');
  * console.log(`هذه محاولتك رقم ${newCount}`);
  */
-export async function saveAttempt(quizId, email = '') {
-    logFunctionStatus('saveAttempt', true);
-    if (!quizId) throw new Error('[saveAttempt] quizId مطلوب');
-    try {
-        const payload = { quizId };
-        if (email) payload.email = email;
-        const data = await apiCall('POST', '/api/attempts', payload);
-        const updated = Number(data?.attempts) || 0;
-        console.log(`[saveAttempt] quizId=${quizId} → المحاولة رقم ${updated}`);
-        return updated;
-    } catch (err) {
-        console.warn('⚠️ [saveAttempt] تعذر حفظ المحاولة:', err.message);
-        return 0;
-    }
+export async function saveAttempt(quizId, email = "") {
+  logFunctionStatus("saveAttempt", true);
+  if (!quizId) throw new Error("[saveAttempt] quizId مطلوب");
+  try {
+    const payload = { quizId };
+    if (email) payload.email = email;
+    const data = await apiCall("POST", "/api/attempts", payload);
+    const updated = Number(data?.attempts) || 0;
+    console.log(`[saveAttempt] quizId=${quizId} → المحاولة رقم ${updated}`);
+    return updated;
+  } catch (err) {
+    console.warn("⚠️ [saveAttempt] تعذر حفظ المحاولة:", err.message);
+    return 0;
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -208,31 +218,34 @@ export async function saveAttempt(quizId, email = '') {
  *                   score: 5, total: 10, isOfficial: false });
  */
 export async function saveScore({
-    quizId,
-    quizTitle,
-    quizSubject,
-    score,
-    total,
-    isOfficial = true
+  quizId,
+  quizTitle,
+  quizSubject,
+  score,
+  total,
+  isOfficial = true,
 }) {
-    logFunctionStatus('saveScore', true);
-    if (!quizId) throw new Error('[saveScore] quizId مطلوب');
+  logFunctionStatus("saveScore", true);
+  if (!quizId) throw new Error("[saveScore] quizId مطلوب");
 
-    const percentage = Math.round((Number(score) / (Number(total) || 1)) * 100);
+  const percentage = Math.round((Number(score) / (Number(total) || 1)) * 100);
 
-    const payload = {
-        quizId,
-        quizTitle:   quizTitle   || 'امتحان',
-        quizSubject: quizSubject || '',
-        score:       Number(score) || 0,
-        total:       Number(total) || 0,
-        percentage,
-        isOfficial,          // ← العلامة الرئيسية: رسمي / تدريبي
-        date: new Date().toISOString()
-    };
+  const payload = {
+    quizId,
+    quizTitle: quizTitle || "امتحان",
+    quizSubject: quizSubject || "",
+    score: Number(score) || 0,
+    total: Number(total) || 0,
+    percentage,
+    isOfficial, // ← العلامة الرئيسية: رسمي / تدريبي
+    date: new Date().toISOString(),
+  };
 
-    console.log(`[saveScore] إرسال النتيجة — quizId=${quizId} isOfficial=${isOfficial}`, payload);
-    return await apiCall('POST', '/api/scores', payload);
+  console.log(
+    `[saveScore] إرسال النتيجة — quizId=${quizId} isOfficial=${isOfficial}`,
+    payload,
+  );
+  return await apiCall("POST", "/api/scores", payload);
 }
 
 // ─────────────────────────────────────────────
@@ -244,21 +257,21 @@ export async function saveScore({
  * @returns {Promise<Array>} بيانات لوحة الشرف
  */
 export async function fetchLeaderboardFromServer() {
-    logFunctionStatus('fetchLeaderboardFromServer', true);
-    try {
-        const data = await apiCall('GET', '/api/scores/leaderboard');
-        return data.map(item => ({
-            userName:       item.userName || 'طالب',
-            fullMarksCount: Number(item.fullMarksCount) || 0,
-            avgPercentage:  Number(item.avgPercentage)  || 0,
-            totalScore:     Number(item.totalScore)     || 0,
-            totalMax:       Number(item.totalMax)       || 0,
-            examsCount:     Number(item.examsCount)     || 0
-        }));
-    } catch (err) {
-        console.warn('⚠️ تعذر جلب لوحة الشرف:', err.message);
-        return [];
-    }
+  logFunctionStatus("fetchLeaderboardFromServer", true);
+  try {
+    const data = await apiCall("GET", "/api/scores/leaderboard");
+    return data.map((item) => ({
+      userName: item.userName || "طالب",
+      fullMarksCount: Number(item.fullMarksCount) || 0,
+      avgPercentage: Number(item.avgPercentage) || 0,
+      totalScore: Number(item.totalScore) || 0,
+      totalMax: Number(item.totalMax) || 0,
+      examsCount: Number(item.examsCount) || 0,
+    }));
+  } catch (err) {
+    console.warn("⚠️ تعذر جلب لوحة الشرف:", err.message);
+    return [];
+  }
 }
 
 /**
@@ -267,94 +280,128 @@ export async function fetchLeaderboardFromServer() {
  * @returns {Promise<Array>} بيانات الدرجات
  */
 export async function fetchScoresFromServer(officialOnly = false) {
-    logFunctionStatus('fetchScoresFromServer', true);
-    try {
-        // للضيف أو من لم يسجل الدخول: لا نطلب درجاته الشخصية، نطلب فقط لوحة الشرف
-        if (!state.currentUser || state.currentUser.role === 'guest') {
-            console.log('[scores] ✓ ضيف/لم يسجل الدخول — تخطي جلب الدرجات الشخصية');
-            return [];
-        }
-        
-        const base     = state.isAdmin ? '/api/scores/all' : '/api/scores/my';
-        const endpoint = officialOnly ? `${base}?isOfficial=true` : base;
-        const raw      = await apiCall('GET', endpoint);
-        const data     = Array.isArray(raw) ? raw : (raw?.data || []);
-        return data.map(item => ({
-            userName:    item.userName || (item.user ? `${item.user.fname || ''} ${item.user.lname || ''}`.trim() : 'طالب'),
-            userId:      item.userId || item.user?.id || null,
-            quizId:      item.quizId      || item.quiz?.id   || null,
-            quizTitle:   item.quizTitle   || item.quiz?.title   || 'امتحان',
-            quizSubject: item.quizSubject || item.quiz?.subject || '',
-            score:       Number(item.score)      || 0,
-            total:       Number(item.total)      || 0,
-            percentage:  Number(item.percentage) || Math.round(((Number(item.score) || 0) / (Number(item.total) || 1)) * 100),
-            isOfficial:  item.isOfficial ?? true,   // ← محافظة على العلامة من السيرفر
-            date:        item.date || item.createdAt || new Date().toISOString()
-        }));
-    } catch (err) {
-        console.warn('⚠️ تعذر جلب الدرجات:', err.message);
-        return [];
+  logFunctionStatus("fetchScoresFromServer", true);
+  try {
+    // للضيف أو من لم يسجل الدخول: لا نطلب درجاته الشخصية، نطلب فقط لوحة الشرف
+    if (!state.currentUser || state.currentUser.role === "guest") {
+      console.log("[scores] ✓ ضيف/لم يسجل الدخول — تخطي جلب الدرجات الشخصية");
+      return [];
     }
+
+    const base = state.isAdmin ? "/api/scores/all" : "/api/scores/my";
+    const endpoint = officialOnly ? `${base}?isOfficial=true` : base;
+    const raw = await apiCall("GET", endpoint);
+    const data = Array.isArray(raw) ? raw : raw?.data || [];
+    return data.map((item) => ({
+      userName:
+        item.userName ||
+        (item.user
+          ? `${item.user.fname || ""} ${item.user.lname || ""}`.trim()
+          : "طالب"),
+      userId: item.userId || item.user?.id || null,
+      quizId: item.quizId || item.quiz?.id || null,
+      quizTitle: item.quizTitle || item.quiz?.title || "امتحان",
+      quizSubject: item.quizSubject || item.quiz?.subject || "",
+      score: Number(item.score) || 0,
+      total: Number(item.total) || 0,
+      percentage:
+        Number(item.percentage) ||
+        Math.round(
+          ((Number(item.score) || 0) / (Number(item.total) || 1)) * 100,
+        ),
+      isOfficial: item.isOfficial ?? true, // ← محافظة على العلامة من السيرفر
+      date: item.date || item.createdAt || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.warn("⚠️ تعذر جلب الدرجات:", err.message);
+    return [];
+  }
 }
 
 /**
  * تحميل جميع البيانات من السيرفر
  */
 export async function loadDataFromServer() {
-    logFunctionStatus('loadDataFromServer', true);
-    if (!state.currentUser) { console.warn('[loadData] لا يوجد مستخدم — تخطي'); return; }
-    console.log('[loadData] بدء تحميل البيانات من السيرفر...');
-    try {
-        const [quizzesRes, notesRes, leaderboardRemote, scoresRemote] = await Promise.all([
-            apiCall('GET', '/api/quizzes').catch(e => { console.error('[loadData] ✗ فشل تحميل الامتحانات:', e.message);   return { data: [] }; }),
-            apiCall('GET', '/api/notes').catch(e   => { console.error('[loadData] ✗ فشل تحميل المذكرات:', e.message);     return { data: [] }; }),
-            fetchLeaderboardFromServer().catch(e   => { console.error('[loadData] ✗ فشل تحميل لوحة الشرف:', e.message);  return [];           }),
-            fetchScoresFromServer().catch(e        => { console.error('[loadData] ✗ فشل تحميل الدرجات:', e.message);      return [];           })
-        ]);
+  logFunctionStatus("loadDataFromServer", true);
+  if (!state.currentUser) {
+    console.warn("[loadData] لا يوجد مستخدم — تخطي");
+    return;
+  }
+  console.log("[loadData] بدء تحميل البيانات من السيرفر...");
+  try {
+    const [quizzesRes, notesRes, leaderboardRemote, scoresRemote] =
+      await Promise.all([
+        apiCall("GET", "/api/quizzes").catch((e) => {
+          console.error("[loadData] ✗ فشل تحميل الامتحانات:", e.message);
+          return { data: [] };
+        }),
+        apiCall("GET", "/api/notes").catch((e) => {
+          console.error("[loadData] ✗ فشل تحميل المذكرات:", e.message);
+          return { data: [] };
+        }),
+        fetchLeaderboardFromServer().catch((e) => {
+          console.error("[loadData] ✗ فشل تحميل لوحة الشرف:", e.message);
+          return [];
+        }),
+        fetchScoresFromServer().catch((e) => {
+          console.error("[loadData] ✗ فشل تحميل الدرجات:", e.message);
+          return [];
+        }),
+      ]);
 
-        const quizzes = Array.isArray(quizzesRes) ? quizzesRes : (quizzesRes?.data || []);
-        const notes   = Array.isArray(notesRes)   ? notesRes   : (notesRes?.data   || []);
+    const quizzes = Array.isArray(quizzesRes)
+      ? quizzesRes
+      : quizzesRes?.data || [];
+    const notes = Array.isArray(notesRes) ? notesRes : notesRes?.data || [];
 
-        state.allQuizzes = quizzes.map(q => ({
-            id: q.id,
-            config: {
-                id: q.id, title: q.title, subject: q.subject,
-                description: q.description || '', timeLimit: q.timeLimit || 1500,
-                closingMessage: q.closingMessage || 'شكراً لمشاركتك!'
-            },
-            questions: q.questions || []
-        }));
+    state.allQuizzes = quizzes.map((q) => ({
+      id: q.id,
+      config: {
+        id: q.id,
+        title: q.title,
+        subject: q.subject,
+        description: q.description || "",
+        timeLimit: q.timeLimit || 1500,
+        closingMessage: q.closingMessage || "شكراً لمشاركتك!",
+      },
+      questions: q.questions || [],
+    }));
 
-        state.allNotes = notes.map(n => ({
-            id: n.id,
-            config: {
-                id: n.id, title: n.title, subject: n.subject,
-                link: n.link || '', type: n.type || 'pdf',
-                description: n.description || ''
-            }
-        }));
+    state.allNotes = notes.map((n) => ({
+      id: n.id,
+      config: {
+        id: n.id,
+        title: n.title,
+        subject: n.subject,
+        link: n.link || "",
+        type: n.type || "pdf",
+        description: n.description || "",
+      },
+    }));
 
-        state.serverLeaderboard = leaderboardRemote || [];
-        state.serverScores      = scoresRemote      || [];
+    state.serverLeaderboard = leaderboardRemote || [];
+    state.serverScores = scoresRemote || [];
 
-        if (state.serverScores.length > 0) {
-            state.allUserScores = state.serverScores.map(s => ({
-                userName:   s.userName   || 'طالب',
-                userId:     s.userId || null,
-                quizTitle:  s.quizTitle  || 'امتحان',
-                score:      Number(s.score)      || 0,
-                total:      Number(s.total)      || 0,
-                percentage: Number(s.percentage) || 0,
-                isOfficial: s.isOfficial ?? true,   // ← محافظة على العلامة
-                date:       s.date || s.createdAt || new Date().toISOString()
-            }));
-        }
-
-        state.dataLoaded = true;
-        console.log(`[loadData] ✓ تم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${state.serverScores.length} نتيجة، ${state.serverLeaderboard.length} في لوحة الشرف`);
-    } catch (e) {
-        console.error('[loadData] ✗ فشل تحميل البيانات:', e.message);
+    if (state.serverScores.length > 0) {
+      state.allUserScores = state.serverScores.map((s) => ({
+        userName: s.userName || "طالب",
+        userId: s.userId || null,
+        quizTitle: s.quizTitle || "امتحان",
+        score: Number(s.score) || 0,
+        total: Number(s.total) || 0,
+        percentage: Number(s.percentage) || 0,
+        isOfficial: s.isOfficial ?? true, // ← محافظة على العلامة
+        date: s.date || s.createdAt || new Date().toISOString(),
+      }));
     }
+
+    state.dataLoaded = true;
+    console.log(
+      `[loadData] ✓ تم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${state.serverScores.length} نتيجة، ${state.serverLeaderboard.length} في لوحة الشرف`,
+    );
+  } catch (e) {
+    console.error("[loadData] ✗ فشل تحميل البيانات:", e.message);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -371,21 +418,21 @@ let dataPollingTimer = null;
  * startDataPolling(30000); // تحديث كل 30 ثانية
  */
 export function startDataPolling(interval = 30000) {
-    logFunctionStatus('startDataPolling', false);
-    
-    // إيقاف أي polling موجود بالفعل
-    if (dataPollingTimer) {
-        clearInterval(dataPollingTimer);
-    }
-    
-    console.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
-    
-    dataPollingTimer = setInterval(() => {
-        console.log('[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...');
-        loadDataFromServer().catch(err => {
-            console.warn('[polling] ⚠️ فشل جلب البيانات:', err.message);
-        });
-    }, interval);
+  logFunctionStatus("startDataPolling", false);
+
+  // إيقاف أي polling موجود بالفعل
+  if (dataPollingTimer) {
+    clearInterval(dataPollingTimer);
+  }
+
+  console.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
+
+  dataPollingTimer = setInterval(() => {
+    console.log("[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...");
+    loadDataFromServer().catch((err) => {
+      console.warn("[polling] ⚠️ فشل جلب البيانات:", err.message);
+    });
+  }, interval);
 }
 
 /**
@@ -394,11 +441,11 @@ export function startDataPolling(interval = 30000) {
  * stopDataPolling(); // إيقاف كل التحديثات التلقائية
  */
 export function stopDataPolling() {
-    logFunctionStatus('stopDataPolling', false);
-    
-    if (dataPollingTimer) {
-        clearInterval(dataPollingTimer);
-        dataPollingTimer = null;
-        console.log('[polling] ✓ تم إيقاف التحديث التلقائي');
-    }
+  logFunctionStatus("stopDataPolling", false);
+
+  if (dataPollingTimer) {
+    clearInterval(dataPollingTimer);
+    dataPollingTimer = null;
+    console.log("[polling] ✓ تم إيقاف التحديث التلقائي");
+  }
 }

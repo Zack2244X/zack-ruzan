@@ -8,12 +8,12 @@
 // ============================================
 //   Sanitization Middleware — منع XSS
 // ============================================
-const sanitizeHtml = require('sanitize-html');
+const sanitizeHtml = require("sanitize-html");
 
 const sanitizeOptions = {
-    allowedTags: [],
-    allowedAttributes: {},
-    disallowedTagsMode: 'recursiveEscape'
+  allowedTags: [],
+  allowedAttributes: {},
+  disallowedTagsMode: "recursiveEscape",
 };
 
 /**
@@ -23,20 +23,20 @@ const sanitizeOptions = {
  * @returns {*} The sanitized value with the same structure.
  */
 function deepSanitize(obj) {
-    if (typeof obj === 'string') {
-        return sanitizeHtml(obj, sanitizeOptions).trim();
+  if (typeof obj === "string") {
+    return sanitizeHtml(obj, sanitizeOptions).trim();
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(deepSanitize);
+  }
+  if (obj && typeof obj === "object") {
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = deepSanitize(value);
     }
-    if (Array.isArray(obj)) {
-        return obj.map(deepSanitize);
-    }
-    if (obj && typeof obj === 'object') {
-        const result = {};
-        for (const [key, value] of Object.entries(obj)) {
-            result[key] = deepSanitize(value);
-        }
-        return result;
-    }
-    return obj;
+    return result;
+  }
+  return obj;
 }
 
 /**
@@ -47,10 +47,10 @@ function deepSanitize(obj) {
  * @returns {void}
  */
 function sanitizeBody(req, res, next) {
-    if (req.body && typeof req.body === 'object') {
-        req.body = deepSanitize(req.body);
-    }
-    next();
+  if (req.body && typeof req.body === "object") {
+    req.body = deepSanitize(req.body);
+  }
+  next();
 }
 
 module.exports = { sanitizeBody, deepSanitize };

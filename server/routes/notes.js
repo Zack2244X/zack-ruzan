@@ -9,13 +9,22 @@
 //   مسارات المذكرات والملفات (CRUD)
 //   — Sequelize + TiDB —
 // ============================================
-const router = require('express').Router();
-const sequelize = require('../models/index');
-const Note = require('../models/Note');
-const User = require('../models/User');
-const { authenticate, authenticateOrGuest, requireAdmin } = require('../middleware/auth');
-const { validateCreateNote, validateUpdateNote, validatePagination, validateIdParam } = require('../middleware/validators');
-const logger = require('../utils/logger');
+const router = require("express").Router();
+const sequelize = require("../models/index");
+const Note = require("../models/Note");
+const User = require("../models/User");
+const {
+  authenticate,
+  authenticateOrGuest,
+  requireAdmin,
+} = require("../middleware/auth");
+const {
+  validateCreateNote,
+  validateUpdateNote,
+  validatePagination,
+  validateIdParam,
+} = require("../middleware/validators");
+const logger = require("../utils/logger");
 
 // ============================================
 //   GET /api/notes — جلب كل المذكرات
@@ -28,32 +37,43 @@ const logger = require('../utils/logger');
  * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
  * @returns {Promise<void>}
  */
-router.get('/', authenticateOrGuest, validatePagination, async (req, res) => {
-    try {
-        const { subject } = req.query;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
-        const offset = (page - 1) * limit;
-        const where = {};
+router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
+  try {
+    const { subject } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    const where = {};
 
-        if (subject && subject !== 'الكل') {
-            where.subject = subject;
-        }
-
-        const { count, rows: notes } = await Note.findAndCountAll({
-            where,
-            order: [['createdAt', 'DESC']],
-            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }],
-            limit,
-            offset
-        });
-
-        res.json({ data: notes, total: count, page, totalPages: Math.ceil(count / limit) });
-    } catch (error) {
-        const dbMsg = error.original?.message || error.parent?.message || error.message;
-        logger.error('خطأ في جلب المذكرات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ في جلب المذكرات.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
+    if (subject && subject !== "الكل") {
+      where.subject = subject;
     }
+
+    const { count, rows: notes } = await Note.findAndCountAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      include: [{ model: User, as: "creator", attributes: ["fname", "lname"] }],
+      limit,
+      offset,
+    });
+
+    res.json({
+      data: notes,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit),
+    });
+  } catch (error) {
+    const dbMsg =
+      error.original?.message || error.parent?.message || error.message;
+    logger.error("خطأ في جلب المذكرات:", { error: dbMsg, stack: error.stack });
+    res
+      .status(500)
+      .json({
+        error: "حدث خطأ في جلب المذكرات.",
+        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+      });
+  }
 });
 
 // ============================================
@@ -67,18 +87,20 @@ router.get('/', authenticateOrGuest, validatePagination, async (req, res) => {
  * @param {import('express').Response} res - Express response with an array of subject strings.
  * @returns {Promise<void>}
  */
-router.get('/subjects/list', authenticate, async (req, res) => {
-    try {
-        const results = await Note.findAll({
-            attributes: [[sequelize.fn('DISTINCT', sequelize.col('subject')), 'subject']],
-            raw: true
-        });
-        const subjects = results.map(r => r.subject);
-        res.json(subjects);
-    } catch (error) {
-        logger.error('خطأ في جلب المواد:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
-    }
+router.get("/subjects/list", authenticate, async (req, res) => {
+  try {
+    const results = await Note.findAll({
+      attributes: [
+        [sequelize.fn("DISTINCT", sequelize.col("subject")), "subject"],
+      ],
+      raw: true,
+    });
+    const subjects = results.map((r) => r.subject);
+    res.json(subjects);
+  } catch (error) {
+    logger.error("خطأ في جلب المواد:", { error: error.message });
+    res.status(500).json({ error: "حدث خطأ." });
+  }
 });
 
 // ============================================
@@ -92,21 +114,21 @@ router.get('/subjects/list', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Express response with the note object.
  * @returns {Promise<void>}
  */
-router.get('/:id', authenticate, async (req, res) => {
-    try {
-        const note = await Note.findByPk(req.params.id, {
-            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }]
-        });
+router.get("/:id", authenticate, async (req, res) => {
+  try {
+    const note = await Note.findByPk(req.params.id, {
+      include: [{ model: User, as: "creator", attributes: ["fname", "lname"] }],
+    });
 
-        if (!note) {
-            return res.status(404).json({ error: 'المذكرة غير موجودة.' });
-        }
-
-        res.json(note);
-    } catch (error) {
-        logger.error('خطأ في جلب المذكرة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+    if (!note) {
+      return res.status(404).json({ error: "المذكرة غير موجودة." });
     }
+
+    res.json(note);
+  } catch (error) {
+    logger.error("خطأ في جلب المذكرة:", { error: error.message });
+    res.status(500).json({ error: "حدث خطأ." });
+  }
 });
 
 // ============================================
@@ -120,28 +142,34 @@ router.get('/:id', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Express response with `{ message, note }`.
  * @returns {Promise<void>}
  */
-router.post('/', authenticate, requireAdmin, validateCreateNote, async (req, res) => {
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  validateCreateNote,
+  async (req, res) => {
     try {
-        const { title, subject, link, type, description } = req.body;
+      const { title, subject, link, type, description } = req.body;
 
-        const note = await Note.create({
-            title: title.trim(),
-            subject: subject.trim(),
-            link: link.trim(),
-            type: type || 'pdf',
-            description: description ? description.trim() : '',
-            createdBy: req.user.id
-        });
+      const note = await Note.create({
+        title: title.trim(),
+        subject: subject.trim(),
+        link: link.trim(),
+        type: type || "pdf",
+        description: description ? description.trim() : "",
+        createdBy: req.user.id,
+      });
 
-        res.status(201).json({
-            message: 'تم إضافة المذكرة بنجاح!',
-            note
-        });
+      res.status(201).json({
+        message: "تم إضافة المذكرة بنجاح!",
+        note,
+      });
     } catch (error) {
-        logger.error('خطأ في إضافة المذكرة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء إضافة المذكرة.' });
+      logger.error("خطأ في إضافة المذكرة:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء إضافة المذكرة." });
     }
-});
+  },
+);
 
 // ============================================
 //   PUT /api/notes/:id — تعديل مذكرة (أدمن فقط)
@@ -155,33 +183,40 @@ router.post('/', authenticate, requireAdmin, validateCreateNote, async (req, res
  * @param {import('express').Response} res - Express response with `{ message, note }`.
  * @returns {Promise<void>}
  */
-router.put('/:id', authenticate, requireAdmin, validateUpdateNote, async (req, res) => {
+router.put(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validateUpdateNote,
+  async (req, res) => {
     try {
-        const note = await Note.findByPk(req.params.id);
-        if (!note) {
-            return res.status(404).json({ error: 'المذكرة غير موجودة.' });
+      const note = await Note.findByPk(req.params.id);
+      if (!note) {
+        return res.status(404).json({ error: "المذكرة غير موجودة." });
+      }
+
+      const allowedFields = ["title", "subject", "link", "type", "description"];
+      allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          note[field] =
+            typeof req.body[field] === "string"
+              ? req.body[field].trim()
+              : req.body[field];
         }
+      });
 
-        const allowedFields = ['title', 'subject', 'link', 'type', 'description'];
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                note[field] = typeof req.body[field] === 'string'
-                    ? req.body[field].trim()
-                    : req.body[field];
-            }
-        });
+      await note.save();
 
-        await note.save();
-
-        res.json({
-            message: 'تم تحديث المذكرة بنجاح!',
-            note
-        });
+      res.json({
+        message: "تم تحديث المذكرة بنجاح!",
+        note,
+      });
     } catch (error) {
-        logger.error('خطأ في تعديل المذكرة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء تعديل المذكرة.' });
+      logger.error("خطأ في تعديل المذكرة:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء تعديل المذكرة." });
     }
-});
+  },
+);
 
 // ============================================
 //   DELETE /api/notes/:id — حذف مذكرة (أدمن فقط)
@@ -194,17 +229,23 @@ router.put('/:id', authenticate, requireAdmin, validateUpdateNote, async (req, r
  * @param {import('express').Response} res - Express response with `{ message }`.
  * @returns {Promise<void>}
  */
-router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
+router.delete(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validateIdParam,
+  async (req, res) => {
     try {
-        const deleted = await Note.destroy({ where: { id: req.params.id } });
-        if (!deleted) {
-            return res.status(404).json({ error: 'المذكرة غير موجودة.' });
-        }
-        res.json({ message: 'تم حذف المذكرة بنجاح.' });
+      const deleted = await Note.destroy({ where: { id: req.params.id } });
+      if (!deleted) {
+        return res.status(404).json({ error: "المذكرة غير موجودة." });
+      }
+      res.json({ message: "تم حذف المذكرة بنجاح." });
     } catch (error) {
-        logger.error('خطأ في حذف المذكرة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء حذف المذكرة.' });
+      logger.error("خطأ في حذف المذكرة:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء حذف المذكرة." });
     }
-});
+  },
+);
 
 module.exports = router;

@@ -7,8 +7,8 @@
 // ============================================
 //   موديل المذكرة / الملف (Note) — Sequelize + TiDB
 // ============================================
-const { DataTypes } = require('sequelize');
-const sequelize = require('./index');
+const { DataTypes } = require("sequelize");
+const sequelize = require("./index");
 
 /**
  * @typedef {Object} NoteAttributes
@@ -28,40 +28,44 @@ const sequelize = require('./index');
  * Sequelize model representing an educational note/resource.
  * @type {import('sequelize').ModelStatic<import('sequelize').Model<NoteAttributes>>}
  */
-const Note = sequelize.define('Note', {
+const Note = sequelize.define(
+  "Note",
+  {
     id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
     title: {
-        type: DataTypes.STRING(255),
-        allowNull: false
+      type: DataTypes.STRING(255),
+      allowNull: false,
     },
     subject: {
-        type: DataTypes.STRING(100),
-        allowNull: false
+      type: DataTypes.STRING(100),
+      allowNull: false,
     },
     link: {
-        type: DataTypes.STRING(500),
-        allowNull: false
+      type: DataTypes.STRING(500),
+      allowNull: false,
     },
     type: {
-        type: DataTypes.ENUM('pdf', 'ppt', 'link'),
-        defaultValue: 'pdf'
+      type: DataTypes.ENUM("pdf", "ppt", "link"),
+      defaultValue: "pdf",
     },
     description: {
-        type: DataTypes.TEXT,
-        defaultValue: ''
+      type: DataTypes.TEXT,
+      defaultValue: "",
     },
     createdBy: {
-        type: DataTypes.INTEGER,
-        allowNull: true
-    }
-}, {
-    tableName: 'notes',
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+  },
+  {
+    tableName: "notes",
     timestamps: true,
-    paranoid: true
-});
+    paranoid: true,
+  },
+);
 
 module.exports = Note;

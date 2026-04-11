@@ -4,34 +4,35 @@
  * @see https://docs.newrelic.com/docs/apm/agents/nodejs-agent/installation-configuration/nodejs-agent-install/
  */
 
-'use strict';
+"use strict";
 
 // Ensure environment variables are loaded
-require('dotenv').config();
+require("dotenv").config();
 
 exports.config = {
   // Application name
-  app_name: [process.env.NEW_RELIC_APP_NAME || 'Quiz Platform Server'],
-  
+  app_name: [process.env.NEW_RELIC_APP_NAME || "Quiz Platform Server"],
+
   // License key - pulled from environment variable
-  license_key: process.env.NEW_RELIC_LICENSE_KEY || 'process.env.NEW_RELIC_API_KEY',
-  
+  license_key:
+    process.env.NEW_RELIC_LICENSE_KEY || "process.env.NEW_RELIC_API_KEY",
+
   // Logging config
   logging: {
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    enabled: process.env.NEW_RELIC_LOG_ENABLED !== 'false',
-    filepath: 'stdout',
+    level: process.env.NODE_ENV === "production" ? "info" : "debug",
+    enabled: process.env.NEW_RELIC_LOG_ENABLED !== "false",
+    filepath: "stdout",
     filet: false,
   },
 
   // Advanced configuration
-  agent_enabled: process.env.NEW_RELIC_ENABLED !== 'false',
-  
+  agent_enabled: process.env.NEW_RELIC_ENABLED !== "false",
+
   // Auditlog
   auditlog: {
     enabled: false,
   },
-  
+
   // Distributed tracing
   distributed_tracing: {
     enabled: true,
@@ -45,18 +46,18 @@ exports.config = {
 
   // Record SQL queries (be careful with sensitive data)
   transaction_tracer: {
-    record_sql: 'obfuscated',
+    record_sql: "obfuscated",
     explain_threshold: 500,
     enabled: true,
     max_segments: 500,
-    trace_threshold: 'apdex_f',
+    trace_threshold: "apdex_f",
   },
 
   // Custom instrumentation
   instrumentation: {
     modules: {
       express: true,
-      'express-rate-limit': false,
+      "express-rate-limit": false,
       mysql2: true,
     },
   },
@@ -69,22 +70,22 @@ exports.config = {
   },
 
   // API host
-  host: process.env.NEW_RELIC_HOST || 'collector.newrelic.com',
-  
+  host: process.env.NEW_RELIC_HOST || "collector.newrelic.com",
+
   // Proxy configuration (if needed)
   proxy: process.env.NEW_RELIC_PROXY || undefined,
 
   // SSL settings
   ssl: true,
-  
+
   // Attributes
   attributes: {
     enabled: true,
-    exclude: ['request.headers.authorization', 'request.headers.cookie'],
+    exclude: ["request.headers.authorization", "request.headers.cookie"],
   },
 
   // Server-side config (set via New Relic UI)
-  high_security: process.env.NEW_RELIC_HIGH_SECURITY === 'true',
+  high_security: process.env.NEW_RELIC_HIGH_SECURITY === "true",
 };
 
 // Only load newrelic if license key is provided

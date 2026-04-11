@@ -11,7 +11,7 @@
  *    (scroll-enter) — يمكن تعطيله على الأجهزة المحدودة.
  */
 
-'use strict';
+"use strict";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  الحالة الداخلية للوحدة (private — لا تُصدَّر)
@@ -49,9 +49,9 @@ const _observedElements = new Map();
  * @param {DOMHighResTimeStamp} time — الوقت المُمرَّر من RAF
  */
 function _rafLoop(time) {
-    if (!_lenis) return; // الوحدة أُلغيت — أوقف الحلقة
-    _lenis.raf(time);
-    _rafId = requestAnimationFrame(_rafLoop);
+  if (!_lenis) return; // الوحدة أُلغيت — أوقف الحلقة
+  _lenis.raf(time);
+  _rafId = requestAnimationFrame(_rafLoop);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,35 +63,35 @@ function _rafLoop(time) {
  * عند الدخول: يُطلق الـ callback المرتبط بالعنصر ثم يُلغي مراقبته (مرة واحدة).
  */
 function _buildScrollObserver() {
-    if (typeof IntersectionObserver === 'undefined') {
-        console.warn('[scroll] IntersectionObserver غير مدعوم في هذا المتصفح.');
-        return null;
-    }
+  if (typeof IntersectionObserver === "undefined") {
+    console.warn("[scroll] IntersectionObserver غير مدعوم في هذا المتصفح.");
+    return null;
+  }
 
-    return new IntersectionObserver(
-        (entries) => {
-            entries.forEach((entry) => {
-                if (!entry.isIntersecting) return;
+  return new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
 
-                const cb = _observedElements.get(entry.target);
-                if (typeof cb === 'function') {
-                    try {
-                        cb(entry.target);
-                    } catch (err) {
-                        console.warn('[scroll] خطأ في scroll-enter callback:', err);
-                    }
-                }
-
-                // كل عنصر يُطلَق مرة واحدة فقط — إلغاء المراقبة بعد الدخول
-                _scrollObserver?.unobserve(entry.target);
-                _observedElements.delete(entry.target);
-            });
-        },
-        {
-            // العنصر يُعتبر "داخلاً" حين يظهر 15% منه على الأقل
-            threshold: 0.15,
+        const cb = _observedElements.get(entry.target);
+        if (typeof cb === "function") {
+          try {
+            cb(entry.target);
+          } catch (err) {
+            console.warn("[scroll] خطأ في scroll-enter callback:", err);
+          }
         }
-    );
+
+        // كل عنصر يُطلَق مرة واحدة فقط — إلغاء المراقبة بعد الدخول
+        _scrollObserver?.unobserve(entry.target);
+        _observedElements.delete(entry.target);
+      });
+    },
+    {
+      // العنصر يُعتبر "داخلاً" حين يظهر 15% منه على الأقل
+      threshold: 0.15,
+    },
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,51 +113,60 @@ function _buildScrollObserver() {
  * initScroll();
  */
 export function initScroll(options = {}) {
-    // خيارات مساعدة: تمكين/تعطيل أو تخطّي التهيئة على الأجهزة منخفضة الأداء
-    const { enabled = true, skipOnLowTier = true } = options || {};
-    if (!enabled) {
-        console.log('[scroll] init skipped via options.enabled=false');
-        return null;
-    }
-    if (skipOnLowTier && typeof window !== 'undefined' && window.__devicePerf?.tier === 'low') {
-        console.log('[scroll] init skipped on low-tier device');
-        return null;
-    }
-    // تجنب التهيئة المزدوجة
-    if (_lenis) {
-        console.warn('[scroll] initScroll() استُدعيت مرة ثانية — تجاهل.');
-        return _lenis;
-    }
+  // خيارات مساعدة: تمكين/تعطيل أو تخطّي التهيئة على الأجهزة منخفضة الأداء
+  const { enabled = true, skipOnLowTier = true } = options || {};
+  if (!enabled) {
+    console.log("[scroll] init skipped via options.enabled=false");
+    return null;
+  }
+  if (
+    skipOnLowTier &&
+    typeof window !== "undefined" &&
+    window.__devicePerf?.tier === "low"
+  ) {
+    console.log("[scroll] init skipped on low-tier device");
+    return null;
+  }
+  // تجنب التهيئة المزدوجة
+  if (_lenis) {
+    console.warn("[scroll] initScroll() استُدعيت مرة ثانية — تجاهل.");
+    return _lenis;
+  }
 
-    // Default wrapper: attach Lenis to `body` (not `html`) to avoid HTML class toggles
+  // Default wrapper: attach Lenis to `body` (not `html`) to avoid HTML class toggles
+  try {
+    if (typeof document !== "undefined" && !options.wrapper)
+      options.wrapper = document.body;
+  } catch (e) {
+    /* ignore */
+  }
+
+  // تحقق من توافر Lenis (CDN أو import)
+  const LenisClass =
+    (typeof window !== "undefined" && window.Lenis) || // CDN
+    null; // bundler import يُعالَج أدناه
+
+  // ── محاولة استيراد Lenis ديناميكياً إن لم يكن على window ─────────────────
+  // نستخدم try/catch لأن import() يرمي في بيئات بدون bundler
+  if (!LenisClass) {
+    // محاولة استخدام Lenis عبر CDN أو حزمة مثبّتة
     try {
-        if (typeof document !== 'undefined' && !options.wrapper) options.wrapper = document.body;
-    } catch (e) { /* ignore */ }
-
-    // تحقق من توافر Lenis (CDN أو import)
-    const LenisClass =
-        (typeof window !== 'undefined' && window.Lenis) || // CDN
-        null; // bundler import يُعالَج أدناه
-
-    // ── محاولة استيراد Lenis ديناميكياً إن لم يكن على window ─────────────────
-    // نستخدم try/catch لأن import() يرمي في بيئات بدون bundler
-    if (!LenisClass) {
-        // محاولة استخدام Lenis عبر CDN أو حزمة مثبّتة
-        try {
-            // إن كانت Lenis مُضمَّنة في window (عبر <script> في HTML)، نستخدمها
-            if (typeof Lenis !== 'undefined') {
-                // eslint-disable-next-line no-undef
-                return _initWithClass(Lenis, options);
-            }
-        } catch (_) {
-            // Lenis غير متاحة — نعمل بدون تمرير ناعم
-        }
-
-        console.warn('[scroll] ⚠️ Lenis غير متاح — التمرير الناعم معطّل. أضف Lenis عبر npm أو CDN.');
-        return null;
+      // إن كانت Lenis مُضمَّنة في window (عبر <script> في HTML)، نستخدمها
+      if (typeof Lenis !== "undefined") {
+        // eslint-disable-next-line no-undef
+        return _initWithClass(Lenis, options);
+      }
+    } catch (_) {
+      // Lenis غير متاحة — نعمل بدون تمرير ناعم
     }
 
-    return _initWithClass(LenisClass, options);
+    console.warn(
+      "[scroll] ⚠️ Lenis غير متاح — التمرير الناعم معطّل. أضف Lenis عبر npm أو CDN.",
+    );
+    return null;
+  }
+
+  return _initWithClass(LenisClass, options);
 }
 
 /**
@@ -167,42 +176,49 @@ export function initScroll(options = {}) {
  * @returns {import('lenis').default}
  */
 function _initWithClass(LenisClass, options) {
-    _lenis = new LenisClass({
-        // ─── إعدادات الحركة ─────────────────────────────────────────────────
-        duration: 1.2,           // مدة انتقال التمرير بالثواني
-        easing: (t) =>           // منحنى ease-out-expo لشعور طبيعي
-            t === 1 ? 1 : 1 - Math.pow(2, -10 * t),
-        smoothWheel: true,       // تمرير ناعم عبر عجلة الماوس
-        smoothTouch: false,      // iOS يتعامل مع اللمس بكفاءة أصلاً — لا نتدخل
-        touchMultiplier: 1.5,    // حساسية اللمس على Android
+  _lenis = new LenisClass({
+    // ─── إعدادات الحركة ─────────────────────────────────────────────────
+    duration: 1.2, // مدة انتقال التمرير بالثواني
+    easing: (
+      t, // منحنى ease-out-expo لشعور طبيعي
+    ) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
+    smoothWheel: true, // تمرير ناعم عبر عجلة الماوس
+    smoothTouch: false, // iOS يتعامل مع اللمس بكفاءة أصلاً — لا نتدخل
+    touchMultiplier: 1.5, // حساسية اللمس على Android
 
-        // ─── إعدادات اتجاه التمرير ──────────────────────────────────────────
-        orientation: 'vertical', // التطبيق عمودي بالكامل
-        gestureOrientation: 'vertical',
+    // ─── إعدادات اتجاه التمرير ──────────────────────────────────────────
+    orientation: "vertical", // التطبيق عمودي بالكامل
+    gestureOrientation: "vertical",
 
-        // ─── إمكانية الوصول ─────────────────────────────────────────────────
-        // Lenis يحترم prefers-reduced-motion تلقائياً عبر هذا الخيار
-        syncTouch: false,
+    // ─── إمكانية الوصول ─────────────────────────────────────────────────
+    // Lenis يحترم prefers-reduced-motion تلقائياً عبر هذا الخيار
+    syncTouch: false,
 
-        // ─── خيارات المستخدم (تتغلب على الافتراضيات) ────────────────────────
-        ...options,
-    });
+    // ─── خيارات المستخدم (تتغلب على الافتراضيات) ────────────────────────
+    ...options,
+  });
 
-    // ابدأ حلقة RAF
-    _rafId = requestAnimationFrame(_rafLoop);
+  // ابدأ حلقة RAF
+  _rafId = requestAnimationFrame(_rafLoop);
 
-    // ── ربط Lenis بـ GSAP ScrollTrigger ─────────────────────────────────────
-    // Lenis يُحرِّك موضع التمرير بشكل مستقل عبر RAF.
-    // ScrollTrigger بالمقابل يقرأ window.scrollY مباشرةً.
-    // بدون هذا الربط: scroll-triggered animations تتأخر فريمَين عن الحركة الفعلية
-    // → جانك ظاهر بوضوح على الأجهزة البطيئة (Adreno/Mali mid-range).
-    // الحل: عند كل تحديث Lenis نُخبر ScrollTrigger بإعادة حساب مواضعه.
-    _lenis.on('scroll', () => {
-        try { window.ScrollTrigger?.update?.(); } catch (e) { /* ignore */ }
-    });
+  // ── ربط Lenis بـ GSAP ScrollTrigger ─────────────────────────────────────
+  // Lenis يُحرِّك موضع التمرير بشكل مستقل عبر RAF.
+  // ScrollTrigger بالمقابل يقرأ window.scrollY مباشرةً.
+  // بدون هذا الربط: scroll-triggered animations تتأخر فريمَين عن الحركة الفعلية
+  // → جانك ظاهر بوضوح على الأجهزة البطيئة (Adreno/Mali mid-range).
+  // الحل: عند كل تحديث Lenis نُخبر ScrollTrigger بإعادة حساب مواضعه.
+  _lenis.on("scroll", () => {
+    try {
+      window.ScrollTrigger?.update?.();
+    } catch (e) {
+      /* ignore */
+    }
+  });
 
-    console.log('[scroll] ✓ Lenis مُهيَّأ — التمرير الناعم يعمل + ScrollTrigger مرتبط');
-    return _lenis;
+  console.log(
+    "[scroll] ✓ Lenis مُهيَّأ — التمرير الناعم يعمل + ScrollTrigger مرتبط",
+  );
+  return _lenis;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -220,28 +236,30 @@ function _initWithClass(LenisClass, options) {
  * @param {boolean} [isMobile=false]
  */
 export function setScrollTierOptions(tier, isMobile = false) {
-    if (!_lenis) return;
-    try {
-        if (tier === 'low' || isMobile) {
-            // Mobile or Low tier: disable JS smooth scrolling entirely to save GPU/CPU
-            if (_lenis.options) {
-                _lenis.options.smoothWheel = false;
-                _lenis.options.smoothTouch = false;
-                _lenis.options.orientation = 'native'; // or just destroy the instance usually
-            }
-            disableSmoothScroll();
-            document.documentElement.style.scrollBehavior = 'smooth';
-        } else if (tier === 'medium') {
-            // Medium tier desktop
-            if (_lenis.options) {
-                _lenis.options.duration       = 1.0;
-                _lenis.options.touchMultiplier = 1.5;
-            }
-        }
-        console.log(`[scroll] tier=${tier} mobile=${isMobile} → Lenis options updated`);
-    } catch (e) {
-        // Some Lenis versions do not expose options directly
+  if (!_lenis) return;
+  try {
+    if (tier === "low" || isMobile) {
+      // Mobile or Low tier: disable JS smooth scrolling entirely to save GPU/CPU
+      if (_lenis.options) {
+        _lenis.options.smoothWheel = false;
+        _lenis.options.smoothTouch = false;
+        _lenis.options.orientation = "native"; // or just destroy the instance usually
+      }
+      disableSmoothScroll();
+      document.documentElement.style.scrollBehavior = "smooth";
+    } else if (tier === "medium") {
+      // Medium tier desktop
+      if (_lenis.options) {
+        _lenis.options.duration = 1.0;
+        _lenis.options.touchMultiplier = 1.5;
+      }
     }
+    console.log(
+      `[scroll] tier=${tier} mobile=${isMobile} → Lenis options updated`,
+    );
+  } catch (e) {
+    // Some Lenis versions do not expose options directly
+  }
 }
 
 /**
@@ -255,12 +273,12 @@ export function setScrollTierOptions(tier, isMobile = false) {
  * scrollToTop({ duration: 0.8 });
  */
 export function scrollToTop({ duration = 1.0, onComplete } = {}) {
-    if (!_lenis) {
-        // fallback إن كان Lenis غير متاح
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-    }
-    _lenis.scrollTo(0, { duration, onComplete });
+  if (!_lenis) {
+    // fallback إن كان Lenis غير متاح
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  _lenis.scrollTo(0, { duration, onComplete });
 }
 
 /**
@@ -275,13 +293,17 @@ export function scrollToTop({ duration = 1.0, onComplete } = {}) {
  * @example
  * scrollToElement('#quiz-section', { offset: -80 });
  */
-export function scrollToElement(target, { offset = 0, duration = 1.0, onComplete } = {}) {
-    if (!_lenis) {
-        const el = typeof target === 'string' ? document.querySelector(target) : target;
-        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
-    }
-    _lenis.scrollTo(target, { offset, duration, onComplete });
+export function scrollToElement(
+  target,
+  { offset = 0, duration = 1.0, onComplete } = {},
+) {
+  if (!_lenis) {
+    const el =
+      typeof target === "string" ? document.querySelector(target) : target;
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  _lenis.scrollTo(target, { offset, duration, onComplete });
 }
 
 /**
@@ -289,11 +311,11 @@ export function scrollToElement(target, { offset = 0, duration = 1.0, onComplete
  * آمنة للاستدعاء في أي وقت حتى لو لم تُهيَّأ Lenis.
  */
 export function enableSmoothScroll() {
-    _smoothEnabled = true;
-    if (_lenis) {
-        _lenis.start();
-        console.log('[scroll] التمرير الناعم: مُفعَّل');
-    }
+  _smoothEnabled = true;
+  if (_lenis) {
+    _lenis.start();
+    console.log("[scroll] التمرير الناعم: مُفعَّل");
+  }
 }
 
 /**
@@ -301,11 +323,11 @@ export function enableSmoothScroll() {
  * يُوقف Lenis لكن يُبقي النسخة حية للإعادة لاحقاً.
  */
 export function disableSmoothScroll() {
-    _smoothEnabled = false;
-    if (_lenis) {
-        _lenis.stop();
-        console.log('[scroll] التمرير الناعم: مُعطَّل');
-    }
+  _smoothEnabled = false;
+  if (_lenis) {
+    _lenis.stop();
+    console.log("[scroll] التمرير الناعم: مُعطَّل");
+  }
 }
 
 /**
@@ -313,15 +335,15 @@ export function disableSmoothScroll() {
  * يُنشئ Observer إن لم يكن موجوداً.
  */
 export function onScrollEnter() {
-    if (_scrollEnterEnabled) return; // مُفعَّل مسبقاً
-    _scrollObserver = _buildScrollObserver();
-    _scrollEnterEnabled = !!_scrollObserver;
+  if (_scrollEnterEnabled) return; // مُفعَّل مسبقاً
+  _scrollObserver = _buildScrollObserver();
+  _scrollEnterEnabled = !!_scrollObserver;
 
-    // أعِد مراقبة العناصر المُسجَّلة مسبقاً (إن وُجدت)
-    if (_scrollObserver) {
-        _observedElements.forEach((_, el) => _scrollObserver.observe(el));
-        console.log('[scroll] scroll-enter callbacks: مُفعَّلة');
-    }
+  // أعِد مراقبة العناصر المُسجَّلة مسبقاً (إن وُجدت)
+  if (_scrollObserver) {
+    _observedElements.forEach((_, el) => _scrollObserver.observe(el));
+    console.log("[scroll] scroll-enter callbacks: مُفعَّلة");
+  }
 }
 
 /**
@@ -329,12 +351,12 @@ export function onScrollEnter() {
  * العناصر المُراقَبة تظل في الخريطة وتُعاد مراقبتها إن أُعيد تفعيل onScrollEnter().
  */
 export function offScrollEnter() {
-    if (_scrollObserver) {
-        _scrollObserver.disconnect();
-        _scrollObserver = null;
-    }
-    _scrollEnterEnabled = false;
-    console.log('[scroll] scroll-enter callbacks: مُعطَّلة');
+  if (_scrollObserver) {
+    _scrollObserver.disconnect();
+    _scrollObserver = null;
+  }
+  _scrollEnterEnabled = false;
+  console.log("[scroll] scroll-enter callbacks: مُعطَّلة");
 }
 
 /**
@@ -348,16 +370,20 @@ export function offScrollEnter() {
  * registerScrollEnter(cardEl, (el) => el.classList.add('visible'));
  */
 export function registerScrollEnter(element, callback) {
-    if (!element || typeof callback !== 'function') return;
+  if (!element || typeof callback !== "function") return;
 
-    _observedElements.set(element, callback);
+  _observedElements.set(element, callback);
 
-    if (_scrollEnterEnabled && _scrollObserver) {
-        _scrollObserver.observe(element);
-    } else if (!_scrollEnterEnabled) {
-        // scroll-enter مُعطَّل — شغّل الـ callback فوراً حتى لا تختفي المحتويات
-        try { callback(element); } catch (e) { /* ignore */ }
+  if (_scrollEnterEnabled && _scrollObserver) {
+    _scrollObserver.observe(element);
+  } else if (!_scrollEnterEnabled) {
+    // scroll-enter مُعطَّل — شغّل الـ callback فوراً حتى لا تختفي المحتويات
+    try {
+      callback(element);
+    } catch (e) {
+      /* ignore */
     }
+  }
 }
 
 /**
@@ -366,8 +392,8 @@ export function registerScrollEnter(element, callback) {
  * @param {Element} element
  */
 export function unregisterScrollEnter(element) {
-    if (_scrollObserver) _scrollObserver.unobserve(element);
-    _observedElements.delete(element);
+  if (_scrollObserver) _scrollObserver.unobserve(element);
+  _observedElements.delete(element);
 }
 
 /**
@@ -375,7 +401,7 @@ export function unregisterScrollEnter(element) {
  * @returns {import('lenis').default|null}
  */
 export function getLenisInstance() {
-    return _lenis;
+  return _lenis;
 }
 
 /**
@@ -383,15 +409,15 @@ export function getLenisInstance() {
  * نادراً ما تحتاجه في الإنتاج.
  */
 export function destroyScroll() {
-    if (_rafId !== null) {
-        cancelAnimationFrame(_rafId);
-        _rafId = null;
-    }
-    if (_lenis) {
-        _lenis.destroy();
-        _lenis = null;
-    }
-    offScrollEnter();
-    _observedElements.clear();
-    console.log('[scroll] Lenis مُدمَّر — وحدة التمرير أُعيدت لحالتها الأولى');
+  if (_rafId !== null) {
+    cancelAnimationFrame(_rafId);
+    _rafId = null;
+  }
+  if (_lenis) {
+    _lenis.destroy();
+    _lenis = null;
+  }
+  offScrollEnter();
+  _observedElements.clear();
+  console.log("[scroll] Lenis مُدمَّر — وحدة التمرير أُعيدت لحالتها الأولى");
 }

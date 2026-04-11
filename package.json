@@ -13,16 +13,27 @@
     "build": "npm run build:css",
     "start": "node server/index.js",
     "dev": "npm --prefix server run dev",
-    "test": "npm --prefix server test"
+    "test": "npm --prefix server test",
+    "test:client": "vitest run --config client/vitest.config.js --coverage",
+    "audit:deps": "npm ls --depth=0 && npm audit --omit=dev",
+    "audit:server": "npm --prefix server ls --depth=0 && npm --prefix server audit --omit=dev",
+    "deps:unused": "depcheck --ignores=@vitest/coverage-v8",
+    "size:assets": "node scripts/asset-size-report.js",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@fullhuman/postcss-purgecss": "^8.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "daisyui": "^5.5.19",
+    "depcheck": "^1.4.7",
     "esbuild": "^0.27.3",
-    "tailwindcss": "^3.4.19"
+    "jsdom": "^25.0.1",
+    "tailwindcss": "^3.4.19",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
-    "@datadog/browser-rum": "^6.32.0",
-    "@studio-freight/lenis": "^1.0.42"
+    "cookie-parser": "^1.4.7",
+    "dompurify": "^3.3.3",
+    "dotenv": "^16.6.1",
+    "express-rate-limit": "^8.3.2"
   }
 }

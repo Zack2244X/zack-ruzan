@@ -1,10 +1,11 @@
-const fs = require('fs');
+const fs = require("fs");
 
 // 1. Update quiz.js
-let code = fs.readFileSync('client/js/modules/quiz.js', 'utf8');
+let code = fs.readFileSync("client/js/modules/quiz.js", "utf8");
 
-if (!code.includes('function getClientDeviceId()')) {
-    code = `function getClientDeviceId() {
+if (!code.includes("function getClientDeviceId()")) {
+  code =
+    `function getClientDeviceId() {
     let id = localStorage.getItem('device_id_progress');
     if (!id) {
         id = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -15,24 +16,24 @@ if (!code.includes('function getClientDeviceId()')) {
 }
 
 code = code.replace(
-    /const progressObj = await apiCall\('GET', `\/api\/attempts\/progress\/\$\{quizId\}`\);/,
-    `const progressObj = await apiCall('GET', \`/api/attempts/progress/\$\{quizId\}?deviceId=\$\{getClientDeviceId()\}\`);`
+  /const progressObj = await apiCall\('GET', `\/api\/attempts\/progress\/\$\{quizId\}`\);/,
+  `const progressObj = await apiCall('GET', \`/api/attempts/progress/\$\{quizId\}?deviceId=\$\{getClientDeviceId()\}\`);`,
 );
 
 code = code.replace(
-    /answers: state\.userAnswers,\n(\s*)timeRemaining: state\.timeRemaining,\n(\s*)currentQuestionIndex: state\.currentQuestionIndex/g,
-    `answers: state.userAnswers,
+  /answers: state\.userAnswers,\n(\s*)timeRemaining: state\.timeRemaining,\n(\s*)currentQuestionIndex: state\.currentQuestionIndex/g,
+  `answers: state.userAnswers,
 $1timeRemaining: state.timeRemaining,
 $2currentQuestionIndex: state.currentQuestionIndex,
-$2deviceId: getClientDeviceId()`
+$2deviceId: getClientDeviceId()`,
 );
 
 code = code.replace(
-    /await apiCall\('DELETE', `\/api\/attempts\/progress\/\$\{payload\.quizId\}`\);/,
-    `await apiCall('DELETE', \`/api/attempts/progress/\$\{payload.quizId\}?deviceId=\$\{getClientDeviceId()\}\`);`
+  /await apiCall\('DELETE', `\/api\/attempts\/progress\/\$\{payload\.quizId\}`\);/,
+  `await apiCall('DELETE', \`/api/attempts/progress/\$\{payload.quizId\}?deviceId=\$\{getClientDeviceId()\}\`);`,
 );
 
-fs.writeFileSync('client/js/modules/quiz.js', code);
+fs.writeFileSync("client/js/modules/quiz.js", code);
 
 // 2. Update QuizProgress.js Model
 const modelCode = `const { DataTypes } = require('sequelize');
@@ -74,13 +75,15 @@ const QuizProgress = sequelize.define('QuizProgress', {
 
 module.exports = QuizProgress;
 `;
-fs.writeFileSync('server/models/QuizProgress.js', modelCode);
+fs.writeFileSync("server/models/QuizProgress.js", modelCode);
 
 // 3. Update attempts.js Routes
-let attemptsCode = fs.readFileSync('server/routes/attempts.js', 'utf8');
-const startIndex = attemptsCode.indexOf('// GET /api/attempts/progress/:quizId');
+let attemptsCode = fs.readFileSync("server/routes/attempts.js", "utf8");
+const startIndex = attemptsCode.indexOf(
+  "// GET /api/attempts/progress/:quizId",
+);
 if (startIndex !== -1) {
-    attemptsCode = attemptsCode.substring(0, startIndex);
+  attemptsCode = attemptsCode.substring(0, startIndex);
 }
 
 attemptsCode += `// GET /api/attempts/progress/:quizId
@@ -176,5 +179,4 @@ router.delete('/progress/:quizId', authenticate, async (req, res) => {
 
 module.exports = router;
 `;
-fs.writeFileSync('server/routes/attempts.js', attemptsCode);
-
+fs.writeFileSync("server/routes/attempts.js", attemptsCode);

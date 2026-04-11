@@ -1,12 +1,12 @@
-const fs = require('fs');
+const fs = require("fs");
 
-const path = 'client/js/modules/quiz.js';
-let code = fs.readFileSync(path, 'utf8');
+const path = "client/js/modules/quiz.js";
+let code = fs.readFileSync(path, "utf8");
 
 // Patch selectAnswer
 code = code.replace(
-    /export function selectAnswer\(selectedIndex\) \{[\s\S]*?nextButton\.disabled = false;\n(\s*)\}/m,
-    `export function selectAnswer(selectedIndex) {
+  /export function selectAnswer\(selectedIndex\) \{[\s\S]*?nextButton\.disabled = false;\n(\s*)\}/m,
+  `export function selectAnswer(selectedIndex) {
     logFunctionStatus('selectAnswer', false);
     
     // Allow changing answers: remove "if (state.userAnswers !== null) return"
@@ -50,23 +50,23 @@ code = code.replace(
     });
 
     nextButton.disabled = false;
-}`
+}`,
 );
 
 // We need to also patch renderQuestion to not remove onclick handler via disableOptions()
 // OR ensure disableOptions() is removed
-code = code.replace(/disableOptions\(\);/g, '// disableOptions();');
+code = code.replace(/disableOptions\(\);/g, "// disableOptions();");
 
 // In renderQuestion, apply the new style to already selected items:
 code = code.replace(
-    /if \(index === selectedIndex\) \{\s*optionEl\.classList\.add\('selected'\);\s*optionEl\.style\.borderColor = '#3b82f6';\s*optionEl\.style\.backgroundColor = 'rgba\(59, 130, 246, 0\.15\)';\s*\}/g,
-    `if (index === selectedIndex) {
+  /if \(index === selectedIndex\) \{\s*optionEl\.classList\.add\('selected'\);\s*optionEl\.style\.borderColor = '#3b82f6';\s*optionEl\.style\.backgroundColor = 'rgba\(59, 130, 246, 0\.15\)';\s*\}/g,
+  `if (index === selectedIndex) {
                 optionEl.classList.add('selected');
                 optionEl.style.borderColor = '#10b981';
                 optionEl.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
                 optionEl.style.color = '#10b981';
                 optionEl.style.fontWeight = 'bold';
-            }`
+            }`,
 );
 
 fs.writeFileSync(path, code);

@@ -10,15 +10,26 @@
 //   مسارات الامتحانات (CRUD)
 //   — Sequelize + TiDB —
 // ============================================
-const router = require('express').Router();
-const crypto = require('crypto');
-const { Op } = require('sequelize');
-const sequelize = require('../models/index');
-const Quiz = require('../models/Quiz');
-const User = require('../models/User');
-const { authenticate, authenticateOrGuest, requireAdmin } = require('../middleware/auth');
-const { validateCreateQuiz, validateUpdateQuiz, validateRenameSubject, validatePagination, validateIdParam, validateSubjectParam } = require('../middleware/validators');
-const logger = require('../utils/logger');
+const router = require("express").Router();
+const crypto = require("crypto");
+const { Op } = require("sequelize");
+const sequelize = require("../models/index");
+const Quiz = require("../models/Quiz");
+const User = require("../models/User");
+const {
+  authenticate,
+  authenticateOrGuest,
+  requireAdmin,
+} = require("../middleware/auth");
+const {
+  validateCreateQuiz,
+  validateUpdateQuiz,
+  validateRenameSubject,
+  validatePagination,
+  validateIdParam,
+  validateSubjectParam,
+} = require("../middleware/validators");
+const logger = require("../utils/logger");
 
 // ============================================
 //   GET /api/quizzes — جلب كل الامتحانات
@@ -32,55 +43,74 @@ const logger = require('../utils/logger');
  * @param {import('express').Response} res - Express response with `{ data, total, page, totalPages }`.
  * @returns {Promise<void>}
  */
-router.get('/', authenticateOrGuest, validatePagination, async (req, res) => {
-    try {
-        const { subject, active } = req.query;
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
-        const offset = (page - 1) * limit;
-        const where = {};
+router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
+  try {
+    const { subject, active } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    const where = {};
 
-        if (req.user.role === 'student') {
-            where.isActive = true;
-        } else if (active !== undefined) {
-            where.isActive = active === 'true';
-        }
-
-        if (subject && subject !== 'الكل') {
-            where.subject = subject;
-        }
-
-        const { count, rows: quizzes } = await Quiz.findAndCountAll({
-            where,
-            order: [['createdAt', 'DESC']],
-            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }],
-            limit,
-            offset
-        });
-
-        // للطلاب: إخفاء التبريرات فقط (isCorrect لازم يتبعت عشان التغذية الراجعة الفورية)
-        if (req.user.role === 'student') {
-            const sanitized = quizzes.map(quiz => {
-                const q = quiz.toJSON();
-                q.questions = q.questions.map(question => ({
-                    ...question,
-                    answerOptions: question.answerOptions.map(opt => ({
-                        text: opt.text,
-                        isCorrect: !!opt.isCorrect,
-                        rationale: opt.rationale || ''
-                    }))
-                }));
-                return q;
-            });
-            return res.json({ data: sanitized, total: count, page, totalPages: Math.ceil(count / limit) });
-        }
-
-        res.json({ data: quizzes, total: count, page, totalPages: Math.ceil(count / limit) });
-    } catch (error) {
-        const dbMsg = error.original?.message || error.parent?.message || error.message;
-        logger.error('خطأ في جلب الامتحانات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({ error: 'حدث خطأ في جلب الامتحانات.', ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg }) });
+    if (req.user.role === "student") {
+      where.isActive = true;
+    } else if (active !== undefined) {
+      where.isActive = active === "true";
     }
+
+    if (subject && subject !== "الكل") {
+      where.subject = subject;
+    }
+
+    const { count, rows: quizzes } = await Quiz.findAndCountAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      include: [{ model: User, as: "creator", attributes: ["fname", "lname"] }],
+      limit,
+      offset,
+    });
+
+    // للطلاب: إخفاء التبريرات فقط (isCorrect لازم يتبعت عشان التغذية الراجعة الفورية)
+    if (req.user.role === "student") {
+      const sanitized = quizzes.map((quiz) => {
+        const q = quiz.toJSON();
+        q.questions = q.questions.map((question) => ({
+          ...question,
+          answerOptions: question.answerOptions.map((opt) => ({
+            text: opt.text,
+            isCorrect: !!opt.isCorrect,
+            rationale: opt.rationale || "",
+          })),
+        }));
+        return q;
+      });
+      return res.json({
+        data: sanitized,
+        total: count,
+        page,
+        totalPages: Math.ceil(count / limit),
+      });
+    }
+
+    res.json({
+      data: quizzes,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit),
+    });
+  } catch (error) {
+    const dbMsg =
+      error.original?.message || error.parent?.message || error.message;
+    logger.error("خطأ في جلب الامتحانات:", {
+      error: dbMsg,
+      stack: error.stack,
+    });
+    res
+      .status(500)
+      .json({
+        error: "حدث خطأ في جلب الامتحانات.",
+        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+      });
+  }
 });
 
 // ============================================
@@ -96,18 +126,20 @@ router.get('/', authenticateOrGuest, validatePagination, async (req, res) => {
  * @param {import('express').Response} res - Express response with an array of subject strings.
  * @returns {Promise<void>}
  */
-router.get('/subjects/list', authenticate, async (req, res) => {
-    try {
-        const results = await Quiz.findAll({
-            attributes: [[sequelize.fn('DISTINCT', sequelize.col('subject')), 'subject']],
-            raw: true
-        });
-        const subjects = results.map(r => r.subject);
-        res.json(subjects);
-    } catch (error) {
-        logger.error('خطأ في جلب المواد:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
-    }
+router.get("/subjects/list", authenticate, async (req, res) => {
+  try {
+    const results = await Quiz.findAll({
+      attributes: [
+        [sequelize.fn("DISTINCT", sequelize.col("subject")), "subject"],
+      ],
+      raw: true,
+    });
+    const subjects = results.map((r) => r.subject);
+    res.json(subjects);
+  } catch (error) {
+    logger.error("خطأ في جلب المواد:", { error: error.message });
+    res.status(500).json({ error: "حدث خطأ." });
+  }
 });
 
 // ============================================
@@ -123,24 +155,30 @@ router.get('/subjects/list', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Express response with `{ message, modifiedCount }`.
  * @returns {Promise<void>}
  */
-router.put('/subject/rename', authenticate, requireAdmin, validateRenameSubject, async (req, res) => {
+router.put(
+  "/subject/rename",
+  authenticate,
+  requireAdmin,
+  validateRenameSubject,
+  async (req, res) => {
     try {
-        const { oldName, newName } = req.body;
+      const { oldName, newName } = req.body;
 
-        const [affectedCount] = await Quiz.update(
-            { subject: newName },
-            { where: { subject: oldName } }
-        );
+      const [affectedCount] = await Quiz.update(
+        { subject: newName },
+        { where: { subject: oldName } },
+      );
 
-        res.json({
-            message: `تم تعديل اسم المادة من "${oldName}" إلى "${newName}".`,
-            modifiedCount: affectedCount
-        });
+      res.json({
+        message: `تم تعديل اسم المادة من "${oldName}" إلى "${newName}".`,
+        modifiedCount: affectedCount,
+      });
     } catch (error) {
-        logger.error('خطأ في تعديل اسم المادة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+      logger.error("خطأ في تعديل اسم المادة:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ." });
     }
-});
+  },
+);
 
 // ============================================
 //   DELETE /api/quizzes/subject/:name — حذف كل امتحانات مادة (أدمن فقط)
@@ -155,20 +193,28 @@ router.put('/subject/rename', authenticate, requireAdmin, validateRenameSubject,
  * @param {import('express').Response} res - Express response with `{ message, deletedCount }`.
  * @returns {Promise<void>}
  */
-router.delete('/subject/:name', authenticate, requireAdmin, validateSubjectParam, async (req, res) => {
+router.delete(
+  "/subject/:name",
+  authenticate,
+  requireAdmin,
+  validateSubjectParam,
+  async (req, res) => {
     try {
-        const subjectName = decodeURIComponent(req.params.name);
-        const deletedCount = await Quiz.destroy({ where: { subject: subjectName } });
+      const subjectName = decodeURIComponent(req.params.name);
+      const deletedCount = await Quiz.destroy({
+        where: { subject: subjectName },
+      });
 
-        res.json({
-            message: `تم حذف مجلد "${subjectName}" وجميع امتحاناته.`,
-            deletedCount
-        });
+      res.json({
+        message: `تم حذف مجلد "${subjectName}" وجميع امتحاناته.`,
+        deletedCount,
+      });
     } catch (error) {
-        logger.error('خطأ في حذف المادة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+      logger.error("خطأ في حذف المادة:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ." });
     }
-});
+  },
+);
 
 // ============================================
 //   GET /api/quizzes/:id — جلب امتحان واحد
@@ -182,34 +228,34 @@ router.delete('/subject/:name', authenticate, requireAdmin, validateSubjectParam
  * @param {import('express').Response} res - Express response with the quiz object.
  * @returns {Promise<void>}
  */
-router.get('/:id', authenticate, async (req, res) => {
-    try {
-        const quiz = await Quiz.findByPk(req.params.id, {
-            include: [{ model: User, as: 'creator', attributes: ['fname', 'lname'] }]
-        });
+router.get("/:id", authenticate, async (req, res) => {
+  try {
+    const quiz = await Quiz.findByPk(req.params.id, {
+      include: [{ model: User, as: "creator", attributes: ["fname", "lname"] }],
+    });
 
-        if (!quiz) {
-            return res.status(404).json({ error: 'الامتحان غير موجود.' });
-        }
-
-        if (req.user.role === 'student') {
-            const q = quiz.toJSON();
-            q.questions = q.questions.map(question => ({
-                ...question,
-                answerOptions: question.answerOptions.map(opt => ({
-                    text: opt.text,
-                    isCorrect: !!opt.isCorrect,
-                    rationale: opt.rationale || ''
-                }))
-            }));
-            return res.json(q);
-        }
-
-        res.json(quiz);
-    } catch (error) {
-        logger.error('خطأ في جلب الامتحان:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ في جلب الامتحان.' });
+    if (!quiz) {
+      return res.status(404).json({ error: "الامتحان غير موجود." });
     }
+
+    if (req.user.role === "student") {
+      const q = quiz.toJSON();
+      q.questions = q.questions.map((question) => ({
+        ...question,
+        answerOptions: question.answerOptions.map((opt) => ({
+          text: opt.text,
+          isCorrect: !!opt.isCorrect,
+          rationale: opt.rationale || "",
+        })),
+      }));
+      return res.json(q);
+    }
+
+    res.json(quiz);
+  } catch (error) {
+    logger.error("خطأ في جلب الامتحان:", { error: error.message });
+    res.status(500).json({ error: "حدث خطأ في جلب الامتحان." });
+  }
 });
 
 // ============================================
@@ -224,75 +270,99 @@ router.get('/:id', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Express response with `{ message, quiz }`.
  * @returns {Promise<void>}
  */
-router.post('/', authenticate, requireAdmin, validateCreateQuiz, async (req, res) => {
+router.post(
+  "/",
+  authenticate,
+  requireAdmin,
+  validateCreateQuiz,
+  async (req, res) => {
     try {
-        const {
-            title, subject, description, timeLimit,
-            closingMessage, streakGoal, feedback, questions
-        } = req.body;
+      const {
+        title,
+        subject,
+        description,
+        timeLimit,
+        closingMessage,
+        streakGoal,
+        feedback,
+        questions,
+      } = req.body;
 
-        // تحقق من عدم وجود امتحان بنفس العنوان
-        const existingQuiz = await Quiz.findOne({ where: { title } });
-        if (existingQuiz) {
-            return res.status(409).json({ error: 'يوجد بالفعل امتحان بهذا العنوان. يرجى اختيار عنوان مختلف.' });
+      // تحقق من عدم وجود امتحان بنفس العنوان
+      const existingQuiz = await Quiz.findOne({ where: { title } });
+      if (existingQuiz) {
+        return res
+          .status(409)
+          .json({
+            error: "يوجد بالفعل امتحان بهذا العنوان. يرجى اختيار عنوان مختلف.",
+          });
+      }
+
+      // التحقق من أن questions هي array صحيح وتحتوي على عناصر
+      if (!Array.isArray(questions) || questions.length === 0) {
+        return res
+          .status(400)
+          .json({ error: "يجب توفير سؤال واحد على الأقل." });
+      }
+      if (questions.length > 200) {
+        return res
+          .status(400)
+          .json({ error: "الحد الأقصى للأسئلة هو 200 سؤال." });
+      }
+
+      // التحقق من صحة كل سؤال + إضافة ID فريد
+      const processedQuestions = [];
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!q.question || !q.question.trim()) {
+          return res.status(400).json({ error: `السؤال رقم ${i + 1} فارغ.` });
+        }
+        if (!q.answerOptions || q.answerOptions.length < 2) {
+          return res
+            .status(400)
+            .json({ error: `السؤال رقم ${i + 1} يحتاج خيارين على الأقل.` });
+        }
+        const hasCorrect = q.answerOptions.some((opt) => opt.isCorrect);
+        if (!hasCorrect) {
+          return res
+            .status(400)
+            .json({ error: `السؤال رقم ${i + 1} ليس له إجابة صحيحة محددة.` });
         }
 
-        // التحقق من أن questions هي array صحيح وتحتوي على عناصر
-        if (!Array.isArray(questions) || questions.length === 0) {
-            return res.status(400).json({ error: 'يجب توفير سؤال واحد على الأقل.' });
-        }
-        if (questions.length > 200) {
-            return res.status(400).json({ error: 'الحد الأقصى للأسئلة هو 200 سؤال.' });
-        }
-
-        // التحقق من صحة كل سؤال + إضافة ID فريد
-        const processedQuestions = [];
-        for (let i = 0; i < questions.length; i++) {
-            const q = questions[i];
-            if (!q.question || !q.question.trim()) {
-                return res.status(400).json({ error: `السؤال رقم ${i + 1} فارغ.` });
-            }
-            if (!q.answerOptions || q.answerOptions.length < 2) {
-                return res.status(400).json({ error: `السؤال رقم ${i + 1} يحتاج خيارين على الأقل.` });
-            }
-            const hasCorrect = q.answerOptions.some(opt => opt.isCorrect);
-            if (!hasCorrect) {
-                return res.status(400).json({ error: `السؤال رقم ${i + 1} ليس له إجابة صحيحة محددة.` });
-            }
-
-            processedQuestions.push({
-                id: q.id || crypto.randomUUID(),   // إضافة ID فريد لكل سؤال
-                question: q.question,
-                hint: q.hint || '',
-                answerOptions: q.answerOptions.map(opt => ({
-                    text: opt.text,
-                    isCorrect: !!opt.isCorrect,
-                    rationale: opt.rationale || ''
-                }))
-            });
-        }
-
-        const quiz = await Quiz.create({
-            title,
-            subject,
-            description: description || '',
-            timeLimit: timeLimit || 1800,
-            closingMessage: closingMessage || 'شكراً لمشاركتك في الاختبار!',
-            streakGoal: streakGoal || 3,
-            feedback: feedback || {},
-            questions: processedQuestions,
-            createdBy: req.user.id
+        processedQuestions.push({
+          id: q.id || crypto.randomUUID(), // إضافة ID فريد لكل سؤال
+          question: q.question,
+          hint: q.hint || "",
+          answerOptions: q.answerOptions.map((opt) => ({
+            text: opt.text,
+            isCorrect: !!opt.isCorrect,
+            rationale: opt.rationale || "",
+          })),
         });
+      }
 
-        res.status(201).json({
-            message: 'تم إنشاء الامتحان بنجاح!',
-            quiz
-        });
+      const quiz = await Quiz.create({
+        title,
+        subject,
+        description: description || "",
+        timeLimit: timeLimit || 1800,
+        closingMessage: closingMessage || "شكراً لمشاركتك في الاختبار!",
+        streakGoal: streakGoal || 3,
+        feedback: feedback || {},
+        questions: processedQuestions,
+        createdBy: req.user.id,
+      });
+
+      res.status(201).json({
+        message: "تم إنشاء الامتحان بنجاح!",
+        quiz,
+      });
     } catch (error) {
-        logger.error('خطأ في إنشاء الامتحان:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء إنشاء الامتحان.' });
+      logger.error("خطأ في إنشاء الامتحان:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء إنشاء الامتحان." });
     }
-});
+  },
+);
 
 // ============================================
 //   PUT /api/quizzes/:id — تعديل امتحان (أدمن فقط)
@@ -306,56 +376,71 @@ router.post('/', authenticate, requireAdmin, validateCreateQuiz, async (req, res
  * @param {import('express').Response} res - Express response with `{ message, quiz }`.
  * @returns {Promise<void>}
  */
-router.put('/:id', authenticate, requireAdmin, validateUpdateQuiz, async (req, res) => {
+router.put(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validateUpdateQuiz,
+  async (req, res) => {
     try {
-        const quiz = await Quiz.findByPk(req.params.id);
-        if (!quiz) {
-            return res.status(404).json({ error: 'الامتحان غير موجود.' });
+      const quiz = await Quiz.findByPk(req.params.id);
+      if (!quiz) {
+        return res.status(404).json({ error: "الامتحان غير موجود." });
+      }
+
+      if (quiz.createdBy && quiz.createdBy !== req.user.id) {
+        return res
+          .status(403)
+          .json({ error: "غير مصرح لك بتعديل امتحان أنشأه أدمن آخر." });
+      }
+
+      const allowedFields = [
+        "title",
+        "subject",
+        "description",
+        "timeLimit",
+        "closingMessage",
+        "streakGoal",
+        "feedback",
+        "questions",
+        "isActive",
+      ];
+
+      allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          // لو عدّل الأسئلة، نضيف IDs للأسئلة الجديدة
+          if (field === "questions" && Array.isArray(req.body.questions)) {
+            quiz.questions = req.body.questions.map((q) => ({
+              id: q.id || crypto.randomUUID(),
+              question: q.question,
+              hint: q.hint || "",
+              answerOptions: q.answerOptions.map((opt) => ({
+                text: opt.text,
+                isCorrect: !!opt.isCorrect,
+                rationale: opt.rationale || "",
+              })),
+            }));
+          } else {
+            quiz[field] = req.body[field];
+          }
         }
+      });
 
-        if (quiz.createdBy && quiz.createdBy !== req.user.id) {
-            return res.status(403).json({ error: 'غير مصرح لك بتعديل امتحان أنشأه أدمن آخر.' });
-        }
+      // Sequelize يحتاج changed() للـ JSON columns
+      quiz.changed("questions", true);
+      quiz.changed("feedback", true);
+      await quiz.save();
 
-        const allowedFields = [
-            'title', 'subject', 'description', 'timeLimit',
-            'closingMessage', 'streakGoal', 'feedback', 'questions', 'isActive'
-        ];
-
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                // لو عدّل الأسئلة، نضيف IDs للأسئلة الجديدة
-                if (field === 'questions' && Array.isArray(req.body.questions)) {
-                    quiz.questions = req.body.questions.map(q => ({
-                        id: q.id || crypto.randomUUID(),
-                        question: q.question,
-                        hint: q.hint || '',
-                        answerOptions: q.answerOptions.map(opt => ({
-                            text: opt.text,
-                            isCorrect: !!opt.isCorrect,
-                            rationale: opt.rationale || ''
-                        }))
-                    }));
-                } else {
-                    quiz[field] = req.body[field];
-                }
-            }
-        });
-
-        // Sequelize يحتاج changed() للـ JSON columns
-        quiz.changed('questions', true);
-        quiz.changed('feedback', true);
-        await quiz.save();
-
-        res.json({
-            message: 'تم تحديث الامتحان بنجاح!',
-            quiz
-        });
+      res.json({
+        message: "تم تحديث الامتحان بنجاح!",
+        quiz,
+      });
     } catch (error) {
-        logger.error('خطأ في تعديل الامتحان:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء تعديل الامتحان.' });
+      logger.error("خطأ في تعديل الامتحان:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء تعديل الامتحان." });
     }
-});
+  },
+);
 
 // ============================================
 //   DELETE /api/quizzes/:id — حذف امتحان (أدمن فقط)
@@ -368,23 +453,31 @@ router.put('/:id', authenticate, requireAdmin, validateUpdateQuiz, async (req, r
  * @param {import('express').Response} res - Express response with `{ message }`.
  * @returns {Promise<void>}
  */
-router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
+router.delete(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validateIdParam,
+  async (req, res) => {
     try {
-        const quiz = await Quiz.findByPk(req.params.id);
-        if (!quiz) {
-            return res.status(404).json({ error: 'الامتحان غير موجود.' });
-        }
+      const quiz = await Quiz.findByPk(req.params.id);
+      if (!quiz) {
+        return res.status(404).json({ error: "الامتحان غير موجود." });
+      }
 
-        if (quiz.createdBy && quiz.createdBy !== req.user.id) {
-            return res.status(403).json({ error: 'غير مصرح لك بحذف امتحان أنشأه أدمن آخر.' });
-        }
+      if (quiz.createdBy && quiz.createdBy !== req.user.id) {
+        return res
+          .status(403)
+          .json({ error: "غير مصرح لك بحذف امتحان أنشأه أدمن آخر." });
+      }
 
-        await quiz.destroy();
-        res.json({ message: 'تم حذف الامتحان بنجاح.' });
+      await quiz.destroy();
+      res.json({ message: "تم حذف الامتحان بنجاح." });
     } catch (error) {
-        logger.error('خطأ في حذف الامتحان:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء حذف الامتحان.' });
+      logger.error("خطأ في حذف الامتحان:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء حذف الامتحان." });
     }
-});
+  },
+);
 
 module.exports = router;

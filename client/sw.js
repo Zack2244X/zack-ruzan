@@ -3,94 +3,119 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = 'quiz-platform-v117';
+const CACHE_NAME = "quiz-platform-v117";
 const STATIC_ASSETS = [
-    '/',                              // SPA shell — pre-cached for instant HTML on repeat visits
-    '/css/styles.min.css?v=53',
-    '/css/tailwind.min.css?v=53',
-    '/css/dark-fixes.min.css',
-    '/css/login-extra.min.css?v=3',
-    '/css/icons.css?v=3',
-    '/js/app.admin.bundle.min.js',
-    '/js/app.features.bundle.min.js',
-    '/js/bootstrap.min.js?v=74',
-    '/js/guest-login.min.js?v=1',
-    '/js/lamp-animation.min.js?v=3',
-    '/manifest.json',
-    '/icons/bg.webp'
-    // Fonts removed from pre-cache: font-display:optional means they're
-    // fetched lazily by the browser. Caching 537 KB of fonts in install
-    // delays SW activation and wastes bandwidth on first visit.
+  "/", // SPA shell — pre-cached for instant HTML on repeat visits
+  "/css/styles.min.css?v=53",
+  "/css/tailwind.min.css?v=53",
+  "/css/dark-fixes.min.css",
+  "/css/login-extra.min.css?v=3",
+  "/css/icons.css?v=3",
+  "/js/app.admin.bundle.min.js",
+  "/js/app.features.bundle.min.js",
+  "/js/bootstrap.min.js?v=74",
+  "/js/guest-login.min.js?v=1",
+  "/js/lamp-animation.min.js?v=3",
+  "/manifest.json",
+  "/icons/bg.webp",
+  // Fonts removed from pre-cache: font-display:optional means they're
+  // fetched lazily by the browser. Caching 537 KB of fonts in install
+  // delays SW activation and wastes bandwidth on first visit.
 ];
 
 // Install — cache static assets only (CDN loaded by browser directly)
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-    );
-    self.skipWaiting();
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
+  );
+  self.skipWaiting();
 });
 
 // Activate — clean old caches
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-            );
-        })
-    );
-    self.clients.claim();
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key)),
+      );
+    }),
+  );
+  self.clients.claim();
 });
 
 // Fetch — only handle same-origin GET requests
-self.addEventListener('fetch', (event) => {
-    const { request } = event;
-    const url = new URL(request.url);
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
 
-    // Only handle http/https from our own origin
-    if (request.method !== 'GET') return;
-    if (url.origin !== self.location.origin) return;
+  // Only handle http/https from our own origin
+  if (request.method !== "GET") return;
+  if (url.origin !== self.location.origin) return;
 
-    // API calls — Network Only
-    if (url.pathname.startsWith('/api/')) {
-        event.respondWith(
-            fetch(request).catch(() => {
-                return new Response(JSON.stringify({ error: 'أنت غير متصل بالإنترنت.' }), {
-                    status: 503,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            })
-        );
-        return;
-    }
-
-    // HTML & JS bundles — Network-First to avoid stale frontend logic after deploy.
-    if ((url.pathname.endsWith('.js') && !url.pathname.endsWith('sw.js')) || url.pathname.endsWith('.html') || url.pathname === '/') {
-        event.respondWith(
-            fetch(request).then((response) => {
-                    if (response && response.status === 200 && response.type === 'basic') {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    }
-                    return response;
-                }).catch(() => caches.match(request).then((cached) => cached || new Response('', { status: 408 })))
-        );
-        return;
-    }
-
-    // Static assets — Stale While Revalidate
+  // API calls — Network Only
+  if (url.pathname.startsWith("/api/")) {
     event.respondWith(
-        caches.match(request).then((cached) => {
-            const networkFetch = fetch(request).then((response) => {
-                if (response && response.status === 200 && response.type === 'basic') {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                }
-                return response;
-            }).catch(() => cached || new Response('', { status: 408 }));
-
-            return cached || networkFetch;
-        })
+      fetch(request).catch(() => {
+        return new Response(
+          JSON.stringify({ error: "أنت غير متصل بالإنترنت." }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }),
     );
+    return;
+  }
+
+  // HTML & JS bundles — Network-First to avoid stale frontend logic after deploy.
+  if (
+    (url.pathname.endsWith(".js") && !url.pathname.endsWith("sw.js")) ||
+    url.pathname.endsWith(".html") ||
+    url.pathname === "/"
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (
+            response &&
+            response.status === 200 &&
+            response.type === "basic"
+          ) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches
+            .match(request)
+            .then((cached) => cached || new Response("", { status: 408 })),
+        ),
+    );
+    return;
+  }
+
+  // Static assets — Stale While Revalidate
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const networkFetch = fetch(request)
+        .then((response) => {
+          if (
+            response &&
+            response.status === 200 &&
+            response.type === "basic"
+          ) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => cached || new Response("", { status: 408 }));
+
+      return cached || networkFetch;
+    }),
+  );
 });

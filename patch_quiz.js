@@ -1,11 +1,13 @@
-const fs = require('fs');
+const fs = require("fs");
 
-const path = 'client/js/modules/quiz.js';
-let code = fs.readFileSync(path, 'utf8');
+const path = "client/js/modules/quiz.js";
+let code = fs.readFileSync(path, "utf8");
 
 // remove immediate toast and feedback logic in selectAnswer
 // and just highlight selected
-code = code.replace(/export function selectAnswer\(selectedIndex\) \{[\s\S]*?nextButton\.disabled = false;\n\}/m, `export function selectAnswer(selectedIndex) {
+code = code.replace(
+  /export function selectAnswer\(selectedIndex\) \{[\s\S]*?nextButton\.disabled = false;\n\}/m,
+  `export function selectAnswer(selectedIndex) {
     logFunctionStatus('selectAnswer', false);
     if (state.userAnswers[state.currentQuestionIndex] !== null) return;
 
@@ -36,7 +38,8 @@ code = code.replace(/export function selectAnswer\(selectedIndex\) \{[\s\S]*?nex
 
     nextButton.disabled = false;
     // Auto proceed after short delay (optional, let's just let user click next)
-}`);
+}`,
+);
 
 // remove start timer warning colors maybe, but let's keep them if time is running out.
 

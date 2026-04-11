@@ -10,35 +10,35 @@
    ============================================ */
 
 /* === Import Smooth UX Animation Standards === */
-@import url('animations-smooth-ux.css');
+@import url("animations-smooth-ux.css");
 
 /* === CSS Variables (Design Tokens) === */
 :root {
-    --bg: #f5f7fb;
-    --bg-soft: rgba(255, 255, 255, 0.68);
-    --card: rgba(255, 255, 255, 0.92);
-    --card-strong: rgba(255, 255, 255, 0.85);
-    --border: #e2e8f0;
-    --text: #0f172a;
-    --muted: #475569;
-    --primary: #2563eb;
-    --primary-light: #3b82f6;
-    --success: #16a34a;
-    --warning: #ea580c;
-    --danger: #ef4444;
-    --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
-    --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
-    --glass-blur: 16px;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
-    --radius-full: 9999px;
-    
-    /* Legacy aliases — use new smooth UX vars from design-variables.css */
-    --transition-fast: 150ms ease;
-    --transition-normal: 250ms ease;
-    --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --bg: #f5f7fb;
+  --bg-soft: rgba(255, 255, 255, 0.68);
+  --card: rgba(255, 255, 255, 0.92);
+  --card-strong: rgba(255, 255, 255, 0.85);
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #475569;
+  --primary: #2563eb;
+  --primary-light: #3b82f6;
+  --success: #16a34a;
+  --warning: #ea580c;
+  --danger: #ef4444;
+  --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+  --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --glass-blur: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Legacy aliases — use new smooth UX vars from design-variables.css */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* === Reduced graphics fallback (applied when device tier is low) === */
@@ -47,10 +47,10 @@ body.reduced-graphics .backdrop-blur-2xl,
 body.reduced-graphics [class*="backdrop-blur"],
 body.reduced-graphics .logo-wrap,
 body.reduced-graphics .lamp-wrapper {
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
-    box-shadow: none !important;
-    filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 /* ============================================
@@ -66,8 +66,8 @@ body.reduced-graphics .lamp-wrapper {
 body.gpu-low *,
 body.gpu-low *::before,
 body.gpu-low *::after {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 body.gpu-low #ios-bottom-nav,
@@ -76,20 +76,20 @@ body.gpu-low [id$="-modal"] > div,
 body.gpu-low .glass-card,
 body.gpu-low .glass-soft,
 body.gpu-low #theme-toggle {
-    will-change: auto !important;   /* حرير VRAM layers */
-    transform: none !important;     /* لا GPU layer إجباري */
-    background: var(--card) !important;
-    border: 1px solid var(--border) !important;
+  will-change: auto !important; /* حرير VRAM layers */
+  transform: none !important; /* لا GPU layer إجباري */
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
 }
 
 body.gpu-low #latest-exams-grid > div,
 body.gpu-low #latest-notes-grid > div {
-    will-change: auto !important;
-    transition: border-color 0.2s ease !important;
+  will-change: auto !important;
+  transition: border-color 0.2s ease !important;
 }
 body.gpu-low #latest-exams-grid > div::after,
 body.gpu-low #latest-notes-grid > div::after {
-    display: none !important; /* لا pseudo-element shadow */
+  display: none !important; /* لا pseudo-element shadow */
 }
 
 /* تعطيل filter على body::before لصورة الخلفية
@@ -98,22 +98,22 @@ body.gpu-low #latest-notes-grid > div::after {
 body.gpu-low::before,
 body.gpu-medium::before,
 body.reduced-graphics::before {
-    filter: none !important;
-    will-change: auto !important; /* لا طبقة GPU ثابتة لعنصر لا يتحرك */
-    transform: none !important;   /* لا GPU layer إجباري */
+  filter: none !important;
+  will-change: auto !important; /* لا طبقة GPU ثابتة لعنصر لا يتحرك */
+  transform: none !important; /* لا GPU layer إجباري */
 }
 
 /* تخفيف box-shadow على GPU المتوسط:
    نُعيد تعريف CSS custom properties بحيث تُطبَّق تلقائياً
    على كل العناصر التي تستخدم var(--shadow)/var(--shadow-sm) */
 body.gpu-medium {
-    --shadow:    0 4px 16px rgba(15, 23, 42, 0.10);
-    --shadow-sm: 0 2px  6px rgba(15, 23, 42, 0.06);
+  --shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 body.gpu-low,
 body.reduced-graphics {
-    --shadow:    0 2px  8px rgba(15, 23, 42, 0.08);
-    --shadow-sm: 0 1px  4px rgba(15, 23, 42, 0.05);
+  --shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.05);
 }
 
 /* ── GPU Medium: تخفيف blur بدل تعطيله ──────────────────────────────
@@ -122,26 +122,25 @@ body.reduced-graphics {
    ─────────────────────────────────────────────────────────────────── */
 body.gpu-medium .glass-card,
 body.gpu-medium #theme-toggle {
-    backdrop-filter: blur(6px) !important;
-    -webkit-backdrop-filter: blur(6px) !important;
-    --glass-blur: 6px;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  --glass-blur: 6px;
 }
 
 body.gpu-medium .glass-soft {
-    backdrop-filter: blur(4px) !important;
-    -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
 }
 
 /* bottom sheet: تخفيف إضافي لأنه دائم الحضور في DOM */
 body.gpu-medium .bottom-sheet-content,
 body.gpu-medium #ios-bottom-nav {
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
 /* ── GPU High: الإعداد الافتراضي الكامل (لا قيود) ───────────────── */
 /* لا حاجة لقواعد خاصة — styles الافتراضي يطبق كل شيء */
-
 
 /* ============================================
    GPU Vendor Classes — تحسينات محدّدة لكل معالج رسوميات
@@ -167,11 +166,15 @@ body.vendor-adreno .bottom-sheet-content,
 body.vendor-adreno #ios-bottom-nav,
 body.vendor-adreno #theme-toggle,
 body.vendor-adreno [id$="-modal"] > div {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    /* بديل: خلفية صلبة تحافظ على تصميم الـ glass بدون تكلفة GPU */
-    background: color-mix(in srgb, var(--card-strong) 95%, transparent) !important;
-    border: 1px solid var(--border) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* بديل: خلفية صلبة تحافظ على تصميم الـ glass بدون تكلفة GPU */
+  background: color-mix(
+    in srgb,
+    var(--card-strong) 95%,
+    transparent
+  ) !important;
+  border: 1px solid var(--border) !important;
 }
 
 /* ── Mali: تقليل blur لأدنى حد مقبول ────────────────────────────────────
@@ -180,18 +183,18 @@ body.vendor-adreno [id$="-modal"] > div {
    نُقلل الblur لتخفيف عدد passes وزيادة opacity لتقليل blend cost.
    ─────────────────────────────────────────────────────────────────────── */
 body.vendor-mali .glass-card {
-    backdrop-filter: blur(4px) !important;
-    -webkit-backdrop-filter: blur(4px) !important;
-    --glass-blur: 4px;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  --glass-blur: 4px;
 }
 body.vendor-mali .glass-soft {
-    backdrop-filter: blur(2px) !important;
-    -webkit-backdrop-filter: blur(2px) !important;
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
 }
 body.vendor-mali .bottom-sheet-content,
 body.vendor-mali #ios-bottom-nav {
-    backdrop-filter: blur(6px) !important;
-    -webkit-backdrop-filter: blur(6px) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 
 /* ── PowerVR (iPhone 4-era / budget Android): مثل Adreno ────────────── */
@@ -199,56 +202,65 @@ body.vendor-powervr .glass-card,
 body.vendor-powervr .glass-soft,
 body.vendor-powervr .bottom-sheet-content,
 body.vendor-powervr #ios-bottom-nav {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: var(--card-strong) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--card-strong) !important;
 }
-
-
 
 /* === Dark Theme Variables === */
 [data-theme="dark"] {
-    --bg: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.09), transparent 30%),
-          radial-gradient(circle at 80% 10%, rgba(16, 185, 129, 0.08), transparent 32%),
-          #0b1220;
-    --bg-soft: rgba(255, 255, 255, 0.08);
-    --card: rgba(255, 255, 255, 0.06);
-    --card-strong: rgba(255, 255, 255, 0.09);
-    --border: rgba(255, 255, 255, 0.08);
-    --text: #e2e8f0;
-    --muted: #cbd5e1;
-    --primary: #60a5fa;
-    --primary-light: #93bbfc;
-    --success: #22c55e;
-    --warning: #fb923c;
-    --danger: #f87171;
-    --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
-    --glass-blur: 18px;
+  --bg:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(37, 99, 235, 0.09),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 80% 10%,
+      rgba(16, 185, 129, 0.08),
+      transparent 32%
+    ),
+    #0b1220;
+  --bg-soft: rgba(255, 255, 255, 0.08);
+  --card: rgba(255, 255, 255, 0.06);
+  --card-strong: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e2e8f0;
+  --muted: #cbd5e1;
+  --primary: #60a5fa;
+  --primary-light: #93bbfc;
+  --success: #22c55e;
+  --warning: #fb923c;
+  --danger: #f87171;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --glass-blur: 18px;
 }
 
 /* === Base & Reset === */
 *,
 *::before,
 *::after {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    min-height: 100dvh;
-    position: relative;
-    background: var(--bg);
-    color: var(--text);
-    transition: background-color var(--transition-normal), color var(--transition-normal);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+  font-family: "Cairo", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100dvh;
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  transition:
+    background-color var(--transition-normal),
+    color var(--transition-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 
-    /* ── Scroll Performance ──────────────────────────────────────────────────
+  /* ── Scroll Performance ──────────────────────────────────────────────────
        overscroll-behavior: contain
          • يمنع Chrome من تشغيل "rubber-band" scroll عند الوصول لنهاية الصفحة
          • بدونه: Chrome يحسب bounce animation على كل frame حتى بعد التوقف
@@ -258,29 +270,31 @@ body {
          • يُلغي تأخر 300ms للتعرف على الإيماءة + يُعطي Chrome صلاحية
            تسليم أحداث اللمس لـ GPU compositor thread مباشرةً دون JS thread
        ──────────────────────────────────────────────────────────────────── */
-    overscroll-behavior: contain;
-    touch-action: pan-y;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 /* Background overlay image
    — promoted to its own GPU layer via will-change + translateZ
    — ensures the fixed background never triggers layout recalculation */
 body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-image: url('/icons/bg.webp');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    opacity: 0.22;
-    z-index: -1;
-    pointer-events: none;
-    filter: saturate(0.85) brightness(1.05);
-    will-change: filter;
-    -webkit-backdrop-filter: blur(0px);
-    backdrop-filter: blur(0px);
-    transition: -webkit-backdrop-filter 300ms ease-out, backdrop-filter 300ms ease-out;
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("/icons/bg.webp");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.22;
+  z-index: -1;
+  pointer-events: none;
+  filter: saturate(0.85) brightness(1.05);
+  will-change: filter;
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
+  transition:
+    -webkit-backdrop-filter 300ms ease-out,
+    backdrop-filter 300ms ease-out;
 }
 
 /* Blur main content when modal is open */
@@ -291,10 +305,13 @@ body.modal-open #latest-notes-grid,
 body.modal-open .home-view,
 body.modal-open [id^="dashboard"],
 body.modal-open [id^="quiz"],
-body.modal-open [id^="admin"]:not(#admin-bottom-sheet):not(#admin-overlay):not(#admin-content) {
-    filter: blur(8px);
-    pointer-events: none;
-    transition: filter 300ms ease-out;
+body.modal-open
+  [id^="admin"]:not(#admin-bottom-sheet):not(#admin-overlay):not(
+    #admin-content
+  ) {
+  filter: blur(8px);
+  pointer-events: none;
+  transition: filter 300ms ease-out;
 }
 
 /* Exclude modals from blur */
@@ -303,13 +320,13 @@ body.modal-open #notes-bottom-sheet,
 body.modal-open #admin-bottom-sheet,
 body.modal-open #admin-content,
 body.modal-open #admin-overlay {
-    filter: blur(0px) !important;
-    pointer-events: auto !important;
+  filter: blur(0px) !important;
+  pointer-events: auto !important;
 }
 
 body::before {
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 /* ============================================
@@ -330,290 +347,328 @@ body::before {
 /* ── Bottom Navigation ─────────────────────────────────────────── */
 /* Slides in/out vertically — always use translateY, not bottom     */
 #ios-bottom-nav {
-    will-change: transform, opacity;
-    transform: translateZ(0);
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 /* ── Bottom Sheet Overlay ──────────────────────────────────────── */
 /* Fades in/out — only opacity changes, no layout reflow           */
 .bottom-sheet-overlay {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 
-    /* GPU layer — opacity-only compositing */
-    will-change: opacity;
-    transform: translateZ(0);
+  /* GPU layer — opacity-only compositing */
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 .bottom-sheet-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* ── Bottom Sheet Content Panel ────────────────────────────────── */
 /* Slides in from the bottom — translateY replaces any top/bottom  */
 /* animation so the GPU can handle it without repainting           */
 .bottom-sheet-content {
-    transform: translateY(100%);   /* start off-screen below       */
-    transition: transform var(--transition-slow);
+  transform: translateY(100%); /* start off-screen below       */
+  transition: transform var(--transition-slow);
 
-    /* GPU acceleration */
-    will-change: transform, opacity;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+  /* GPU acceleration */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .bottom-sheet-content.active {
-    transform: translateY(0);      /* slide into view              */
+  transform: translateY(0); /* slide into view              */
 }
 
 /* Bottom-sheet wrapper should be untouchable while hidden, touchable when visible. */
 #tree-bottom-sheet,
 #notes-bottom-sheet,
 #admin-bottom-sheet {
-    pointer-events: none;
+  pointer-events: none;
 }
 
 #tree-bottom-sheet:not(.hidden),
 #notes-bottom-sheet:not(.hidden),
 #admin-bottom-sheet:not(.hidden) {
-    pointer-events: auto;
+  pointer-events: auto;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────────── */
 /* Slides left/right — translateX replaces left/right positioning   */
 .sidebar {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition:
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.5s ease;
 }
 
-.sidebar-open          { transform: translateX(0);    opacity: 1; }
-.sidebar-closed-left   { transform: translateX(-120%); opacity: 0; }
+.sidebar-open {
+  transform: translateX(0);
+  opacity: 1;
+}
+.sidebar-closed-left {
+  transform: translateX(-120%);
+  opacity: 0;
+}
 
 /* ── Modal Dialogs ──────────────────────────────────────────────── */
 /* Scale + fade entrance — uses transform: scale(), not width/height */
 [id$="-modal"] > div {
-    background: var(--card);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 
-    /* GPU acceleration */
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+  /* GPU acceleration */
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Custom confirm dialog — scales from 0.9 → 1.0 */
 .confirm-dialog {
-    background: white;
-    border-radius: var(--radius-xl);
-    padding: 32px;
-    max-width: 400px;
-    width: 100%;
-    text-align: center;
-    box-shadow: var(--shadow);
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow);
 
-    /* Use transform for scale animation instead of changing dimensions */
-    transform: scale(0.9) translateZ(0);
-    transition: transform var(--transition-slow);
+  /* Use transform for scale animation instead of changing dimensions */
+  transform: scale(0.9) translateZ(0);
+  transition: transform var(--transition-slow);
 
-    will-change: transform, opacity;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .confirm-overlay.show .confirm-dialog {
-    transform: scale(1) translateZ(0);
+  transform: scale(1) translateZ(0);
 }
 
 /* ── Answer Options ─────────────────────────────────────────────── */
 /* Hover lift uses translateY(-2px), not top                        */
 .answer-option {
-    background: var(--card);
-    border-color: var(--border);
-    color: var(--text);
-    touch-action: manipulation;
-    min-height: 44px;
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text);
+  touch-action: manipulation;
+  min-height: 44px;
 
-    /* GPU layer — hover transform + selection state change */
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    transition: transform var(--transition-fast),
-                box-shadow var(--transition-fast),
-                background-color var(--transition-fast),
-                border-color var(--transition-fast);
+  /* GPU layer — hover transform + selection state change */
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .answer-option:hover {
-    /* translateY replaces any margin/top animation */
-    transform: translateY(-2px) translateZ(0);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  /* translateY replaces any margin/top animation */
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .answer-option.selected {
-    border-color: #3b82f6;
-    background-color: #eff6ff;
-    /* Keep on GPU layer during selection transition */
-    transform: translateZ(0);
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  /* Keep on GPU layer during selection transition */
+  transform: translateZ(0);
 }
 
 .answer-option.correct-answer {
-    background-color: #d1fae5 !important;
-    border-color: #10b981 !important;
-    box-shadow: 0 0 10px #10b981 !important;
-    color: #065f46 !important;
-    transform: translateZ(0);
+  background-color: #d1fae5 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 10px #10b981 !important;
+  color: #065f46 !important;
+  transform: translateZ(0);
 }
 
 .answer-option.incorrect-answer {
-    background-color: #fee2e2 !important;
-    border-color: #ef4444 !important;
-    color: #991b1b !important;
-    transform: translateZ(0);
+  background-color: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  color: #991b1b !important;
+  transform: translateZ(0);
 }
 
 [data-theme="dark"] .answer-option.correct-answer {
-    background-color: rgba(16, 185, 129, 0.25) !important;
-    border-color: #10b981 !important;
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4) !important;
-    color: #6ee7b7 !important;
+  background-color: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4) !important;
+  color: #6ee7b7 !important;
 }
 
 [data-theme="dark"] .answer-option.incorrect-answer {
-    background-color: rgba(239, 68, 68, 0.2) !important;
-    border-color: #ef4444 !important;
-    color: #fca5a5 !important;
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
 }
 
 /* ── Dock Icons ─────────────────────────────────────────────────── */
 /* Scale + vertical lift on active — uses transform, not top/margin  */
 .dock-icon {
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-    /* Promote to GPU layer — frequently transforms on tab switches */
-    will-change: transform;
-    transform: translateZ(0);
+  /* Promote to GPU layer — frequently transforms on tab switches */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .dock-btn.active .dock-icon {
-    /* translateY replaces any position-based nudge */
-    transform: scale(1.2) translateY(-2px);
+  /* translateY replaces any position-based nudge */
+  transform: scale(1.2) translateY(-2px);
 }
 
 /* ── Toast Notifications ────────────────────────────────────────── */
 /* Slides in via translateY — starts hidden off the top edge        */
 .toast-float {
-    position: fixed;
-    top: 18px;
-    left: 50%;
-    /* Initial position: centered horizontally, slightly up */
-    transform: translate(-50%, -12px);
-    z-index: 400;
-    min-width: 260px;
-    max-width: 90vw;
-    padding: 14px 18px;
-    border-radius: 14px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
-    color: #0f172a;
-    font-weight: 800;
-    text-align: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-normal), transform var(--transition-normal);
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  /* Initial position: centered horizontally, slightly up */
+  transform: translate(-50%, -12px);
+  z-index: 400;
+  min-width: 260px;
+  max-width: 90vw;
+  padding: 14px 18px;
+  border-radius: 14px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+  font-weight: 800;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--transition-normal),
+    transform var(--transition-normal);
 
-    /* GPU acceleration — slides + fades constantly */
-    will-change: transform, opacity;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+  /* GPU acceleration — slides + fades constantly */
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* ── Theme Toggle Button ────────────────────────────────────────── */
 /* Hover uses translateY — not bottom/margin change                 */
 #theme-toggle {
-    position: fixed;
-    bottom: 18px;
-    right: 18px;
-    z-index: 120;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--card-strong);
-    color: var(--text);
-    display: grid;
-    place-items: center;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    cursor: pointer;
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 120;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card-strong);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
 
-    /* Use transform for hover animation, not top/bottom */
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    will-change: transform;
-    transform: translateZ(0);
+  /* Use transform for hover animation, not top/bottom */
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 #theme-toggle:hover {
-    /* translateY + scale replaces any positional shift */
-    transform: translateY(-2px) scale(1.02);
+  /* translateY + scale replaces any positional shift */
+  transform: translateY(-2px) scale(1.02);
 }
 
-#theme-toggle i { font-size: 18px; }
+#theme-toggle i {
+  font-size: 18px;
+}
 
 /* ── Alert Banner ───────────────────────────────────────────────── */
 /* Slides down from top — translateY replaces top animation        */
 .alert-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 500;
-    padding: 12px 20px;
-    font-weight: 700;
-    text-align: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  padding: 12px 20px;
+  font-weight: 700;
+  text-align: center;
 
-    /* GPU-composited slide — transform instead of top */
-    transform: translateY(-100%);
-    transition: transform 0.3s ease;
-    will-change: transform;
+  /* GPU-composited slide — transform instead of top */
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+  will-change: transform;
 }
 
-.alert-banner.show  { transform: translateY(0); }
-.alert-banner.alert-success { background: #d1fae5; color: #065f46; }
-.alert-banner.alert-error   { background: #fee2e2; color: #991b1b; }
-.alert-banner.alert-warning { background: #fef3c7; color: #92400e; }
+.alert-banner.show {
+  transform: translateY(0);
+}
+.alert-banner.alert-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+.alert-banner.alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.alert-banner.alert-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
 
 /* ── Progress Bar ───────────────────────────────────────────────── */
 /* Width transition is unavoidable here, but we accelerate the
    element so the browser can optimise the repaint              */
 #progress-bar {
-    transition: width 0.5s ease-in-out;
-    will-change: width;
-    transform: translateZ(0);
+  transition: width 0.5s ease-in-out;
+  will-change: width;
+  transform: translateZ(0);
 }
 
 /* ── Card Hover Glows (Dashboard / Exam cards) ──────────────────── */
 /* These elements animate on hover — composited layer saves paint  */
 .exam-card-hover-glow,
 .notes-card-hover-glow {
-    will-change: opacity;
-    transform: translateZ(0);
-    pointer-events: none;
+  will-change: opacity;
+  transform: translateZ(0);
+  pointer-events: none;
 }
 
 .exam-card-hover-glow {
-    background: radial-gradient(circle at 35% 35%, rgba(96, 165, 250, 0.55), rgba(59, 130, 246, 0.18) 55%, rgba(37, 99, 235, 0.05) 75%, transparent 100%);
-    filter: blur(0.2px);
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(96, 165, 250, 0.55),
+    rgba(59, 130, 246, 0.18) 55%,
+    rgba(37, 99, 235, 0.05) 75%,
+    transparent 100%
+  );
+  filter: blur(0.2px);
 }
 
 .notes-card-hover-glow {
-    background: radial-gradient(circle at 35% 35%, rgba(251, 146, 60, 0.62), rgba(249, 115, 22, 0.24) 55%, rgba(234, 88, 12, 0.08) 75%, transparent 100%);
-    filter: blur(0.2px);
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(251, 146, 60, 0.62),
+    rgba(249, 115, 22, 0.24) 55%,
+    rgba(234, 88, 12, 0.08) 75%,
+    transparent 100%
+  );
+  filter: blur(0.2px);
 }
 
 /* ── Dashboard Cards: GPU Composited Hover Shadow ───────────────────
@@ -623,58 +678,60 @@ body::before {
    ────────────────────────────────────────────────────── */
 #latest-exams-grid > div,
 #latest-notes-grid > div {
-    /* GPU composite layer — التحرك على الـ GPU */
-    will-change: transform;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    /* إلغاء Tailwind's transition-all واستبداله بخصائص compositable فقط */
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                border-color 0.25s ease !important;
+  /* GPU composite layer — التحرك على الـ GPU */
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* إلغاء Tailwind's transition-all واستبداله بخصائص compositable فقط */
+  transition:
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s ease !important;
 }
 
 /* الظل على pseudo-element: opacity فقط = GPU, صفر paint */
 #latest-exams-grid > div::after,
 #latest-notes-grid > div::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.13),
-                0 6px 14px rgba(0, 0, 0, 0.07);
-    opacity: 0;
-    transition: opacity 0.25s ease;
-    pointer-events: none;
-    will-change: opacity;
-    z-index: 0; /* خلف محتوى الكارد z-10 */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.13),
+    0 6px 14px rgba(0, 0, 0, 0.07);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  will-change: opacity;
+  z-index: 0; /* خلف محتوى الكارد z-10 */
 }
 
 #latest-exams-grid > div:hover::after,
 #latest-notes-grid > div:hover::after {
-    opacity: 1;
+  opacity: 1;
 }
 
 #latest-exams-grid > div:hover,
 #latest-notes-grid > div:hover {
-    transform: translateY(-3px) translate3d(0, 0, 0);
+  transform: translateY(-3px) translate3d(0, 0, 0);
 }
 
 /* على الأجهزة اللمسية: :hover يظل «عالقاً» بعد رفع الإصبع
    هذا يُبقي طبقة GPU للـ ::after shadow مفتوحة لا أحد يُغلقها
    نُلغيها كلياً على touch-only devices (hover: none) */
 @media (hover: none) {
-    #latest-exams-grid > div:hover::after,
-    #latest-notes-grid > div:hover::after {
-        opacity: 0 !important;
-    }
-    #latest-exams-grid > div:hover,
-    #latest-notes-grid > div:hover {
-        transform: none !important;
-    }
-    .answer-option:hover {
-        transform: translateZ(0) !important;
-        box-shadow: none !important;
-    }
+  #latest-exams-grid > div:hover::after,
+  #latest-notes-grid > div:hover::after {
+    opacity: 0 !important;
+  }
+  #latest-exams-grid > div:hover,
+  #latest-notes-grid > div:hover {
+    transform: none !important;
+  }
+  .answer-option:hover {
+    transform: translateZ(0) !important;
+    box-shadow: none !important;
+  }
 }
 
 /* ── Section Containment — عزل الأقسام لمنع reflow متسلسل ──────────────
@@ -684,8 +741,8 @@ body::before {
    ────────────────────────────────────────────────────── */
 #dashboard-view,
 #quiz-container {
-    contain: layout style;
-    touch-action: pan-y;
+  contain: layout style;
+  touch-action: pan-y;
 }
 
 /* ── Content Visibility — تأجيل رسم الأقسام خارج المنظور ─────────────
@@ -701,79 +758,88 @@ body::before {
    auto = يحفظ الارتفاع الحقيقي بعد أول رسم لمنع scrollbar jump
    ─────────────────────────────────────────────────────────── */
 #dashboard-view > section {
-    content-visibility: auto;
-    contain-intrinsic-block-size: auto 400px;
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 400px;
 }
 
 /* ── Time Badge (pulsing clock animation) ───────────────────────── */
 /* Runs continuously — must live on its own layer                   */
 .time-badge-anim {
-    animation: pulseTimeBadge 1.8s ease-in-out infinite;
-    transform-origin: center;
-    will-change: transform, box-shadow;
+  animation: pulseTimeBadge 1.8s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, box-shadow;
 }
 
 .time-badge-anim i {
-    animation: tickClock 1.2s ease-in-out infinite;
-    display: inline-block;
-    will-change: transform;
+  animation: tickClock 1.2s ease-in-out infinite;
+  display: inline-block;
+  will-change: transform;
 }
 
 /* ── Glass Card System ──────────────────────────────────────────── */
 .glass-card {
-    background: var(--card);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    /* Backdrop-filter always creates a stacking context — assist it */
-    will-change: transform;
-    transform: translateZ(0);
+  background: var(--card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  /* Backdrop-filter always creates a stacking context — assist it */
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 .glass-soft {
-    background: var(--bg-soft);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    will-change: transform;
-    transform: translateZ(0);
+  background: var(--bg-soft);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* ── Skeleton Loader ────────────────────────────────────────────── */
 /* Shimmer animation runs on background-position — GPU-friendly    */
 .skeleton {
-    background: linear-gradient(90deg, var(--bg-soft) 25%, rgba(255,255,255,0.15) 50%, var(--bg-soft) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-    border-radius: var(--radius-md);
-    will-change: background-position;
+  background: linear-gradient(
+    90deg,
+    var(--bg-soft) 25%,
+    rgba(255, 255, 255, 0.15) 50%,
+    var(--bg-soft) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+  will-change: background-position;
 }
 
 .skeleton-card {
-    min-height: 180px;
-    border-radius: var(--radius-xl);
+  min-height: 180px;
+  border-radius: var(--radius-xl);
 }
 
 .skeleton-text {
-    height: 16px;
-    margin-bottom: 8px;
-    border-radius: var(--radius-sm);
+  height: 16px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
 }
 
-.skeleton-text.short  { width: 60%; }
-.skeleton-text.medium { width: 80%; }
+.skeleton-text.short {
+  width: 60%;
+}
+.skeleton-text.medium {
+  width: 80%;
+}
 .skeleton-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-xl);
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
 }
 
 /* ── Touch Active Feedback ──────────────────────────────────────── */
 /* Scale uses transform — never changes dimensions                  */
 button:active,
 .cursor-pointer:active {
-    transform: scale(0.96) translateZ(0) !important;
-    transition: transform 0.1s;
+  transform: scale(0.96) translateZ(0) !important;
+  transition: transform 0.1s;
 }
 
 /* ============================================
@@ -784,280 +850,340 @@ button:active,
    ============================================ */
 
 @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position:  200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* slideUp: modal entrance on mobile — translateY not top */
 @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0);   }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* Toast progress bar drains from full width to zero */
 @keyframes toastProgress {
-    from { width: 100%; }
-    to   { width: 0%;   }
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
 }
 
 /* Card entrance animation — transform + opacity only */
 @keyframes pulseTimeBadge {
-    0%, 100% {
-        transform: translateY(0) scale(1);
-        box-shadow: 0 0 0 rgba(59,130,246,0);
-    }
-    50% {
-        transform: translateY(-1px) scale(1.03);
-        box-shadow: 0 6px 16px rgba(59,130,246,0.28);
-    }
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.28);
+  }
 }
 
 @keyframes tickClock {
-    0%, 100% { transform: rotate(0deg);  }
-    25%       { transform: rotate(-8deg); }
-    75%       { transform: rotate(8deg);  }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
 }
 
 /* ============================================
    Typography
    ============================================ */
 .text-arabic {
-    font-family: 'Amiri', 'Traditional Arabic', serif;
+  font-family: "Amiri", "Traditional Arabic", serif;
 }
 
 /* ============================================
    Focus Styles (Accessibility)
    ============================================ */
 :focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 button:focus:not(:focus-visible),
 a:focus:not(:focus-visible) {
-    outline: none;
+  outline: none;
 }
 
 /* ============================================
    Skip Link (Accessibility)
    ============================================ */
 .skip-link {
-    position: absolute;
-    top: -100%;
-    left: 50%;
-    /* transform replaces any left/top animation */
-    transform: translateX(-50%);
-    z-index: 9999;
-    padding: 12px 24px;
-    background: var(--primary);
-    color: white;
-    font-weight: 700;
-    border-radius: var(--radius-md);
-    transition: top var(--transition-fast);
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  /* transform replaces any left/top animation */
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  padding: 12px 24px;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  transition: top var(--transition-fast);
 }
 
-.skip-link:focus { top: 8px; }
+.skip-link:focus {
+  top: 8px;
+}
 
 /* ============================================
    Feedback Backgrounds (Quiz)
    ============================================ */
-.correct-bg   { background-color: #10b981; }
-.incorrect-bg { background-color: #ef4444; }
+.correct-bg {
+  background-color: #10b981;
+}
+.incorrect-bg {
+  background-color: #ef4444;
+}
 
 /* Quiz question title gradient by theme */
 #question-text .quiz-question-gradient {
-    color: #111827;
-    font-weight: 700;
-    font-size: 1.3rem;
-    text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.1);
+  color: #111827;
+  font-weight: 700;
+  font-size: 1.3rem;
+  text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 [data-theme="dark"] #question-text .quiz-question-gradient,
 .dark #question-text .quiz-question-gradient {
-    color: #ffe7b3;
-    text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.2);
+  color: #ffe7b3;
+  text-shadow: 1px 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
-    #question-text .quiz-question-gradient {
-        background: linear-gradient(90deg, #7c3aed 0%, #000000 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
+  #question-text .quiz-question-gradient {
+    background: linear-gradient(90deg, #7c3aed 0%, #000000 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 
-    [data-theme="dark"] #question-text .quiz-question-gradient,
-    .dark #question-text .quiz-question-gradient {
-        background: none;
-        -webkit-background-clip: border-box;
-        background-clip: border-box;
-        -webkit-text-fill-color: currentColor;
-    }
+  [data-theme="dark"] #question-text .quiz-question-gradient,
+  .dark #question-text .quiz-question-gradient {
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    -webkit-text-fill-color: currentColor;
+  }
 }
 
 /* ============================================
    Editable Mode (Quiz Builder)
    ============================================ */
 .editable-mode [contenteditable="true"] {
-    border: 2px dashed #3b82f6 !important;
-    background-color: #fefce8 !important;
-    padding: 8px;
-    border-radius: var(--radius-sm);
-    outline: none;
-    min-height: 40px;
-    transition: all 0.2s ease;
+  border: 2px dashed #3b82f6 !important;
+  background-color: #fefce8 !important;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  min-height: 40px;
+  transition: all 0.2s ease;
 }
 
 .editable-mode [contenteditable="true"]:focus {
-    border-color: #f59e0b !important;
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-    background-color: #fffbeb !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  background-color: #fffbeb !important;
 }
 
-.editable-mode .answer-option { cursor: text !important; }
-.editable-mode .answer-option:hover { transform: none; }
+.editable-mode .answer-option {
+  cursor: text !important;
+}
+.editable-mode .answer-option:hover {
+  transform: none;
+}
 
 /* ============================================
    iOS Safe Area Support
    ============================================ */
 #ios-bottom-nav {
-    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Bottom sheets: add padding so content clears bottom nav + home indicator */
 #tree-content,
 #admin-content {
-    padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom)));
-    max-height: 85vh;
-    max-height: 85dvh;
+  padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom)));
+  max-height: 85vh;
+  max-height: 85dvh;
 }
 
 /* Keep tree sheet container fixed and let the dedicated inner area handle scrolling. */
 #tree-content {
-    overflow: hidden;
-    touch-action: pan-y;
+  overflow: hidden;
+  touch-action: pan-y;
 }
 
 /* Admin sheet still scrolls on its own container. */
 #admin-content {
-    overflow-y: auto;
+  overflow-y: auto;
 }
 
 .ios-dock {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ============================================
    Dock Icon Gradient (active state)
    ============================================ */
 .dock-btn.active .dock-icon {
-    background: linear-gradient(45deg, #3b82f6, #8b5cf6, #fb923c);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #fb923c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .dock-btn .dock-icon {
-    color: currentColor;
+  color: currentColor;
 }
 
 /* ============================================
    Toast Colour Variants
    ============================================ */
-.toast-success { background: linear-gradient(135deg, #ecfdf3, #d1fae5); color: #065f46; }
-.toast-error   { background: linear-gradient(135deg, #fff1f2, #ffe4e6); color: #b91c1c; }
-.toast-streak  { background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: #1e1b4b; }
+.toast-success {
+  background: linear-gradient(135deg, #ecfdf3, #d1fae5);
+  color: #065f46;
+}
+.toast-error {
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+  color: #b91c1c;
+}
+.toast-streak {
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  color: #1e1b4b;
+}
 
-[data-theme="dark"] .toast-success { background: linear-gradient(135deg, #064e3b, #065f46); color: #6ee7b7; }
-[data-theme="dark"] .toast-error   { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; }
-[data-theme="dark"] .toast-streak  { background: linear-gradient(135deg, #312e81, #3730a3); color: #c7d2fe; }
+[data-theme="dark"] .toast-success {
+  background: linear-gradient(135deg, #064e3b, #065f46);
+  color: #6ee7b7;
+}
+[data-theme="dark"] .toast-error {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  color: #fca5a5;
+}
+[data-theme="dark"] .toast-streak {
+  background: linear-gradient(135deg, #312e81, #3730a3);
+  color: #c7d2fe;
+}
 
 .toast-progress {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background: currentColor;
-    opacity: 0.3;
-    border-radius: 0 0 14px 14px;
-    animation: toastProgress linear forwards;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.3;
+  border-radius: 0 0 14px 14px;
+  animation: toastProgress linear forwards;
 }
 
 /* ============================================
    Confirm Overlay
    ============================================ */
 .confirm-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 600;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition-normal);
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
 
-    /* GPU layer for fade */
-    will-change: opacity;
-    transform: translateZ(0);
+  /* GPU layer for fade */
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 .confirm-overlay.show {
-    display: flex !important; /* يتغلب على Tailwind .hidden { display:none !important } */
-    opacity: 1;
-    pointer-events: auto;
+  display: flex !important; /* يتغلب على Tailwind .hidden { display:none !important } */
+  opacity: 1;
+  pointer-events: auto;
 }
 
 [data-theme="dark"] .confirm-dialog {
-    background: #1e293b;
-    color: var(--text);
+  background: #1e293b;
+  color: var(--text);
 }
 
 /* ============================================
    CSS Variable Integration with Tailwind overrides
    ============================================ */
-.bg-white      { background-color: var(--card)    !important; }
-.bg-gray-50    { background-color: var(--bg-soft) !important; }
-.text-gray-800 { color: var(--text)               !important; }
+.bg-white {
+  background-color: var(--card) !important;
+}
+.bg-gray-50 {
+  background-color: var(--bg-soft) !important;
+}
+.text-gray-800 {
+  color: var(--text) !important;
+}
 .text-gray-500,
-.text-gray-600 { color: var(--muted)              !important; }
+.text-gray-600 {
+  color: var(--muted) !important;
+}
 .border-gray-200,
-.border-gray-100 { border-color: var(--border)    !important; }
+.border-gray-100 {
+  border-color: var(--border) !important;
+}
 .shadow-sm,
 .shadow,
 .shadow-lg,
 .shadow-xl,
-.shadow-2xl { box-shadow: var(--shadow)           !important; }
+.shadow-2xl {
+  box-shadow: var(--shadow) !important;
+}
 
 /* History tree buttons */
 #history-tree button,
 #notes-history-tree button {
-    background: rgba(71, 85, 105, 0.4) !important;
-    color: #e5e7eb             !important;
-    border: 1px solid rgba(100, 116, 139, 0.3) !important;
-    border-radius: 1rem !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
-    backdrop-filter: blur(10px);
+  background: rgba(71, 85, 105, 0.4) !important;
+  color: #e5e7eb !important;
+  border: 1px solid rgba(100, 116, 139, 0.3) !important;
+  border-radius: 1rem !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 /* Modal content scrollbar: visible, slim, and theme-aware */
 .modal-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.6) rgba(30, 41, 59, 0.3);
-    max-height: 70vh;
-    overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.6) rgba(30, 41, 59, 0.3);
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 [data-lenis-prevent] {
-    overflow-y: auto;
-    max-height: 100%;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
+  overflow-y: auto;
+  max-height: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 /* Exams/notes modals use many clickable buttons; force vertical pan to keep scrolling usable on touch devices. */
@@ -1065,69 +1191,81 @@ a:focus:not(:focus-visible) {
 #tree-scroll-area *,
 #notes-scroll-area,
 #notes-scroll-area * {
-    touch-action: pan-y !important;
+  touch-action: pan-y !important;
 }
 
 /* Keep native scrollbar for stable touch behavior across mobile browsers. */
 #tree-scroll-area,
 #notes-scroll-area {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
-    position: relative;
-    z-index: 2;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  position: relative;
+  z-index: 2;
 }
 
 .modal-scrollbar::-webkit-scrollbar {
-    width: 8px;
+  width: 8px;
 }
 
 .modal-scrollbar::-webkit-scrollbar-track {
-    background: rgba(30, 41, 59, 0.3);
-    border-radius: 9999px;
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 9999px;
 }
 
 .modal-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(148, 163, 184, 0.6), rgba(100, 116, 139, 0.55));
-    border-radius: 9999px;
-    border: 2px solid rgba(30, 41, 59, 0.5);
+  background: linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0.6),
+    rgba(100, 116, 139, 0.55)
+  );
+  border-radius: 9999px;
+  border: 2px solid rgba(30, 41, 59, 0.5);
 }
 
 .modal-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, rgba(100, 116, 139, 0.8), rgba(71, 85, 105, 0.8));
+  background: linear-gradient(
+    180deg,
+    rgba(100, 116, 139, 0.8),
+    rgba(71, 85, 105, 0.8)
+  );
 }
 
 /* Tree modal: explicit visual scrollbar indicator for mobile browsers. */
 .tree-scroll-rail {
-    position: absolute;
-    top: 12px;
-    bottom: 12px;
-    right: 4px;
-    width: 8px;
-    border-radius: 9999px;
-    background: rgba(148, 163, 184, 0.45);
-    pointer-events: auto;
-    z-index: 12;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  right: 4px;
+  width: 8px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.45);
+  pointer-events: auto;
+  z-index: 12;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 .tree-scroll-thumb {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 48px;
-    border-radius: 9999px;
-    background: linear-gradient(180deg, rgba(59, 130, 246, 1), rgba(14, 116, 144, 1));
-    box-shadow: 0 0 12px rgba(14, 116, 144, 0.6);
-    transform: translateY(0);
-    touch-action: none;
-    cursor: grab;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    180deg,
+    rgba(59, 130, 246, 1),
+    rgba(14, 116, 144, 1)
+  );
+  box-shadow: 0 0 12px rgba(14, 116, 144, 0.6);
+  transform: translateY(0);
+  touch-action: none;
+  cursor: grab;
 }
 
 .tree-scroll-thumb:active {
-    cursor: grabbing;
+  cursor: grabbing;
 }
 
 /* Keep custom indicators available on all breakpoints for consistent behavior. */
@@ -1143,18 +1281,19 @@ a:focus:not(:focus-visible) {
 [data-theme="dark"] input[type="date"],
 [data-theme="dark"] textarea,
 [data-theme="dark"] select {
-    background: var(--card-strong) !important;
-    color: var(--text)             !important;
-    border: 1px solid rgba(255,255,255,0.14) !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
-    transition: background var(--transition-fast),
-                border-color var(--transition-fast),
-                box-shadow var(--transition-fast);
+  background: var(--card-strong) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 [data-theme="dark"] input::placeholder,
 [data-theme="dark"] textarea::placeholder {
-    color: rgba(255,255,255,0.55);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 [data-theme="dark"] input:focus,
@@ -1163,11 +1302,12 @@ a:focus:not(:focus-visible) {
 [data-theme="dark"] input:hover,
 [data-theme="dark"] textarea:hover,
 [data-theme="dark"] select:hover {
-    background: rgba(255,255,255,0.10)  !important;
-    border-color: rgba(255,255,255,0.22) !important;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.18),
-                0 0 0 4px rgba(96,165,250,0.16);
-    outline: none;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 0 4px rgba(96, 165, 250, 0.16);
+  outline: none;
 }
 
 /* ============================================
@@ -1178,22 +1318,26 @@ a:focus:not(:focus-visible) {
 [data-theme="dark"] .bg-white\/95,
 [data-theme="dark"] .bg-white\/90,
 [data-theme="dark"] .bg-white\/75 {
-    background: var(--card) !important;
-    color: var(--text)      !important;
-    border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
 }
 
 [data-theme="dark"] .bg-gradient-to-r,
 [data-theme="dark"] .bg-gradient-to-l {
-    background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02)) !important;
-    border-color: var(--border) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.02)
+  ) !important;
+  border-color: var(--border) !important;
 }
 
 [data-theme="dark"] .text-gray-800,
 [data-theme="dark"] .text-gray-700,
 [data-theme="dark"] .text-gray-600,
 [data-theme="dark"] .text-gray-500 {
-    color: var(--text) !important;
+  color: var(--text) !important;
 }
 
 [data-theme="dark"] .bg-blue-50,
@@ -1202,38 +1346,40 @@ a:focus:not(:focus-visible) {
 [data-theme="dark"] .bg-purple-50,
 [data-theme="dark"] .bg-red-50,
 [data-theme="dark"] .bg-yellow-50 {
-    background: rgba(255,255,255,0.08) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-theme="dark"] .bg-gray-100 {
-    background: rgba(255,255,255,0.06) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
 [data-theme="dark"] .border-gray-100,
 [data-theme="dark"] .border-gray-200,
 [data-theme="dark"] .border-gray-300 {
-    border-color: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Dark mode / global: keep sheet containers visually card-like and fully rounded */
 #tree-content,
 #notes-content {
-    background: rgba(30, 41, 59, 0.5) !important;
-    border-color: rgba(100, 116, 139, 0.2) !important;
-    border-radius: 1.875rem !important;
-    overflow: hidden;
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
+  background: rgba(30, 41, 59, 0.5) !important;
+  border-color: rgba(100, 116, 139, 0.2) !important;
+  border-radius: 1.875rem !important;
+  overflow: hidden;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
 }
 
 .sheet-header {
-    background: rgba(30, 41, 59, 0.4) !important;
-    border-bottom: 1px solid rgba(100, 116, 139, 0.2) !important;
-    backdrop-filter: blur(15px) !important;
-    -webkit-backdrop-filter: blur(15px) !important;
+  background: rgba(30, 41, 59, 0.4) !important;
+  border-bottom: 1px solid rgba(100, 116, 139, 0.2) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
 }
 
-.sheet-handle { background: transparent; }
+.sheet-handle {
+  background: transparent;
+}
 
 /* ============================================
    Bottom Sheet / Admin Sheet sizing
@@ -1241,45 +1387,49 @@ a:focus:not(:focus-visible) {
 .bottom-sheet-content,
 #admin-content,
 #tree-content {
-    max-width: min(520px, 94vw);
-    width: 100%;
+  max-width: min(520px, 94vw);
+  width: 100%;
 }
 
 /* ============================================
    Empty State
    ============================================ */
 .empty-state {
-    text-align: center;
-    padding: 48px 24px;
-    color: var(--muted);
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--muted);
 }
 
 .empty-state-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
 }
 
 .empty-state-text {
-    font-size: 14px;
-    font-weight: 600;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 /* ============================================
    Fallback for no-blur devices
    ============================================ */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass-card,
-    .glass-soft,
-    [id$="-modal"] > div,
-    #theme-toggle,
-    #ios-bottom-nav,
-    .bottom-sheet-content {
-        background: var(--card);
-        border-color: var(--border);
-        box-shadow: 0 14px 38px rgba(0,0,0,0.28);
-    }
-    body { background: var(--bg); }
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .glass-card,
+  .glass-soft,
+  [id$="-modal"] > div,
+  #theme-toggle,
+  #ios-bottom-nav,
+  .bottom-sheet-content {
+    background: var(--card);
+    border-color: var(--border);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.28);
+  }
+  body {
+    background: var(--bg);
+  }
 }
 
 /* ============================================
@@ -1290,8 +1440,8 @@ button,
 a,
 input[type="checkbox"],
 input[type="radio"] {
-    min-height: 44px;
-    min-width: 44px;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 input[type="text"],
@@ -1302,250 +1452,314 @@ input[type="date"],
 input[type="time"],
 textarea,
 select {
-    min-height: 44px;
-    font-size: 16px; /* Prevents zoom on iOS */
+  min-height: 44px;
+  font-size: 16px; /* Prevents zoom on iOS */
 }
 
 /* ============================================
    Responsive — Desktop padding
    ============================================ */
-@media (min-width: 768px)  { body { padding: 0 24px; } }
-@media (min-width: 1024px) { body { padding: 0 32px; } }
+@media (min-width: 768px) {
+  body {
+    padding: 0 24px;
+  }
+}
+@media (min-width: 1024px) {
+  body {
+    padding: 0 32px;
+  }
+}
 
 /* ============================================
    Mobile: Hide Scrollbar
    ============================================ */
 @media (max-width: 640px) {
-    ::-webkit-scrollbar {
-        width: 0;
-        background: transparent;
-    }
+  ::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+  }
 
-    .modal-scrollbar::-webkit-scrollbar {
-        width: 8px;
-        background: transparent;
-    }
+  .modal-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+  }
 }
 
 /* ============================================
    Mobile: Modal Slide-Up
    ============================================ */
 @media (max-width: 640px) {
-    [id$="-modal"] > div {
-        margin-top: auto;
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 0 !important;
-        max-height: 95vh !important;
-        /* translateY keyframe — no top/bottom animation */
-        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
+  [id$="-modal"] > div {
+    margin-top: auto;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    max-height: 95vh !important;
+    /* translateY keyframe — no top/bottom animation */
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
 
 /* ============================================
    Mobile: Theme Toggle repositioned to top-left
    ============================================ */
 @media (max-width: 640px) {
-    #theme-toggle {
-        position: fixed !important;
-        top: calc(env(safe-area-inset-top) + 8px) !important;
-        bottom: auto !important;
-        left: 12px !important;
-        right: auto !important;
-        width: 42px;
-        height: 42px;
-        z-index: 130;
-        /* translateZ instead of positional hacks */
-        transform: translateZ(0);
-    }
-    #theme-toggle i { font-size: 16px; }
+  #theme-toggle {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top) + 8px) !important;
+    bottom: auto !important;
+    left: 12px !important;
+    right: auto !important;
+    width: 42px;
+    height: 42px;
+    z-index: var(--z-toast);
+    /* translateZ instead of positional hacks */
+    transform: translateZ(0);
+  }
+  #theme-toggle i {
+    font-size: 16px;
+  }
+}
+
+/* Keep legacy login overlay aligned with unified layer tokens. */
+.guest-modal {
+  z-index: var(--z-modal);
+}
+
+/* Extra-small devices: protect bottom-sheet content from clipping. */
+@media (max-width: 375px) {
+  #tree-content,
+  #admin-content {
+    max-height: 82dvh;
+    padding-bottom: max(7.5rem, calc(7.5rem + env(safe-area-inset-bottom)));
+  }
+
+  [id$="-modal"] > div {
+    max-height: 92dvh !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
 }
 
 /* ============================================
    Mobile: Dashboard Cards
    ============================================ */
 @media (max-width: 640px) {
-    #dashboard-view {
-        padding-left: 0.75rem  !important;
-        padding-right: 0.75rem !important;
-        padding-top: 0.75rem   !important;
-    }
-    #dashboard-view h2 { font-size: 0.95rem !important; }
+  #dashboard-view {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 0.75rem !important;
+  }
+  #dashboard-view h2 {
+    font-size: 0.95rem !important;
+  }
 
-    #latest-exams-grid > div,
-    #latest-notes-grid > div {
-        padding: 1rem       !important;
-        border-radius: 1rem !important;
-    }
+  #latest-exams-grid > div,
+  #latest-notes-grid > div {
+    padding: 1rem !important;
+    border-radius: 1rem !important;
+  }
 
-    #latest-exams-grid .w-14,
-    #latest-notes-grid .w-14 {
-        width: 2.5rem     !important;
-        height: 2.5rem    !important;
-        font-size: 1.1rem !important;
-    }
+  #latest-exams-grid .w-14,
+  #latest-notes-grid .w-14 {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    font-size: 1.1rem !important;
+  }
 
-    #latest-exams-grid h3,
-    #latest-notes-grid h3 {
-        font-size: 0.875rem !important;
-        line-height: 1.35;
-    }
+  #latest-exams-grid h3,
+  #latest-notes-grid h3 {
+    font-size: 0.875rem !important;
+    line-height: 1.35;
+  }
 
-    #latest-exams-grid p,
-    #latest-notes-grid p {
-        font-size: 0.75rem !important;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-    }
+  #latest-exams-grid p,
+  #latest-notes-grid p {
+    font-size: 0.75rem !important;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
 
-    #latest-exams-grid .time-badge-anim,
-    #latest-notes-grid span {
-        font-size: 0.65rem !important;
-        padding: 2px 6px  !important;
-    }
+  #latest-exams-grid .time-badge-anim,
+  #latest-notes-grid span {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+  }
 
-    /* ✅ FIX: Prevent font-rendering CLS by locking height */
-    #welcome-msg { 
-        font-size: 1.15rem !important;
-        height: auto;
-        line-height: 1.5;
-        min-height: 2.5rem;
-        contain: layout;  /* ← Prevent recalc when font loads */
-    }
+  /* ✅ FIX: Prevent font-rendering CLS by locking height */
+  #welcome-msg {
+    font-size: 1.15rem !important;
+    height: auto;
+    line-height: 1.5;
+    min-height: 2.5rem;
+    contain: layout; /* ← Prevent recalc when font loads */
+  }
 
-    #dashboard-view .rounded-3xl.p-7 { padding: 1rem !important; }
+  #dashboard-view .rounded-3xl.p-7 {
+    padding: 1rem !important;
+  }
 }
 
 /* Fix long text overflow in cards */
 #latest-exams-grid h3,
 #latest-notes-grid h3 {
-    overflow-wrap: break-word;
-    word-break: break-word;
-    white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 #latest-exams-grid p.line-clamp-2,
 #latest-notes-grid p.line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* ============================================
    Mobile: Modal safe-area clearance
    ============================================ */
 @media (max-width: 767px) {
-    [id$="-modal"]:not(#confirm-modal-overlay) {
-        padding-bottom: max(5.5rem, calc(5rem + env(safe-area-inset-bottom))) !important;
-        align-items: flex-end !important;
-        padding-top: 0.5rem   !important;
-    }
+  [id$="-modal"]:not(#confirm-modal-overlay) {
+    padding-bottom: max(
+      5.5rem,
+      calc(5rem + env(safe-area-inset-bottom))
+    ) !important;
+    align-items: flex-end !important;
+    padding-top: 0.5rem !important;
+  }
 
-    [id$="-modal"]:not(#confirm-modal-overlay) > div {
-        max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px))   !important;
-        max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px))  !important;
-        height: auto    !important;
-        max-width: 100% !important;
-        width: 100%     !important;
-        border-bottom-left-radius:  0      !important;
-        border-bottom-right-radius: 0      !important;
-        border-top-left-radius:  1.5rem   !important;
-        border-top-right-radius: 1.5rem   !important;
-    }
+  [id$="-modal"]:not(#confirm-modal-overlay) > div {
+    max-height: calc(
+      100dvh - 5.5rem - env(safe-area-inset-bottom, 0px)
+    ) !important;
+    max-height: calc(
+      100dvh - 5.5rem - env(safe-area-inset-bottom, 0px)
+    ) !important;
+    height: auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+  }
 
-    [id$="-modal"] .overflow-y-auto {
-        -webkit-overflow-scrolling: touch;
-    }
+  [id$="-modal"] .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 
-    #admin-auth-modal,
-    #delete-subject-modal,
-    #rename-subject-modal,
-    #student-menu-modal {
-        align-items: center !important;
-        padding-bottom: max(5.5rem, calc(5rem + env(safe-area-inset-bottom))) !important;
-    }
+  #admin-auth-modal,
+  #delete-subject-modal,
+  #rename-subject-modal,
+  #student-menu-modal {
+    align-items: center !important;
+    padding-bottom: max(
+      5.5rem,
+      calc(5rem + env(safe-area-inset-bottom))
+    ) !important;
+  }
 
-    #admin-auth-modal > div,
-    #delete-subject-modal > div,
-    #rename-subject-modal > div,
-    #student-menu-modal > div {
-        border-radius: 1.5rem              !important;
-        max-height: calc(100dvh - 7rem)   !important;
-        overflow-y: auto                  !important;
-    }
+  #admin-auth-modal > div,
+  #delete-subject-modal > div,
+  #rename-subject-modal > div,
+  #student-menu-modal > div {
+    border-radius: 1.5rem !important;
+    max-height: calc(100dvh - 7rem) !important;
+    overflow-y: auto !important;
+  }
 }
 
 /* ============================================
    Mobile: Quiz Container
    ============================================ */
 @media (max-width: 640px) {
-    #quiz-container {
-        padding: 1rem                    !important;
-        margin: 0.5rem auto 5rem         !important;
-        border-radius: 1.25rem           !important;
-    }
+  #quiz-container {
+    padding: 1rem !important;
+    margin: 0.5rem auto 5rem !important;
+    border-radius: 1.25rem !important;
+  }
 
-    #quiz-container header { margin-bottom: 1rem; }
+  #quiz-container header {
+    margin-bottom: 1rem;
+  }
 
-    #quiz-main-title {
-        font-size: 1.1rem !important;
-        line-height: 1.4;
-    }
+  #quiz-main-title {
+    font-size: 1.1rem !important;
+    line-height: 1.4;
+  }
 
-    #quiz-subtitle { font-size: 0.75rem; }
+  #quiz-subtitle {
+    font-size: 0.75rem;
+  }
 
-    #quiz-container header > div:last-of-type {
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: center;
-    }
+  #quiz-container header > div:last-of-type {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
 
-    #question-text { font-size: 1rem !important; }
+  #question-text {
+    font-size: 1rem !important;
+  }
 
-    #quiz-container .flex.justify-between {
-        margin-top: 1.25rem !important;
-        gap: 0.5rem;
-    }
+  #quiz-container .flex.justify-between {
+    margin-top: 1.25rem !important;
+    gap: 0.5rem;
+  }
 
-    #previous-btn,
-    #next-btn,
-    #submit-btn {
-        padding: 0.65rem 1rem !important;
-        font-size: 0.82rem    !important;
-        min-width: 0;
-    }
+  #previous-btn,
+  #next-btn,
+  #submit-btn {
+    padding: 0.65rem 1rem !important;
+    font-size: 0.82rem !important;
+    min-width: 0;
+  }
 
-    #results-screen > div {
-        padding: 1.5rem    !important;
-        margin: 1rem;
-        max-height: 90vh;
-        overflow-y: auto;
-    }
+  #results-screen > div {
+    padding: 1.5rem !important;
+    margin: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
 }
 
 /* ============================================
    Landscape mode on short screens
    ============================================ */
 @media (max-height: 500px) and (orientation: landscape) {
-    #ios-bottom-nav { display: none !important; }
-    .bottom-sheet-content { max-height: 90vh; }
-    [id$="-modal"] > div { max-height: 95vh !important; }
-    /* محرر الأسئلة: 30vh يعطي ~108px على شاشة 360px landscape — أقل من خيارين */
-    #b-options-container { max-height: 45vh !important; }
+  #ios-bottom-nav {
+    display: none !important;
+  }
+  .bottom-sheet-content {
+    max-height: 90vh;
+  }
+  [id$="-modal"] > div {
+    max-height: 95vh !important;
+  }
+  /* محرر الأسئلة: 30vh يعطي ~108px على شاشة 360px landscape — أقل من خيارين */
+  #b-options-container {
+    max-height: 45vh !important;
+  }
 }
 
 /* ============================================
    Print Styles
    ============================================ */
 @media print {
-    #ios-bottom-nav,
-    #theme-toggle,
-    .bottom-sheet-overlay,
-    .bottom-sheet-content,
-    [id$="-modal"] { display: none !important; }
+  #ios-bottom-nav,
+  #theme-toggle,
+  .bottom-sheet-overlay,
+  .bottom-sheet-content,
+  [id$="-modal"] {
+    display: none !important;
+  }
 
-    body::before { display: none; }
-    body { background: white !important; color: black !important; }
+  body::before {
+    display: none;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
 }
 
 /* ============================================
@@ -1557,58 +1771,61 @@ select {
    When data loads, grid expands but doesn't push other elements down */
 #latest-exams-grid,
 #latest-notes-grid {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 500px;
-    contain: layout style paint;  /* ← Isolate layout calculations */
-    min-height: 280px;  /* ← Keep a stable block height to avoid shifts */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+  contain: layout style paint; /* ← Isolate layout calculations */
+  min-height: 280px; /* ← Keep a stable block height to avoid shifts */
 }
 
 @keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Show shimmer only while container is empty */
 #latest-exams-grid:empty,
 #latest-notes-grid:empty {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
 }
 
 /* Stop shimmer once content arrives, but keep reserved height */
 #latest-exams-grid:not(:empty),
 #latest-notes-grid:not(:empty) {
-    animation: none;
-    background: transparent;
+  animation: none;
+  background: transparent;
 }
 
 /* ✅ FIX: Reserve space for leaderboard to prevent CLS */
 #leaderboard-list {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 400px;
-    contain: layout style paint;  /* ← Isolate layout calculations */
-    min-height: 250px;  /* ← Reserve vertical space */
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 400px;
+  contain: layout style paint; /* ← Isolate layout calculations */
+  min-height: 250px; /* ← Reserve vertical space */
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 /* Placeholder shimmer while loading */
 #leaderboard-list:empty {
-    position: relative;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-    border-radius: 0.5rem;
+  position: relative;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 0.5rem;
 }
-
 
 /* ============================================
    ✅ Utility Classes for CLS Prevention
    ============================================ */
 .contain-layout {
-    contain: layout style paint;
+  contain: layout style paint;
 }
 
 /* ============================================
@@ -1620,11 +1837,11 @@ select {
      layers even when animations are instant.
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration:       0.01ms !important;
-        animation-iteration-count: 1    !important;
-        transition-duration:      0.01ms !important;
-    }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

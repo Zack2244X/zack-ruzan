@@ -9,10 +9,10 @@
 //   Middleware التوثيق والصلاحيات — محصّن
 //   — Sequelize + TiDB —
 // ============================================
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const User = require('../models/User');
-const logger = require('../utils/logger');
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const User = require("../models/User");
+const logger = require("../utils/logger");
 
 /**
  * JWT secret key.
@@ -22,13 +22,13 @@ const logger = require('../utils/logger');
  * @constant
  */
 const JWT_SECRET = (() => {
-    if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
-    if (process.env.NODE_ENV === 'production') {
-        logger.error('❌ يجب ضبط JWT_SECRET في بيئة الإنتاج!');
-        process.exit(1);
-    }
-    logger.warn('⚠️ JWT_SECRET غير محدد — استخدام قيمة عشوائية (تطوير فقط)');
-    return crypto.randomBytes(32).toString('hex');
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === "production") {
+    logger.error("❌ يجب ضبط JWT_SECRET في بيئة الإنتاج!");
+    process.exit(1);
+  }
+  logger.warn("⚠️ JWT_SECRET غير محدد — استخدام قيمة عشوائية (تطوير فقط)");
+  return crypto.randomBytes(32).toString("hex");
 })();
 
 // ============================================
@@ -45,21 +45,25 @@ const LOCKOUT_TIME = 30 * 60 * 1000; // 30 minutes
  * @returns {Promise<boolean>}
  */
 async function checkBruteForce(ip) {
-    try {
-        const sequelize = require('../models/index');
-        const [[record]] = await sequelize.query(
-            'SELECT `count`, `last_attempt` FROM `login_attempts` WHERE `ip` = ?',
-            { replacements: [ip] }
-        );
-        if (!record) return false;
-        if (Date.now() - Number(record.last_attempt) > LOCKOUT_TIME) {
-            sequelize.query('DELETE FROM `login_attempts` WHERE `ip` = ?', { replacements: [ip] }).catch(() => {});
-            return false;
-        }
-        return Number(record.count) >= MAX_FAILED;
-    } catch {
-        return false; // fail open — لا نحجب المستخدمين لو DB غير متاحة
+  try {
+    const sequelize = require("../models/index");
+    const [[record]] = await sequelize.query(
+      "SELECT `count`, `last_attempt` FROM `login_attempts` WHERE `ip` = ?",
+      { replacements: [ip] },
+    );
+    if (!record) return false;
+    if (Date.now() - Number(record.last_attempt) > LOCKOUT_TIME) {
+      sequelize
+        .query("DELETE FROM `login_attempts` WHERE `ip` = ?", {
+          replacements: [ip],
+        })
+        .catch(() => {});
+      return false;
     }
+    return Number(record.count) >= MAX_FAILED;
+  } catch {
+    return false; // fail open — لا نحجب المستخدمين لو DB غير متاحة
+  }
 }
 
 /**
@@ -68,14 +72,16 @@ async function checkBruteForce(ip) {
  * @returns {Promise<void>}
  */
 async function recordFailedAttempt(ip) {
-    try {
-        const sequelize = require('../models/index');
-        await sequelize.query(
-            'INSERT INTO `login_attempts` (`ip`, `count`, `last_attempt`) VALUES (?, 1, ?)' +
-            ' ON DUPLICATE KEY UPDATE `count` = `count` + 1, `last_attempt` = ?',
-            { replacements: [ip, Date.now(), Date.now()] }
-        );
-    } catch { /* fire-and-forget */ }
+  try {
+    const sequelize = require("../models/index");
+    await sequelize.query(
+      "INSERT INTO `login_attempts` (`ip`, `count`, `last_attempt`) VALUES (?, 1, ?)" +
+        " ON DUPLICATE KEY UPDATE `count` = `count` + 1, `last_attempt` = ?",
+      { replacements: [ip, Date.now(), Date.now()] },
+    );
+  } catch {
+    /* fire-and-forget */
+  }
 }
 
 /**
@@ -84,10 +90,14 @@ async function recordFailedAttempt(ip) {
  * @returns {Promise<void>}
  */
 async function clearFailedAttempts(ip) {
-    try {
-        const sequelize = require('../models/index');
-        await sequelize.query('DELETE FROM `login_attempts` WHERE `ip` = ?', { replacements: [ip] });
-    } catch { /* fire-and-forget */ }
+  try {
+    const sequelize = require("../models/index");
+    await sequelize.query("DELETE FROM `login_attempts` WHERE `ip` = ?", {
+      replacements: [ip],
+    });
+  } catch {
+    /* fire-and-forget */
+  }
 }
 
 // ============================================
@@ -101,14 +111,14 @@ async function clearFailedAttempts(ip) {
  * @param {import('express').Response} res
  */
 const setCsrfCookie = (res) => {
-    const token = crypto.randomBytes(32).toString('hex');
-    res.cookie('csrf_token', token, {
-        httpOnly: false, // JS يجب أن يقرأ هذه القيمة
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/'
-    });
+  const token = crypto.randomBytes(32).toString("hex");
+  res.cookie("csrf_token", token, {
+    httpOnly: false, // JS يجب أن يقرأ هذه القيمة
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/",
+  });
 };
 
 /**
@@ -116,7 +126,7 @@ const setCsrfCookie = (res) => {
  * @param {import('express').Response} res
  */
 const clearCsrfCookie = (res) => {
-    res.clearCookie('csrf_token', { path: '/' });
+  res.clearCookie("csrf_token", { path: "/" });
 };
 
 /**
@@ -125,14 +135,16 @@ const clearCsrfCookie = (res) => {
  * POST /api/auth/google is exempt (handled in index.js) — no cookie on first login.
  */
 const verifyCsrf = (req, res, next) => {
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-    const cookieToken = req.cookies?.csrf_token;
-    const headerToken = req.headers['x-csrf-token'];
-    if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-        logger.warn(`🚨 CSRF mismatch — IP: ${req.ip}, ${req.method} ${req.path}`);
-        return res.status(403).json({ error: 'طلب غير صالح. أعد تحميل الصفحة وحاول مرة أخرى.' });
-    }
-    next();
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  const cookieToken = req.cookies?.csrf_token;
+  const headerToken = req.headers["x-csrf-token"];
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    logger.warn(`🚨 CSRF mismatch — IP: ${req.ip}, ${req.method} ${req.path}`);
+    return res
+      .status(403)
+      .json({ error: "طلب غير صالح. أعد تحميل الصفحة وحاول مرة أخرى." });
+  }
+  next();
 };
 
 // ============================================
@@ -149,11 +161,11 @@ const verifyCsrf = (req, res, next) => {
  * @type {Object}
  */
 const COOKIE_OPTIONS = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/'
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/",
 };
 
 /**
@@ -162,7 +174,7 @@ const COOKIE_OPTIONS = {
  * @param {string} token - The JWT token to set.
  */
 const setTokenCookie = (res, token) => {
-    res.cookie('jwt', token, COOKIE_OPTIONS);
+  res.cookie("jwt", token, COOKIE_OPTIONS);
 };
 
 /**
@@ -170,7 +182,7 @@ const setTokenCookie = (res, token) => {
  * @param {import('express').Response} res - Express response object.
  */
 const clearTokenCookie = (res) => {
-    res.clearCookie('jwt', { ...COOKIE_OPTIONS, maxAge: 0 });
+  res.clearCookie("jwt", { ...COOKIE_OPTIONS, maxAge: 0 });
 };
 
 /**
@@ -184,58 +196,69 @@ const clearTokenCookie = (res) => {
  * @throws {401} If the token is missing, invalid, expired, or the user is not found.
  */
 const authenticate = async (req, res, next) => {
-    try {
-        // Priority: httpOnly cookie > Authorization header
-        let token = null;
+  try {
+    // Priority: httpOnly cookie > Authorization header
+    let token = null;
 
-        if (req.cookies && req.cookies.jwt) {
-            token = req.cookies.jwt;
-        } else {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                token = authHeader.split(' ')[1];
-            }
-        }
-
-        if (!token) {
-            return res.status(401).json({ error: 'يجب تسجيل الدخول أولاً.' });
-        }
-
-        if (token.length > 2048) {
-            return res.status(401).json({ error: 'توكن غير صالح.' });
-        }
-
-        const decoded = jwt.verify(token, JWT_SECRET);
-
-        if (!decoded.userId || !decoded.role) {
-            return res.status(401).json({ error: 'توكن غير صالح.' });
-        }
-
-        const user = await User.findByPk(decoded.userId);
-        if (!user) {
-            return res.status(401).json({ error: 'المستخدم غير موجود.' });
-        }
-
-        if (decoded.role !== user.role) {
-            logger.warn(`⚠️ محاولة تلاعب بالتوكن — IP: ${req.ip}, User: ${user.email}, Token role: ${decoded.role}, DB role: ${user.role}`);
-            return res.status(401).json({ error: 'توكن غير صالح. سجل دخولك مرة أخرى.' });
-        }
-
-        if (typeof decoded.tokenVersion === 'number' && decoded.tokenVersion !== user.tokenVersion) {
-            return res.status(401).json({ error: 'تم إلغاء هذا التوكن. سجل دخولك مرة أخرى.' });
-        }
-
-        req.user = user;
-        next();
-    } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ error: 'انتهت صلاحية الجلسة، سجل دخولك مرة أخرى.' });
-        }
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ error: 'توكن غير صالح.' });
-        }
-        return res.status(401).json({ error: 'خطأ في التحقق من الهوية.' });
+    if (req.cookies && req.cookies.jwt) {
+      token = req.cookies.jwt;
+    } else {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
     }
+
+    if (!token) {
+      return res.status(401).json({ error: "يجب تسجيل الدخول أولاً." });
+    }
+
+    if (token.length > 2048) {
+      return res.status(401).json({ error: "توكن غير صالح." });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (!decoded.userId || !decoded.role) {
+      return res.status(401).json({ error: "توكن غير صالح." });
+    }
+
+    const user = await User.findByPk(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: "المستخدم غير موجود." });
+    }
+
+    if (decoded.role !== user.role) {
+      logger.warn(
+        `⚠️ محاولة تلاعب بالتوكن — IP: ${req.ip}, User: ${user.email}, Token role: ${decoded.role}, DB role: ${user.role}`,
+      );
+      return res
+        .status(401)
+        .json({ error: "توكن غير صالح. سجل دخولك مرة أخرى." });
+    }
+
+    if (
+      typeof decoded.tokenVersion === "number" &&
+      decoded.tokenVersion !== user.tokenVersion
+    ) {
+      return res
+        .status(401)
+        .json({ error: "تم إلغاء هذا التوكن. سجل دخولك مرة أخرى." });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res
+        .status(401)
+        .json({ error: "انتهت صلاحية الجلسة، سجل دخولك مرة أخرى." });
+    }
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "توكن غير صالح." });
+    }
+    return res.status(401).json({ error: "خطأ في التحقق من الهوية." });
+  }
 };
 
 // ============================================
@@ -251,12 +274,18 @@ const authenticate = async (req, res, next) => {
  * @throws {403} If the user is not an admin.
  */
 const requireAdmin = (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        logger.warn(`🚨 محاولة وصول غير مصرح للأدمن — IP: ${req.ip}, User: ${req.user ? req.user.email : 'unknown'}, Path: ${req.originalUrl}`);
-        return res.status(403).json({ error: 'ليس لديك صلاحية الوصول. هذا الإجراء للمعلم فقط.' });
-    }
-    logger.info(`👑 عملية أدمن — ${req.method} ${req.originalUrl} — بواسطة: ${req.user.email}`);
-    next();
+  if (!req.user || req.user.role !== "admin") {
+    logger.warn(
+      `🚨 محاولة وصول غير مصرح للأدمن — IP: ${req.ip}, User: ${req.user ? req.user.email : "unknown"}, Path: ${req.originalUrl}`,
+    );
+    return res
+      .status(403)
+      .json({ error: "ليس لديك صلاحية الوصول. هذا الإجراء للمعلم فقط." });
+  }
+  logger.info(
+    `👑 عملية أدمن — ${req.method} ${req.originalUrl} — بواسطة: ${req.user.email}`,
+  );
+  next();
 };
 
 // ============================================
@@ -270,19 +299,19 @@ const requireAdmin = (req, res, next) => {
  * @param {string} [email=''] - Optional user email for cross-middleware policies.
  * @returns {string} A signed JWT string.
  */
-const generateToken = (userId, role, tokenVersion = 0, email = '') => {
-    return jwt.sign(
-        {
-            userId,
-            role,
-            tokenVersion,
-            email: email ? String(email).toLowerCase().substring(0, 255) : undefined,
-            iat: Math.floor(Date.now() / 1000),
-            jti: crypto.randomBytes(8).toString('hex')
-        },
-        JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+const generateToken = (userId, role, tokenVersion = 0, email = "") => {
+  return jwt.sign(
+    {
+      userId,
+      role,
+      tokenVersion,
+      email: email ? String(email).toLowerCase().substring(0, 255) : undefined,
+      iat: Math.floor(Date.now() / 1000),
+      jti: crypto.randomBytes(8).toString("hex"),
+    },
+    JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+  );
 };
 
 // ============================================
@@ -295,26 +324,26 @@ const generateToken = (userId, role, tokenVersion = 0, email = '') => {
  * Attaches req.user = { role: 'guest' } for downstream middleware.
  */
 const authenticateOrGuest = async (req, res, next) => {
-    const isReadOnlyMethod = req.method === 'GET' || req.method === 'HEAD';
-    if (isReadOnlyMethod && req.headers['x-guest-mode'] === 'true') {
-        req.user = { role: 'guest', id: null, email: null, isGuest: true };
-        return next();
-    }
-    return authenticate(req, res, next);
+  const isReadOnlyMethod = req.method === "GET" || req.method === "HEAD";
+  if (isReadOnlyMethod && req.headers["x-guest-mode"] === "true") {
+    req.user = { role: "guest", id: null, email: null, isGuest: true };
+    return next();
+  }
+  return authenticate(req, res, next);
 };
 
 module.exports = {
-    authenticate,
-    authenticateOrGuest,
-    requireAdmin,
-    generateToken,
-    setTokenCookie,
-    clearTokenCookie,
-    setCsrfCookie,
-    clearCsrfCookie,
-    verifyCsrf,
-    COOKIE_OPTIONS,
-    checkBruteForce,
-    recordFailedAttempt,
-    clearFailedAttempts
+  authenticate,
+  authenticateOrGuest,
+  requireAdmin,
+  generateToken,
+  setTokenCookie,
+  clearTokenCookie,
+  setCsrfCookie,
+  clearCsrfCookie,
+  verifyCsrf,
+  COOKIE_OPTIONS,
+  checkBruteForce,
+  recordFailedAttempt,
+  clearFailedAttempts,
 };

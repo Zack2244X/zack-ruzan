@@ -9,13 +9,13 @@
  * @returns {string} النص الآمن
  */
 export function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -24,12 +24,14 @@ export function escapeHtml(str) {
  * @param {boolean} serverBound — whether the function is expected to call the server
  */
 export function logFunctionStatus(fnName, serverBound = false) {
-    try {
-        const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
-        console.log(`[FUNC] ${fnName} — online:${online} serverBound:${serverBound}`);
-    } catch (e) {
-        // ignore logging errors
-    }
+  try {
+    const online = typeof navigator !== "undefined" ? navigator.onLine : true;
+    console.log(
+      `[FUNC] ${fnName} — online:${online} serverBound:${serverBound}`,
+    );
+  } catch (e) {
+    // ignore logging errors
+  }
 }
 
 /**
@@ -38,22 +40,29 @@ export function logFunctionStatus(fnName, serverBound = false) {
  * @param {'success'|'error'|'warning'|'streak'} type — نوع الرسالة
  */
 export function showAlert(message, type) {
-    const variant = type === 'error' ? 'error' : type === 'warning' ? 'error' : type === 'streak' ? 'streak' : 'success';
-    const duration = variant === 'error' ? 4000 : 2800;
-    const toast = document.createElement('div');
-    toast.className = `toast-float toast-${variant}`;
-    toast.style.position = 'relative';
-    toast.innerHTML = `${escapeHtml(message)}<div class="toast-progress" style="animation-duration:${duration}ms"></div>`;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translate(-50%, 0)';
-    });
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translate(-50%, -12px)';
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
+  const variant =
+    type === "error"
+      ? "error"
+      : type === "warning"
+        ? "error"
+        : type === "streak"
+          ? "streak"
+          : "success";
+  const duration = variant === "error" ? 4000 : 2800;
+  const toast = document.createElement("div");
+  toast.className = `toast-float toast-${variant}`;
+  toast.style.position = "relative";
+  toast.innerHTML = `${escapeHtml(message)}<div class="toast-progress" style="animation-duration:${duration}ms"></div>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translate(-50%, 0)";
+  });
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translate(-50%, -12px)";
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
 }
 
 /**
@@ -63,24 +72,27 @@ export function showAlert(message, type) {
  * @param {string} icon — أيقونة (إيموجي)
  * @returns {Promise<boolean>} true لو وافق المستخدم
  */
-export function showConfirm(title, message, icon = '⚠️') {
-    return new Promise((resolve) => {
-        const overlay = document.getElementById('confirm-modal-overlay');
-        document.getElementById('confirm-icon').textContent = icon;
-        document.getElementById('confirm-title').textContent = title;
-        document.getElementById('confirm-message').textContent = message;
-        overlay.classList.remove('hidden');
-        requestAnimationFrame(() => overlay.classList.add('show'));
+export function showConfirm(title, message, icon = "⚠️") {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("confirm-modal-overlay");
+    document.getElementById("confirm-icon").textContent = icon;
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-message").textContent = message;
+    overlay.classList.remove("hidden");
+    requestAnimationFrame(() => overlay.classList.add("show"));
 
-        const cleanup = (result) => {
-            overlay.classList.remove('show');
-            setTimeout(() => overlay.classList.add('hidden'), 250);
-            resolve(result);
-        };
-        document.getElementById('confirm-ok-btn').onclick = () => cleanup(true);
-        document.getElementById('confirm-cancel-btn').onclick = () => cleanup(false);
-        overlay.onclick = (e) => { if (e.target === overlay) cleanup(false); };
-    });
+    const cleanup = (result) => {
+      overlay.classList.remove("show");
+      setTimeout(() => overlay.classList.add("hidden"), 250);
+      resolve(result);
+    };
+    document.getElementById("confirm-ok-btn").onclick = () => cleanup(true);
+    document.getElementById("confirm-cancel-btn").onclick = () =>
+      cleanup(false);
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup(false);
+    };
+  });
 }
 
 /**
@@ -88,8 +100,11 @@ export function showConfirm(title, message, icon = '⚠️') {
  * @param {string|HTMLElement} elOrId — العنصر أو معرّفه
  */
 export function showLoading(elOrId) {
-    const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
-    if (el) el.innerHTML = '<div class="flex justify-center items-center py-16"><i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i></div>';
+  const el =
+    typeof elOrId === "string" ? document.getElementById(elOrId) : elOrId;
+  if (el)
+    el.innerHTML =
+      '<div class="flex justify-center items-center py-16"><i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i></div>';
 }
 
 /**
@@ -98,9 +113,9 @@ export function showLoading(elOrId) {
  * @returns {string} الوقت بصيغة "00:00"
  */
 export function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -108,21 +123,21 @@ export function formatTime(seconds) {
  * @param {string} text — النص
  * @param {'success'|'error'|'streak'} variant — النوع
  */
-export function showToastMessage(text, variant = 'success') {
-    if (!text) return;
-    const toast = document.createElement('div');
-    toast.className = `toast-float toast-${variant}`;
-    toast.innerText = text;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translate(-50%, 0)';
-    });
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translate(-50%, -12px)';
-        setTimeout(() => toast.remove(), 300);
-    }, 2200);
+export function showToastMessage(text, variant = "success") {
+  if (!text) return;
+  const toast = document.createElement("div");
+  toast.className = `toast-float toast-${variant}`;
+  toast.innerText = text;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translate(-50%, 0)";
+  });
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translate(-50%, -12px)";
+    setTimeout(() => toast.remove(), 300);
+  }, 2200);
 }
 
 /**
@@ -131,8 +146,8 @@ export function showToastMessage(text, variant = 'success') {
  * @returns {*} العنصر المختار
  */
 export function pickRandom(arr) {
-    if (!arr || !arr.length) return '';
-    return arr[Math.floor(Math.random() * arr.length)];
+  if (!arr || !arr.length) return "";
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /**
@@ -140,10 +155,10 @@ export function pickRandom(arr) {
  * @param {Array} arr — المصفوفة (تُعدَّل مباشرة)
  */
 export function shuffleArray(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,129 +208,156 @@ export function shuffleArray(arr) {
  * @returns {GPUInfo}
  */
 function probeGPU() {
-    try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
 
-        // نجرب WebGL2 (= OpenGL ES 3.0) أولاً، ثم WebGL (= OpenGL ES 2.0)
-        const gl2 = canvas.getContext('webgl2');
-        const gl  = gl2
-            || canvas.getContext('webgl')
-            || canvas.getContext('experimental-webgl');
+    // نجرب WebGL2 (= OpenGL ES 3.0) أولاً، ثم WebGL (= OpenGL ES 2.0)
+    const gl2 = canvas.getContext("webgl2");
+    const gl =
+      gl2 ||
+      canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl");
 
-        if (!gl) {
-            console.log('[DevicePerf/GPU] لا يوجد دعم WebGL — GPU tier=low');
-            return { tier: 'low', renderer: 'none', vendor: 'none',
-                     webgl2: false, maxTexSize: 0, gpuScore: 0 };
-        }
-
-        const webgl2 = !!gl2;
-
-        // WEBGL_debug_renderer_info يكشف عن اسم الـ GPU الحقيقي
-        // (بعض المتصفحات تحجبه لأسباب الخصوصية — نتعامل مع ذلك بـ fallback)
-        const dbg      = gl.getExtension('WEBGL_debug_renderer_info');
-        const renderer = (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '').toLowerCase();
-        const vendor   = (dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL)   : '').toLowerCase();
-
-        // ── تعيين vendor class على body مبكراً ─────────────────────────────
-        // يُتيح CSS vendor-specific rules (Adreno/Mali) بدون انتظار كامل التهيئة
-        // مبكر بشكل مقصود: يُطبَّق قبل رسم أي frame كثيف
-        try {
-            const b = document?.body?.classList;
-            if (b) {
-                if (/adreno/i.test(renderer) || /qualcomm/i.test(vendor)) {
-                    b.add('vendor-adreno');
-                } else if (/mali/i.test(renderer) || /\barm\b/i.test(vendor)) {
-                    b.add('vendor-mali');
-                } else if (/apple/i.test(renderer) || /apple/i.test(vendor)) {
-                    b.add('vendor-apple');
-                } else if (/nvidia|geforce|rtx|gtx/i.test(renderer)) {
-                    b.add('vendor-nvidia');
-                } else if (/amd|radeon/i.test(renderer)) {
-                    b.add('vendor-amd');
-                } else if (/intel/i.test(renderer)) {
-                    b.add('vendor-intel');
-                } else if (/powervr/i.test(renderer)) {
-                    b.add('vendor-powervr');
-                }
-            }
-        } catch (e) { /* document قد لا يكون متاحاً في بعض البيئات */ }
-
-        const maxTexSize      = gl.getParameter(gl.MAX_TEXTURE_SIZE)              || 0;
-        const maxVertUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS)    || 0;
-        const maxFragUniforms = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)  || 0;
-
-        // حرر الـ context فوراً لتجنب تسرب VRAM
-        try { (gl.getExtension('WEBGL_lose_context') || {}).loseContext?.(); } catch (e) {}
-
-        // ── تسجيل نقاط GPU ────────────────────────────────────────────────────
-        let gpuScore = 0;
-
-        // WebGL2 = GPU يدعم OpenGL ES 3.0+ → جيل حديث
-        if (webgl2) gpuScore += 2;
-
-        // حجم الـ texture الأقصى: علامة على bandwidth الـ VRAM
-        if      (maxTexSize >= 16384) gpuScore += 2;
-        else if (maxTexSize >=  8192) gpuScore += 1;
-
-        // عدد shader uniforms: كلما كان أكبر دلّ على معالج أقوى
-        if (maxVertUniforms >= 256 && maxFragUniforms >= 256) gpuScore += 1;
-
-        const g = `${renderer} ${vendor}`;
-
-        // ── GPUs عالية الأداء ─────────────────────────────────────────────────
-        // Adreno 6xx/7xx/8xx (Snapdragon 8-series flagship)
-        // Mali-G7x/G8x/G9x/G1xx (Samsung/MediaTek flagship)
-        // Apple GPU (A-series / M-series)
-        // GPU كمبيوتر مكتبي/لابتوب: NVIDIA, AMD, Intel Iris/Arc/Xe
-        if (/adreno\s*[6-9]\d\d/.test(g) ||
-            /mali-g[789]\d|mali-g1\d\d/.test(g) ||
-            /apple\s*(gpu|m\d)|apple\s*a1[0-9]/.test(g) ||
-            /apple/.test(vendor) ||
-            /nvidia|geforce|rtx|gtx|quadro|tesla/.test(g) ||
-            /amd|radeon|rx\s*\d/.test(g) ||
-            /intel\s*(iris|arc|uhd\s*7|xe)/.test(g)) {
-            gpuScore += 3;
-        }
-        // ── GPUs متوسطة الأداء ────────────────────────────────────────────────
-        // Adreno 5xx (Snapdragon 6/7 series)
-        // Mali-G5x/G6x (mid-range)
-        // PowerVR GX (mid iPad/iPhone)
-        // Intel HD/UHD 600-series (كمبيوتر mid-range)
-        else if (/adreno\s*[45]\d\d/.test(g) ||
-                 /mali-g[56]\d/.test(g) ||
-                 /powervr\s*g[ex]/.test(g) ||
-                 /intel\s*(hd|uhd\s*[456]|uhd\s*6[0-9]\d)/.test(g)) {
-            gpuScore += 1;
-        }
-        // ── GPUs ضعيفة الأداء ─────────────────────────────────────────────────
-        // Adreno 2xx/3xx (أجهزة قديمة جداً)
-        // Mali-T7xx/T8xx/400/450 (كانت شائعة في Android 4-6)
-        // PowerVR SGX (iPhone 4 era)
-        // SwiftShader/LLVMpipe/Mesa Software (محاكي / بدون GPU حقيقي)
-        else if (/adreno\s*[23]\d\d/.test(g) ||
-                 /mali-t[0-9]|mali-4/.test(g) ||
-                 /powervr\s*sgx/.test(g) ||
-                 /swiftshader|llvmpipe|softpipe|software|rasterizer/.test(g)) {
-            gpuScore -= 2;
-        }
-
-        // high ≥ 7: GPUs رائدة فقط (Adreno 6xx+، Mali-G7x+، Apple، NVIDIA، AMD)
-        // medium ≥ 4: GPU مقبول (Adreno 5xx، Mali-G51/G52، Intel HD)
-        // low  < 4:  GPU ضعيف أو لا GPU
-        // سبب رفع العتبات: Mali-G51 كان يسجّل 5 (WebGL2+texSize+uniforms+medium-bonus)
-        // لكنه GPU متوسط-متأخر (2018) يكافح تحت backdrop-filter و will-change
-        const tier = gpuScore >= 7 ? 'high' : gpuScore >= 4 ? 'medium' : 'low';
-        const result = { tier, renderer, vendor, webgl2, maxTexSize, gpuScore };
-        console.log('[DevicePerf/GPU]', result);
-        return result;
-
-    } catch (err) {
-        console.warn('[DevicePerf/GPU] فشل فحص WebGL:', err.message);
-        return { tier: 'medium', renderer: 'error', vendor: 'error',
-                 webgl2: false, maxTexSize: 0, gpuScore: 1 };
+    if (!gl) {
+      console.log("[DevicePerf/GPU] لا يوجد دعم WebGL — GPU tier=low");
+      return {
+        tier: "low",
+        renderer: "none",
+        vendor: "none",
+        webgl2: false,
+        maxTexSize: 0,
+        gpuScore: 0,
+      };
     }
+
+    const webgl2 = !!gl2;
+
+    // WEBGL_debug_renderer_info يكشف عن اسم الـ GPU الحقيقي
+    // (بعض المتصفحات تحجبه لأسباب الخصوصية — نتعامل مع ذلك بـ fallback)
+    const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = (
+      dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : ""
+    ).toLowerCase();
+    const vendor = (
+      dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : ""
+    ).toLowerCase();
+
+    // ── تعيين vendor class على body مبكراً ─────────────────────────────
+    // يُتيح CSS vendor-specific rules (Adreno/Mali) بدون انتظار كامل التهيئة
+    // مبكر بشكل مقصود: يُطبَّق قبل رسم أي frame كثيف
+    try {
+      const b = document?.body?.classList;
+      if (b) {
+        if (/adreno/i.test(renderer) || /qualcomm/i.test(vendor)) {
+          b.add("vendor-adreno");
+        } else if (/mali/i.test(renderer) || /\barm\b/i.test(vendor)) {
+          b.add("vendor-mali");
+        } else if (/apple/i.test(renderer) || /apple/i.test(vendor)) {
+          b.add("vendor-apple");
+        } else if (/nvidia|geforce|rtx|gtx/i.test(renderer)) {
+          b.add("vendor-nvidia");
+        } else if (/amd|radeon/i.test(renderer)) {
+          b.add("vendor-amd");
+        } else if (/intel/i.test(renderer)) {
+          b.add("vendor-intel");
+        } else if (/powervr/i.test(renderer)) {
+          b.add("vendor-powervr");
+        }
+      }
+    } catch (e) {
+      /* document قد لا يكون متاحاً في بعض البيئات */
+    }
+
+    const maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+    const maxVertUniforms = gl.getParameter(gl.MAX_VERTEX_UNIFORM_VECTORS) || 0;
+    const maxFragUniforms =
+      gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) || 0;
+
+    // حرر الـ context فوراً لتجنب تسرب VRAM
+    try {
+      (gl.getExtension("WEBGL_lose_context") || {}).loseContext?.();
+    } catch (e) {}
+
+    // ── تسجيل نقاط GPU ────────────────────────────────────────────────────
+    let gpuScore = 0;
+
+    // WebGL2 = GPU يدعم OpenGL ES 3.0+ → جيل حديث
+    if (webgl2) gpuScore += 2;
+
+    // حجم الـ texture الأقصى: علامة على bandwidth الـ VRAM
+    if (maxTexSize >= 16384) gpuScore += 2;
+    else if (maxTexSize >= 8192) gpuScore += 1;
+
+    // عدد shader uniforms: كلما كان أكبر دلّ على معالج أقوى
+    if (maxVertUniforms >= 256 && maxFragUniforms >= 256) gpuScore += 1;
+
+    const g = `${renderer} ${vendor}`;
+
+    // ── GPUs عالية الأداء ─────────────────────────────────────────────────
+    // Adreno 6xx/7xx/8xx (Snapdragon 8-series flagship)
+    // Mali-G7x/G8x/G9x/G1xx (Samsung/MediaTek flagship)
+    // Apple GPU (A-series / M-series)
+    // GPU كمبيوتر مكتبي/لابتوب: NVIDIA, AMD, Intel Iris/Arc/Xe
+    if (
+      /adreno\s*[6-9]\d\d/.test(g) ||
+      /mali-g[789]\d|mali-g1\d\d/.test(g) ||
+      /apple\s*(gpu|m\d)|apple\s*a1[0-9]/.test(g) ||
+      /apple/.test(vendor) ||
+      /nvidia|geforce|rtx|gtx|quadro|tesla/.test(g) ||
+      /amd|radeon|rx\s*\d/.test(g) ||
+      /intel\s*(iris|arc|uhd\s*7|xe)/.test(g)
+    ) {
+      gpuScore += 3;
+    }
+    // ── GPUs متوسطة الأداء ────────────────────────────────────────────────
+    // Adreno 5xx (Snapdragon 6/7 series)
+    // Mali-G5x/G6x (mid-range)
+    // PowerVR GX (mid iPad/iPhone)
+    // Intel HD/UHD 600-series (كمبيوتر mid-range)
+    else if (
+      /adreno\s*[45]\d\d/.test(g) ||
+      /mali-g[56]\d/.test(g) ||
+      /powervr\s*g[ex]/.test(g) ||
+      /intel\s*(hd|uhd\s*[456]|uhd\s*6[0-9]\d)/.test(g)
+    ) {
+      gpuScore += 1;
+    }
+    // ── GPUs ضعيفة الأداء ─────────────────────────────────────────────────
+    // Adreno 2xx/3xx (أجهزة قديمة جداً)
+    // Mali-T7xx/T8xx/400/450 (كانت شائعة في Android 4-6)
+    // PowerVR SGX (iPhone 4 era)
+    // SwiftShader/LLVMpipe/Mesa Software (محاكي / بدون GPU حقيقي)
+    else if (
+      /adreno\s*[23]\d\d/.test(g) ||
+      /mali-t[0-9]|mali-4/.test(g) ||
+      /powervr\s*sgx/.test(g) ||
+      /swiftshader|llvmpipe|softpipe|software|rasterizer/.test(g)
+    ) {
+      gpuScore -= 2;
+    }
+
+    // high ≥ 7: GPUs رائدة فقط (Adreno 6xx+، Mali-G7x+، Apple، NVIDIA، AMD)
+    // medium ≥ 4: GPU مقبول (Adreno 5xx، Mali-G51/G52، Intel HD)
+    // low  < 4:  GPU ضعيف أو لا GPU
+    // سبب رفع العتبات: Mali-G51 كان يسجّل 5 (WebGL2+texSize+uniforms+medium-bonus)
+    // لكنه GPU متوسط-متأخر (2018) يكافح تحت backdrop-filter و will-change
+    const tier = gpuScore >= 7 ? "high" : gpuScore >= 4 ? "medium" : "low";
+    const result = { tier, renderer, vendor, webgl2, maxTexSize, gpuScore };
+    console.log("[DevicePerf/GPU]", result);
+    return result;
+  } catch (err) {
+    console.warn("[DevicePerf/GPU] فشل فحص WebGL:", err.message);
+    return {
+      tier: "medium",
+      renderer: "error",
+      vendor: "error",
+      webgl2: false,
+      maxTexSize: 0,
+      gpuScore: 1,
+    };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,13 +370,15 @@ function probeGPU() {
  * @returns {Promise<{ level: number, charging: boolean }>}
  */
 async function getBatteryInfo() {
-    try {
-        if ('getBattery' in navigator) {
-            const bat = await navigator.getBattery();
-            return { level: bat.level, charging: bat.charging };
-        }
-    } catch (e) { /* API غير مدعوم */ }
-    return { level: 1, charging: true }; // افتراض كامل/متصل
+  try {
+    if ("getBattery" in navigator) {
+      const bat = await navigator.getBattery();
+      return { level: bat.level, charging: bat.charging };
+    }
+  } catch (e) {
+    /* API غير مدعوم */
+  }
+  return { level: 1, charging: true }; // افتراض كامل/متصل
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,20 +391,20 @@ async function getBatteryInfo() {
  * @returns {Promise<number>}
  */
 function measureFPS(durationMs = 1000) {
-    return new Promise((resolve) => {
-        let frames = 0;
-        let startTime = null;
-        function frame(ts) {
-            if (startTime === null) startTime = ts;
-            frames++;
-            if (ts - startTime < durationMs) {
-                requestAnimationFrame(frame);
-            } else {
-                resolve(Math.round(((frames - 1) / (ts - startTime)) * 1000));
-            }
-        }
+  return new Promise((resolve) => {
+    let frames = 0;
+    let startTime = null;
+    function frame(ts) {
+      if (startTime === null) startTime = ts;
+      frames++;
+      if (ts - startTime < durationMs) {
         requestAnimationFrame(frame);
-    });
+      } else {
+        resolve(Math.round(((frames - 1) / (ts - startTime)) * 1000));
+      }
+    }
+    requestAnimationFrame(frame);
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -387,110 +431,150 @@ function measureFPS(durationMs = 1000) {
  * @returns {Promise<DevicePerformanceResult>}
  */
 export async function getDevicePerformanceTier(options = {}) {
-    const { skipFPSTest = false } = options || {};
+  const { skipFPSTest = false } = options || {};
 
-    // ── 0. prefers-reduced-motion له الأولوية القصوى ────────────────────────
-    const prefersReducedMotion =
-        typeof window !== 'undefined' &&
-        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  // ── 0. prefers-reduced-motion له الأولوية القصوى ────────────────────────
+  const prefersReducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-    const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
+  const dpr =
+    (typeof window !== "undefined" ? window.devicePixelRatio : 1) || 1;
 
-    if (prefersReducedMotion) {
-        console.log('[DevicePerf] prefers-reduced-motion → tier=low');
-        return {
-            tier: 'low', cores: navigator.hardwareConcurrency ?? -1,
-            memory: navigator.deviceMemory ?? -1, fps: 0,
-            prefersReducedMotion: true,
-            gpu: { tier: 'low', renderer: '', vendor: '', webgl2: false, maxTexSize: 0, gpuScore: 0 },
-            dpr, batteryLevel: -1, batteryCharging: true
-        };
-    }
-
-    // ── 1. CPU ───────────────────────────────────────────────────────────────
-    const cores  = navigator.hardwareConcurrency ?? 1;
-    const memory = navigator.deviceMemory ?? -1;
-
-    let cpuScore = 3;
-    if (cores  < 4)                      cpuScore--;
-    if (memory !== -1 && memory < 4)     cpuScore--;
-
-    // الهواتف: حتى مع 8 أنوية، الأنوية فوق 4 هي كفاءة وليست أداءً + ضغط حراري
-    // هاتف RAM ≤ 4GB = ذاكرة مشتركة مع Android OS → cap at 'medium'
-    // ملاحظة: isMobile مُعرَّف هنا ويُستخدم لاحقاً في خطوتَي DPR وNetwork
-    const isMobile = navigator.maxTouchPoints > 1 &&
-                     window.matchMedia?.('(hover: none)').matches;
-    if (isMobile && memory !== -1 && memory < 6) {
-        cpuScore = Math.min(cpuScore, 2);
-        console.log(`[DevicePerf] 📱 موبايل RAM=${memory}GB → cpuScore مُقيَّد على 2 (medium)`);
-    }
-
-    // ── 2. GPU (WebGL probe) ─────────────────────────────────────────────────
-    const gpu = probeGPU();
-
-    // ── 3. Battery ───────────────────────────────────────────────────────────
-    const { level: batteryLevel, charging: batteryCharging } = await getBatteryInfo();
-
-    // ── 3.5. شبكة / Save-Data ────────────────────────────────────────────────
-    // إذا فعّل المستخدم «توفير البيانات» فهو يشير ضمنياً: شبكتي/جهازي بطيء
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (conn?.saveData) {
-        console.log('[DevicePerf] 💾 Save-Data: true → tier=low فوري');
-        return {
-            tier: 'low', cores, memory, fps: 0,
-            prefersReducedMotion: false,
-            gpu, dpr, batteryLevel, batteryCharging
-        };
-    }
-
-    // ── 4. FPS (اختياري) ────────────────────────────────────────────────────
-    let fps = -1;
-    if (!skipFPSTest) fps = await measureFPS(1000);
-    if (fps !== -1 && fps < 50) cpuScore--;
-
-    // ── 5. الدمج: CPU + GPU ──────────────────────────────────────────────────
-    const cpuTier = cpuScore >= 3 ? 'high' : cpuScore === 2 ? 'medium' : 'low';
-    const gpuTier = gpu.tier;
-
-    let tier;
-    if (cpuTier === 'low' || gpuTier === 'low')   tier = 'low';
-    else if (cpuTier === 'high' && gpuTier === 'high') tier = 'high';
-    else                                              tier = 'medium';
-
-    // ── 6. تعديل بسبب البطارية المنخفضة ─────────────────────────────────────
-    // الهاتف يُخفّض تردد GPU تلقائياً — نعكس ذلك في خياراتنا
-    if (!batteryCharging && batteryLevel !== -1 && batteryLevel < 0.15) {
-        if (tier === 'high')   tier = 'medium';
-        else if (tier === 'medium') tier = 'low';
-        console.log(`[DevicePerf] 🔋 بطارية منخفضة (${Math.round(batteryLevel * 100)}%) → تخفيض مستوى`);
-    }
-
-    // ── 6.5. شبكة بطيئة (effectiveType) ─────────────────────────────────────
-    // 'slow-2g'/'2g' = غالباً جهاز ضعيف أو منطقة سيئة → تخفيض مستوى
-    if (conn?.effectiveType === 'slow-2g' || conn?.effectiveType === '2g') {
-        if (tier === 'high')        tier = 'medium';
-        else if (tier === 'medium') tier = 'low';
-        console.log(`[DevicePerf] 📶 effectiveType=${conn.effectiveType} → تخفيض مستوى`);
-    }
-
-    // ── 7. تعديل بسبب كثافة البكسل ──────────────────────────────────────────
-    // موبايل بشاشة DPR=3 مع GPU متوسط = fill rate كثيف جداً → medium
-    if (dpr > 2.5 && tier === 'high' && gpuTier !== 'high') {
-        tier = 'medium';
-        console.log(`[DevicePerf] 📱 DPR ${dpr.toFixed(1)} > 2.5 → يُبقى على medium`);
-    }
-    // DPR > 2.0 على موبايل مع high tier = pixel fill كثيف → يُخفَّض لـ medium
-    if (dpr > 2.0 && isMobile && tier === 'high') {
-        tier = 'medium';
-        console.log(`[DevicePerf] 📱 DPR ${dpr.toFixed(1)} على موبايل → high → medium`);
-    }
-
-    const result = {
-        tier, cores, memory, fps, prefersReducedMotion: false,
-        gpu, dpr, batteryLevel, batteryCharging
+  if (prefersReducedMotion) {
+    console.log("[DevicePerf] prefers-reduced-motion → tier=low");
+    return {
+      tier: "low",
+      cores: navigator.hardwareConcurrency ?? -1,
+      memory: navigator.deviceMemory ?? -1,
+      fps: 0,
+      prefersReducedMotion: true,
+      gpu: {
+        tier: "low",
+        renderer: "",
+        vendor: "",
+        webgl2: false,
+        maxTexSize: 0,
+        gpuScore: 0,
+      },
+      dpr,
+      batteryLevel: -1,
+      batteryCharging: true,
     };
-    console.log('[DevicePerf] ✅ نتيجة شاملة:', result);
-    return result;
+  }
+
+  // ── 1. CPU ───────────────────────────────────────────────────────────────
+  const cores = navigator.hardwareConcurrency ?? 1;
+  const memory = navigator.deviceMemory ?? -1;
+
+  let cpuScore = 3;
+  if (cores < 4) cpuScore--;
+  if (memory !== -1 && memory < 4) cpuScore--;
+
+  // الهواتف: حتى مع 8 أنوية، الأنوية فوق 4 هي كفاءة وليست أداءً + ضغط حراري
+  // هاتف RAM ≤ 4GB = ذاكرة مشتركة مع Android OS → cap at 'medium'
+  // ملاحظة: isMobile مُعرَّف هنا ويُستخدم لاحقاً في خطوتَي DPR وNetwork
+  const isMobile =
+    navigator.maxTouchPoints > 1 &&
+    window.matchMedia?.("(hover: none)").matches;
+  if (isMobile && memory !== -1 && memory < 6) {
+    cpuScore = Math.min(cpuScore, 2);
+    console.log(
+      `[DevicePerf] 📱 موبايل RAM=${memory}GB → cpuScore مُقيَّد على 2 (medium)`,
+    );
+  }
+
+  // ── 2. GPU (WebGL probe) ─────────────────────────────────────────────────
+  const gpu = probeGPU();
+
+  // ── 3. Battery ───────────────────────────────────────────────────────────
+  const { level: batteryLevel, charging: batteryCharging } =
+    await getBatteryInfo();
+
+  // ── 3.5. شبكة / Save-Data ────────────────────────────────────────────────
+  // إذا فعّل المستخدم «توفير البيانات» فهو يشير ضمنياً: شبكتي/جهازي بطيء
+  const conn =
+    navigator.connection ||
+    navigator.mozConnection ||
+    navigator.webkitConnection;
+  if (conn?.saveData) {
+    console.log("[DevicePerf] 💾 Save-Data: true → tier=low فوري");
+    return {
+      tier: "low",
+      cores,
+      memory,
+      fps: 0,
+      prefersReducedMotion: false,
+      gpu,
+      dpr,
+      batteryLevel,
+      batteryCharging,
+    };
+  }
+
+  // ── 4. FPS (اختياري) ────────────────────────────────────────────────────
+  let fps = -1;
+  if (!skipFPSTest) fps = await measureFPS(1000);
+  if (fps !== -1 && fps < 50) cpuScore--;
+
+  // ── 5. الدمج: CPU + GPU ──────────────────────────────────────────────────
+  const cpuTier = cpuScore >= 3 ? "high" : cpuScore === 2 ? "medium" : "low";
+  const gpuTier = gpu.tier;
+
+  let tier;
+  if (cpuTier === "low" || gpuTier === "low") tier = "low";
+  else if (cpuTier === "high" && gpuTier === "high") tier = "high";
+  else tier = "medium";
+
+  // ── 6. تعديل بسبب البطارية المنخفضة ─────────────────────────────────────
+  // الهاتف يُخفّض تردد GPU تلقائياً — نعكس ذلك في خياراتنا
+  if (!batteryCharging && batteryLevel !== -1 && batteryLevel < 0.15) {
+    if (tier === "high") tier = "medium";
+    else if (tier === "medium") tier = "low";
+    console.log(
+      `[DevicePerf] 🔋 بطارية منخفضة (${Math.round(batteryLevel * 100)}%) → تخفيض مستوى`,
+    );
+  }
+
+  // ── 6.5. شبكة بطيئة (effectiveType) ─────────────────────────────────────
+  // 'slow-2g'/'2g' = غالباً جهاز ضعيف أو منطقة سيئة → تخفيض مستوى
+  if (conn?.effectiveType === "slow-2g" || conn?.effectiveType === "2g") {
+    if (tier === "high") tier = "medium";
+    else if (tier === "medium") tier = "low";
+    console.log(
+      `[DevicePerf] 📶 effectiveType=${conn.effectiveType} → تخفيض مستوى`,
+    );
+  }
+
+  // ── 7. تعديل بسبب كثافة البكسل ──────────────────────────────────────────
+  // موبايل بشاشة DPR=3 مع GPU متوسط = fill rate كثيف جداً → medium
+  if (dpr > 2.5 && tier === "high" && gpuTier !== "high") {
+    tier = "medium";
+    console.log(
+      `[DevicePerf] 📱 DPR ${dpr.toFixed(1)} > 2.5 → يُبقى على medium`,
+    );
+  }
+  // DPR > 2.0 على موبايل مع high tier = pixel fill كثيف → يُخفَّض لـ medium
+  if (dpr > 2.0 && isMobile && tier === "high") {
+    tier = "medium";
+    console.log(
+      `[DevicePerf] 📱 DPR ${dpr.toFixed(1)} على موبايل → high → medium`,
+    );
+  }
+
+  const result = {
+    tier,
+    cores,
+    memory,
+    fps,
+    prefersReducedMotion: false,
+    gpu,
+    dpr,
+    batteryLevel,
+    batteryCharging,
+  };
+  console.log("[DevicePerf] ✅ نتيجة شاملة:", result);
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -503,35 +587,39 @@ export async function getDevicePerformanceTier(options = {}) {
  * @returns {'high'|'medium'|'low'}
  */
 export function getQuickDeviceTier() {
+  try {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)
+      return "low";
+
+    const cores = navigator.hardwareConcurrency ?? 1;
+    const memory = navigator.deviceMemory ?? -1;
+    const dpr = window.devicePixelRatio || 1;
+
+    let score = 3;
+    if (cores < 4) score--;
+    if (memory !== -1 && memory < 4) score--;
+
+    // فحص WebGL سريع: هل يدعم WebGL2؟
     try {
-        if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 'low';
+      const c = document.createElement("canvas");
+      c.width = 1;
+      c.height = 1;
+      const gl2 = c.getContext("webgl2");
+      const gl = gl2 || c.getContext("webgl");
+      if (!gl)
+        score -= 2; // لا GPU = ضعيف جداً
+      else if (gl2) score += 1; // WebGL2 = GPU حديث
+      // حرر فوراً
+      try {
+        (gl.getExtension("WEBGL_lose_context") || {}).loseContext?.();
+      } catch (e) {}
+    } catch (e) {}
 
-        const cores  = navigator.hardwareConcurrency ?? 1;
-        const memory = navigator.deviceMemory        ?? -1;
-        const dpr    = window.devicePixelRatio       || 1;
+    // DPR عالٍ مع score منخفض = ضغط زائد
+    if (dpr > 2.5 && score >= 3) score--;
 
-        let score = 3;
-        if (cores  < 4)                  score--;
-        if (memory !== -1 && memory < 4) score--;
-
-        // فحص WebGL سريع: هل يدعم WebGL2؟
-        try {
-            const c = document.createElement('canvas');
-            c.width  = 1;
-            c.height = 1;
-            const gl2 = c.getContext('webgl2');
-            const gl  = gl2 || c.getContext('webgl');
-            if (!gl)        score -= 2;  // لا GPU = ضعيف جداً
-            else if (gl2)   score += 1;  // WebGL2 = GPU حديث
-            // حرر فوراً
-            try { (gl.getExtension('WEBGL_lose_context') || {}).loseContext?.(); } catch (e) {}
-        } catch (e) {}
-
-        // DPR عالٍ مع score منخفض = ضغط زائد
-        if (dpr > 2.5 && score >= 3) score--;
-
-        return score >= 3 ? 'high' : score >= 2 ? 'medium' : 'low';
-    } catch (e) {
-        return 'low';
-    }
+    return score >= 3 ? "high" : score >= 2 ? "medium" : "low";
+  } catch (e) {
+    return "low";
+  }
 }

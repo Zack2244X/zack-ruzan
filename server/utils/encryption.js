@@ -5,8 +5,8 @@
  * @module utils/encryption
  */
 
-const crypto = require('crypto');
-const logger = require('./logger');
+const crypto = require("crypto");
+const logger = require("./logger");
 
 /**
  * Get encryption key from environment or generate a new one.
@@ -14,20 +14,25 @@ const logger = require('./logger');
  * @returns {Buffer} 32-byte encryption key
  */
 function getEncryptionKey() {
-    const keyEnv = process.env.ENCRYPTION_KEY;
-    if (!keyEnv) {
-        if (process.env.NODE_ENV === 'production') {
-            logger.error('🚨 ENCRYPTION_KEY not set in production!');
-            process.exit(1);
-        }
-        // Development: use a fixed key (never do this in production!)
-        return crypto.createHash('sha256').update('dev-default-key-change-in-production').digest();
+  const keyEnv = process.env.ENCRYPTION_KEY;
+  if (!keyEnv) {
+    if (process.env.NODE_ENV === "production") {
+      logger.error("🚨 ENCRYPTION_KEY not set in production!");
+      process.exit(1);
     }
-    // Expect hex-encoded 32-byte key (64 characters)
-    if (keyEnv.length !== 64) {
-        logger.warn(`⚠️ ENCRYPTION_KEY length is ${keyEnv.length}, expected 64 (32 bytes hex).`);
-    }
-    return Buffer.from(keyEnv, 'hex');
+    // Development: use a fixed key (never do this in production!)
+    return crypto
+      .createHash("sha256")
+      .update("dev-default-key-change-in-production")
+      .digest();
+  }
+  // Expect hex-encoded 32-byte key (64 characters)
+  if (keyEnv.length !== 64) {
+    logger.warn(
+      `⚠️ ENCRYPTION_KEY length is ${keyEnv.length}, expected 64 (32 bytes hex).`,
+    );
+  }
+  return Buffer.from(keyEnv, "hex");
 }
 
 /**
@@ -37,24 +42,24 @@ function getEncryptionKey() {
  * @returns {string} Encrypted string in format iv:encrypted:authTag
  */
 function encrypt(plaintext) {
-    if (!plaintext) return '';
-    
-    try {
-        const key = getEncryptionKey();
-        const iv = crypto.randomBytes(16); // 128-bit IV for GCM
-        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-        
-        let encrypted = cipher.update(plaintext, 'utf8', 'base64');
-        encrypted += cipher.final('base64');
-        
-        const authTag = cipher.getAuthTag();
-        
-        // Return format: iv:encrypted:authTag (all base64)
-        return `${iv.toString('base64')}:${encrypted}:${authTag.toString('base64')}`;
-    } catch (error) {
-        logger.error(`❌ Encryption error: ${error.message}`);
-        throw new Error('Failed to encrypt data');
-    }
+  if (!plaintext) return "";
+
+  try {
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(16); // 128-bit IV for GCM
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+
+    let encrypted = cipher.update(plaintext, "utf8", "base64");
+    encrypted += cipher.final("base64");
+
+    const authTag = cipher.getAuthTag();
+
+    // Return format: iv:encrypted:authTag (all base64)
+    return `${iv.toString("base64")}:${encrypted}:${authTag.toString("base64")}`;
+  } catch (error) {
+    logger.error(`❌ Encryption error: ${error.message}`);
+    throw new Error("Failed to encrypt data");
+  }
 }
 
 /**
@@ -63,30 +68,30 @@ function encrypt(plaintext) {
  * @returns {string} Decrypted plaintext
  */
 function decrypt(encryptedString) {
-    if (!encryptedString) return '';
-    
-    try {
-        const key = getEncryptionKey();
-        const parts = encryptedString.split(':');
-        if (parts.length !== 3) {
-            throw new Error('Invalid encrypted string format');
-        }
-        
-        const iv = Buffer.from(parts[0], 'base64');
-        const encrypted = parts[1];
-        const authTag = Buffer.from(parts[2], 'base64');
-        
-        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-        decipher.setAuthTag(authTag);
-        
-        let decrypted = decipher.update(encrypted, 'base64', 'utf8');
-        decrypted += decipher.final('utf8');
-        
-        return decrypted;
-    } catch (error) {
-        logger.error(`❌ Decryption error: ${error.message}`);
-        throw new Error('Failed to decrypt data');
+  if (!encryptedString) return "";
+
+  try {
+    const key = getEncryptionKey();
+    const parts = encryptedString.split(":");
+    if (parts.length !== 3) {
+      throw new Error("Invalid encrypted string format");
     }
+
+    const iv = Buffer.from(parts[0], "base64");
+    const encrypted = parts[1];
+    const authTag = Buffer.from(parts[2], "base64");
+
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(encrypted, "base64", "utf8");
+    decrypted += decipher.final("utf8");
+
+    return decrypted;
+  } catch (error) {
+    logger.error(`❌ Decryption error: ${error.message}`);
+    throw new Error("Failed to decrypt data");
+  }
 }
 
 /**
@@ -96,14 +101,14 @@ function decrypt(encryptedString) {
  * @returns {Promise<string>} Hash in format salt$hash
  */
 async function hashPassword(password, salt = null) {
-    try {
-        const saltBuffer = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(32);
-        const hash = crypto.scryptSync(password, saltBuffer, 64);
-        return `${saltBuffer.toString('hex')}$${hash.toString('hex')}`;
-    } catch (error) {
-        logger.error(`❌ Password hashing error: ${error.message}`);
-        throw new Error('Failed to hash password');
-    }
+  try {
+    const saltBuffer = salt ? Buffer.from(salt, "hex") : crypto.randomBytes(32);
+    const hash = crypto.scryptSync(password, saltBuffer, 64);
+    return `${saltBuffer.toString("hex")}$${hash.toString("hex")}`;
+  } catch (error) {
+    logger.error(`❌ Password hashing error: ${error.message}`);
+    throw new Error("Failed to hash password");
+  }
 }
 
 /**
@@ -113,15 +118,15 @@ async function hashPassword(password, salt = null) {
  * @returns {Promise<boolean>} true if password matches
  */
 async function verifyPassword(password, hash) {
-    try {
-        const [saltHex, hashHex] = hash.split('$');
-        const salt = Buffer.from(saltHex, 'hex');
-        const verifyHash = crypto.scryptSync(password, salt, 64);
-        return crypto.timingSafeEqual(verifyHash, Buffer.from(hashHex, 'hex'));
-    } catch (error) {
-        // timingSafeEqual throws on mismatch, catch silently for comparison
-        return false;
-    }
+  try {
+    const [saltHex, hashHex] = hash.split("$");
+    const salt = Buffer.from(saltHex, "hex");
+    const verifyHash = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(verifyHash, Buffer.from(hashHex, "hex"));
+  } catch (error) {
+    // timingSafeEqual throws on mismatch, catch silently for comparison
+    return false;
+  }
 }
 
 /**
@@ -129,7 +134,7 @@ async function verifyPassword(password, hash) {
  * @returns {string} Hex-encoded 32-byte random token
  */
 function generateSecureToken() {
-    return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(32).toString("hex");
 }
 
 /**
@@ -138,15 +143,15 @@ function generateSecureToken() {
  * @returns {string} Hex-encoded SHA-256 hash
  */
 function hashSHA256(value) {
-    return crypto.createHash('sha256').update(value).digest('hex');
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 
 module.exports = {
-    encrypt,
-    decrypt,
-    hashPassword,
-    verifyPassword,
-    generateSecureToken,
-    hashSHA256,
-    getEncryptionKey
+  encrypt,
+  decrypt,
+  hashPassword,
+  verifyPassword,
+  generateSecureToken,
+  hashSHA256,
+  getEncryptionKey,
 };

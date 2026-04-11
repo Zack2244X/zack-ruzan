@@ -15,55 +15,64 @@
 //   مسارات الدرجات والنتائج
 //   — Sequelize + TiDB —
 // ============================================
-const router = require('express').Router();
-const { Op } = require('sequelize');
-const sequelize = require('../models/index');
-const Score = require('../models/Score');
-const Quiz = require('../models/Quiz');
-const User = require('../models/User');
-const { authenticate, authenticateOrGuest, requireAdmin } = require('../middleware/auth');
-const { validateSubmitScore, validatePagination, validateIdParam, validateQuizIdParam } = require('../middleware/validators');
-const logger = require('../utils/logger');
+const router = require("express").Router();
+const { Op } = require("sequelize");
+const sequelize = require("../models/index");
+const Score = require("../models/Score");
+const Quiz = require("../models/Quiz");
+const User = require("../models/User");
+const {
+  authenticate,
+  authenticateOrGuest,
+  requireAdmin,
+} = require("../middleware/auth");
+const {
+  validateSubmitScore,
+  validatePagination,
+  validateIdParam,
+  validateQuizIdParam,
+} = require("../middleware/validators");
+const logger = require("../utils/logger");
 
 function isTrustedGuestOrigin(req) {
-    const allowed = new Set(
-        (process.env.ALLOWED_ORIGINS || '')
-            .split(',')
-            .map(o => o.trim())
-            .filter(Boolean)
-    );
-    allowed.add('http://localhost:3000');
-    allowed.add('http://localhost:5173');
-    allowed.add('http://127.0.0.1:3000');
-    allowed.add('http://127.0.0.1:5173');
-    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-        allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
-    }
+  const allowed = new Set(
+    (process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean),
+  );
+  allowed.add("http://localhost:3000");
+  allowed.add("http://localhost:5173");
+  allowed.add("http://127.0.0.1:3000");
+  allowed.add("http://127.0.0.1:5173");
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+  }
 
-    const host = req.get('host');
-    const forwardedProto = req.get('x-forwarded-proto');
-    const protocol = forwardedProto || req.protocol || 'https';
-    const sameOrigin = host ? `${protocol}://${host}` : null;
+  const host = req.get("host");
+  const forwardedProto = req.get("x-forwarded-proto");
+  const protocol = forwardedProto || req.protocol || "https";
+  const sameOrigin = host ? `${protocol}://${host}` : null;
 
-    const origin = req.get('origin');
-    if (origin) {
-        if (sameOrigin && origin === sameOrigin) return true;
-        return allowed.has(origin);
-    }
+  const origin = req.get("origin");
+  if (origin) {
+    if (sameOrigin && origin === sameOrigin) return true;
+    return allowed.has(origin);
+  }
 
-    const referer = req.get('referer');
-    if (!referer) {
-        const fetchSite = (req.get('sec-fetch-site') || '').toLowerCase();
-        if (fetchSite === 'same-origin' || fetchSite === 'same-site') return true;
-        return process.env.NODE_ENV !== 'production';
-    }
-    try {
-        const refOrigin = new URL(referer).origin;
-        if (sameOrigin && refOrigin === sameOrigin) return true;
-        return allowed.has(refOrigin);
-    } catch {
-        return false;
-    }
+  const referer = req.get("referer");
+  if (!referer) {
+    const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
+    if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
+    return process.env.NODE_ENV !== "production";
+  }
+  try {
+    const refOrigin = new URL(referer).origin;
+    if (sameOrigin && refOrigin === sameOrigin) return true;
+    return allowed.has(refOrigin);
+  } catch {
+    return false;
+  }
 }
 
 // ============================================
@@ -79,9 +88,9 @@ function isTrustedGuestOrigin(req) {
  * @returns {Promise<{ attemptNumber: number, isOfficial: boolean }>}
  */
 async function resolveAttemptMeta(userId, quizId) {
-    const existingCount = await Score.count({ where: { userId, quizId } });
-    const attemptNumber = existingCount + 1;
-    return { attemptNumber, isOfficial: attemptNumber === 1 };
+  const existingCount = await Score.count({ where: { userId, quizId } });
+  const attemptNumber = existingCount + 1;
+  return { attemptNumber, isOfficial: attemptNumber === 1 };
 }
 
 // ============================================
@@ -102,111 +111,130 @@ async function resolveAttemptMeta(userId, quizId) {
  */
 // middleware لمعالجة الضيف قبل التحقق من التوكن
 const handleGuestMode = (req, res, next) => {
-    if (req.headers['x-guest-mode'] === 'true') {
-        if (!isTrustedGuestOrigin(req)) {
-            return res.status(403).json({ error: 'مصدر الطلب غير موثوق لوضع الضيف.' });
-        }
-        return res.status(200).json({
-            message: 'تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.',
-            result: null,
-            meta: { isOfficial: false, attemptNumber: 0 },
-            details: []
-        });
+  if (req.headers["x-guest-mode"] === "true") {
+    if (!isTrustedGuestOrigin(req)) {
+      return res
+        .status(403)
+        .json({ error: "مصدر الطلب غير موثوق لوضع الضيف." });
     }
-    next();
+    return res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    res.status(200).json({
+      message: "تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.",
+      result: null,
+      meta: { isOfficial: false, attemptNumber: 0 },
+      details: [],
+    });
+  }
+  next();
 };
 
-router.post('/', handleGuestMode, authenticate, validateSubmitScore, async (req, res) => {
+router.post(
+  "/",
+  handleGuestMode,
+  authenticate,
+  validateSubmitScore,
+  async (req, res) => {
     try {
-        const { quizId, answers, timeTaken } = req.body;
+      const { quizId, answers, timeTaken } = req.body;
 
-        // 1. تحديد رقم المحاولة وطبيعتها (رسمية أم تدريبية)
-        const { attemptNumber, isOfficial } = await resolveAttemptMeta(req.user.id, quizId);
+      // 1. تحديد رقم المحاولة وطبيعتها (رسمية أم تدريبية)
+      const { attemptNumber, isOfficial } = await resolveAttemptMeta(
+        req.user.id,
+        quizId,
+      );
 
-        // 2. جلب الامتحان
-        const quiz = await Quiz.findByPk(quizId);
-        if (!quiz) {
-            return res.status(404).json({ error: 'الامتحان غير موجود.' });
-        }
+      // 2. جلب الامتحان
+      const quiz = await Quiz.findByPk(quizId);
+      if (!quiz) {
+        return res.status(404).json({ error: "الامتحان غير موجود." });
+      }
 
-        // 3. حساب الدرجة في السيرفر (منع الغش)
-        let correctCount = 0;
-        const gradedAnswers = [];
-        const questions = quiz.questions; // JSON array
+      // 3. حساب الدرجة في السيرفر (منع الغش)
+      let correctCount = 0;
+      const gradedAnswers = [];
+      const questions = quiz.questions; // JSON array
 
-        for (const answer of answers) {
-            const question = questions.find(q => q.id === answer.questionId);
-            if (!question) continue;
+      for (const answer of answers) {
+        const question = questions.find((q) => q.id === answer.questionId);
+        if (!question) continue;
 
-            const selectedOption = question.answerOptions[answer.selectedIndex];
-            const isCorrect = selectedOption ? selectedOption.isCorrect : false;
+        const selectedOption = question.answerOptions[answer.selectedIndex];
+        const isCorrect = selectedOption ? selectedOption.isCorrect : false;
 
-            if (isCorrect) correctCount++;
+        if (isCorrect) correctCount++;
 
-            gradedAnswers.push({
-                questionId:    answer.questionId,
-                selectedIndex: answer.selectedIndex,
-                isCorrect
-            });
-        }
-
-        // 4. حفظ السجل مع تمييز الرسمية والتدريبية
-        const score = await Score.create({
-            userId:        req.user.id,
-            quizId,
-            answers:       gradedAnswers,
-            score:         correctCount,
-            total:         questions.length,
-            timeTaken:     timeTaken || 0,
-            isOfficial,      // true للأولى فقط
-            attemptNumber    // 1، 2، 3، ...
+        gradedAnswers.push({
+          questionId: answer.questionId,
+          selectedIndex: answer.selectedIndex,
+          isCorrect,
         });
+      }
 
-        logger.info(
-            `[Score] userId=${req.user.id} quizId=${quizId}` +
-            ` attempt=${attemptNumber} isOfficial=${isOfficial}` +
-            ` score=${correctCount}/${questions.length}`
-        );
+      // 4. حفظ السجل مع تمييز الرسمية والتدريبية
+      const score = await Score.create({
+        userId: req.user.id,
+        quizId,
+        answers: gradedAnswers,
+        score: correctCount,
+        total: questions.length,
+        timeTaken: timeTaken || 0,
+        isOfficial, // true للأولى فقط
+        attemptNumber, // 1، 2، 3، ...
+      });
 
-        // 5. بناء التفاصيل للرد
-        const detailedResults = questions.map(q => {
-            const studentAnswer = gradedAnswers.find(a => a.questionId === q.id);
-            return {
-                question:      q.question,
-                hint:          q.hint,
-                options:       q.answerOptions,
-                selectedIndex: studentAnswer ? studentAnswer.selectedIndex : -1,
-                isCorrect:     studentAnswer ? studentAnswer.isCorrect : false
-            };
-        });
+      logger.info(
+        `[Score] userId=${req.user.id} quizId=${quizId}` +
+          ` attempt=${attemptNumber} isOfficial=${isOfficial}` +
+          ` score=${correctCount}/${questions.length}`,
+      );
 
-        res.status(201).json({
-            message: isOfficial
-                ? 'تم تسليم الامتحان بنجاح! تم احتساب نتيجتك في لوحة الشرف.'
-                : `تم تسليم المحاولة التدريبية رقم ${attemptNumber} بنجاح. لن تؤثر على لوحة الشرف.`,
-            result: {
-                score:          correctCount,
-                total:          questions.length,
-                percentage:     Math.round((correctCount / questions.length) * 100),
-                closingMessage: quiz.closingMessage
-            },
-            // meta تُستهلك بواسطة quiz.js لعرض لافتة النتائج
-            meta: {
-                isOfficial,
-                attemptNumber
-            },
-            details: detailedResults
-        });
+      // 5. بناء التفاصيل للرد
+      const detailedResults = questions.map((q) => {
+        const studentAnswer = gradedAnswers.find((a) => a.questionId === q.id);
+        return {
+          question: q.question,
+          hint: q.hint,
+          options: q.answerOptions,
+          selectedIndex: studentAnswer ? studentAnswer.selectedIndex : -1,
+          isCorrect: studentAnswer ? studentAnswer.isCorrect : false,
+        };
+      });
 
+      res.status(201).json({
+        message: isOfficial
+          ? "تم تسليم الامتحان بنجاح! تم احتساب نتيجتك في لوحة الشرف."
+          : `تم تسليم المحاولة التدريبية رقم ${attemptNumber} بنجاح. لن تؤثر على لوحة الشرف.`,
+        result: {
+          score: correctCount,
+          total: questions.length,
+          percentage: Math.round((correctCount / questions.length) * 100),
+          closingMessage: quiz.closingMessage,
+        },
+        // meta تُستهلك بواسطة quiz.js لعرض لافتة النتائج
+        meta: {
+          isOfficial,
+          attemptNumber,
+        },
+        details: detailedResults,
+      });
     } catch (error) {
-        const dbMsg = error.original?.message || error.message;
-        logger.error('خطأ في تسليم الامتحان:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({
-            error: 'حدث خطأ أثناء تسليم الامتحان.',
-            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
-        });
+      const dbMsg = error.original?.message || error.message;
+      logger.error("خطأ في تسليم الامتحان:", {
+        error: dbMsg,
+        stack: error.stack,
+      });
+      res.status(500).json({
+        error: "حدث خطأ أثناء تسليم الامتحان.",
+        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+      });
     }
-});
+  },
+);
 
 // ============================================
 //   GET /api/scores/my — درجاتي (الطالب الحالي)
@@ -222,24 +250,25 @@ router.post('/', handleGuestMode, authenticate, validateSubmitScore, async (req,
  * @param {import('express').Response} res - Array of score objects with isOfficial, attemptNumber.
  * @returns {Promise<void>}
  */
-router.get('/my', authenticate, async (req, res) => {
-    try {
-        const scores = await Score.findAll({
-            where: { userId: req.user.id },
-            include: [{ model: Quiz, as: 'quiz', attributes: ['title', 'subject'] }],
-            order: [['createdAt', 'DESC']]
-        });
+router.get("/my", authenticate, async (req, res) => {
+  try {
+    const scores = await Score.findAll({
+      where: { userId: req.user.id },
+      include: [{ model: Quiz, as: "quiz", attributes: ["title", "subject"] }],
+      order: [["createdAt", "DESC"]],
+    });
 
-        // يُرجع كل الحقول من نموذج Score (بما فيها isOfficial وattemptNumber)
-        res.json(scores);
-    } catch (error) {
-        const dbMsg = error.original?.message || error.parent?.message || error.message;
-        logger.error('خطأ في جلب الدرجات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({
-            error: 'حدث خطأ.',
-            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
-        });
-    }
+    // يُرجع كل الحقول من نموذج Score (بما فيها isOfficial وattemptNumber)
+    res.json(scores);
+  } catch (error) {
+    const dbMsg =
+      error.original?.message || error.parent?.message || error.message;
+    logger.error("خطأ في جلب الدرجات:", { error: dbMsg, stack: error.stack });
+    res.status(500).json({
+      error: "حدث خطأ.",
+      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+    });
+  }
 });
 
 // ============================================
@@ -255,10 +284,10 @@ router.get('/my', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Array of { quizId, attemptCount, hasOfficial }
  * @returns {Promise<void>}
  */
-router.get('/my/attempts', authenticate, async (req, res) => {
-    try {
-        const [rows] = await sequelize.query(
-            `SELECT
+router.get("/my/attempts", authenticate, async (req, res) => {
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT
                  quizId,
                  COUNT(id)                                          AS attemptCount,
                  MAX(CASE WHEN isOfficial = 1 THEN 1 ELSE 0 END)   AS hasOfficial
@@ -266,24 +295,27 @@ router.get('/my/attempts', authenticate, async (req, res) => {
              WHERE userId = :userId
                AND deletedAt IS NULL
              GROUP BY quizId`,
-            { replacements: { userId: req.user.id } }
-        );
+      { replacements: { userId: req.user.id } },
+    );
 
-        const result = rows.map(r => ({
-            quizId:       r.quizId,
-            attemptCount: parseInt(r.attemptCount) || 0,
-            hasOfficial:  Boolean(parseInt(r.hasOfficial))
-        }));
+    const result = rows.map((r) => ({
+      quizId: r.quizId,
+      attemptCount: parseInt(r.attemptCount) || 0,
+      hasOfficial: Boolean(parseInt(r.hasOfficial)),
+    }));
 
-        res.json(result);
-    } catch (error) {
-        const dbMsg = error.original?.message || error.message;
-        logger.error('خطأ في جلب عدد المحاولات:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({
-            error: 'حدث خطأ.',
-            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
-        });
-    }
+    res.json(result);
+  } catch (error) {
+    const dbMsg = error.original?.message || error.message;
+    logger.error("خطأ في جلب عدد المحاولات:", {
+      error: dbMsg,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      error: "حدث خطأ.",
+      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+    });
+  }
 });
 
 // ============================================
@@ -325,63 +357,67 @@ router.get('/my/attempts', authenticate, async (req, res) => {
  * @param {import('express').Response} res - { attempts: number }
  * @returns {Promise<void>}
  */
-router.get('/', authenticate, async (req, res) => {
-    try {
-        const { quizId, email } = req.query;
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const { quizId, email } = req.query;
 
-        // ── التحقق من quizId ──────────────────────────────────────────────
-        if (!quizId) {
-            return res.status(400).json({ error: 'quizId مطلوب.' });
-        }
-
-        // ── تحديد userId المستهدف ─────────────────────────────────────────
-        let targetUserId = req.user.id;
-
-        if (email) {
-            // فقط الأدمن يمكنه الاستعلام باستخدام email طالب آخر
-            if (req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'غير مصرح. هذه الميزة للأدمن فقط.' });
-            }
-
-            // البحث عن المستخدم بالإيميل
-            const targetUser = await User.findOne({ where: { email } });
-            if (!targetUser) {
-                return res.status(404).json({ error: 'المستخدم غير موجود.' });
-            }
-
-            targetUserId = targetUser.id;
-        }
-
-        // ── عدّ المحاولات باستخدام Score.count ───────────────────────────
-        // نستخدم String() على quizId لضمان التوافق مع أنواع البيانات المختلفة
-        const attempts = await Score.count({
-            where: {
-                userId: targetUserId,
-                quizId: String(quizId)
-            }
-        });
-
-        logger.info(
-            `[GET /api/attempts] userId=${targetUserId}` +
-            ` quizId=${quizId}` +
-            ` requestedBy=${req.user.id}` +
-            ` (${req.user.role})` +
-            ` → ${attempts} محاولة`
-        );
-
-        // ── الرد بالعدد ───────────────────────────────────────────────────
-        // الشكل { attempts: number } متوافق مع ما تتوقعه دالة getAttempts() في api.js:
-        //   const count = Number(data?.attempts) || 0;
-        res.json({ attempts });
-
-    } catch (error) {
-        const dbMsg = error.original?.message || error.message;
-        logger.error('خطأ في GET /api/attempts:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({
-            error: 'حدث خطأ أثناء جلب عدد المحاولات.',
-            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
-        });
+    // ── التحقق من quizId ──────────────────────────────────────────────
+    if (!quizId) {
+      return res.status(400).json({ error: "quizId مطلوب." });
     }
+
+    // ── تحديد userId المستهدف ─────────────────────────────────────────
+    let targetUserId = req.user.id;
+
+    if (email) {
+      // فقط الأدمن يمكنه الاستعلام باستخدام email طالب آخر
+      if (req.user.role !== "admin") {
+        return res
+          .status(403)
+          .json({ error: "غير مصرح. هذه الميزة للأدمن فقط." });
+      }
+
+      // البحث عن المستخدم بالإيميل
+      const targetUser = await User.findOne({ where: { email } });
+      if (!targetUser) {
+        return res.status(404).json({ error: "المستخدم غير موجود." });
+      }
+
+      targetUserId = targetUser.id;
+    }
+
+    // ── عدّ المحاولات باستخدام Score.count ───────────────────────────
+    // نستخدم String() على quizId لضمان التوافق مع أنواع البيانات المختلفة
+    const attempts = await Score.count({
+      where: {
+        userId: targetUserId,
+        quizId: String(quizId),
+      },
+    });
+
+    logger.info(
+      `[GET /api/attempts] userId=${targetUserId}` +
+        ` quizId=${quizId}` +
+        ` requestedBy=${req.user.id}` +
+        ` (${req.user.role})` +
+        ` → ${attempts} محاولة`,
+    );
+
+    // ── الرد بالعدد ───────────────────────────────────────────────────
+    // الشكل { attempts: number } متوافق مع ما تتوقعه دالة getAttempts() في api.js:
+    //   const count = Number(data?.attempts) || 0;
+    res.json({ attempts });
+  } catch (error) {
+    const dbMsg = error.original?.message || error.message;
+    logger.error("خطأ في GET /api/attempts:", {
+      error: dbMsg,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      error: "حدث خطأ أثناء جلب عدد المحاولات.",
+      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+    });
+  }
 });
 
 // ============================================
@@ -398,10 +434,10 @@ router.get('/', authenticate, async (req, res) => {
  * @param {import('express').Response} res - Array of leaderboard entries.
  * @returns {Promise<void>}
  */
-router.get('/leaderboard', authenticateOrGuest, async (req, res) => {
-    try {
-        // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار (حتمياً حتى عند تعادل attemptNumber)
-        const [rows] = await sequelize.query(`
+router.get("/leaderboard", authenticateOrGuest, async (req, res) => {
+  try {
+    // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار (حتمياً حتى عند تعادل attemptNumber)
+    const [rows] = await sequelize.query(`
             SELECT
                 s.userId,
                 u.fname,
@@ -432,26 +468,30 @@ router.get('/leaderboard', authenticateOrGuest, async (req, res) => {
             LIMIT 50
         `);
 
-        const result = rows.map(entry => ({
-            userName:       entry.fname
-                ? `${entry.fname} ${entry.lname || ''}`.trim()
-                : (entry.email || 'مستخدم محذوف'),
-            totalScore:     parseInt(entry.totalScore)    || 0,
-            totalMax:       parseInt(entry.totalMax)      || 0,
-            examsCount:     parseInt(entry.examsCount)    || 0,
-            avgPercentage:  Math.round(parseFloat(entry.avgPercentage) || 0),
-            fullMarksCount: parseInt(entry.fullMarksCount) || 0
-        }));
+    const result = rows.map((entry) => ({
+      userName: entry.fname
+        ? `${entry.fname} ${entry.lname || ""}`.trim()
+        : entry.email || "مستخدم محذوف",
+      totalScore: parseInt(entry.totalScore) || 0,
+      totalMax: parseInt(entry.totalMax) || 0,
+      examsCount: parseInt(entry.examsCount) || 0,
+      avgPercentage: Math.round(parseFloat(entry.avgPercentage) || 0),
+      fullMarksCount: parseInt(entry.fullMarksCount) || 0,
+    }));
 
-        res.json(result);
-    } catch (error) {
-        const dbMsg = error.original?.message || error.parent?.message || error.message;
-        logger.error('خطأ في جلب لوحة الشرف:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({
-            error: 'حدث خطأ.',
-            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
-        });
-    }
+    res.json(result);
+  } catch (error) {
+    const dbMsg =
+      error.original?.message || error.parent?.message || error.message;
+    logger.error("خطأ في جلب لوحة الشرف:", {
+      error: dbMsg,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      error: "حدث خطأ.",
+      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+    });
+  }
 });
 
 // ============================================
@@ -467,35 +507,41 @@ router.get('/leaderboard', authenticateOrGuest, async (req, res) => {
  * @param {import('express').Response} res - Array of score result objects.
  * @returns {Promise<void>}
  */
-router.get('/quiz/:quizId', authenticate, requireAdmin, validateQuizIdParam, async (req, res) => {
+router.get(
+  "/quiz/:quizId",
+  authenticate,
+  requireAdmin,
+  validateQuizIdParam,
+  async (req, res) => {
     try {
-        const scores = await Score.findAll({
-            where: { quizId: req.params.quizId },
-            include: [{ model: User, as: 'user', attributes: ['fname', 'lname'] }],
-            order: [
-                ['isOfficial',   'DESC'],   // الرسمية أولاً
-                ['percentage',   'DESC'],
-                ['attemptNumber','ASC']
-            ]
-        });
+      const scores = await Score.findAll({
+        where: { quizId: req.params.quizId },
+        include: [{ model: User, as: "user", attributes: ["fname", "lname"] }],
+        order: [
+          ["isOfficial", "DESC"], // الرسمية أولاً
+          ["percentage", "DESC"],
+          ["attemptNumber", "ASC"],
+        ],
+      });
 
-        const results = scores.map(s => ({
-            userName:      s.user ? `${s.user.fname} ${s.user.lname}` : 'محذوف',
-            score:         s.score,
-            total:         s.total,
-            percentage:    s.percentage,
-            timeTaken:     s.timeTaken,
-            isOfficial:    s.isOfficial,
-            attemptNumber: s.attemptNumber,
-            date:          s.createdAt
-        }));
+      const results = scores.map((s) => ({
+        userName: s.user ? `${s.user.fname} ${s.user.lname}` : "محذوف",
+        score: s.score,
+        total: s.total,
+        percentage: s.percentage,
+        timeTaken: s.timeTaken,
+        isOfficial: s.isOfficial,
+        attemptNumber: s.attemptNumber,
+        date: s.createdAt,
+      }));
 
-        res.json(results);
+      res.json(results);
     } catch (error) {
-        logger.error('خطأ في جلب نتائج الامتحان:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
+      logger.error("خطأ في جلب نتائج الامتحان:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ." });
     }
-});
+  },
+);
 
 // ============================================
 //   GET /api/scores/all — كل النتائج (أدمن فقط)
@@ -511,51 +557,66 @@ router.get('/quiz/:quizId', authenticate, requireAdmin, validateQuizIdParam, asy
  * @param {import('express').Response} res - { data, total, page, totalPages }
  * @returns {Promise<void>}
  */
-router.get('/all', authenticate, requireAdmin, validatePagination, async (req, res) => {
+router.get(
+  "/all",
+  authenticate,
+  requireAdmin,
+  validatePagination,
+  async (req, res) => {
     try {
-        const page   = parseInt(req.query.page)  || 1;
-        const limit  = parseInt(req.query.limit) || 50;
-        const offset = (page - 1) * limit;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = (page - 1) * limit;
 
-        // فلتر اختياري للأدمن: officialOnly=true
-        const where = {};
-        if (req.query.officialOnly === 'true') {
-            where.isOfficial = true;
-        }
+      // فلتر اختياري للأدمن: officialOnly=true
+      const where = {};
+      if (req.query.officialOnly === "true") {
+        where.isOfficial = true;
+      }
 
-        const { count, rows: scores } = await Score.findAndCountAll({
-            where,
-            include: [
-                { model: User, as: 'user', attributes: ['fname', 'lname'] },
-                { model: Quiz, as: 'quiz', attributes: ['title', 'subject'] }
-            ],
-            order: [['createdAt', 'DESC']],
-            limit,
-            offset
-        });
+      const { count, rows: scores } = await Score.findAndCountAll({
+        where,
+        include: [
+          { model: User, as: "user", attributes: ["fname", "lname"] },
+          { model: Quiz, as: "quiz", attributes: ["title", "subject"] },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit,
+        offset,
+      });
 
-        const results = scores.map(s => ({
-            userName:      s.user ? `${s.user.fname} ${s.user.lname}` : 'محذوف',
-            quizTitle:     s.quiz ? s.quiz.title   : 'محذوف',
-            quizSubject:   s.quiz ? s.quiz.subject : '',
-            score:         s.score,
-            total:         s.total,
-            percentage:    s.percentage,
-            isOfficial:    s.isOfficial,
-            attemptNumber: s.attemptNumber,
-            date:          s.createdAt
-        }));
+      const results = scores.map((s) => ({
+        userName: s.user ? `${s.user.fname} ${s.user.lname}` : "محذوف",
+        quizTitle: s.quiz ? s.quiz.title : "محذوف",
+        quizSubject: s.quiz ? s.quiz.subject : "",
+        score: s.score,
+        total: s.total,
+        percentage: s.percentage,
+        isOfficial: s.isOfficial,
+        attemptNumber: s.attemptNumber,
+        date: s.createdAt,
+      }));
 
-        res.json({ data: results, total: count, page, totalPages: Math.ceil(count / limit) });
+      res.json({
+        data: results,
+        total: count,
+        page,
+        totalPages: Math.ceil(count / limit),
+      });
     } catch (error) {
-        const dbMsg = error.original?.message || error.parent?.message || error.message;
-        logger.error('خطأ في جلب كل النتائج:', { error: dbMsg, stack: error.stack });
-        res.status(500).json({
-            error: 'حدث خطأ.',
-            ...(process.env.NODE_ENV !== 'production' && { debug: dbMsg })
-        });
+      const dbMsg =
+        error.original?.message || error.parent?.message || error.message;
+      logger.error("خطأ في جلب كل النتائج:", {
+        error: dbMsg,
+        stack: error.stack,
+      });
+      res.status(500).json({
+        error: "حدث خطأ.",
+        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
+      });
     }
-});
+  },
+);
 
 // ============================================
 //   GET /api/scores/stats — إحصائيات عامة (أدمن فقط)
@@ -570,41 +631,41 @@ router.get('/all', authenticate, requireAdmin, validatePagination, async (req, r
  * @param {import('express').Response} res - stats object
  * @returns {Promise<void>}
  */
-router.get('/stats', authenticate, requireAdmin, async (req, res) => {
-    try {
-        const [
-            totalStudents,
-            totalExams,
-            totalOfficialScores,
-            totalPracticeScores,
-            avgResult
-        ] = await Promise.all([
-            User.count({ where: { role: 'student' } }),
-            Quiz.count(),
-            Score.count({ where: { isOfficial: true  } }),
-            Score.count({ where: { isOfficial: false } }),
-            // متوسط النسبة يعتمد على المحاولات الرسمية فقط لدقة أعلى
-            Score.findAll({
-                attributes: [[sequelize.fn('AVG', sequelize.col('percentage')), 'avg']],
-                where: { isOfficial: true },
-                raw: true
-            })
-        ]);
+router.get("/stats", authenticate, requireAdmin, async (req, res) => {
+  try {
+    const [
+      totalStudents,
+      totalExams,
+      totalOfficialScores,
+      totalPracticeScores,
+      avgResult,
+    ] = await Promise.all([
+      User.count({ where: { role: "student" } }),
+      Quiz.count(),
+      Score.count({ where: { isOfficial: true } }),
+      Score.count({ where: { isOfficial: false } }),
+      // متوسط النسبة يعتمد على المحاولات الرسمية فقط لدقة أعلى
+      Score.findAll({
+        attributes: [[sequelize.fn("AVG", sequelize.col("percentage")), "avg"]],
+        where: { isOfficial: true },
+        raw: true,
+      }),
+    ]);
 
-        res.json({
-            totalStudents,
-            totalExams,
-            totalOfficialScores,
-            totalPracticeScores,
-            totalScores: totalOfficialScores + totalPracticeScores,
-            avgPercentage: avgResult[0]?.avg
-                ? Math.round(parseFloat(avgResult[0].avg))
-                : 0
-        });
-    } catch (error) {
-        logger.error('خطأ في الإحصائيات:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ.' });
-    }
+    res.json({
+      totalStudents,
+      totalExams,
+      totalOfficialScores,
+      totalPracticeScores,
+      totalScores: totalOfficialScores + totalPracticeScores,
+      avgPercentage: avgResult[0]?.avg
+        ? Math.round(parseFloat(avgResult[0].avg))
+        : 0,
+    });
+  } catch (error) {
+    logger.error("خطأ في الإحصائيات:", { error: error.message });
+    res.status(500).json({ error: "حدث خطأ." });
+  }
 });
 
 // ============================================
@@ -618,19 +679,25 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
  * @param {import('express').Response} res - { message }
  * @returns {Promise<void>}
  */
-router.delete('/:id', authenticate, requireAdmin, validateIdParam, async (req, res) => {
+router.delete(
+  "/:id",
+  authenticate,
+  requireAdmin,
+  validateIdParam,
+  async (req, res) => {
     try {
-        const score = await Score.findByPk(req.params.id);
-        if (!score) {
-            return res.status(404).json({ error: 'النتيجة غير موجودة.' });
-        }
-        await score.destroy();
-        logger.info(`🗑️ حذف نتيجة #${req.params.id} — بواسطة: ${req.user.email}`);
-        res.json({ message: 'تم حذف النتيجة بنجاح.' });
+      const score = await Score.findByPk(req.params.id);
+      if (!score) {
+        return res.status(404).json({ error: "النتيجة غير موجودة." });
+      }
+      await score.destroy();
+      logger.info(`🗑️ حذف نتيجة #${req.params.id} — بواسطة: ${req.user.email}`);
+      res.json({ message: "تم حذف النتيجة بنجاح." });
     } catch (error) {
-        logger.error('خطأ في حذف النتيجة:', { error: error.message });
-        res.status(500).json({ error: 'حدث خطأ أثناء حذف النتيجة.' });
+      logger.error("خطأ في حذف النتيجة:", { error: error.message });
+      res.status(500).json({ error: "حدث خطأ أثناء حذف النتيجة." });
     }
-});
+  },
+);
 
 module.exports = router;

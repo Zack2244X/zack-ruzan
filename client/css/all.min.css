@@ -7,4 +7,7 @@
    FA CSS (icon glyphs + font-faces) is now loaded directly from HTML head
    as non-blocking preload+onload to eliminate the render-blocking @import chain.
    @import removed: was causing 1,530 ms render-block + CDN latency chain. */
-html,body{background:transparent}
+html,
+body {
+  background: transparent;
+}

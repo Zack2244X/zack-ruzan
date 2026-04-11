@@ -1,7 +1,7 @@
-const fs = require('fs');
+const fs = require("fs");
 
-const path = 'client/js/modules/quiz.js';
-let code = fs.readFileSync(path, 'utf8');
+const path = "client/js/modules/quiz.js";
+let code = fs.readFileSync(path, "utf8");
 
 // Patch showCustomExitModal
 code = code.replace(
@@ -25,16 +25,19 @@ code = code.replace(
             console.error('Failed to save progress', e);
         }
 
-        modal.remove();`
+        modal.remove();`,
 );
 
 // Patch playQuiz signature
-code = code.replace(/export function playQuiz\(index\) \{/, 'export async function playQuiz(index) {');
+code = code.replace(
+  /export function playQuiz\(index\) \{/,
+  "export async function playQuiz(index) {",
+);
 
 // Inject progress loading before initializeQuiz()
 code = code.replace(
-    /    \/\/ 7\. بدء الاختبار\n    initializeQuiz\(\);/,
-    `    // 7. استعادة التقدم إن وجد
+  /    \/\/ 7\. بدء الاختبار\n    initializeQuiz\(\);/,
+  `    // 7. استعادة التقدم إن وجد
     try {
         const progressObj = await apiCall('GET', \`/api/attempts/progress/\$\{quizId\}\`);
         if (progressObj && progressObj.timeRemaining !== null && progressObj.answers && progressObj.answers.length > 0) {
@@ -52,7 +55,7 @@ code = code.replace(
     }
 
     // 8. بدء الاختبار
-    initializeQuiz();`
+    initializeQuiz();`,
 );
 
 fs.writeFileSync(path, code);

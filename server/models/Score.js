@@ -9,8 +9,8 @@
 // ============================================
 //   موديل الدرجة / النتيجة (Score) — Sequelize + TiDB
 // ============================================
-const { DataTypes } = require('sequelize');
-const sequelize = require('./index');
+const { DataTypes } = require("sequelize");
+const sequelize = require("./index");
 
 /**
  * @typedef {Object} GradedAnswer
@@ -37,74 +37,78 @@ const sequelize = require('./index');
  * Sequelize model representing a student's quiz score/result.
  * @type {import('sequelize').ModelStatic<import('sequelize').Model<ScoreAttributes>>}
  */
-const Score = sequelize.define('Score', {
+const Score = sequelize.define(
+  "Score",
+  {
     id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
     userId: {
-        type: DataTypes.INTEGER,
-        allowNull: false
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
     quizId: {
-        type: DataTypes.INTEGER,
-        allowNull: false
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
     // الإجابات التفصيلية (JSON)
     // [{ questionId, selectedIndex, isCorrect }]
     answers: {
-        type: DataTypes.JSON,
-        defaultValue: []
+      type: DataTypes.JSON,
+      defaultValue: [],
     },
     score: {
-        type: DataTypes.INTEGER,
-        allowNull: false
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
     total: {
-        type: DataTypes.INTEGER,
-        allowNull: false
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
     percentage: {
-        type: DataTypes.FLOAT,
-        defaultValue: 0
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
     },
     timeTaken: {
-        type: DataTypes.INTEGER,  // بالثواني
-        defaultValue: 0
+      type: DataTypes.INTEGER, // بالثواني
+      defaultValue: 0,
     },
     isOfficial: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: true
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     attemptNumber: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 1
-    }
-}, {
-    tableName: 'scores',
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
+  },
+  {
+    tableName: "scores",
     timestamps: true,
     paranoid: true,
     indexes: [
-        // Multiple attempts are supported; keep this non-unique for fast lookup only.
-        { fields: ['userId', 'quizId'] },
-        { fields: ['quizId', 'percentage'] },
-        { fields: ['userId'] }
+      // Multiple attempts are supported; keep this non-unique for fast lookup only.
+      { fields: ["userId", "quizId"] },
+      { fields: ["quizId", "percentage"] },
+      { fields: ["userId"] },
     ],
     hooks: {
-        beforeCreate(score) {
-            if (score.total > 0) {
-                score.percentage = Math.round((score.score / score.total) * 100);
-            }
-        },
-        beforeUpdate(score) {
-            if (score.total > 0) {
-                score.percentage = Math.round((score.score / score.total) * 100);
-            }
+      beforeCreate(score) {
+        if (score.total > 0) {
+          score.percentage = Math.round((score.score / score.total) * 100);
         }
-    }
-});
+      },
+      beforeUpdate(score) {
+        if (score.total > 0) {
+          score.percentage = Math.round((score.score / score.total) * 100);
+        }
+      },
+    },
+  },
+);
 
 module.exports = Score;
