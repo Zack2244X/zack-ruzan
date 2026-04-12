@@ -4,6 +4,7 @@
  */
 import state from "./state.js";
 import { escapeHtml, showAlert, logFunctionStatus } from "./helpers.js";
+import { sanitizeHTML } from "../utils/sanitize.js";
 import { apiCall } from "./api.js";
 import { _showThemeToggle } from "./navigation.js";
 

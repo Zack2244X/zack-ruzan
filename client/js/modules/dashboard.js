@@ -53,6 +53,7 @@ export function stopLeaderboardAutoRefresh() {
  */
 import state from "./state.js";
 import { escapeHtml, logFunctionStatus } from "./helpers.js";
+import { sanitizeHTML } from "../utils/sanitize.js";
 import { apiCall } from "./api.js"; // use apiCall wrapper from api.js
 
 // ─────────────────────────────────────────────

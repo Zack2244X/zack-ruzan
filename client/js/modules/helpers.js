@@ -56,7 +56,13 @@ export function showAlert(message, type) {
   const toast = document.createElement("div");
   toast.className = `toast-float toast-${variant}`;
   toast.style.position = "relative";
-  toast.innerHTML = `${escapeHtml(message)}<div class="toast-progress" style="animation-duration:${duration}ms"></div>`;
+  toast.textContent = "";
+  const msgNode = document.createTextNode(message);
+  toast.appendChild(msgNode);
+  const prog = document.createElement("div");
+  prog.className = "toast-progress";
+  prog.style.animationDuration = `${duration}ms`;
+  toast.appendChild(prog);
   document.body.appendChild(toast);
   requestAnimationFrame(() => {
     toast.style.opacity = "1";
@@ -106,9 +112,15 @@ export function showConfirm(title, message, icon = "⚠️") {
 export function showLoading(elOrId) {
   const el =
     typeof elOrId === "string" ? document.getElementById(elOrId) : elOrId;
-  if (el)
-    el.innerHTML =
-      '<div class="flex justify-center items-center py-16"><i class="fas fa-spinner fa-spin text-4xl text-blue-400"></i></div>';
+  if (el) {
+    el.textContent = "";
+    const container = document.createElement("div");
+    container.className = "flex justify-center items-center py-16";
+    const icon = document.createElement("i");
+    icon.className = "fas fa-spinner fa-spin text-4xl text-blue-400";
+    container.appendChild(icon);
+    el.appendChild(container);
+  }
 }
 
 /**

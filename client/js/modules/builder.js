@@ -139,18 +139,39 @@ export function renderBuilderQuestion() {
   document.getElementById("b-question-hint").value = q.hint;
 
   const optsContainer = document.getElementById("b-options-container");
-  optsContainer.innerHTML = "";
-  let optsHtml = "";
+  optsContainer.textContent = ""; // Use textContent instead of innerHTML for clearing
+  
   q.answerOptions.forEach((opt, idx) => {
-    optsHtml += `
-            <div class="flex items-center gap-4 p-4 border-2 ${opt.isCorrect ? "border-green-400 bg-green-50 shadow-sm" : "border-gray-200 bg-white"} rounded-xl transition group">
-                <input type="radio" name="b-correct" onchange="setBuilderCorrectOption(${idx})" ${opt.isCorrect ? "checked" : ""} class="w-6 h-6 cursor-pointer accent-green-600">
-                <input type="text" value="${escapeHtml(opt.text)}" onblur="updateBuilderOptionText(${idx}, this.value)" placeholder="اكتب خيار الإجابة هنا..." class="flex-1 bg-transparent outline-none font-medium text-gray-800 placeholder-gray-400 text-lg">
-                <button onclick="removeBuilderOption(${idx})" class="w-10 h-10 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
+    const div = document.createElement("div");
+    div.className = `flex items-center gap-4 p-4 border-2 ${opt.isCorrect ? "border-green-400 bg-green-50 shadow-sm" : "border-gray-200 bg-white"} rounded-xl transition group`;
+    
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "b-correct";
+    radio.className = "w-6 h-6 cursor-pointer accent-green-600";
+    if (opt.isCorrect) radio.checked = true;
+    radio.onchange = () => window.setBuilderCorrectOption(idx);
+    div.appendChild(radio);
+    
+    const textInput = document.createElement("input");
+    textInput.type = "text";
+    textInput.value = opt.text; // Value property sets content without HTML risks
+    textInput.placeholder = "اكتب خيار الإجابة هنا...";
+    textInput.className = "flex-1 bg-transparent outline-none font-medium text-gray-800 placeholder-gray-400 text-lg";
+    textInput.onblur = (e) => window.updateBuilderOptionText(idx, e.target.value);
+    div.appendChild(textInput);
+    
+    const btn = document.createElement("button");
+    btn.className = "w-10 h-10 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg hover:bg-red-100 hover:text-red-500 transition";
+    btn.onclick = () => window.removeBuilderOption(idx);
+    
+    const icon = document.createElement("i");
+    icon.className = "fas fa-trash";
+    btn.appendChild(icon);
+    div.appendChild(btn);
+    
+    optsContainer.appendChild(div);
   });
-  optsContainer.innerHTML = optsHtml;
 
   document.getElementById("b-prev-btn").disabled = state.bCurrentQIndex === 0;
   document.getElementById("b-next-btn").disabled =
