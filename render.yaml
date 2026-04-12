@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm run start:prod
+    startCommand: npm start
     autoDeploy: true
     healthCheckPath: /api/health
     envVars:
