@@ -35,7 +35,7 @@ async function getLeaderboard() {
   `);
 
   const result = rows.map((entry) => ({
-    userName: entry.fname ? \`\${entry.fname} \${entry.lname || ""}\`.trim() : entry.email || "مستخدم محذوف",
+    userName: entry.fname ? `${entry.fname} ${entry.lname || ""}`.trim() : entry.email || "مستخدم محذوف",
     totalScore: parseInt(entry.totalScore) || 0,
     totalMax: parseInt(entry.totalMax) || 0,
     examsCount: parseInt(entry.examsCount) || 0,

@@ -418,12 +418,6 @@ router.get("/", authenticate, async (req, res) => {
  * @returns {Promise<void>}
  */
 router.get("/leaderboard", authenticateOrGuest, scoresController.getLeaderboard);
-    res.status(500).json({
-      error: "حدث خطأ.",
-      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-    });
-  }
-});
 
 // ============================================
 //   GET /api/scores/quiz/:quizId — نتائج امتحان (أدمن فقط)
