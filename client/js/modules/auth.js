@@ -4,6 +4,29 @@
  */
 import state from "./state.js";
 import { showAlert, logFunctionStatus } from "./helpers.js";
+
+
+// -------------------------------------------------------------
+// Lifecycle Management: Event Listeners Cleanup
+// -------------------------------------------------------------
+let deferredStudentLoginResponse = null;
+
+export function handleDeferredStudentLogin() {
+  if (window.handleStudentGoogleLogin && deferredStudentLoginResponse) {
+    window.handleStudentGoogleLogin(deferredStudentLoginResponse);
+    deferredStudentLoginResponse = null;
+  }
+}
+
+export function cleanup() {
+  window.removeEventListener("load", handleDeferredStudentLogin);
+  if (state.tokenRefreshTimer) {
+    clearInterval(state.tokenRefreshTimer);
+    state.tokenRefreshTimer = null;
+  }
+  // أي مستمع أحداث دائم آخر يمكن إزالته هنا
+}
+
 import {
   apiCall,
   loadDataFromServer,
@@ -155,14 +178,12 @@ export function handleGoogleRedirectToken() {
       window.handleStudentGoogleLogin(response);
     } else {
       console.warn("handleStudentGoogleLogin wrapper not ready, deferring...");
-      window.addEventListener(
-        "load",
-        () => {
-          if (window.handleStudentGoogleLogin)
-            window.handleStudentGoogleLogin(response);
-        },
-        { once: true },
-      );
+      if (document.readyState === "complete") {
+        window.handleStudentGoogleLogin(response);
+      } else {
+        deferredStudentLoginResponse = response;
+        window.addEventListener("load", handleDeferredStudentLogin, { once: true });
+      }
     }
   }
   return true;
@@ -424,6 +445,9 @@ export async function logoutUser() {
 
   // Stop automatic data polling on logout
   stopDataPolling();
+
+  // Execute lifecycle cleanup to prevent memory leaks
+  cleanup();
 
   const isGuest =
     state.currentUser?.role === "guest" ||

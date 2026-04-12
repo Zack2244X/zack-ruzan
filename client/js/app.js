@@ -399,11 +399,13 @@ function showGlobalCrashFallback(message) {
     reloadBtn.addEventListener("click", () => window.location.reload());
 }
 
-window.addEventListener("error", (e) => {
+const handleGlobalError = (e) => {
   console.error("❌ خطأ غير متوقع:", e.message, e.filename, e.lineno);
   showGlobalCrashFallback(e.message || "تعذر تشغيل التطبيق بشكل صحيح.");
-});
-window.addEventListener("unhandledrejection", (e) => {
+};
+window.addEventListener("error", handleGlobalError);
+
+const handleGlobalRejection = (e) => {
   console.error("❌ Promise مرفوض:", e.reason);
   const reason =
     typeof e.reason === "string"
@@ -411,7 +413,8 @@ window.addEventListener("unhandledrejection", (e) => {
       : e.reason?.message || "تعذر إكمال الطلب.";
   showGlobalCrashFallback(reason);
   e.preventDefault();
-});
+};
+window.addEventListener("unhandledrejection", handleGlobalRejection);
 
 // quick startup instrumentation check
 try {
@@ -425,7 +428,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
+  const registerServiceWorker = () => {
     navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => {
@@ -446,15 +449,21 @@ if ("serviceWorker" in navigator) {
         });
       })
       .catch((err) => console.warn("⚠️ SW registration failed:", err));
-  });
+  };
+  
+  if (document.readyState === "complete") {
+    registerServiceWorker();
+  } else {
+    window.addEventListener("load", registerServiceWorker, { once: true });
+  }
+
   // لو الـ controller اتغير (SW جديد استلم)، اعمل reload
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    window.location.reload();
-  });
+  const handleControllerChange = () => window.location.reload();
+  navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
 }
 
 // === Multi-tab Sync: Logout ===
-window.addEventListener("storage", (e) => {
+const handleStorageLogout = (e) => {
   if (e.key === "logout_event") {
     state.currentUser = null;
     state.isAdmin = false;
@@ -462,13 +471,15 @@ window.addEventListener("storage", (e) => {
     sessionStorage.removeItem("isAdmin");
     showLoginScreenWithDesktop();
   }
-});
+};
 
 // ─── تنظيف وضع الضيف فقط قبل أي reload/إغلاق للتبويب ───
 // pagehide يُطلَق قبل أن تبدأ الصفحة الجديدة بالتحميل.
+window.addEventListener("storage", handleStorageLogout);
+
 // إبقاء sessionStorage للمستخدم العادي يسمح باستمرار الجلسة بعد تسجيل Google
 // ويمنع الرجوع للوجين بسبب reload أو SW update.
-window.addEventListener("pagehide", () => {
+const handlePageHide = () => {
   const isGuest =
     sessionStorage.getItem("guest-mode") === "true" ||
     localStorage.getItem("guest-mode") === "true";
@@ -954,7 +965,7 @@ Object.assign(window, {
 })();
 
 // Fallback: addEventListener for login button (in case onclick doesn't fire)
-document.addEventListener("DOMContentLoaded", () => {
+const fallbackLoginListener = () => {
   const loginBtn = document.getElementById("login-btn");
   if (loginBtn) {
     loginBtn.addEventListener("click", (e) => {
@@ -967,7 +978,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-});
+};
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", fallbackLoginListener, { once: true });
+} else {
+  fallbackLoginListener();
+}
 
 // ============================================
 //  نقطة البداية
@@ -1004,9 +1020,7 @@ export async function startApp() {
   // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
   // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () =>
-      initOverlayScrollLock(),
-    );
+    document.addEventListener("DOMContentLoaded", initOverlayScrollLock, { once: true });
   } else {
     initOverlayScrollLock();
   }
