@@ -82,23 +82,7 @@ function isTrustedGuestOrigin(req) {
   }
 }
 
-// ============================================
-//   resolveAttemptMeta — تحديد رقم المحاولة وطبيعتها
-// ============================================
-/**
- * يحسب رقم المحاولة الحالية ويحدد إن كانت رسمية أم تدريبية.
- * المحاولة الأولى دائماً رسمية (isOfficial = true) وتُحتسب في لوحة الشرف.
- * المحاولات التالية تدريبية (isOfficial = false) ولا تؤثر على الترتيب.
- *
- * @param {number} userId  — معرّف المستخدم
- * @param {number} quizId  — معرّف الاختبار
- * @returns {Promise<{ attemptNumber: number, isOfficial: boolean }>}
- */
-async function resolveAttemptMeta(userId, quizId) {
-  const existingCount = await Score.count({ where: { userId, quizId } });
-  const attemptNumber = existingCount + 1;
-  return { attemptNumber, isOfficial: attemptNumber === 1 };
-}
+
 
 // ============================================
 //   POST /api/scores — تسليم إجابات الامتحان
@@ -143,19 +127,13 @@ router.post(
     try {
       const { quizId, answers, timeTaken } = req.body;
 
-      // 1. تحديد رقم المحاولة وطبيعتها (رسمية أم تدريبية)
-      const { attemptNumber, isOfficial } = await resolveAttemptMeta(
-        req.user.id,
-        quizId,
-      );
-
-      // 2. جلب الامتحان
+      // 1. جلب الامتحان
       const quiz = await Quiz.findByPk(quizId);
       if (!quiz) {
         return res.status(404).json({ error: "الامتحان غير موجود." });
       }
 
-      // 3. حساب الدرجة في السيرفر (منع الغش)
+      // 2. حساب الدرجة في السيرفر (منع الغش)
       let correctCount = 0;
       const gradedAnswers = [];
       const questions = quiz.questions; // JSON array
@@ -176,17 +154,38 @@ router.post(
         });
       }
 
-      // 4. حفظ السجل مع تمييز الرسمية والتدريبية
-      const score = await Score.create({
-        userId: req.user.id,
-        quizId,
-        answers: gradedAnswers,
-        score: correctCount,
-        total: questions.length,
-        timeTaken: timeTaken || 0,
-        isOfficial, // true للأولى فقط
-        attemptNumber, // 1، 2، 3، ...
-      });
+      // 3. حفظ السجل مع معالجة Race Condition باستخدام retry loop
+      let score = null;
+      let attemptNumber = (await Score.count({ where: { userId: req.user.id, quizId } })) + 1;
+      let isOfficial = false;
+      const maxRetries = 3;
+
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          isOfficial = attemptNumber === 1;
+          score = await Score.create({
+            userId: req.user.id,
+            quizId,
+            answers: gradedAnswers,
+            score: correctCount,
+            total: questions.length,
+            timeTaken: timeTaken || 0,
+            isOfficial,
+            attemptNumber,
+          });
+          break; // نجاح
+        } catch (error) {
+          if (error.name === 'SequelizeUniqueConstraintError') {
+            attemptNumber++;
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      if (!score) {
+        throw new Error(`Max attempts reached. Could not resolve race condition.`);
+      }
 
       logger.info(
         `[Score] userId=${req.user.id} quizId=${quizId}` +

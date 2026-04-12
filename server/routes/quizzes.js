@@ -400,37 +400,37 @@ router.put(
           .json({ error: "غير مصرح لك بتعديل امتحان أنشأه أدمن آخر." });
       }
 
-      const allowedFields = [
-        "title",
-        "subject",
-        "description",
-        "timeLimit",
-        "closingMessage",
-        "streakGoal",
-        "feedback",
-        "questions",
-        "isActive",
-      ];
+      // DTO (Object نقل البيانات) مع التحقق الصارم من الأنواع
+      const safeUpdateData = {
+        title: typeof req.body.title === 'string' ? req.body.title.trim() : undefined,
+        description: typeof req.body.description === 'string' ? req.body.description.trim() : undefined,
+        subject: typeof req.body.subject === 'string' ? req.body.subject.trim() : undefined,
+        timeLimit: typeof req.body.timeLimit === 'number' ? req.body.timeLimit : undefined,
+        isActive: typeof req.body.isActive === 'boolean' ? req.body.isActive : undefined,
+        streakGoal: typeof req.body.streakGoal === 'number' ? req.body.streakGoal : undefined,
+        feedback: typeof req.body.feedback === 'string' ? req.body.feedback.trim() : undefined,
+        closingMessage: typeof req.body.closingMessage === 'string' ? req.body.closingMessage.trim() : undefined
+      };
 
-      allowedFields.forEach((field) => {
-        if (req.body[field] !== undefined) {
-          // لو عدّل الأسئلة، نضيف IDs للأسئلة الجديدة
-          if (field === "questions" && Array.isArray(req.body.questions)) {
-            quiz.questions = req.body.questions.map((q) => ({
-              id: q.id || crypto.randomUUID(),
-              question: q.question,
-              hint: q.hint || "",
-              answerOptions: q.answerOptions.map((opt) => ({
-                text: opt.text,
-                isCorrect: !!opt.isCorrect,
-                rationale: opt.rationale || "",
-              })),
-            }));
-          } else {
-            quiz[field] = req.body[field];
-          }
-        }
-      });
+      // حذف الحقول غير المعرفة لتجنب التحديث غير الضروري
+      Object.keys(safeUpdateData).forEach(key => 
+        safeUpdateData[key] === undefined && delete safeUpdateData[key]
+      );
+
+      if (req.body.questions && Array.isArray(req.body.questions)) {
+        safeUpdateData.questions = req.body.questions.map((q) => ({
+          id: q.id || crypto.randomUUID(),
+          question: typeof q.question === 'string' ? q.question.trim() : '',
+          hint: typeof q.hint === 'string' ? q.hint.trim() : '',
+          answerOptions: Array.isArray(q.answerOptions) ? q.answerOptions.map((opt) => ({
+            text: typeof opt.text === 'string' ? opt.text.trim() : '',
+            isCorrect: !!opt.isCorrect,
+            rationale: typeof opt.rationale === 'string' ? opt.rationale.trim() : ''
+          })) : []
+        }));
+      }
+
+      Object.assign(quiz, safeUpdateData);
 
       // Sequelize يحتاج changed() للـ JSON columns
       quiz.changed("questions", true);
