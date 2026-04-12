@@ -31,6 +31,7 @@ import {
   pickRandom,
   logFunctionStatus,
 } from "./helpers.js";
+import { handleError, withRetry } from "../utils/errorHandler.js";
 import { apiCall } from "./api.js";
 import {
   _showThemeToggle,
@@ -122,20 +123,6 @@ const streakToasts = {
 //  مسجّل الأخطاء المركزي
 // =============================================
 
-/**
- * تسجيل أخطاء الوحدة مركزياً مع السياق الكامل.
- * @param {string}       context — الدالة أو الموضع الذي حدث فيه الخطأ
- * @param {Error|string} error   — كائن الخطأ أو رسالته
- * @param {Object}       [extra={}] — بيانات سياقية إضافية
- */
-function logQuizError(context, error, extra = {}) {
-  const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : undefined;
-  console.error(`[QuizModule][${context}]`, message, {
-    ...extra,
-    ...(stack ? { stack } : {}),
-  });
-}
 
 // =============================================
 //  إدارة معرّف الاختبار — Unified ID Handling
@@ -167,7 +154,7 @@ function savePendingScore(quizId, payload) {
       JSON.stringify({ payload, timestamp: Date.now() }),
     );
   } catch (e) {
-    logQuizError("savePendingScore", e, { quizId });
+    handleError(e, { context: "savePendingScore", quizId, hideAlert: true });
   }
 }
 
@@ -179,7 +166,7 @@ function clearPendingScore(quizId) {
   try {
     localStorage.removeItem(`${PENDING_SCORE_KEY_PREFIX}${quizId}`);
   } catch (e) {
-    logQuizError("clearPendingScore", e, { quizId });
+    handleError(e, { context: "clearPendingScore", quizId, hideAlert: true });
   }
 }
 
@@ -294,22 +281,15 @@ async function submitScoreWithRetry(
       `/api/attempts/progress/${payload.quizId}?deviceId=${getClientDeviceId()}`,
     );
   } catch (e) {
-    console.error("Failed to cleanup progress", e);
+    handleError(e, { context: "cleanup progress", hideAlert: true });
   }
-  let lastError;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await apiCall("POST", "/api/scores", payload);
-    } catch (e) {
-      lastError = e;
-      logQuizError(`submitScoreWithRetry (${attempt}/${maxRetries})`, e, {
-        payload,
-      });
-      if (attempt < maxRetries)
-        await new Promise((r) => setTimeout(r, baseDelayMs * attempt));
-    }
-  }
-  throw lastError;
+
+  return await withRetry(
+    () => apiCall("POST", "/api/scores", payload),
+    { context: "submitScoreWithRetry", payload, hideAlert: true },
+    maxRetries,
+    baseDelayMs
+  );
 }
 
 /**
@@ -348,7 +328,7 @@ function showScoreErrorWithRetry(errorEl, numericId, scorePayload, onSuccess) {
       errorEl.classList.add("text-green-700");
       setTimeout(() => errorEl.classList.add("hidden"), 4000);
     } catch (retryErr) {
-      logQuizError("manualRetryScore", retryErr, { numericId });
+      handleError(retryErr, { context: "manualRetryScore", numericId, hideAlert: true });
       msgSpan.textContent = "⚠️ فشلت إعادة المحاولة. يرجى التواصل مع المسؤول. ";
       retryBtn.disabled = false;
       retryBtn.textContent = "إعادة المحاولة";
@@ -385,7 +365,7 @@ export async function loadAttemptsMap() {
       "اختبار",
     );
   } catch (e) {
-    logQuizError("loadAttemptsMap", e);
+    handleError(e, { context: "loadAttemptsMap", hideAlert: true });
     // Fail-open: نحتفظ بأي بيانات موجودة محلياً
   }
 }
@@ -566,10 +546,7 @@ export async function playQuiz(index) {
   const { valid, errors } = validateQuizData(quizData);
   if (!valid) {
     const errorSummary = errors.slice(0, 5).join("\n• ");
-    logQuizError("playQuiz — validateQuizData", "بيانات الاختبار غير صالحة", {
-      index,
-      errors,
-    });
+    handleError(new Error("بيانات الاختبار غير صالحة"), { context: "playQuiz — validateQuizData", index, errors, hideAlert: true });
     showAlert(
       `❌ لا يمكن تشغيل الاختبار — بيانات غير صالحة:\n• ${errorSummary}${errors.length > 5 ? `\n(و ${errors.length - 5} أخطاء أخرى)` : ""}`,
       "error",
@@ -643,9 +620,12 @@ export async function playQuiz(index) {
 
   // 7. استعادة التقدم إن وجد
   try {
-    const progressObj = await apiCall(
-      "GET",
-      `/api/attempts/progress/${quizId}?deviceId=${getClientDeviceId()}`,
+    const progressObj = await withRetry(
+      () => apiCall(
+        "GET",
+        `/api/attempts/progress/${quizId}?deviceId=${getClientDeviceId()}`
+      ),
+      { context: "get progress on playQuiz" }
     );
     if (
       progressObj &&
@@ -663,7 +643,7 @@ export async function playQuiz(index) {
       }
     }
   } catch (e) {
-    console.error("Failed to load progress", e);
+    handleError(e, { context: "Failed to load progress", hideAlert: true });
   }
 
   // 8. بدء الاختبار
@@ -777,7 +757,7 @@ function showCustomExitModal() {
         });
       }
     } catch (e) {
-      console.error("Failed to save progress", e);
+      handleError(e, { context: "Failed to save progress", hideAlert: true });
     }
 
     modal.remove();
@@ -1094,10 +1074,7 @@ export async function submitQuiz() {
           `[submitScore] ✓ تم — محاولة رقم ${meta.attemptNumber}, ${meta.isOfficial ? "رسمية ⭐" : "تدريبية 📝"}`,
         );
       } catch (e) {
-        logQuizError("submitQuiz — submitScoreWithRetry", e, {
-          quizId,
-          numericId,
-        });
+        handleError(e, { context: "submitQuiz — submitScoreWithRetry", quizId, numericId, hideAlert: true });
         const saveErrEl = document.getElementById("save-score-error");
         showScoreErrorWithRetry(
           saveErrEl,
@@ -1158,11 +1135,7 @@ export async function submitQuiz() {
       },
     );
   } catch (unexpectedError) {
-    logQuizError("submitQuiz — unexpected", unexpectedError);
-    showAlert(
-      "❌ حدث خطأ غير متوقع أثناء تسليم الاختبار. يرجى التواصل مع المسؤول.",
-      "error",
-    );
+    handleError(unexpectedError, { context: "submitQuiz — unexpected" });
   } finally {
     _isSubmitting = false;
   }
