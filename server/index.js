@@ -565,18 +565,16 @@ app.use((req, res, next) => {
 //         Rate Limiting — 3 مستويات
 // ============================================
 /**
- * General API rate limiter: 200 requests per 15 minutes.
+ * General API rate limiter: 100 requests per 1 minute.
  * @type {import('express').RequestHandler}
  */
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 3000, // مرفوع ليتحمل معامل المدارس (Shared IPs NAT)
+  windowMs: 1 * 60 * 1000,
+  max: 100, // قواعد متوسطة لمسار البيانات (/api/*)
   standardHeaders: true,
-  legacyHeaders: false,
+  legacyHeaders: true, // لإضافة X-RateLimit-Remaining
   skip: (req) => {
-    // /api/auth has its own dedicated limiter.
     if (req.path.startsWith("/auth")) return true;
-    // Never throttle platform/browser health probes.
     if (req.path === "/health") return true;
     return false;
   },
@@ -584,16 +582,26 @@ const generalLimiter = rateLimit({
 });
 
 /**
- * Authentication rate limiter: 10 requests per 15 minutes (skips successful requests).
+ * Authentication rate limiter: 5 requests per 15 minutes.
  * @type {import('express').RequestHandler}
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 5, // قواعد صارمة جداً لمسار التسجيل/الدخول
   standardHeaders: true,
-  legacyHeaders: false,
+  legacyHeaders: true, // لإضافة X-RateLimit-Remaining
   message: { error: "محاولات دخول كثيرة، حاول بعد 15 دقيقة." },
-  skipSuccessfulRequests: true,
+  skipSuccessfulRequests: true, // لا تحتسب محاولات الدخول الناجحة
+});
+
+/**
+ * Public flexible rate limiter for non-API routes.
+ */
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3000, // Rules for public static files if needed
+  standardHeaders: true,
+  legacyHeaders: true,
 });
 
 /**
@@ -603,11 +611,14 @@ const authLimiter = rateLimit({
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
+  standardHeaders: true,
+  legacyHeaders: true,
   message: { error: "تم تجاوز عدد طلبات الإدارة." },
 });
 
 app.use("/api", generalLimiter);
 app.use("/api/auth", authLimiter);
+app.use(publicLimiter); // Apply to flexible public paths
 
 // Admin limiter — only apply to write operations (POST/PUT/DELETE) on admin routes
 const applyAdminLimiter = (req, res, next) => {
