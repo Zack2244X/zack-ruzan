@@ -135,7 +135,10 @@ router.get("/progress/:quizId", authenticate, async (req, res) => {
     const { Op } = require("sequelize");
 
     const conditions = [{ userId: req.user.id }];
-    if (deviceId) conditions.push({ deviceId });
+    if (deviceId) {
+      // فقط نقبل التقدم المرتبط بهذا الجهاز إذا لم يكن يتبع لأي مستخدم آخر (لمنع IDOR وإلغاء الاستيلاء على تقدم الآخرين)
+      conditions.push({ deviceId, userId: null });
+    }
 
     const progress = await require("../models/QuizProgress").findOne({
       where: {
@@ -166,7 +169,10 @@ router.post("/progress", authenticate, async (req, res) => {
     const { Op } = require("sequelize");
 
     const conditions = [{ userId: req.user.id }];
-    if (deviceId) conditions.push({ deviceId });
+    if (deviceId) {
+      // فقط نقبل التقدم المرتبط بهذا الجهاز إذا لم يكن يتبع لأي مستخدم آخر (لمنع IDOR وإلغاء الاستيلاء على تقدم الآخرين)
+      conditions.push({ deviceId, userId: null });
+    }
 
     let progress = await QuizProgress.findOne({
       where: {
@@ -210,7 +216,9 @@ router.delete("/progress/:quizId", authenticate, async (req, res) => {
     const { Op } = require("sequelize");
 
     const conditions = [{ userId: req.user.id }];
-    if (deviceId) conditions.push({ deviceId });
+    if (deviceId) {
+      conditions.push({ deviceId, userId: null });
+    }
 
     await require("../models/QuizProgress").destroy({
       where: {
