@@ -39,8 +39,6 @@ const logger = require("../utils/logger");
 
 // --- In-Memory Cache للوحة المتصدرين ---
 
- // صلاحية 120 ثانية
-
 function isTrustedGuestOrigin(req) {
   const allowed = new Set(
     (process.env.ALLOWED_ORIGINS || "")
@@ -205,10 +203,7 @@ router.post(
         };
       });
 
-      // 3️⃣ إبطال صلاحية الكاش عند تحقيق درجة جديدة (لو كانت رسمية)
-      if (isOfficial) {
-        
-      }
+
       res.status(201).json({
         message: isOfficial
           ? "تم تسليم الامتحان بنجاح! تم احتساب نتيجتك في لوحة الشرف."

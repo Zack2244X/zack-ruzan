@@ -13,8 +13,7 @@ async function getLeaderboard() {
     return { data: cachedData, cached: true };
   }
 
-  // Refactored to use replacements and clean approach
-  const [rows] = await dbLayer.executeReadOnlyQuery(`
+    const [rows] = await dbLayer.executeReadOnlyQuery(`
     SELECT
         s.userId, u.fname, u.lname, u.email,
         SUM(s.score) AS totalScore,
