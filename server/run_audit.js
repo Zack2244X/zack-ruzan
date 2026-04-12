@@ -6,4 +6,4 @@ let files = execSync('find . -name "*.js" ! -path "*/node_modules/*" ! -path "*/
 let backendFiles = files.filter(f => f.startsWith('./server/') || f === './dbsync.js' || f === './checkQuizzes.js');
 let frontendFiles = files.filter(f => f.startsWith('./client/'));
 
-console.log("Found " + backendFiles.length + " backend files and " + frontendFiles.length + " frontend files.");
+logger.info("Found " + backendFiles.length + " backend files and " + frontendFiles.length + " frontend files.");

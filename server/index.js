@@ -267,10 +267,10 @@ if (process.env.RAILWAY_PUBLIC_DOMAIN && !allowedOrigins.includes("*")) {
 app.use(
   cors({
     origin: (origin, callback) => {
+      // 🚫 الاستثناء الصريح: إيقاف الطلبات من مصادر غير مسموح بها، حتى لو بدون origin لحجب السكربتات (أو تخصيص ذلك)
       if (
-        !origin ||
         allowedOrigins.includes("*") ||
-        allowedOrigins.includes(origin)
+        (origin && allowedOrigins.includes(origin))
       ) {
         callback(null, true);
       } else {

@@ -13,10 +13,10 @@ const isDev = (typeof process !== 'undefined' && process.env.NODE_ENV === 'devel
 
 export const logger = {
   log: (...args) => {
-    if (isDev) console.log(...args);
+    if (isDev) logger.info(...args);
   },
   warn: (...args) => {
-    if (isDev) console.warn(...args);
+    if (isDev) logger.info(...args);
   },
   debug: (...args) => {
     if (isDev) console.debug(...args);
@@ -24,7 +24,7 @@ export const logger = {
   error: (...args) => {
     // Errors are usually kept even in production, or can be masked.
     // We retain them but you can change this if needed.
-    console.error(...args);
+    logger.info(...args);
   }
 };
 
