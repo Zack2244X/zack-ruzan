@@ -196,14 +196,8 @@ const Quiz = sequelize.define(
           }
         });
       },
-    },
-  },
-  {
-    tableName: "quizzes",
-    timestamps: true,
-    paranoid: true,
-    indexes: [{ unique: true, fields: ["title"] }],
-  },
+    }
+  }
 );
 
 module.exports = Quiz;

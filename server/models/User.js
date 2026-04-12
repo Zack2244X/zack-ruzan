@@ -81,6 +81,11 @@ const User = sequelize.define(
     tableName: "users",
     timestamps: true,
     paranoid: true,
+    indexes: [
+      { fields: ["role"] },
+      { fields: ["createdAt"] },
+      { fields: ["deletedAt"] }
+    ],
   },
 );
 

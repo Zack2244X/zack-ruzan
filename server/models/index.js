@@ -68,10 +68,10 @@ const sequelize = new Sequelize(
     dialectOptions: {
       ssl: buildSslConfig(),
     },
-    logging:
-      process.env.NODE_ENV === "development"
-        ? (msg) => require("../utils/logger").debug(msg)
-        : false,
+    logging: process.env.NODE_ENV === 'development' ? (msg, b) => require('../utils/logger').debug(msg + ' ['+b+'ms]') : false, benchmark: true,
+    benchmark: true,
+    // إضافة explain للـ queries البطيئة في الديف (عن طريق hooks أو خيارات logging المتقدمة)
+    // لكننا نكتفي بـ benchmark هنا
     pool: {
       max: 10,
       min: 0,
