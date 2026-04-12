@@ -647,18 +647,79 @@ app.use("/api/notes", applyAdminLimiter);
 let dbConnected = false;
 let serverReady = false;
 
-app.get("/api/health", (req, res) => {
-  // In test environment, the app is imported without calling startServer(),
-  // so `serverReady` stays false and would cause a false-negative health check.
-  const status =
-    process.env.NODE_ENV === "test" || serverReady ? "healthy" : "starting";
-  res.json({
-    status,
-    uptime: Math.floor(process.uptime()),
+app.get("/api/health", async (req, res) => {
+  const healthStatus = {
+    status: "ok",
     timestamp: new Date().toISOString(),
-    db: dbConnected ? "connected" : "connecting",
-    memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + "MB",
-  });
+    components: {}
+  };
+
+  let hasError = false;
+
+  // 1. Database Check
+  const dbStart = performance.now();
+  try {
+    const sequelize = require("./models/index");
+    await sequelize.authenticate();
+    await sequelize.transaction(async (t) => {
+      await sequelize.query("SELECT 1", { transaction: t });
+    });
+    healthStatus.components.database = {
+      status: "operational",
+      latencyMs: Math.round(performance.now() - dbStart)
+    };
+  } catch (err) {
+    hasError = true;
+    healthStatus.components.database = {
+      status: "degraded",
+      latencyMs: Math.round(performance.now() - dbStart),
+      error: err.message
+    };
+  }
+
+  // 2. Memory Usage Check
+  const memStart = performance.now();
+  const os = require("os");
+  const usedheapMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+  const limitMb = 1024;
+  const isHealthyMem = usedheapMb < limitMb;
+  if (isHealthyMem === false) hasError = true;
+
+  healthStatus.components.memory = {
+    status: isHealthyMem ? "operational" : "degraded",
+    heapUsedMb: usedheapMb,
+    limitMb,
+    systemFreeMb: Math.round(os.freemem() / 1024 / 1024),
+    latencyMs: Math.round(performance.now() - memStart)
+  };
+
+  // 3. Disk Space Check
+  const diskStart = performance.now();
+  try {
+    const stats = await require("fs").promises.statfs(__dirname);
+    const freeSpaceGb = Math.round((stats.bfree * stats.bsize) / (1024 * 1024 * 1024));
+    const totalSpaceGb = Math.round((stats.blocks * stats.bsize) / (1024 * 1024 * 1024));
+    
+    const isDiskHealthy = freeSpaceGb >= 1; 
+    if (isDiskHealthy === false) hasError = true;
+    
+    healthStatus.components.disk = {
+      status: isDiskHealthy ? "operational" : "degraded",
+      freeSpaceGb,
+      totalSpaceGb,
+      latencyMs: Math.round(performance.now() - diskStart)
+    };
+  } catch (err) {
+    hasError = true;
+    healthStatus.components.disk = {
+      status: "degraded",
+      latencyMs: Math.round(performance.now() - diskStart),
+      error: err.message
+    };
+  }
+
+  healthStatus.status = hasError ? "degraded" : "healthy";
+  res.status(hasError ? 503 : 200).json(healthStatus);
 });
 
 // ============================================
