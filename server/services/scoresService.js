@@ -1,4 +1,4 @@
-const { sequelize } = require('../models');
+const dbLayer = require('./safeQueryLayer');
 const NodeCache = require('node-cache');
 const logger = require('../utils/logger'); // Assuming logger exists
 
@@ -14,7 +14,7 @@ async function getLeaderboard() {
   }
 
   // Refactored to use replacements and clean approach
-  const [rows] = await sequelize.query(`
+  const [rows] = await dbLayer.executeReadOnlyQuery(`
     SELECT
         s.userId, u.fname, u.lname, u.email,
         SUM(s.score) AS totalScore,
@@ -51,3 +51,19 @@ async function getLeaderboard() {
 module.exports = {
   getLeaderboard
 };
+
+async function getMyAttemptsCount(userId) {
+  const dbLayer = require('./safeQueryLayer');
+  const [rows] = await dbLayer.executeReadOnlyQuery(
+    `SELECT quizId, COUNT(id) AS attemptCount, MAX(CASE WHEN isOfficial = 1 THEN 1 ELSE 0 END) AS hasOfficial
+     FROM scores WHERE userId = :userId AND deletedAt IS NULL
+     GROUP BY quizId`,
+    { replacements: { userId } }
+  );
+  return rows.map((r) => ({
+    quizId: r.quizId,
+    attemptCount: parseInt(r.attemptCount) || 0,
+    hasOfficial: Boolean(parseInt(r.hasOfficial)),
+  }));
+}
+module.exports.getMyAttemptsCount = getMyAttemptsCount;

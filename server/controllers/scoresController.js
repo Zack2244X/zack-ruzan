@@ -15,6 +15,15 @@ async function getLeaderboard(req, res) {
   }
 }
 
-module.exports = {
+async function getMyAttemptsCount(req, res) {
+  try {
+    const data = await scoresService.getMyAttemptsCount(req.user.id);
+    return res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: "حدث خطأ أثناء جلب عدد المحاولات." });
+  }
+}
+
+module.exports = { getMyAttemptsCount, 
   getLeaderboard
 };

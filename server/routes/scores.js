@@ -16,6 +16,9 @@
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
+const scoresController = require("../controllers/scoresController");
+const dbLayer = require("../services/safeQueryLayer");
+
 const { Op } = require("sequelize");
 const sequelize = require("../models/index");
 const Score = require("../models/Score");
@@ -35,8 +38,8 @@ const {
 const logger = require("../utils/logger");
 
 // --- In-Memory Cache للوحة المتصدرين ---
-const leaderboardCache = { data: null, timestamp: 0 };
-const CACHE_TTL = 120000; // صلاحية 120 ثانية
+
+ // صلاحية 120 ثانية
 
 function isTrustedGuestOrigin(req) {
   const allowed = new Set(
@@ -205,8 +208,7 @@ router.post(
 
       // 3️⃣ إبطال صلاحية الكاش عند تحقيق درجة جديدة (لو كانت رسمية)
       if (isOfficial) {
-        leaderboardCache.data = null;
-        leaderboardCache.timestamp = 0;
+        
       }
       res.status(201).json({
         message: isOfficial
@@ -297,37 +299,7 @@ router.get("/my", authenticate, validatePagination, async (req, res) => {
  * @param {import('express').Response} res - Array of { quizId, attemptCount, hasOfficial }
  * @returns {Promise<void>}
  */
-router.get("/my/attempts", authenticate, async (req, res) => {
-  try {
-    const [rows] = await sequelize.query(
-      `SELECT
-                 quizId,
-                 COUNT(id)                                          AS attemptCount,
-                 MAX(CASE WHEN isOfficial = 1 THEN 1 ELSE 0 END)   AS hasOfficial
-             FROM scores
-             WHERE userId = :userId
-               AND deletedAt IS NULL
-             GROUP BY quizId`,
-      { replacements: { userId: req.user.id } },
-    );
-
-    const result = rows.map((r) => ({
-      quizId: r.quizId,
-      attemptCount: parseInt(r.attemptCount) || 0,
-      hasOfficial: Boolean(parseInt(r.hasOfficial)),
-    }));
-
-    // 2️⃣ تحديث الكاش مع ختم زمني
-    leaderboardCache.data = result;
-    leaderboardCache.timestamp = Date.now();
-    res.setHeader("X-Cache-Hit", "false");
-    res.json(result);
-  } catch (error) {
-    const dbMsg = error.original?.message || error.message;
-    logger.error("خطأ في جلب عدد المحاولات:", {
-      error: dbMsg,
-      stack: error.stack,
-    });
+router.get("/my/attempts", authenticate, scoresController.getMyAttemptsCount);
     res.status(500).json({
       error: "حدث خطأ.",
       ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
@@ -451,65 +423,7 @@ router.get("/", authenticate, async (req, res) => {
  * @param {import('express').Response} res - Array of leaderboard entries.
  * @returns {Promise<void>}
  */
-router.get("/leaderboard", authenticateOrGuest, async (req, res) => {
-  try {
-    // 1️⃣ استخدام الكاش المتوفر وتقليل الحمل
-    if (leaderboardCache.data && Date.now() - leaderboardCache.timestamp < CACHE_TTL) {
-      res.setHeader("X-Cache-Hit", "true");
-      return res.json(leaderboardCache.data);
-    }
-    
-    // نأخذ فقط أول محاولة رسمية لكل طالب لكل اختبار (حتمياً حتى عند تعادل attemptNumber)
-    const [rows] = await sequelize.query(`
-            SELECT
-                s.userId,
-                u.fname,
-                u.lname,
-                u.email,
-                SUM(s.score)      AS totalScore,
-                SUM(s.total)      AS totalMax,
-                COUNT(s.id)       AS examsCount,
-                (SUM(s.score) / NULLIF(SUM(s.total), 0)) * 100 AS avgPercentage,
-                SUM(CASE WHEN s.score = s.total THEN 1 ELSE 0 END) AS fullMarksCount
-            FROM (
-                SELECT *
-                FROM (
-                    SELECT
-                        s.*,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY s.userId, s.quizId
-                            ORDER BY s.attemptNumber ASC, s.id ASC
-                        ) AS rn
-                    FROM scores s
-                    WHERE s.isOfficial = 1 AND s.deletedAt IS NULL
-                ) ranked_scores
-                WHERE ranked_scores.rn = 1
-            ) s
-            INNER JOIN users u ON s.userId = u.id AND u.deletedAt IS NULL
-            GROUP BY s.userId, u.fname, u.lname, u.email
-            ORDER BY fullMarksCount DESC, avgPercentage DESC, totalScore DESC
-            LIMIT 50
-        `);
-
-    const result = rows.map((entry) => ({
-      userName: entry.fname
-        ? `${entry.fname} ${entry.lname || ""}`.trim()
-        : entry.email || "مستخدم محذوف",
-      totalScore: parseInt(entry.totalScore) || 0,
-      totalMax: parseInt(entry.totalMax) || 0,
-      examsCount: parseInt(entry.examsCount) || 0,
-      avgPercentage: Math.round(parseFloat(entry.avgPercentage) || 0),
-      fullMarksCount: parseInt(entry.fullMarksCount) || 0,
-    }));
-
-    res.json(result);
-  } catch (error) {
-    const dbMsg =
-      error.original?.message || error.parent?.message || error.message;
-    logger.error("خطأ في جلب لوحة الشرف:", {
-      error: dbMsg,
-      stack: error.stack,
-    });
+router.get("/leaderboard", authenticateOrGuest, scoresController.getLeaderboard);
     res.status(500).json({
       error: "حدث خطأ.",
       ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
