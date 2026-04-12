@@ -18,7 +18,7 @@ try {
   // Only warn in production if license is set but module missing.
   if (process.env.NEW_RELIC_LICENSE_KEY) {
      
-    logger.warn("New Relic module not found; APM disabled:", err.message);
+    console.warn("New Relic module not found; APM disabled:", err.message);
   }
 }
 
@@ -149,7 +149,9 @@ const swaggerOptions = {
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+if (process.env.NODE_ENV !== "production") {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 /** 
  * @swagger

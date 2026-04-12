@@ -3,8 +3,8 @@ services:
     name: quiz-platform-server
     runtime: node
     plan: free
-    buildCommand: cd server && npm install
-    startCommand: cd server && npm start
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
     autoDeploy: true
     healthCheckPath: /api/health
     envVars:
