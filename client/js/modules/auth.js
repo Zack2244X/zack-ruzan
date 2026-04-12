@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module auth
  * @description تسجيل الدخول بـ Google OAuth، إدارة الجلسة، تسجيل الخروج
@@ -88,7 +89,7 @@ export function startGoogleRedirectLogin(mode) {
     window.location.href = oauthUrl.toString();
   } catch (err) {
     console.error("❌ startGoogleRedirectLogin error:", err);
-    alert("خطأ في تسجيل الدخول: " + err.message);
+    logger.warn("Alert:", "خطأ في تسجيل الدخول: " + err.message);
   }
 }
 
@@ -177,7 +178,7 @@ export function handleGoogleRedirectToken() {
     if (window.handleStudentGoogleLogin) {
       window.handleStudentGoogleLogin(response);
     } else {
-      console.warn("handleStudentGoogleLogin wrapper not ready, deferring...");
+      logger.warn("handleStudentGoogleLogin wrapper not ready, deferring...");
       if (document.readyState === "complete") {
         window.handleStudentGoogleLogin(response);
       } else {
@@ -299,7 +300,7 @@ export async function handleStudentGoogleLogin(
   startTokenRefresh,
 ) {
   logFunctionStatus("handleStudentGoogleLogin", true);
-  console.log("[auth] بدء تسجيل دخول الطالب...");
+  logger.log("[auth] بدء تسجيل دخول الطالب...");
   const errorEl = document.getElementById("login-error");
   const loadingEl = document.getElementById("login-loading");
   errorEl.classList.add("hidden");
@@ -322,7 +323,7 @@ export async function handleStudentGoogleLogin(
     });
     const data = await res.json();
     if (!res.ok) {
-      if (data && data.debug) console.warn("[auth] Login debug:", data.debug);
+      if (data && data.debug) logger.warn("[auth] Login debug:", data.debug);
       throw new Error(data.error || "فشل تسجيل الدخول");
     }
 
@@ -373,7 +374,7 @@ export async function handleStudentGoogleLogin(
       state.isAdmin = true;
     }
     loadingEl.classList.add("hidden");
-    console.log(
+    logger.log(
       `[auth] ✓ تسجيل دخول ناجح — ${state.currentUser.fullName} (${state.isAdmin ? "أدمن" : "طالب"})`,
     );
 
@@ -429,7 +430,7 @@ export async function handleStudentGoogleLogin(
  */
 export async function logoutUser() {
   logFunctionStatus("logoutUser", true);
-  console.log("[auth] بدء تسجيل الخروج...");
+  logger.log("[auth] بدء تسجيل الخروج...");
 
   // Turn off the lamp on logout
   if (window.toggleLamp) {
@@ -471,7 +472,7 @@ export async function logoutUser() {
     localStorage.setItem("logout_event", Date.now().toString());
     localStorage.removeItem("logout_event");
   }
-  console.log("[auth] ✓ تم تسجيل الخروج");
+  logger.log("[auth] ✓ تم تسجيل الخروج");
   location.reload();
 }
 
@@ -481,13 +482,13 @@ export async function logoutUser() {
 export function startTokenRefresh() {
   logFunctionStatus("startTokenRefresh", true);
   if (state.tokenRefreshTimer) clearInterval(state.tokenRefreshTimer);
-  console.log("[auth] ✓ بدء تجديد التوكن التلقائي (كل 6 ساعات)");
+  logger.log("[auth] ✓ بدء تجديد التوكن التلقائي (كل 6 ساعات)");
   state.tokenRefreshTimer = setInterval(
     async () => {
       if (!state.currentUser) return;
       try {
         await apiCall("POST", "/api/auth/refresh");
-        console.log("[auth] ✓ تم تجديد التوكن تلقائياً");
+        logger.log("[auth] ✓ تم تجديد التوكن تلقائياً");
         // Token refreshed in httpOnly cookie automatically
         sessionStorage.setItem(
           "currentUser",

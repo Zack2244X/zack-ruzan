@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 
 // ============================================
 // نظام إدارة دورة حياة الأحداث وتجنب تسرب الذاكرة (Lifecycle Management)
@@ -625,7 +626,7 @@ export function initOverlayScrollLock() {
 
   [...OVERLAY_IDS, ...SHEET_IDS].forEach(observeEl);
 
-  console.log(
+  logger.log(
     "[navigation] ✓ initOverlayScrollLock — MutationObserver نشط على " +
       (OVERLAY_IDS.length + SHEET_IDS.length) +
       " عنصر",
@@ -858,7 +859,7 @@ export function applyTheme(theme) {
       document.body.classList.remove("dark");
     }
   } catch (err) {
-    console.warn("applyTheme: failed to toggle .dark class", err);
+    logger.warn("applyTheme: failed to toggle .dark class", err);
   }
 }
 

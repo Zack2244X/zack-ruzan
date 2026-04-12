@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module scroll
  * @description وحدة التمرير الموحّد — تُغلِّف Lenis وتُصدِّر واجهة بسيطة لبقية الوحدات.
@@ -64,7 +65,7 @@ function _rafLoop(time) {
  */
 function _buildScrollObserver() {
   if (typeof IntersectionObserver === "undefined") {
-    console.warn("[scroll] IntersectionObserver غير مدعوم في هذا المتصفح.");
+    logger.warn("[scroll] IntersectionObserver غير مدعوم في هذا المتصفح.");
     return null;
   }
 
@@ -78,7 +79,7 @@ function _buildScrollObserver() {
           try {
             cb(entry.target);
           } catch (err) {
-            console.warn("[scroll] خطأ في scroll-enter callback:", err);
+            logger.warn("[scroll] خطأ في scroll-enter callback:", err);
           }
         }
 
@@ -116,7 +117,7 @@ export function initScroll(options = {}) {
   // خيارات مساعدة: تمكين/تعطيل أو تخطّي التهيئة على الأجهزة منخفضة الأداء
   const { enabled = true, skipOnLowTier = true } = options || {};
   if (!enabled) {
-    console.log("[scroll] init skipped via options.enabled=false");
+    logger.log("[scroll] init skipped via options.enabled=false");
     return null;
   }
   if (
@@ -124,12 +125,12 @@ export function initScroll(options = {}) {
     typeof window !== "undefined" &&
     window.__devicePerf?.tier === "low"
   ) {
-    console.log("[scroll] init skipped on low-tier device");
+    logger.log("[scroll] init skipped on low-tier device");
     return null;
   }
   // تجنب التهيئة المزدوجة
   if (_lenis) {
-    console.warn("[scroll] initScroll() استُدعيت مرة ثانية — تجاهل.");
+    logger.warn("[scroll] initScroll() استُدعيت مرة ثانية — تجاهل.");
     return _lenis;
   }
 
@@ -160,7 +161,7 @@ export function initScroll(options = {}) {
       // Lenis غير متاحة — نعمل بدون تمرير ناعم
     }
 
-    console.warn(
+    logger.warn(
       "[scroll] ⚠️ Lenis غير متاح — التمرير الناعم معطّل. أضف Lenis عبر npm أو CDN.",
     );
     return null;
@@ -215,7 +216,7 @@ function _initWithClass(LenisClass, options) {
     }
   });
 
-  console.log(
+  logger.log(
     "[scroll] ✓ Lenis مُهيَّأ — التمرير الناعم يعمل + ScrollTrigger مرتبط",
   );
   return _lenis;
@@ -254,7 +255,7 @@ export function setScrollTierOptions(tier, isMobile = false) {
         _lenis.options.touchMultiplier = 1.5;
       }
     }
-    console.log(
+    logger.log(
       `[scroll] tier=${tier} mobile=${isMobile} → Lenis options updated`,
     );
   } catch (e) {
@@ -314,7 +315,7 @@ export function enableSmoothScroll() {
   _smoothEnabled = true;
   if (_lenis) {
     _lenis.start();
-    console.log("[scroll] التمرير الناعم: مُفعَّل");
+    logger.log("[scroll] التمرير الناعم: مُفعَّل");
   }
 }
 
@@ -326,7 +327,7 @@ export function disableSmoothScroll() {
   _smoothEnabled = false;
   if (_lenis) {
     _lenis.stop();
-    console.log("[scroll] التمرير الناعم: مُعطَّل");
+    logger.log("[scroll] التمرير الناعم: مُعطَّل");
   }
 }
 
@@ -342,7 +343,7 @@ export function onScrollEnter() {
   // أعِد مراقبة العناصر المُسجَّلة مسبقاً (إن وُجدت)
   if (_scrollObserver) {
     _observedElements.forEach((_, el) => _scrollObserver.observe(el));
-    console.log("[scroll] scroll-enter callbacks: مُفعَّلة");
+    logger.log("[scroll] scroll-enter callbacks: مُفعَّلة");
   }
 }
 
@@ -356,7 +357,7 @@ export function offScrollEnter() {
     _scrollObserver = null;
   }
   _scrollEnterEnabled = false;
-  console.log("[scroll] scroll-enter callbacks: مُعطَّلة");
+  logger.log("[scroll] scroll-enter callbacks: مُعطَّلة");
 }
 
 /**
@@ -419,5 +420,5 @@ export function destroyScroll() {
   }
   offScrollEnter();
   _observedElements.clear();
-  console.log("[scroll] Lenis مُدمَّر — وحدة التمرير أُعيدت لحالتها الأولى");
+  logger.log("[scroll] Lenis مُدمَّر — وحدة التمرير أُعيدت لحالتها الأولى");
 }

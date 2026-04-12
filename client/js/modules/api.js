@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 // 1. الاستيرادات أولاً في أعلى الملف
 import state from "./state.js";
 import { logFunctionStatus } from "./helpers.js";
@@ -84,29 +85,73 @@ export function getAuthHeaders() {
  * @param {'GET'|'POST'|'PUT'|'DELETE'} method — HTTP method
  * @param {string} url — المسار
  * @param {Object} [body] — البيانات المرسلة
+ * @param {number} [timeout=30000] — مهلة الانتظار
  * @returns {Promise<Object>} البيانات المرجعة
  * @throws {Error} في حالة فشل الاتصال
  */
-export async function apiCall(method, url, body) {
+const activeRequests = new Map();
+
+export async function apiCall(method, url, body, timeout = 30000) {
   logFunctionStatus(`apiCall ${method} ${url}`, true);
   const tag = `[API] ${method} ${url}`;
-  console.log(`${tag} — إرسال...`, body ?? "");
+
+  // إلغاء أي طلب متطابق سابق لم يكتمل بعد لتخفيف الضغط
+  const requestKey = `${method}:${url}`;
+  if (activeRequests.has(requestKey)) {
+    activeRequests.get(requestKey).abort("Cancelled by new request");
+  }
+
+  const controller = new AbortController();
+  activeRequests.set(requestKey, controller);
+
+  const timeoutId = setTimeout(() => {
+    controller.abort("Timeout");
+  }, timeout);
+
+  logger.log(`${tag} — إرسال...`, body ?? "");
   const opts = {
     method,
     headers: getAuthHeaders(),
     credentials: "include",
+    signal: controller.signal,
   };
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const errMsg = data.error || `HTTP ${res.status}`;
-    console.error(`${tag} ✗ فشل — ${res.status}:`, data);
-    throw new Error(errMsg);
+
+  try {
+    const res = await fetch(url, opts);
+    clearTimeout(timeoutId);
+    activeRequests.delete(requestKey);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const errMsg = data.error || `HTTP ${res.status}`;
+      console.error(`${tag} ✗ فشل — ${res.status}:`, data);
+      throw new Error(errMsg);
+    }
+    const data = await res.json();
+    logger.log(`${tag} ✓ نجح — ${res.status}`, data);
+    return data;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    activeRequests.delete(requestKey);
+
+    if (
+      error.name === "AbortError" ||
+      (controller.signal && controller.signal.aborted)
+    ) {
+      const reason = controller.signal.reason;
+      if (reason === "Timeout") {
+        console.error(`${tag} ⏳ انتهت مهلة الانتظار (${timeout}ms).`);
+        throw new Error(
+          "انتهت مهلة الانتظار، السيرفر لا يستجيب أو الشبكة بطيئة.",
+        );
+      } else {
+        logger.warn(`${tag} 🚫 تم إلغاء الطلب:`, reason);
+        throw new Error("تم الإلغاء لأنك قمت بطلب أحدث.");
+      }
+    }
+    throw error;
   }
-  const data = await res.json();
-  console.log(`${tag} ✓ نجح — ${res.status}`, data);
-  return data;
 }
 
 // ─────────────────────────────────────────────
@@ -134,7 +179,7 @@ export async function apiCall(method, url, body) {
 export async function getAttempts(quizId, email = "") {
   logFunctionStatus("getAttempts", true);
   if (!quizId) {
-    console.warn("[getAttempts] quizId مطلوب");
+    logger.warn("[getAttempts] quizId مطلوب");
     return 0;
   }
   try {
@@ -142,12 +187,12 @@ export async function getAttempts(quizId, email = "") {
     if (email) params.append("email", email);
     const data = await apiCall("GET", `/api/attempts?${params.toString()}`);
     const count = Number(data?.attempts) || 0;
-    console.log(
+    logger.log(
       `[getAttempts] quizId=${quizId} email=${email || "self"} → ${count} محاولة`,
     );
     return count;
   } catch (err) {
-    console.warn("⚠️ [getAttempts] تعذر جلب المحاولات:", err.message);
+    logger.warn("⚠️ [getAttempts] تعذر جلب المحاولات:", err.message);
     return 0;
   }
 }
@@ -164,7 +209,7 @@ export async function getAttempts(quizId, email = "") {
  *
  * @example
  * const newCount = await saveAttempt('quiz_01');
- * console.log(`هذه محاولتك رقم ${newCount}`);
+ * logger.log(`هذه محاولتك رقم ${newCount}`);
  */
 export async function saveAttempt(quizId, email = "") {
   logFunctionStatus("saveAttempt", true);
@@ -174,10 +219,10 @@ export async function saveAttempt(quizId, email = "") {
     if (email) payload.email = email;
     const data = await apiCall("POST", "/api/attempts", payload);
     const updated = Number(data?.attempts) || 0;
-    console.log(`[saveAttempt] quizId=${quizId} → المحاولة رقم ${updated}`);
+    logger.log(`[saveAttempt] quizId=${quizId} → المحاولة رقم ${updated}`);
     return updated;
   } catch (err) {
-    console.warn("⚠️ [saveAttempt] تعذر حفظ المحاولة:", err.message);
+    logger.warn("⚠️ [saveAttempt] تعذر حفظ المحاولة:", err.message);
     return 0;
   }
 }
@@ -241,7 +286,7 @@ export async function saveScore({
     date: new Date().toISOString(),
   };
 
-  console.log(
+  logger.log(
     `[saveScore] إرسال النتيجة — quizId=${quizId} isOfficial=${isOfficial}`,
     payload,
   );
@@ -269,7 +314,7 @@ export async function fetchLeaderboardFromServer() {
       examsCount: Number(item.examsCount) || 0,
     }));
   } catch (err) {
-    console.warn("⚠️ تعذر جلب لوحة الشرف:", err.message);
+    logger.warn("⚠️ تعذر جلب لوحة الشرف:", err.message);
     return [];
   }
 }
@@ -284,7 +329,7 @@ export async function fetchScoresFromServer(officialOnly = false) {
   try {
     // للضيف أو من لم يسجل الدخول: لا نطلب درجاته الشخصية، نطلب فقط لوحة الشرف
     if (!state.currentUser || state.currentUser.role === "guest") {
-      console.log("[scores] ✓ ضيف/لم يسجل الدخول — تخطي جلب الدرجات الشخصية");
+      logger.log("[scores] ✓ ضيف/لم يسجل الدخول — تخطي جلب الدرجات الشخصية");
       return [];
     }
 
@@ -313,7 +358,7 @@ export async function fetchScoresFromServer(officialOnly = false) {
       date: item.date || item.createdAt || new Date().toISOString(),
     }));
   } catch (err) {
-    console.warn("⚠️ تعذر جلب الدرجات:", err.message);
+    logger.warn("⚠️ تعذر جلب الدرجات:", err.message);
     return [];
   }
 }
@@ -324,32 +369,32 @@ export async function fetchScoresFromServer(officialOnly = false) {
 export async function loadDataFromServer() {
   logFunctionStatus("loadDataFromServer", true);
   if (!state.currentUser) {
-    console.warn("[loadData] لا يوجد مستخدم — تخطي");
+    logger.warn("[loadData] لا يوجد مستخدم — تخطي");
     return;
   }
-  console.log("[loadData] بدء تحميل البيانات من السيرفر...");
+  logger.log("[loadData] بدء تحميل البيانات من السيرفر...");
   try {
     // Staggered Requests - توجيه الطلبات بفارق زمني لتقليل حمل السيرفر اللحظي (Spike)
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    
+
     const quizzesRes = await apiCall("GET", "/api/quizzes").catch((e) => {
       console.error("[loadData] ✗ فشل تحميل الامتحانات:", e.message);
       return { data: [] };
     });
     await delay(300);
-    
+
     const notesRes = await apiCall("GET", "/api/notes").catch((e) => {
       console.error("[loadData] ✗ فشل تحميل المذكرات:", e.message);
       return { data: [] };
     });
     await delay(300);
-    
+
     const leaderboardRemote = await fetchLeaderboardFromServer().catch((e) => {
       console.error("[loadData] ✗ فشل تحميل لوحة الشرف:", e.message);
       return [];
     });
     await delay(300);
-    
+
     const scoresRemote = await fetchScoresFromServer().catch((e) => {
       console.error("[loadData] ✗ فشل تحميل الدرجات:", e.message);
       return [];
@@ -402,7 +447,7 @@ export async function loadDataFromServer() {
     }
 
     state.dataLoaded = true;
-    console.log(
+    logger.log(
       `[loadData] ✓ تم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${state.serverScores.length} نتيجة، ${state.serverLeaderboard.length} في لوحة الشرف`,
     );
   } catch (e) {
@@ -423,7 +468,8 @@ let dataPollingTimer = null;
  * @example
  * startDataPolling(30000); // تحديث كل 30 ثانية
  */
-export function startDataPolling(interval = 180000) { // زادت المدة لـ 3 دقائق כحد أدنى
+export function startDataPolling(interval = 180000) {
+  // زادت المدة لـ 3 دقائق כحد أدنى
   logFunctionStatus("startDataPolling", false);
 
   if (window.dataPollingTimer) {
@@ -434,25 +480,28 @@ export function startDataPolling(interval = 180000) { // زادت المدة ل�
   if (!window._visibilityListenerAdded) {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        console.log("[polling] 👁 عاد المستخدم متاحاً، سيتم التحديث قريباً...");
+        logger.log("[polling] 👁 عاد المستخدم متاحاً، سيتم التحديث قريباً...");
         // لا نريد أن نغرق السيرفر بمجرد العودة، نعتمد على استئناف الـ interval مع تأخير بسيط
-        setTimeout(() => loadDataFromServer().catch(()=>console.warn("تخطى")), 500);
+        setTimeout(
+          () => loadDataFromServer().catch(() => logger.warn("تخطى")),
+          500,
+        );
         startDataPolling(interval); // استئناف
       } else {
-        console.log("[polling] 💤 تبويب في الخلفية، إيقاف التحديث...");
+        logger.log("[polling] 💤 تبويب في الخلفية، إيقاف التحديث...");
         if (window.dataPollingTimer) clearInterval(window.dataPollingTimer);
       }
     });
     window._visibilityListenerAdded = true;
   }
 
-  console.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
+  logger.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
 
   window.dataPollingTimer = setInterval(() => {
     if (document.visibilityState === "hidden") return; // خط دفاع إضافي
-    console.log("[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...");
+    logger.log("[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...");
     loadDataFromServer().catch((err) => {
-      console.warn("[polling] ⚠️ فشل جلب البيانات:", err.message);
+      logger.warn("[polling] ⚠️ فشل جلب البيانات:", err.message);
     });
   }, interval);
 }
@@ -468,6 +517,6 @@ export function stopDataPolling() {
   if (dataPollingTimer) {
     clearInterval(dataPollingTimer);
     dataPollingTimer = null;
-    console.log("[polling] ✓ تم إيقاف التحديث التلقائي");
+    logger.log("[polling] ✓ تم إيقاف التحديث التلقائي");
   }
 }

@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module animations
  * @description وحدة الحركات باستخدام GSAP
@@ -133,7 +134,7 @@ async function detectAndApplyRefreshRate() {
           else if (fps <= 130) nativeHz = 120;
           else nativeHz = 144;
 
-          console.log(
+          logger.log(
             `[Animations] 🖥️ معدل تحديث الشاشة: ${fps}fps → Native: ${nativeHz}Hz`,
           );
 
@@ -141,7 +142,7 @@ async function detectAndApplyRefreshRate() {
           // نتدخل فقط على الأجهزة الضعيفة يحدد سقف الـ 30fps
           if (gsap && currentTier === "low") {
             gsap.ticker.fps(30);
-            console.log(
+            logger.log(
               "[Animations] 📉 Low tier → ticker: 30fps (توفير موارد)",
             );
           }
@@ -177,14 +178,14 @@ async function detectAndApplyRefreshRate() {
  */
 export async function initAnimations(perfOverride) {
   if (initialized) {
-    console.warn("[Animations] ⚠️ تم التهيئة مسبقاً");
+    logger.warn("[Animations] ⚠️ تم التهيئة مسبقاً");
     return;
   }
 
   // Ensure GSAP is available. We may be running before the deferred loader finishes.
   const gsapAvailable = await ensureGsapLoaded(3000);
   if (!gsapAvailable) {
-    console.warn(
+    logger.warn(
       "[Animations] ❌ GSAP غير موجود بعد الانتظار — إلغاء تهيئة الأنيميشن",
     );
     return;
@@ -214,7 +215,7 @@ export async function initAnimations(perfOverride) {
               typeof gsap.registerPlugin === "function"
             ) {
               gsap.registerPlugin(window.ScrollTrigger);
-              console.log(
+              logger.log(
                 "[Animations] ✓ ScrollTrigger loaded & registered (idle)",
               );
             }
@@ -223,7 +224,7 @@ export async function initAnimations(perfOverride) {
             // autoRefreshEvents:'' already disables automatic refresh events.
           }
         } catch (e) {
-          console.warn("[Animations] failed to register ScrollTrigger:", e);
+          logger.warn("[Animations] failed to register ScrollTrigger:", e);
         }
       };
 
@@ -259,7 +260,7 @@ export async function initAnimations(perfOverride) {
     const dpr = perf?.dpr || window.devicePixelRatio || 1;
     applyTierSettings(currentTier, dpr);
   } catch (e) {
-    console.warn(
+    logger.warn(
       "[Animations] ⚠️ فشل كشف الأداء، استخدام الإعدادات الافتراضية:",
       e,
     );
@@ -283,7 +284,7 @@ export async function initAnimations(perfOverride) {
   if (gsap.ticker?.useRAF) gsap.ticker.useRAF(true);
 
   initialized = true;
-  console.log(
+  logger.log(
     `[Animations] ✓ تهيئة كاملة — tier:${currentTier} speed:${speedMultiplier} reducedMotion:${reducedMotion}`,
   );
 }
@@ -304,7 +305,7 @@ function applyTierSettings(tier) {
         // 0 = uncapped — GSAP يطابق معدل vsync الفعلي للشاشة (60/90/120/144Hz)
         gsap.ticker.fps(0);
       }
-      console.log("[Animations] ⚡ High tier — حركات كاملة / ticker uncapped");
+      logger.log("[Animations] ⚡ High tier — حركات كاملة / ticker uncapped");
       break;
 
     case "medium":
@@ -316,7 +317,7 @@ function applyTierSettings(tier) {
         // uncapped أيضاً — الشاشة 120Hz ستستفيد تلقائياً
         gsap.ticker.fps(0);
       }
-      console.log(
+      logger.log(
         "[Animations] 🔆 Medium tier — حركات مخففة / ticker uncapped",
       );
       break;
@@ -329,7 +330,7 @@ function applyTierSettings(tier) {
         gsap.ticker.lagSmoothing(0);
         // fps(30) سيُضبط بعد قياس الشاشة في detectAndApplyRefreshRate
       }
-      console.log("[Animations] 🔇 Low tier — حركات معطلة");
+      logger.log("[Animations] 🔇 Low tier — حركات معطلة");
       break;
   }
 }
@@ -353,7 +354,7 @@ export function setReducedMotion(enabled) {
     }, 100);
   }
 
-  console.log(`[Animations] reduced-motion: ${enabled}`);
+  logger.log(`[Animations] reduced-motion: ${enabled}`);
 }
 
 /**
@@ -370,7 +371,7 @@ export function setAnimationSpeed(multiplier) {
     gsap.defaults({ duration: 0.4 * (speedMultiplier || 0.001) });
   }
 
-  console.log(`[Animations] سرعة الحركة: ${multiplier}`);
+  logger.log(`[Animations] سرعة الحركة: ${multiplier}`);
 }
 
 // ============================================
@@ -840,7 +841,7 @@ export function animateScoreReveal(scoreEl, finalScore, totalScore) {
 export function pauseAllAnimations() {
   if (gsap) {
     gsap.globalTimeline.pause();
-    console.log("[Animations] ⏸ كل الحركات موقوفة");
+    logger.log("[Animations] ⏸ كل الحركات موقوفة");
   }
 }
 
@@ -850,7 +851,7 @@ export function pauseAllAnimations() {
 export function resumeAllAnimations() {
   if (gsap) {
     gsap.globalTimeline.resume();
-    console.log("[Animations] ▶ كل الحركات مستأنفة");
+    logger.log("[Animations] ▶ كل الحركات مستأنفة");
   }
 }
 
@@ -872,7 +873,7 @@ export function cancelAllAnimations() {
   activeAnimations.forEach((tween) => tween.kill());
   activeAnimations.clear();
   if (gsap) gsap.killTweensOf("*");
-  console.log("[Animations] 🗑 جميع الحركات ملغاة");
+  logger.log("[Animations] 🗑 جميع الحركات ملغاة");
 }
 
 // ============================================

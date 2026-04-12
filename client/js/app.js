@@ -1,6 +1,7 @@
+import logger from './utils/logger.js';
 if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') {
-  console.log = () => {};
-  console.warn = () => {};
+  logger.log = () => {};
+  logger.warn = () => {};
 }
 /**
  * منصة الاختبارات التفاعلية — app.js (Entry Point)
@@ -20,7 +21,7 @@ function initDatadogRumDeferred() {
   );
 
   if (!isDatadogEnabledByConfig || isLocalRuntime) {
-    console.log("[Datadog RUM] disabled by config/runtime");
+    logger.log("[Datadog RUM] disabled by config/runtime");
     return;
   }
 
@@ -34,7 +35,7 @@ function initDatadogRumDeferred() {
       try {
         const ddRum = window.DD_RUM;
         if (!ddRum || typeof ddRum.init !== "function") {
-          console.warn("[Datadog RUM] agent loaded but DD_RUM is unavailable");
+          logger.warn("[Datadog RUM] agent loaded but DD_RUM is unavailable");
           return;
         }
 
@@ -53,14 +54,14 @@ function initDatadogRumDeferred() {
           defaultPrivacyLevel: "mask-user-input",
         });
         ddRum.startSessionReplayRecording();
-        console.log("[Datadog RUM] initialized and recording sessions");
+        logger.log("[Datadog RUM] initialized and recording sessions");
       } catch (e) {
-        console.warn("[Datadog RUM] init skipped:", e?.message || e);
+        logger.warn("[Datadog RUM] init skipped:", e?.message || e);
       }
     };
 
     script.onerror = () => {
-      console.warn("[Datadog RUM] agent script blocked/unavailable");
+      logger.warn("[Datadog RUM] agent script blocked/unavailable");
     };
 
     document.head.appendChild(script);
@@ -441,14 +442,14 @@ if ("serviceWorker" in navigator) {
                 newWorker.state === "activated" &&
                 navigator.serviceWorker.controller
               ) {
-                console.log("[SW] ✓ تحديث جديد — إعادة تحميل...");
+                logger.log("[SW] ✓ تحديث جديد — إعادة تحميل...");
                 window.location.reload();
               }
             });
           }
         });
       })
-      .catch((err) => console.warn("⚠️ SW registration failed:", err));
+      .catch((err) => logger.warn("⚠️ SW registration failed:", err));
   };
   
   if (document.readyState === "complete") {
@@ -489,7 +490,7 @@ const handlePageHide = () => {
   // معلقاً بعد الريفريش أو إغلاق التاب
   localStorage.removeItem("guest-mode");
   document.body.classList.remove("guest-mode");
-});
+};
 
 // ============================================
 //  ضبط إعدادات الحركة بناءً على أداء الجهاز
@@ -514,7 +515,7 @@ async function applyPerformanceBasedAnimationSettings(perf) {
   const bat = perf?.batteryLevel ?? -1;
   const webgl2 = gpu?.webgl2 ?? false;
 
-  console.log(
+  logger.log(
     `[app] 🖥️ أداء الجهاز — tier:${tier} / GPU:${gpu?.tier}(${gpu?.renderer || "?"}) ` +
       `/ DPR:${dpr.toFixed(1)} / WebGL2:${webgl2} / 🔋${bat === -1 ? "N/A" : Math.round(bat * 100) + "%"}`,
     perf,
@@ -537,7 +538,7 @@ async function applyPerformanceBasedAnimationSettings(perf) {
       setAnimationSpeed(1.0);
       enableSmoothScroll();
       onScrollEnter();
-      console.log("[app] ✓ إعدادات الحركة: وضع الأداء العالي");
+      logger.log("[app] ✓ إعدادات الحركة: وضع الأداء العالي");
       break;
 
     case "medium":
@@ -547,7 +548,7 @@ async function applyPerformanceBasedAnimationSettings(perf) {
 
       enableSmoothScroll();
       offScrollEnter();
-      console.log("[app] ✓ إعدادات الحركة: وضع الأداء المتوسط");
+      logger.log("[app] ✓ إعدادات الحركة: وضع الأداء المتوسط");
       break;
 
     case "low":
@@ -556,7 +557,7 @@ async function applyPerformanceBasedAnimationSettings(perf) {
       setAnimationSpeed(0);
       disableSmoothScroll();
       offScrollEnter();
-      console.log(
+      logger.log(
         "[app] ✓ إعدادات الحركة: وضع الأداء المنخفض (reduced-motion)",
       );
       break;
@@ -641,7 +642,7 @@ function handleStudentGoogleLogin(response) {
 /** @description تحميل التطبيق عند بدء التشغيل */
 async function loadApp() {
   logFunctionStatus("loadApp", true);
-  console.log("[app] بدء تحميل التطبيق...");
+  logger.log("[app] بدء تحميل التطبيق...");
   try {
     // Scores are loaded from server via loadAllDataFromServer() — no localStorage fallback
 
@@ -671,7 +672,7 @@ async function loadApp() {
 
       if (isGuest) {
         // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
-        console.log("[app] ✓ وضع الضيف — تحميل البيانات العامة...");
+        logger.log("[app] ✓ وضع الضيف — تحميل البيانات العامة...");
 
         // Import polling function
         const { startDataPolling } = await import("./modules/api.js");
@@ -697,10 +698,10 @@ async function loadApp() {
             }
             // Start auto-polling for guest mode too
             startDataPolling(30000);
-            console.log("[app] ✓ الضيف — البيانات العامة جاهزة + polling نشط");
+            logger.log("[app] ✓ الضيف — البيانات العامة جاهزة + polling نشط");
           })
           .catch((e) => {
-            console.warn("[app] ⚠️ فشل جلب البيانات للضيف:", e);
+            logger.warn("[app] ⚠️ فشل جلب البيانات للضيف:", e);
             state.dataLoaded = true;
             renderDashboard();
           });
@@ -726,14 +727,14 @@ async function loadApp() {
         } catch (e) {
           console.error("Dashboard failed:", e);
         }
-        console.log("[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر");
+        logger.log("[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر");
         window.openPendingQuizIfAny?.();
       });
       return;
     }
     showLoginScreenWithDesktop();
   } catch (e) {
-    console.warn("تعذر الوصول للذاكرة المحلية:", e);
+    logger.warn("تعذر الوصول للذاكرة المحلية:", e);
     showLoginScreenWithDesktop();
   }
 }
@@ -974,7 +975,7 @@ const fallbackLoginListener = () => {
         startGoogleRedirectLogin("student");
       } catch (err) {
         console.error("❌ Login error:", err);
-        alert("خطأ في تسجيل الدخول: " + err.message);
+        logger.warn("Alert:", "خطأ في تسجيل الدخول: " + err.message);
       }
     });
   }
@@ -1014,7 +1015,7 @@ export async function startApp() {
       state.GOOGLE_CLIENT_ID = cfg.googleClientId;
     }
   } catch (e) {
-    console.warn("⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:", e);
+    logger.warn("⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:", e);
   }
 
   // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
@@ -1110,7 +1111,7 @@ export async function startApp() {
         }
         initScroll(scrollOpts);
       } catch (err) {
-        console.warn("[scroll] deferred init failed:", err);
+        logger.warn("[scroll] deferred init failed:", err);
       }
     };
 
@@ -1120,6 +1121,6 @@ export async function startApp() {
       setTimeout(startScroll, 700);
     }
   })().catch((e) => {
-    console.warn("[app] non-critical init skipped:", e?.message || e);
+    logger.warn("[app] non-critical init skipped:", e?.message || e);
   });
 }

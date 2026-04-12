@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module notes
  * @description وحدة المذكرات — إضافة، تعديل، تحميل الملفات والمذكرات
@@ -71,7 +72,7 @@ export async function saveNote(
     description: document.getElementById("new-n-desc").value.trim(),
   };
 
-  console.log(`[saveNote] بدء حفظ المذكرة — العنوان: "${title}"`);
+  logger.log(`[saveNote] بدء حفظ المذكرة — العنوان: "${title}"`);
   try {
     const saved = await apiCall("POST", "/api/notes", noteData);
     const serverId = saved.note?.id || saved.id;
@@ -87,7 +88,7 @@ export async function saveNote(
       },
     };
     state.allNotes.push(newNote);
-    console.log(`[saveNote] ✓ تم الحفظ على السيرفر — ID: ${serverId}`);
+    logger.log(`[saveNote] ✓ تم الحفظ على السيرفر — ID: ${serverId}`);
     showAlert("✅ تم إضافة الملف بنجاح!");
 
     closeAddNoteModal();
@@ -162,12 +163,12 @@ export async function updateExistingNote(
     description: document.getElementById("new-n-desc").value.trim(),
   };
 
-  console.log(
+  logger.log(
     `[updateNote] بدء تحديث المذكرة — ID: ${noteId}, العنوان: "${title}"`,
   );
   try {
     await apiCall("PUT", "/api/notes/" + noteId, noteUpdateData);
-    console.log(`[updateNote] ✓ تم التحديث على السيرفر — ID: ${noteId}`);
+    logger.log(`[updateNote] ✓ تم التحديث على السيرفر — ID: ${noteId}`);
     showAlert("✅ تم تحديث المذكرة بنجاح!");
 
     state.allNotes[state.editingNoteIndex].config.title = title;
@@ -196,7 +197,7 @@ export async function updateExistingNote(
  */
 export function forceDownload(url) {
   logFunctionStatus("forceDownload", false);
-  console.log(`[forceDownload] بدء تحميل —`, url);
+  logger.log(`[forceDownload] بدء تحميل —`, url);
   let normalizedUrl = String(url || "").trim();
   try {
     normalizedUrl = decodeURIComponent(normalizedUrl);

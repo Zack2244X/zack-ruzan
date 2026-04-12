@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module tree
  * @description وحدة رسم الشجرة — عرض الامتحانات والمذكرات بتنسيق شجري حسب التاريخ
@@ -697,7 +698,7 @@ export async function executeRenameSubject(
   }
 
   if (state.subjectToRename && newName !== state.subjectToRename) {
-    console.log(
+    logger.log(
       `[renameSubject] بدء تعديل اسم المادة — "${state.subjectToRename}" → "${newName}"`,
     );
     try {
@@ -705,7 +706,7 @@ export async function executeRenameSubject(
         oldName: state.subjectToRename,
         newName,
       });
-      console.log(
+      logger.log(
         `[renameSubject] ✓ تم على السيرفر — ${result.modifiedCount || 0} امتحان تأثر`,
       );
     } catch (e) {
@@ -792,13 +793,13 @@ export async function executeDeleteSubject(
 ) {
   logFunctionStatus("executeDeleteSubject", true);
   if (state.subjectToDelete) {
-    console.log(`[deleteSubject] بدء حذف المادة — "${state.subjectToDelete}"`);
+    logger.log(`[deleteSubject] بدء حذف المادة — "${state.subjectToDelete}"`);
     try {
       const result = await apiCall(
         "DELETE",
         "/api/quizzes/subject/" + encodeURIComponent(state.subjectToDelete),
       );
-      console.log(
+      logger.log(
         `[deleteSubject] ✓ تم على السيرفر — ${result.deletedCount || 0} امتحان محذوف`,
       );
     } catch (e) {

@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module grades
  * @description وحدة الدرجات والإحصائيات — عرض النتائج، لوحة الشرف، وتبويب التعديل
@@ -43,7 +44,7 @@ export async function openGradesModal() {
       date: s.date || new Date().toISOString(),
     }));
     state.serverLeaderboard = freshLeaderboard;
-    console.log(
+    logger.log(
       `[grades] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف من السيرفر`,
     );
   } catch (e) {
@@ -208,7 +209,7 @@ export async function openStatsModal() {
       date: s.date || new Date().toISOString(),
     }));
     state.serverLeaderboard = freshLeaderboard;
-    console.log(
+    logger.log(
       `[stats] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف`,
     );
   } catch (e) {

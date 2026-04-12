@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 // زر تحديث يدوي للامتحانات
 export function addManualRefreshButton() {
   const refreshBtnId = "dashboard-refresh-btn";
@@ -80,7 +81,7 @@ async function resolveAttemptsMap(quizzes, forceRefresh = false) {
 
   // ── للضيف أو من لم يسجل الدخول: لا نطلب درجاته، نملأ الكاش بـ 0 ─────────
   if (!state.currentUser || state.currentUser.role === "guest") {
-    console.log("[dashboard] ✓ ضيف/لم يسجل الدخول — تخطي جلب المحاولات");
+    logger.log("[dashboard] ✓ ضيف/لم يسجل الدخول — تخطي جلب المحاولات");
     quizzes.forEach((q) => {
       const key = String(q.id);
       if (!state.attemptsMap.has(key)) {
@@ -95,13 +96,13 @@ async function resolveAttemptsMap(quizzes, forceRefresh = false) {
   if (!forceRefresh) {
     const allCached = quizzes.every((q) => state.attemptsMap.has(String(q.id)));
     if (allCached && state.attemptsMap.size > 0) {
-      console.log("[dashboard] ✓ attemptsMap من الكاش — لا طلب مُرسَل");
+      logger.log("[dashboard] ✓ attemptsMap من الكاش — لا طلب مُرسَل");
       return state.attemptsMap;
     }
   }
 
   // ── طلب واحد يجلب كل المحاولات ──────────────────────────────────────
-  console.log("[dashboard] ← جلب /api/scores/my/attempts (طلب واحد)...");
+  logger.log("[dashboard] ← جلب /api/scores/my/attempts (طلب واحد)...");
 
   try {
     // GET /api/scores/my/attempts → [{ quizId, attemptCount, hasOfficial }, ...]
@@ -131,12 +132,12 @@ async function resolveAttemptsMap(quizzes, forceRefresh = false) {
       }
     });
 
-    console.log(
+    logger.log(
       `[dashboard] ✓ attemptsMap جاهزة — ${state.attemptsMap.size} اختبار`,
     );
   } catch (err) {
     // ── معالجة أخطاء الشبكة: نستمر بالكاش الجزئي ────────────────────
-    console.warn(
+    logger.warn(
       "[dashboard] ⚠️ تعذر جلب المحاولات — سيُعرض fallback نصي:",
       err.message,
     );
@@ -255,7 +256,7 @@ export async function renderDashboard(forceRefresh = false) {
 
   // ── حالة التحميل ──────────────────────────────────────────────────────
   if (!state.dataLoaded) {
-    console.log("[dashboard] ⏳ البيانات لم تُحمّل بعد...");
+    logger.log("[dashboard] ⏳ البيانات لم تُحمّل بعد...");
     const spinner = `
             <div class="col-span-full py-12 text-center text-gray-400">
                 <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
@@ -460,7 +461,7 @@ export async function renderDashboard(forceRefresh = false) {
   // ─────────────────────────────────────────────
   const leaderboardList = document.getElementById("leaderboard-list");
   if (!leaderboardList) {
-    console.warn("[dashboard] leaderboard-list element not found");
+    logger.warn("[dashboard] leaderboard-list element not found");
     return;
   }
 
@@ -555,7 +556,7 @@ export async function renderDashboard(forceRefresh = false) {
     leaderboardList.innerHTML = lbHtml;
   }
 
-  console.log(
+  logger.log(
     `[dashboard] ✓ تم رسم لوحة التحكم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${sourceLeaderboard.length} في الشرف`,
   );
 }

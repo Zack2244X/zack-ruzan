@@ -1,3 +1,4 @@
+import logger from './utils/logger.js';
 // Lightweight bootstrap: set minimal fallbacks and lazily load the full app when needed.
 // Goal: avoid sending the large bundled app to anonymous users and defer heavy modules.
 (function () {
@@ -159,7 +160,7 @@
         });
     };
     bundleScript.onerror = function (err) {
-      console.warn(
+      logger.warn(
         "[bootstrap] bundle failed, falling back to ESM app.js:",
         err,
       );

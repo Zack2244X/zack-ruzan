@@ -1,3 +1,4 @@
+import logger from './utils/logger.js';
 /**
  * Sanitizes an HTML string to allow only specific safe formatting tags.
  * Preserves text content and <b>, <i>, <u>, <br> tags.
@@ -22,7 +23,7 @@ export function sanitizeHTML(dirtyStr) {
         if (!allowedTags.includes(child.tagName)) {
           // If it's not an allowed tag (like <script> or <img>), 
           // extract its exact text representation to avoid throwing it away, 
-          // ensuring the user just sees raw `<img src=x onerror=alert(1)>`
+          // ensuring the user just sees raw `<img src=x onerror=logger.warn("Alert:", 1)>`
           const textNode = doc.createTextNode(child.outerHTML || child.textContent);
           child.replaceWith(textNode);
         } else {

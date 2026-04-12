@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module builder
  * @description وحدة بناء الاختبارات — إنشاء، تعديل، استيراد الأسئلة
@@ -335,7 +336,7 @@ export async function saveBuiltQuiz(
     }
     state.allQuizzes.push(state.quizDraft);
 
-    console.log(
+    logger.log(
       `[saveQuiz] ✓ تم الحفظ على السيرفر — ID: ${serverId}, العنوان: "${state.quizDraft.config.title}", أسئلة بـ UUID: ${!!serverQuiz.questions}`,
     );
     showAlert("✅ تم بناء الاختبار وحفظه بنجاح!");
@@ -425,7 +426,7 @@ export async function updateExistingQuiz(
 
   const quizId =
     state.allQuizzes[index].id || state.allQuizzes[index].config?.id;
-  console.log(
+  logger.log(
     `[updateQuiz] بدء تحديث الامتحان — ID: ${quizId}, العنوان: "${state.quizDraft.config.title}"`,
   );
   try {
@@ -443,7 +444,7 @@ export async function updateExistingQuiz(
     if (serverQuiz.questions) {
       state.quizDraft.questions = serverQuiz.questions;
     }
-    console.log(
+    logger.log(
       `[updateQuiz] ✓ تم التحديث على السيرفر — ID: ${quizId}, أسئلة بـ UUID: ${!!serverQuiz.questions}`,
     );
     showAlert("✅ تم تحديث الامتحان بنجاح!");
@@ -580,7 +581,7 @@ export function parseIconQuestions(rawText) {
   const pushCurrent = () => {
     if (!current) return;
     if (current.answerOptions.length < 2) {
-      console.warn(
+      logger.warn(
         `تم تخطي السؤال "${current.question}" لعدم وجود خيارات كافية.`,
       );
       return;

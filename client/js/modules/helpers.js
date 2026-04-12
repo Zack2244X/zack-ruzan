@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module helpers
  * @description دوال مساعدة عامة — لا تعتمد على أي وحدة أخرى
@@ -30,7 +31,7 @@ export function escapeHtml(str) {
 export function logFunctionStatus(fnName, serverBound = false) {
   try {
     const online = typeof navigator !== "undefined" ? navigator.onLine : true;
-    console.log(
+    logger.log(
       `[FUNC] ${fnName} — online:${online} serverBound:${serverBound}`,
     );
   } catch (e) {
@@ -237,7 +238,7 @@ function probeGPU() {
       canvas.getContext("experimental-webgl");
 
     if (!gl) {
-      console.log("[DevicePerf/GPU] لا يوجد دعم WebGL — GPU tier=low");
+      logger.log("[DevicePerf/GPU] لا يوجد دعم WebGL — GPU tier=low");
       return {
         tier: "low",
         renderer: "none",
@@ -361,10 +362,10 @@ function probeGPU() {
     // لكنه GPU متوسط-متأخر (2018) يكافح تحت backdrop-filter و will-change
     const tier = gpuScore >= 7 ? "high" : gpuScore >= 4 ? "medium" : "low";
     const result = { tier, renderer, vendor, webgl2, maxTexSize, gpuScore };
-    console.log("[DevicePerf/GPU]", result);
+    logger.log("[DevicePerf/GPU]", result);
     return result;
   } catch (err) {
-    console.warn("[DevicePerf/GPU] فشل فحص WebGL:", err.message);
+    logger.warn("[DevicePerf/GPU] فشل فحص WebGL:", err.message);
     return {
       tier: "medium",
       renderer: "error",
@@ -458,7 +459,7 @@ export async function getDevicePerformanceTier(options = {}) {
     (typeof window !== "undefined" ? window.devicePixelRatio : 1) || 1;
 
   if (prefersReducedMotion) {
-    console.log("[DevicePerf] prefers-reduced-motion → tier=low");
+    logger.log("[DevicePerf] prefers-reduced-motion → tier=low");
     return {
       tier: "low",
       cores: navigator.hardwareConcurrency ?? -1,
@@ -495,7 +496,7 @@ export async function getDevicePerformanceTier(options = {}) {
     window.matchMedia?.("(hover: none)").matches;
   if (isMobile && memory !== -1 && memory < 6) {
     cpuScore = Math.min(cpuScore, 2);
-    console.log(
+    logger.log(
       `[DevicePerf] 📱 موبايل RAM=${memory}GB → cpuScore مُقيَّد على 2 (medium)`,
     );
   }
@@ -514,7 +515,7 @@ export async function getDevicePerformanceTier(options = {}) {
     navigator.mozConnection ||
     navigator.webkitConnection;
   if (conn?.saveData) {
-    console.log("[DevicePerf] 💾 Save-Data: true → tier=low فوري");
+    logger.log("[DevicePerf] 💾 Save-Data: true → tier=low فوري");
     return {
       tier: "low",
       cores,
@@ -547,7 +548,7 @@ export async function getDevicePerformanceTier(options = {}) {
   if (!batteryCharging && batteryLevel !== -1 && batteryLevel < 0.15) {
     if (tier === "high") tier = "medium";
     else if (tier === "medium") tier = "low";
-    console.log(
+    logger.log(
       `[DevicePerf] 🔋 بطارية منخفضة (${Math.round(batteryLevel * 100)}%) → تخفيض مستوى`,
     );
   }
@@ -557,7 +558,7 @@ export async function getDevicePerformanceTier(options = {}) {
   if (conn?.effectiveType === "slow-2g" || conn?.effectiveType === "2g") {
     if (tier === "high") tier = "medium";
     else if (tier === "medium") tier = "low";
-    console.log(
+    logger.log(
       `[DevicePerf] 📶 effectiveType=${conn.effectiveType} → تخفيض مستوى`,
     );
   }
@@ -566,14 +567,14 @@ export async function getDevicePerformanceTier(options = {}) {
   // موبايل بشاشة DPR=3 مع GPU متوسط = fill rate كثيف جداً → medium
   if (dpr > 2.5 && tier === "high" && gpuTier !== "high") {
     tier = "medium";
-    console.log(
+    logger.log(
       `[DevicePerf] 📱 DPR ${dpr.toFixed(1)} > 2.5 → يُبقى على medium`,
     );
   }
   // DPR > 2.0 على موبايل مع high tier = pixel fill كثيف → يُخفَّض لـ medium
   if (dpr > 2.0 && isMobile && tier === "high") {
     tier = "medium";
-    console.log(
+    logger.log(
       `[DevicePerf] 📱 DPR ${dpr.toFixed(1)} على موبايل → high → medium`,
     );
   }
@@ -589,7 +590,7 @@ export async function getDevicePerformanceTier(options = {}) {
     batteryLevel,
     batteryCharging,
   };
-  console.log("[DevicePerf] ✅ نتيجة شاملة:", result);
+  logger.log("[DevicePerf] ✅ نتيجة شاملة:", result);
   return result;
 }
 

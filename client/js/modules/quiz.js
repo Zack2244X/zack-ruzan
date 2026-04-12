@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 function getClientDeviceId() {
   let id = localStorage.getItem("device_id_progress");
   if (!id) {
@@ -359,7 +360,7 @@ export async function loadAttemptsMap() {
         state.attemptsMap[String(quizId)] = { attemptCount, hasOfficial };
       });
     }
-    console.log(
+    logger.log(
       "[AttemptsMap] محُمِّل من السيرفر —",
       Object.keys(state.attemptsMap).length,
       "اختبار",
@@ -415,7 +416,7 @@ function updateAttemptsMap(quizId, meta) {
     hasOfficial: current.hasOfficial || meta?.isOfficial === true,
   };
 
-  console.log(
+  logger.log(
     `[AttemptsMap] ✓ تحديث — quizId=${quizId}`,
     state.attemptsMap[key],
   );
@@ -558,7 +559,7 @@ export async function playQuiz(index) {
 
   // 2. استخراج المعرّف
   const quizId = getQuizId(state.currentQuizData);
-  console.log(
+  logger.log(
     `[playQuiz] بدء الامتحان — index: ${index}, ID: ${quizId}, العنوان: "${state.currentQuizData.config.title}", أسئلة: ${state.currentQuizData.questions.length}`,
   );
 
@@ -569,7 +570,7 @@ export async function playQuiz(index) {
   // حفظ طبيعة المحاولة في state ليستخدمها submitQuiz كاحتياط
   state.currentAttemptIsOfficial = isOfficialAttempt;
 
-  console.log(
+  logger.log(
     `[playQuiz] المحاولة رقم ${attemptCount + 1} — ${isOfficialAttempt ? "رسمية ⭐" : "تدريبية 📝"}`,
   );
 
@@ -633,7 +634,7 @@ export async function playQuiz(index) {
       progressObj.answers &&
       progressObj.answers.length > 0
     ) {
-      console.log("Restoring progress", progressObj);
+      logger.log("Restoring progress", progressObj);
 
       // Validate length matches
       if (progressObj.answers.length === state.totalQuestions) {
@@ -1049,7 +1050,7 @@ export async function submitQuiz() {
         timeTaken: state.currentQuizData.config.timeLimit - state.timeRemaining,
       };
 
-      console.log(
+      logger.log(
         `[submitScore] إرسال — quizId: ${quizId}, نتيجة: ${state.score}/${state.totalQuestions}, isOfficial: ${state.currentAttemptIsOfficial}`,
       );
       savePendingScore(numericId, scorePayload);
@@ -1070,7 +1071,7 @@ export async function submitQuiz() {
         // حفظ meta لعرضها في شاشة النتائج
         state.lastSubmitMeta = meta;
 
-        console.log(
+        logger.log(
           `[submitScore] ✓ تم — محاولة رقم ${meta.attemptNumber}, ${meta.isOfficial ? "رسمية ⭐" : "تدريبية 📝"}`,
         );
       } catch (e) {
@@ -1091,7 +1092,7 @@ export async function submitQuiz() {
         );
       }
     } else {
-      console.warn(
+      logger.warn(
         `[submitScore] ⚠️ معرّف غير صالح (${quizId}) — النتيجة محلية فقط`,
       );
     }

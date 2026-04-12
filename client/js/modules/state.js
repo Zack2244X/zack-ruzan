@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /**
  * @module state
  * @description الحالة العامة للتطبيق — كل المتغيرات المشتركة بين الوحدات
@@ -96,7 +97,7 @@ const state = {
  *
  * @example
  * const attempts = getAttemptCount('student@example.com', 'quiz_01');
- * console.log(attempts); // 2
+ * logger.log(attempts); // 2
  */
 export function getAttemptCount(email, quizId) {
   if (!email || !quizId) return 0;
