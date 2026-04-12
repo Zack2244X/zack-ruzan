@@ -1,10 +1,11 @@
+import logger from '../utils/logger.js';
 export async function wrapComponent(containerElement, renderFunction, fallbackHtml = null, retryCallback = null) {
   if (!containerElement) return;
   const originalContent = containerElement.innerHTML;
   try {
     await renderFunction(containerElement);
   } catch (error) {
-    console.error(`[ErrorBoundary] Component failed to render:`, error);
+    logger.error(`[ErrorBoundary] Component failed to render:`, error);
     
     containerElement.innerHTML = fallbackHtml || `
       <div class="error-boundary " role="alert" bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-6 rounded-lg my-4 flex flex-col items-center justify-center text-center">

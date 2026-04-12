@@ -14,7 +14,7 @@ import { showAlert, logFunctionStatus } from "./helpers.js";
 function safeParseToken(token) {
     // 1. فحص أولي للنوع والقيمة
     if (!token || typeof token !== 'string') {
-        console.warn('[Auth] Token is missing or not a string');
+        logger.warn('[Auth] Token is missing or not a string');
         return null;
     }
 
@@ -34,12 +34,12 @@ function safeParseToken(token) {
             const payload = JSON.parse(decodedString);
             return payload; // نجاح
         } catch (jsonError) {
-            console.warn('[Auth] Invalid JSON structure in token payload:', jsonError.message);
+            logger.warn('[Auth] Invalid JSON structure in token payload:', jsonError.message);
             return null;
         }
     } catch (decodeError) {
         // 5. التعامل مع أخطاء atob (مثل الأحرف غير الصالحة)
-        console.warn('[Auth] Failed to base64 decode token:', decodeError.message);
+        logger.warn('[Auth] Failed to base64 decode token:', decodeError.message);
         return null;
     }
 }
@@ -125,7 +125,7 @@ export function startGoogleRedirectLogin(mode) {
     oauthUrl.searchParams.set("prompt", "select_account");
     window.location.href = oauthUrl.toString();
   } catch (err) {
-    console.error("❌ startGoogleRedirectLogin error:", err);
+    logger.error("❌ startGoogleRedirectLogin error:", err);
     logger.warn("Alert:", "خطأ في تسجيل الدخول: " + err.message);
   }
 }
@@ -149,7 +149,7 @@ export function handleGoogleRedirectToken() {
     sessionStorage.removeItem("googleNonce");
     sessionStorage.removeItem("googleLoginMode");
     sessionStorage.removeItem("googleState");
-    console.error("❌ Google OAuth error:", error, errorDesc);
+    logger.error("❌ Google OAuth error:", error, errorDesc);
     const errorEl = document.getElementById("login-error");
     if (errorEl) {
       errorEl.textContent =
@@ -255,7 +255,7 @@ export async function handleGoogleAdminResponse(response) {
         "Content-Type": "application/json",
         "X-Device-Id": getClientDeviceId(),
       },
-      credentials: "include",
+      
       body: JSON.stringify({
         idToken: response.credential,
         ...getClientDevicePayload(),
@@ -351,7 +351,7 @@ export async function handleStudentGoogleLogin(
         "Content-Type": "application/json",
         "X-Device-Id": getClientDeviceId(),
       },
-      credentials: "include",
+      
       body: JSON.stringify({
         idToken: response.credential,
         ...getClientDevicePayload(),
@@ -387,7 +387,7 @@ export async function handleStudentGoogleLogin(
           credentials: "include",
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          credentials: "include",
+          
           body: JSON.stringify({ fname, lname: lname || "" }),
         }).catch(() => {});
       }
@@ -456,7 +456,7 @@ export async function handleStudentGoogleLogin(
     });
   } catch (err) {
     loadingEl.classList.add("hidden");
-    console.error("❌ Login error details:", err);
+    logger.error("❌ Login error details:", err);
     errorEl.textContent = "❌ " + (err.message || "حدث خطأ أثناء تسجيل الدخول");
     errorEl.classList.remove("hidden");
   }
@@ -532,7 +532,7 @@ export function startTokenRefresh() {
           JSON.stringify(state.currentUser),
         );
       } catch (e) {
-        console.error("[auth] ✗ فشل تجديد التوكن:", e.message);
+        logger.error("[auth] ✗ فشل تجديد التوكن:", e.message);
       }
     },
     6 * 60 * 60 * 1000,

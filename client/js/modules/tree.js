@@ -710,7 +710,7 @@ export async function executeRenameSubject(
         `[renameSubject] ✓ تم على السيرفر — ${result.modifiedCount || 0} امتحان تأثر`,
       );
     } catch (e) {
-      console.error(`[renameSubject] ✗ فشل:`, e.message);
+      logger.error(`[renameSubject] ✗ فشل:`, e.message);
       showAlert(
         "⚠️ تعذر تعديل اسم المادة على السيرفر: " + e.message,
         "warning",
@@ -803,7 +803,7 @@ export async function executeDeleteSubject(
         `[deleteSubject] ✓ تم على السيرفر — ${result.deletedCount || 0} امتحان محذوف`,
       );
     } catch (e) {
-      console.error(`[deleteSubject] ✗ فشل:`, e.message);
+      logger.error(`[deleteSubject] ✗ فشل:`, e.message);
       showAlert("⚠️ تعذر حذف المادة على السيرفر: " + e.message, "warning");
     }
     state.allQuizzes = state.allQuizzes.filter(

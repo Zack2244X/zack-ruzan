@@ -1,4 +1,5 @@
 import { showAlert } from "../modules/helpers.js";
+import logger from '../utils/logger.js';
 
 /**
  * Handle, categorize, report and display errors.
@@ -27,7 +28,7 @@ export function handleError(error, context = {}) {
   // 2. Dev logging
   const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1";
   if (isDev) {
-    console.error(`[${category} Error]`, error, "\\nContext:", context);
+    logger.error(`[${category} Error]`, error, "\\nContext:", context);
   }
 
   // 3. User-friendly message

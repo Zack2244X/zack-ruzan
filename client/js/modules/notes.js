@@ -102,7 +102,7 @@ export async function saveNote(
       if (renderEditTree) renderEditTree();
     }
   } catch (e) {
-    console.error(`[saveNote] ✗ فشل الحفظ:`, e.message);
+    logger.error(`[saveNote] ✗ فشل الحفظ:`, e.message);
     showAlert("⚠️ تعذر الحفظ على السيرفر: " + e.message, "warning");
   }
 }
@@ -185,7 +185,7 @@ export async function updateExistingNote(
     if (renderEditTree) renderEditTree();
     if (renderDashboard) renderDashboard();
   } catch (e) {
-    console.error(`[updateNote] ✗ فشل التحديث:`, e.message);
+    logger.error(`[updateNote] ✗ فشل التحديث:`, e.message);
     showAlert("⚠️ تعذر التحديث على السيرفر: " + e.message, "warning");
   }
 }

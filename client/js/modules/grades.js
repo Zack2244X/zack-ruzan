@@ -49,7 +49,7 @@ export async function openGradesModal() {
       `[grades] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف من السيرفر`,
     );
   } catch (e) {
-    console.error("[grades] ✗ فشل تحديث البيانات:", e.message);
+    logger.error("[grades] ✗ فشل تحديث البيانات:", e.message);
   }
 
   renderGradesList();
@@ -228,7 +228,7 @@ export async function openStatsModal() {
       `[stats] ✓ تم جلب ${freshScores.length} نتيجة و ${freshLeaderboard.length} لوحة شرف`,
     );
   } catch (e) {
-    console.error("[stats] ✗ فشل تحديث البيانات:", e.message);
+    logger.error("[stats] ✗ فشل تحديث البيانات:", e.message);
   }
 
   renderStatsContent();

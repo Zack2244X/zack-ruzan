@@ -130,7 +130,7 @@ export async function apiCall(method, url, body, timeout = 30000) {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       const errMsg = data.error || `HTTP ${res.status}`;
-      console.error(`${tag} ✗ فشل — ${res.status}:`, data);
+      logger.error(`${tag} ✗ فشل — ${res.status}:`, data);
       throw new Error(errMsg);
     }
     const data = await res.json();
@@ -146,7 +146,7 @@ export async function apiCall(method, url, body, timeout = 30000) {
     ) {
       const reason = controller.signal.reason;
       if (reason === "Timeout") {
-        console.error(`${tag} ⏳ انتهت مهلة الانتظار (${timeout}ms).`);
+        logger.error(`${tag} ⏳ انتهت مهلة الانتظار (${timeout}ms).`);
         throw new Error(
           "انتهت مهلة الانتظار، السيرفر لا يستجيب أو الشبكة بطيئة.",
         );
@@ -383,25 +383,25 @@ export async function loadDataFromServer() {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const quizzesRes = await apiCall("GET", "/api/quizzes").catch((e) => {
-      console.error("[loadData] ✗ فشل تحميل الامتحانات:", e.message);
+      logger.error("[loadData] ✗ فشل تحميل الامتحانات:", e.message);
       return { data: [] };
     });
     await delay(300);
 
     const notesRes = await apiCall("GET", "/api/notes").catch((e) => {
-      console.error("[loadData] ✗ فشل تحميل المذكرات:", e.message);
+      logger.error("[loadData] ✗ فشل تحميل المذكرات:", e.message);
       return { data: [] };
     });
     await delay(300);
 
     const leaderboardRemote = await fetchLeaderboardFromServer().catch((e) => {
-      console.error("[loadData] ✗ فشل تحميل لوحة الشرف:", e.message);
+      logger.error("[loadData] ✗ فشل تحميل لوحة الشرف:", e.message);
       return [];
     });
     await delay(300);
 
     const scoresRemote = await fetchScoresFromServer().catch((e) => {
-      console.error("[loadData] ✗ فشل تحميل الدرجات:", e.message);
+      logger.error("[loadData] ✗ فشل تحميل الدرجات:", e.message);
       return [];
     });
 
@@ -456,7 +456,7 @@ export async function loadDataFromServer() {
       `[loadData] ✓ تم — ${state.allQuizzes.length} امتحان، ${state.allNotes.length} مذكرة، ${state.serverScores.length} نتيجة، ${state.serverLeaderboard.length} في لوحة الشرف`,
     );
   } catch (e) {
-    console.error("[loadData] ✗ فشل تحميل البيانات:", e.message);
+    logger.error("[loadData] ✗ فشل تحميل البيانات:", e.message);
   }
 }
 

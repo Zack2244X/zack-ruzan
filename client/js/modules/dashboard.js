@@ -247,7 +247,7 @@ export async function deleteQuiz(index, renderDashboardFn) {
     if (typeof renderDashboardFn === "function") renderDashboardFn(true);
     showToastMessage("✅ تم حذف الاختبار.", 2000);
   } catch (e) {
-    console.error("[deleteQuiz] ✗", e.message);
+    logger.error("[deleteQuiz] ✗", e.message);
     showAlert("⚠️ فشل حذف الاختبار: " + e.message, "warning");
   }
 }

@@ -662,7 +662,7 @@ router.post(
 
     // التحقق من وجوده ومطابقته للنمط
     if (!deviceId || !DEVICE_ID_REGEX.test(deviceId)) {
-        console.warn(`[Security] Rejected invalid Device ID: ${deviceId ? deviceId.substring(0, 10) + '...' : 'MISSING'}`);
+        logger.warn(`[Security] Rejected invalid Device ID: ${deviceId ? deviceId.substring(0, 10) + '...' : 'MISSING'}`);
         return res.status(400).json({ 
             success: false, 
             error: 'Invalid Device ID format. Must be alphanumeric, 10-50 characters, allowing underscores and hyphens.' 
@@ -877,7 +877,7 @@ router.post("/guest-session", publicAuthStrictLimiter, async (req, res) => {
 
     // التحقق من وجوده ومطابقته للنمط
     if (!deviceId || !DEVICE_ID_REGEX.test(deviceId)) {
-        console.warn(`[Security] Rejected invalid Device ID: ${deviceId ? deviceId.substring(0, 10) + '...' : 'MISSING'}`);
+        logger.warn(`[Security] Rejected invalid Device ID: ${deviceId ? deviceId.substring(0, 10) + '...' : 'MISSING'}`);
         return res.status(400).json({ 
             success: false, 
             error: 'Invalid Device ID format. Must be alphanumeric, 10-50 characters, allowing underscores and hyphens.' 

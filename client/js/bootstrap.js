@@ -23,10 +23,10 @@ import logger from './utils/logger.js';
 
   // safe error handlers (small)
   window.addEventListener("error", (e) => {
-    console.error("❌ خطأ غير متوقع (boot):", e.message, e.filename, e.lineno);
+    logger.error("❌ خطأ غير متوقع (boot):", e.message, e.filename, e.lineno);
   });
   window.addEventListener("unhandledrejection", (e) => {
-    console.error("❌ Promise مرفوض (boot):", e.reason);
+    logger.error("❌ Promise مرفوض (boot):", e.reason);
     e.preventDefault();
   });
 
@@ -127,7 +127,7 @@ import logger from './utils/logger.js';
             window.__lazyCalls.push(call);
           }
         } catch (e) {
-          console.error("Error invoking queued call", call.name, e);
+          logger.error("Error invoking queued call", call.name, e);
         }
       }
       try {
@@ -171,14 +171,14 @@ import logger from './utils/logger.js';
               ? Promise.resolve(mod.startApp())
               : Promise.resolve();
           startPromise
-            .catch((e) => console.error("startApp failed", e))
+            .catch((e) => logger.error("startApp failed", e))
             .finally(() => {
               hideLoadingScreen();
               flushQueue();
             });
         })
         .catch((e) => {
-          console.error("[bootstrap] Both bundle and ESM fallback failed:", e);
+          logger.error("[bootstrap] Both bundle and ESM fallback failed:", e);
           window.__appLoading = false;
           hideLoadingScreen();
         });
@@ -198,7 +198,7 @@ import logger from './utils/logger.js';
                   const res = original.apply(this, a);
                   return res;
                 } catch (err) {
-                  console.error("[LAZY_CALL_ERROR]", name, err);
+                  logger.error("[LAZY_CALL_ERROR]", name, err);
                   throw err;
                 }
               };
@@ -280,7 +280,6 @@ import logger from './utils/logger.js';
       hideLoginScreen();
       showLoadingScreen();
       fetch("/api/auth/me", {
-        credentials: "include",
         credentials: "include",
       })
         .then((res) => {

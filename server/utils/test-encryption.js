@@ -1,12 +1,10 @@
-const logger = require('../utils/logger');
 #!/usr/bin/env node
-
+const logger = require('../utils/logger');
 /**
  * @file Test encryption utilities
  * @description Quick test to verify encryption/decryption works correctly
  * Usage: node server/utils/test-encryption.js
  */
-
 const {
   encrypt,
   decrypt,
@@ -15,10 +13,8 @@ const {
   generateSecureToken,
   hashSHA256,
 } = require("./encryption");
-
 async function runTests() {
   logger.info("🔐 Encryption Utilities Test Suite\n");
-
   // Test 1: Basic encryption/decryption
   logger.info("Test 1: AES-256-GCM Encryption/Decryption");
   const plaintext = "This is a secret message";
@@ -29,7 +25,6 @@ async function runTests() {
   logger.info(`  Decrypted: "${decrypted}"`);
   console.assert(decrypted === plaintext, "❌ Decryption failed!");
   logger.info("  ✅ Passed\n");
-
   // Test 2: Password hashing
   logger.info("Test 2: Password Hashing (scrypt)");
   const password = "MySecurePassword123!";
@@ -43,7 +38,6 @@ async function runTests() {
   console.assert(isValid === true, "❌ Valid password rejected!");
   console.assert(isInvalid === false, "❌ Invalid password accepted!");
   logger.info("  ✅ Passed\n");
-
   // Test 3: Secure token generation
   logger.info("Test 3: Secure Token Generation");
   const token1 = generateSecureToken();
@@ -54,7 +48,6 @@ async function runTests() {
   console.assert(token1.length === 64, "❌ Token length incorrect!");
   console.assert(token1 !== token2, "❌ Tokens not unique!");
   logger.info("  ✅ Passed\n");
-
   // Test 4: SHA-256 hashing
   logger.info("Test 4: SHA-256 Hashing");
   const value = "Some data to hash";
@@ -64,7 +57,6 @@ async function runTests() {
   logger.info(`  Length:  ${hash256.length} characters`);
   console.assert(hash256.length === 64, "❌ SHA-256 hash length incorrect!");
   logger.info("  ✅ Passed\n");
-
   // Test 5: Empty string handling
   logger.info("Test 5: Edge Cases");
   const emptyEncrypted = encrypt("");
@@ -74,12 +66,10 @@ async function runTests() {
   );
   console.assert(emptyDecrypted === "", "❌ Empty string handling failed!");
   logger.info("  ✅ Passed\n");
-
   logger.info("================================================");
   logger.info("✅ All encryption tests passed!");
   logger.info("================================================\n");
 }
-
 runTests().catch((err) => {
   logger.error("❌ Test failed:", err.message);
   process.exit(1);

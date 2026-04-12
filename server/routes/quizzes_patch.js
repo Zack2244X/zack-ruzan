@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const fs = require('fs');
 let code = fs.readFileSync('server/routes/quizzes.js', 'utf8');
 
@@ -40,5 +41,5 @@ if (!code.includes("getCache")) {
         cacheSetLogic
     );
     fs.writeFileSync('server/routes/quizzes.js', code);
-    console.log("Quizzes GET cache patched");
+    logger.info("Quizzes GET cache patched");
 }

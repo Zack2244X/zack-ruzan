@@ -402,13 +402,13 @@ function showGlobalCrashFallback(message) {
 }
 
 const handleGlobalError = (e) => {
-  console.error("❌ خطأ غير متوقع:", e.message, e.filename, e.lineno);
+  logger.error("❌ خطأ غير متوقع:", e.message, e.filename, e.lineno);
   showGlobalCrashFallback(e.message || "تعذر تشغيل التطبيق بشكل صحيح.");
 };
 window.addEventListener("error", handleGlobalError);
 
 const handleGlobalRejection = (e) => {
-  console.error("❌ Promise مرفوض:", e.reason);
+  logger.error("❌ Promise مرفوض:", e.reason);
   const reason =
     typeof e.reason === "string"
       ? e.reason
@@ -685,17 +685,17 @@ async function loadApp() {
             try {
               window.renderSubjectFilters?.();
             } catch (e) {
-              console.error("Sidebar/Filters failed:", e);
+              logger.error("Sidebar/Filters failed:", e);
             }
             try {
               window.renderHistoryTree?.();
             } catch (e) {
-              console.error("History Tree failed:", e);
+              logger.error("History Tree failed:", e);
             }
             try {
               renderDashboard();
             } catch (e) {
-              console.error("Dashboard failed:", e);
+              logger.error("Dashboard failed:", e);
             }
             // Start auto-polling for guest mode too
             startDataPolling(30000);
@@ -716,17 +716,17 @@ async function loadApp() {
         try {
           window.renderSubjectFilters?.();
         } catch (e) {
-          console.error("Sidebar/Filters failed:", e);
+          logger.error("Sidebar/Filters failed:", e);
         }
         try {
           window.renderHistoryTree?.();
         } catch (e) {
-          console.error("History Tree failed:", e);
+          logger.error("History Tree failed:", e);
         }
         try {
           renderDashboard();
         } catch (e) {
-          console.error("Dashboard failed:", e);
+          logger.error("Dashboard failed:", e);
         }
         logger.log("[app] ✓ التطبيق جاهز — البيانات محمّلة من السيرفر");
         window.openPendingQuizIfAny?.();
@@ -888,7 +888,7 @@ Object.assign(window, {
         .then(() => {
           if (typeof window[name] === "function") window[name](...args);
         })
-        .catch((err) => console.error("[admin]", err));
+        .catch((err) => logger.error("[admin]", err));
     };
   });
 })();
@@ -961,7 +961,7 @@ Object.assign(window, {
         .then(() => {
           if (typeof window[name] === "function") window[name](...args);
         })
-        .catch((err) => console.error("[features]", err));
+        .catch((err) => logger.error("[features]", err));
     };
   });
 })();
@@ -975,7 +975,7 @@ const fallbackLoginListener = () => {
       try {
         startGoogleRedirectLogin("student");
       } catch (err) {
-        console.error("❌ Login error:", err);
+        logger.error("❌ Login error:", err);
         logger.warn("Alert:", "خطأ في تسجيل الدخول: " + err.message);
       }
     });

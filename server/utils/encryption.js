@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 /**
  * @file Encryption utility for sensitive data
  * @description Provides AES-256 encryption/decryption for database fields and sensitive data.
@@ -6,7 +7,6 @@
  */
 
 const crypto = require("crypto");
-const logger = require("./logger");
 
 /**
  * Get encryption key from environment or generate a new one.

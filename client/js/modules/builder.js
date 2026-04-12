@@ -346,7 +346,7 @@ export async function saveBuiltQuiz(
     renderEditTree();
     renderDashboard();
   } catch (e) {
-    console.error(`[saveQuiz] ✗ فشل الحفظ على السيرفر:`, e.message);
+    logger.error(`[saveQuiz] ✗ فشل الحفظ على السيرفر:`, e.message);
     showAlert("⚠️ تعذر الحفظ على السيرفر: " + e.message, "warning");
   }
 }
@@ -459,7 +459,7 @@ export async function updateExistingQuiz(
     saveBtn.innerText = "حفظ الامتحان في السجل";
     saveBtn.onclick = null;
   } catch (e) {
-    console.error(`[updateQuiz] ✗ فشل التحديث:`, e.message);
+    logger.error(`[updateQuiz] ✗ فشل التحديث:`, e.message);
     showAlert("⚠️ تعذر التحديث على السيرفر: " + e.message, "warning");
   }
 }
