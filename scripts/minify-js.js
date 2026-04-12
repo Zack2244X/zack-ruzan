@@ -47,7 +47,7 @@ const modFiles = fs
     minify: true,
     bundle: false,
     format: "iife",
-    target: ["es2017"],
+    target: ["es2017"], drop: ["console"],
   });
   console.log("JS   " + path.relative(root, out));
 });
@@ -60,7 +60,7 @@ esbuild.buildSync({
   bundle: true,
   format: "iife",
   globalName: "__app",
-  target: ["es2017"],
+  target: ["es2017"], drop: ["console"],
 });
 const bundleSz = (
   fs.statSync(path.join(jsDir, "app.bundle.min.js")).size / 1024
@@ -73,7 +73,7 @@ esbuild.buildSync({
   minify: true,
   bundle: true,
   format: "iife",
-  target: ["es2017"],
+  target: ["es2017"], drop: ["console"],
 });
 const adminSz = (
   fs.statSync(path.join(jsDir, "app.admin.bundle.min.js")).size / 1024
@@ -86,7 +86,7 @@ esbuild.buildSync({
   minify: true,
   bundle: true,
   format: "iife",
-  target: ["es2017"],
+  target: ["es2017"], drop: ["console"],
 });
 const featuresSz = (
   fs.statSync(path.join(jsDir, "app.features.bundle.min.js")).size / 1024

@@ -1,4 +1,16 @@
-/**
+async function logAccountSession({ userId, email, loginType = "google", ipAddress, macAddress, deviceName, deviceId, userAgent }) {
+  try {
+    await AccountSession.create({
+      userId: userId || null,
+      email: sanitizeText(email, 255).toLowerCase(),
+      loginType: sanitizeText(loginType, 30),
+      ipAddress: sanitizeText(ipAddress, 64),
+      macAddress: sanitizeText(macAddress, 64),
+      deviceName: sanitizeText(deviceName, 120),
+      deviceId: sanitizeText(deviceId, 120),
+      userAgent: sanitizeText(userAgent, 500)
+    });
+  } catch (err) {/**
  * @file Authentication routes — Google OAuth
  * @description Express router handling Google OAuth login/registration, profile completion,
  *   admin creation/promotion, token refresh, and logout with token revocation.
@@ -13,6 +25,9 @@ const router = require("express").Router();
 const { OAuth2Client } = require("google-auth-library");
 const { UniqueConstraintError } = require("sequelize");
 const User = require("../models/User");
+const BlockedDevice = require("../models/BlockedDevice");
+const AccountSession = require("../models/AccountSession");
+const { Op } = require("sequelize");
 const {
   generateToken,
   authenticate,
@@ -227,58 +242,26 @@ function parsePageLimit(query, defaultLimit = 30, maxLimit = 100) {
   return { page, limit, offset };
 }
 
-let accountSessionsColumnsCache = null;
-let blockedDevicesColumnsCache = null;
 
-async function getAccountSessionsColumns() {
-  if (accountSessionsColumnsCache) return accountSessionsColumnsCache;
-  const [rows] = await sequelize.query(`SHOW COLUMNS FROM account_sessions`);
-  accountSessionsColumnsCache = new Set((rows || []).map((r) => r.Field));
-  return accountSessionsColumnsCache;
-}
-
-async function getBlockedDevicesColumns() {
-  if (blockedDevicesColumnsCache) return blockedDevicesColumnsCache;
-  const [rows] = await sequelize.query(`SHOW COLUMNS FROM blocked_devices`);
-  blockedDevicesColumnsCache = new Set((rows || []).map((r) => r.Field));
-  return blockedDevicesColumnsCache;
-}
 
 async function findActiveBlock({ email = "", deviceId = "", ipAddress = "" }) {
   const normalizedEmail = sanitizeText(email, 255).toLowerCase();
   const normalizedDeviceId = sanitizeText(deviceId, 120);
   const normalizedIp = sanitizeText(ipAddress, 64);
 
-  const cols = await getBlockedDevicesColumns();
-  const whereParts = [];
-  const replacements = [];
+  const whereConditions = [];
+  if (normalizedEmail) whereConditions.push({ email: normalizedEmail });
+  if (normalizedDeviceId) whereConditions.push({ deviceId: normalizedDeviceId });
+  if (normalizedIp) whereConditions.push({ ipAddress: normalizedIp });
 
-  if (cols.has("email") && normalizedEmail) {
-    whereParts.push(`email = ?`);
-    replacements.push(normalizedEmail);
-  }
-  if (cols.has("deviceId") && normalizedDeviceId) {
-    whereParts.push(`deviceId = ?`);
-    replacements.push(normalizedDeviceId);
-  }
-  if (cols.has("ipAddress") && normalizedIp) {
-    whereParts.push(`ipAddress = ?`);
-    replacements.push(normalizedIp);
-  }
+  if (whereConditions.length === 0) return null;
 
-  if (whereParts.length === 0) return null;
-
-  const [rows] = await sequelize.query(
-    `SELECT id, reason, email, deviceId, ipAddress
-         FROM blocked_devices
-         WHERE isActive = 1
-           AND (${whereParts.join(" OR ")})
-         ORDER BY id DESC
-         LIMIT 1`,
-    { replacements },
-  );
-
-  return rows && rows.length > 0 ? rows[0] : null;
+  const b = await BlockedDevice.findOne({
+    attributes: ['id', 'reason', 'email', 'deviceId', 'ipAddress'],
+    where: { isActive: true, [Op.or]: whereConditions },
+    order: [['id', 'DESC']]
+  });
+  return b ? b.toJSON() : null;
 }
 
 async function recordAccountSession({
@@ -291,121 +274,20 @@ async function recordAccountSession({
   userAgent = "",
 }) {
   try {
-    const cols = await getAccountSessionsColumns();
-    const normalizedDeviceName = normalizeDeviceName(deviceName, userAgent);
     const normalizedEmail = sanitizeText(email.toLowerCase(), 255) || null;
     const normalizedDeviceId = sanitizeText(deviceId, 120);
     const normalizedIpAddress = sanitizeText(ipAddress, 64);
+    
+    await AccountSession.create({
+      userId: userId || null,
+      email: normalizedEmail,
+      ipAddress: normalizedIpAddress,
+      deviceId: normalizedDeviceId,
+      loginType,
+      deviceName,
+      userAgent: sanitizeText(userAgent, 500)
+    });
 
-    // ✅ FIX: Check for recent duplicate session from same device to prevent duplicates
-    if (
-      userId ||
-      normalizedEmail ||
-      normalizedDeviceId ||
-      normalizedIpAddress
-    ) {
-      const checkClauses = [];
-      const checkReplacements = [];
-
-      if (userId && cols.has("userId")) {
-        checkClauses.push("userId = ?");
-        checkReplacements.push(userId);
-      }
-      if (normalizedDeviceId && cols.has("deviceId")) {
-        checkClauses.push("deviceId = ?");
-        checkReplacements.push(normalizedDeviceId);
-      }
-      if (normalizedIpAddress && cols.has("ipAddress")) {
-        checkClauses.push("ipAddress = ?");
-        checkReplacements.push(normalizedIpAddress);
-      }
-
-      // If we have at least one identifier, check for recent duplicate
-      if (checkClauses.length > 0) {
-        const [existingRows] = await sequelize.query(
-          `SELECT id, createdAt FROM account_sessions
-                     WHERE ${checkClauses.join(" AND ")}
-                     ${cols.has("createdAt") ? "AND createdAt > DATE_SUB(NOW(), INTERVAL 1 HOUR)" : ""}
-                     ORDER BY ${cols.has("createdAt") ? "createdAt DESC, id DESC" : "id DESC"}
-                     LIMIT 1`,
-          { replacements: checkReplacements },
-        );
-
-        // If recent session found, update it instead of creating duplicate
-        if (existingRows && existingRows.length > 0) {
-          const updateClauses = [];
-          const updateValues = [];
-
-          if (cols.has("loginType")) {
-            updateClauses.push("loginType = ?");
-            updateValues.push(sanitizeText(loginType, 30));
-          }
-          if (cols.has("deviceName")) {
-            updateClauses.push("deviceName = ?");
-            updateValues.push(normalizedDeviceName);
-          }
-          if (cols.has("userAgent")) {
-            updateClauses.push("userAgent = ?");
-            updateValues.push(sanitizeText(userAgent, 500));
-          }
-          if (cols.has("updatedAt")) {
-            updateClauses.push("updatedAt = NOW()");
-          }
-
-          if (updateClauses.length > 0) {
-            await sequelize.query(
-              `UPDATE account_sessions
-                             SET ${updateClauses.join(", ")}
-                             WHERE id = ?`,
-              { replacements: [...updateValues, existingRows[0].id] },
-            );
-          }
-
-          return; // ✅ Exit - session updated, not duplicated
-        }
-      }
-    }
-
-    // ✅ No recent duplicate found, create new session record
-    const insertCols = [];
-    const placeholders = [];
-    const replacements = [];
-
-    const pushVal = (colName, value) => {
-      if (!cols.has(colName)) return;
-      insertCols.push(colName);
-      placeholders.push("?");
-      replacements.push(value);
-    };
-
-    pushVal("userId", userId);
-    pushVal("email", normalizedEmail);
-    pushVal("deviceId", normalizedDeviceId);
-    pushVal("loginType", sanitizeText(loginType, 30));
-    pushVal("ipAddress", normalizedIpAddress);
-    pushVal("deviceName", normalizedDeviceName);
-    pushVal("userAgent", sanitizeText(userAgent, 500));
-
-    if (cols.has("createdAt")) {
-      insertCols.push("createdAt");
-      placeholders.push("NOW()");
-    }
-    if (cols.has("updatedAt")) {
-      insertCols.push("updatedAt");
-      placeholders.push("NOW()");
-    }
-
-    if (insertCols.length === 0) return;
-
-    await sequelize.query(
-      `INSERT INTO account_sessions
-                (${insertCols.join(", ")})
-             VALUES (${placeholders.join(", ")})`,
-      {
-        replacements,
-      },
-    );
-  } catch (err) {
     logger.warn("⚠️ تعذر تسجيل account session audit:", { error: err.message });
   }
 }
