@@ -10,6 +10,7 @@
 //   — Sequelize + TiDB —
 // ============================================
 const jwt = require("jsonwebtoken");
+const dbLayer = require("../services/safeQueryLayer");
 const crypto = require("crypto");
 const User = require("../models/User");
 const logger = require("../utils/logger");
@@ -46,15 +47,14 @@ const LOCKOUT_TIME = 30 * 60 * 1000; // 30 minutes
  */
 async function checkBruteForce(ip) {
   try {
-    const sequelize = require("../models/index");
-    const [[record]] = await sequelize.query(
+    const [[record]] = await dbLayer.executeReadOnlyQuery(
       "SELECT `count`, `last_attempt` FROM `login_attempts` WHERE `ip` = ?",
       { replacements: [ip] },
     );
     if (!record) return false;
     if (Date.now() - Number(record.last_attempt) > LOCKOUT_TIME) {
-      sequelize
-        .query("DELETE FROM `login_attempts` WHERE `ip` = ?", {
+      dbLayer.executeWriteQuery("DELETE FROM `login_attempts` WHERE `ip` = ?",
+ {
           replacements: [ip],
         })
         .catch(() => {});
@@ -73,9 +73,8 @@ async function checkBruteForce(ip) {
  */
 async function recordFailedAttempt(ip) {
   try {
-    const sequelize = require("../models/index");
-    await sequelize.query(
-      "INSERT INTO `login_attempts` (`ip`, `count`, `last_attempt`) VALUES (?, 1, ?)" +
+    await dbLayer.executeWriteQuery(
+    "INSERT INTO `login_attempts` (`ip`, `count`, `last_attempt`) VALUES (?, 1, ?)" +
         " ON DUPLICATE KEY UPDATE `count` = `count` + 1, `last_attempt` = ?",
       { replacements: [ip, Date.now(), Date.now()] },
     );
@@ -91,8 +90,8 @@ async function recordFailedAttempt(ip) {
  */
 async function clearFailedAttempts(ip) {
   try {
-    const sequelize = require("../models/index");
-    await sequelize.query("DELETE FROM `login_attempts` WHERE `ip` = ?", {
+    await dbLayer.executeWriteQuery("DELETE FROM `login_attempts` WHERE `ip` = ?",
+ {
       replacements: [ip],
     });
   } catch {
