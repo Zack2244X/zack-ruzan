@@ -97,11 +97,13 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="stylesheet" href="/css/tailwind.min.css?v=43" />
-    <link rel="stylesheet" href="/css/styles.min.css?v=43" />
-    <link rel="stylesheet" href="/css/dark-fixes.min.css?v=3" />
-    <link rel="stylesheet" href="/css/login-extra.min.css?v=3" />
-    <link rel="stylesheet" href="/css/fonts.css?v=4" />
+    <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
+    <link rel="preload" href="/css/styles.min.css?v=44" as="style" />
+    <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
+    <link rel="stylesheet" href="/css/styles.min.css?v=44" />
+    <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
+    <link rel="stylesheet" href="/css/login-extra.min.css?v=44" />
+    <link rel="stylesheet" href="/css/fonts.css?v=44" />
 
     <!-- Fonts are preloaded selectively (Cairo critical weights) and loaded via /css/fonts.css. -->
 
@@ -1258,8 +1260,22 @@
         transition: all 0.5s ease;
       }
     </style>
+  
+    <!-- FOUC Prevention Script -->
+    <script>
+      // Show body immediately when content is ready, preventing FOUC
+      document.addEventListener('DOMContentLoaded', function() {
+        var appBody = document.getElementById('app-body');
+        if(appBody) appBody.classList.remove('hidden');
+      });
+      // Fallback
+      window.addEventListener('load', function() {
+        var appBody = document.getElementById('app-body');
+        if(appBody) appBody.classList.remove('hidden');
+      });
+    </script>
   </head>
-  <body class="p-4 sm:p-8">
+  <body class="p-4 sm:p-8 hidden" id="app-body">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-lg z-50 shadow-xl transition" tabindex="0">
       تخطي إلى المحتوى
     </a>
