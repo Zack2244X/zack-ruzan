@@ -20,7 +20,8 @@
     "audit:server": "npm --prefix server ls --depth=0 && npm --prefix server audit --omit=dev",
     "deps:unused": "depcheck --ignores=@vitest/coverage-v8",
     "size:assets": "node scripts/asset-size-report.js",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "pre-deploy": "npm run test --prefix server || exit 1"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.9",

@@ -654,12 +654,26 @@ router.post(
 
       await clearFailedAttempts(req.ip);
 
-      const userAgent = req.get("user-agent") || "";
-      const ipAddress = getClientIp(req);
-      const deviceId = sanitizeText(
-        req.body?.deviceId || req.get("x-device-id"),
-        120,
-      );
+
+    const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
+
+    // استخراج المعرف من الطلب
+    const { deviceId } = req.body;
+
+    // التحقق من وجوده ومطابقته للنمط
+    if (!deviceId || !DEVICE_ID_REGEX.test(deviceId)) {
+        console.warn(`[Security] Rejected invalid Device ID: ${deviceId ? deviceId.substring(0, 10) + '...' : 'MISSING'}`);
+        return res.status(400).json({ 
+            success: false, 
+            error: 'Invalid Device ID format. Must be alphanumeric, 10-50 characters, allowing underscores and hyphens.' 
+        });
+    }
+
+    const userAgent = req.get("user-agent") || "";
+    const ipAddress = getClientIp(req);
+    // Remove redeclaration since we did destructuring above
+
+
       const deviceName =
         sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
       const normalizedGoogleEmail = sanitizeText(
@@ -856,12 +870,26 @@ router.post(
 // ============================================
 router.post("/guest-session", publicAuthStrictLimiter, async (req, res) => {
   try {
+    const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
+
+    // استخراج المعرف من الطلب
+    const { deviceId } = req.body;
+
+    // التحقق من وجوده ومطابقته للنمط
+    if (!deviceId || !DEVICE_ID_REGEX.test(deviceId)) {
+        console.warn(`[Security] Rejected invalid Device ID: ${deviceId ? deviceId.substring(0, 10) + '...' : 'MISSING'}`);
+        return res.status(400).json({ 
+            success: false, 
+            error: 'Invalid Device ID format. Must be alphanumeric, 10-50 characters, allowing underscores and hyphens.' 
+        });
+    }
+
     const userAgent = req.get("user-agent") || "";
     const ipAddress = getClientIp(req);
-    const deviceId = sanitizeText(
-      req.body?.deviceId || req.get("x-device-id"),
-      120,
-    );
+    // Remove redeclaration since we did destructuring above
+
+    // keep deviceName assignment below as is
+
     const deviceName =
       sanitizeText(req.body?.deviceName, 120) || inferDeviceName(userAgent);
 

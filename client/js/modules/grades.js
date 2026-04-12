@@ -1,3 +1,4 @@
+import { wrapComponent } from '../utils/ui.js';
 import logger from '../utils/logger.js';
 /**
  * @module grades
@@ -24,7 +25,7 @@ export async function openGradesModal() {
 
   // عرض حالة تحميل مؤقتة
   const container = document.getElementById("grades-list-container");
-  container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات من السيرفر...</p></div>`;
+  container.innerHTML = `<div class="text-center text-gray-500 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات من السيرفر...</p></div>`;
 
   // جلب أحدث البيانات من السيرفر
   try {
@@ -68,115 +69,129 @@ export function closeGradesModal() {
 /**
  * رسم قائمة الدرجات بشكل شجري — تجميع المستخدمين وترتيبهم حسب المتوسط
  */
-export function renderGradesList() {
+export async function renderGradesList() {
   logFunctionStatus("renderGradesList", false);
   const container = document.getElementById("grades-list-container");
-  container.innerHTML = "";
+  if (!container) return;
 
-  const sourceScores =
-    state.serverScores && state.serverScores.length > 0
-      ? state.serverScores
-      : state.allUserScores;
-  const validScores = sourceScores.filter(
-    (e) => Number(e.total) > 0 && Number(e.score) >= 0,
-  );
-  if (validScores.length === 0) {
-    container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
-    return;
-  }
+  await wrapComponent(container, async () => {
+    // 1. تجميع البيانات
+    const userMap = {};
+    const sourceScores =
+      state.serverScores?.length > 0 ? state.serverScores : state.allUserScores;
+    sourceScores.forEach((s) => {
+      // إهمال الإجابات التدريبية (إذا لم يتم تجاوزها)
+      if (s.isOfficial === false) return;
 
-  // 1. تجميع البيانات لكل مستخدم
-  const usersData = {};
-  validScores.forEach((entry) => {
-    const userName = entry.userName || "طالب";
-    const score = Number(entry.score) || 0;
-    const total = Number(entry.total) || 0;
-    if (total <= 0) return;
+      const userName = s.userName || "طالب";
+      const userKey = s.userId ? "id:" + s.userId : "name:" + userName;
+      const score = Number(s.score) || 0;
+      const total = Number(s.total) || 1;
+      const date = new Date(s.date || 0);
 
-    if (!usersData[userName]) {
-      usersData[userName] = { scores: [], totalScore: 0, totalMax: 0 };
-    }
-    usersData[userName].scores.push({ ...entry, score, total });
-    usersData[userName].totalScore += score;
-    usersData[userName].totalMax += total;
-  });
+      // استبعاد النتيجة إن كانت صفرية أو الإجمالي 0
+      if (total <= 0 || score <= 0) return;
 
-  // 2. تحويل البيانات لمصفوفة وحساب المتوسط والترتيب
-  const rankedUsers = Object.keys(usersData)
-    .map((name) => {
-      const data = usersData[name];
-      const avgPercent =
-        data.totalMax > 0
-          ? Math.round((data.totalScore / data.totalMax) * 100)
-          : 0;
-
-      let bestEntry = data.scores[0];
-      data.scores.forEach((s) => {
-        const currentP = s.score / s.total;
-        const bestP = bestEntry.score / bestEntry.total;
-        if (currentP > bestP) bestEntry = s;
+      if (!userMap[userKey]) {
+        userMap[userKey] = {
+          name: userName,
+          scores: [],
+          totalScore: 0,
+          totalMax: 0,
+          latestDate: 0,
+        };
+      }
+      userMap[userKey].scores.push({
+        quizTitle: s.quizTitle,
+        score,
+        total,
+        date: date.getTime(),
       });
-
-      return {
-        name,
-        avg: avgPercent,
-        scores: data.scores,
-        takenCount: data.scores.length,
-        bestQuizTitle: bestEntry?.quizTitle || "امتحان",
-        isComplete: data.scores.length === state.allQuizzes.length,
-      };
-    })
-    .filter((u) => u.scores.length > 0)
-    .sort((a, b) => b.avg - a.avg);
-
-  if (rankedUsers.length === 0) {
-    container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
-    return;
-  }
-
-  // 3. عرض الشجرة (Tree View)
-  let gradesHtml = "";
-  rankedUsers.forEach((user, idx) => {
-    const nameBgClass = user.isComplete
-      ? "bg-green-50 hover:bg-green-100 border-green-200"
-      : "bg-gray-50 hover:bg-gray-100 border-gray-200";
-    const completionText = user.isComplete
-      ? `<span class="text-green-600 font-bold text-xs mr-2">(أكمل الكل)</span>`
-      : `<span class="text-gray-400 text-xs mr-2">(${user.takenCount}/${state.allQuizzes.length} امتحانات)</span>`;
-
-    let quizzesHTML = "";
-    const safeName = escapeHtml(user.name);
-    user.scores.forEach((s) => {
-      const isBest = s.quizTitle === user.bestQuizTitle;
-      const itemClass = isBest
-        ? "bg-yellow-50 border-r-4 border-yellow-400 text-yellow-700"
-        : "bg-white border border-gray-100";
-
-      quizzesHTML += `
-                <div class="flex justify-between items-center p-2 rounded-lg ${itemClass} mb-1 text-sm shadow-sm">
-                    <span class="font-medium truncate">${escapeHtml(s.quizTitle)} ${isBest ? '<i class="fas fa-crown text-yellow-500 text-xs mr-1"></i>' : ""}</span>
-                    <span class="font-bold">${s.score}/${s.total}</span>
-                </div>
-            `;
+      userMap[userKey].totalScore += score;
+      userMap[userKey].totalMax += total;
+      userMap[userKey].latestDate = Math.max(
+        userMap[userKey].latestDate,
+        date.getTime(),
+      );
     });
 
-    gradesHtml += `
-            <div class="mb-2">
-                <button onclick="toggleTreeNode('content-user-${idx}', this)" class="flex items-center justify-between w-full text-right p-3 rounded-xl border ${nameBgClass} transition group">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-chevron-down text-gray-400 text-xs transition-transform duration-300 transform rotate-180"></i>
-                        <span class="font-bold text-gray-800 group-hover:text-blue-600 transition">${safeName}</span>
-                        ${completionText}
-                    </div>
-                    <span class="font-bold text-blue-600 text-lg">${user.avg}%</span>
-                </button>
-                <div id="content-user-${idx}" class="pr-5 mt-1 space-y-1 border-r-2 border-blue-100 hidden">
-                    ${quizzesHTML}
-                </div>
-            </div>
-        `;
+    // 2. ترتيب الطلاب وحساب التميز
+    const rankedUsers = Object.values(userMap)
+      .map((data) => {
+        const avgPercent = (data.totalScore / data.totalMax) * 100;
+        let bestEntry = null;
+        let maxPercent = -1;
+        data.scores.forEach((sc) => {
+          const p = (sc.score / sc.total) * 100;
+          if (p > maxPercent) {
+            maxPercent = p;
+            bestEntry = sc;
+          }
+        });
+        const name = data.name;
+        return {
+          name,
+          avg: avgPercent.toFixed(1),
+          scores: data.scores,
+          takenCount: data.scores.length,
+          bestQuizTitle: bestEntry?.quizTitle || "امتحان",
+          isComplete: data.scores.length === state.allQuizzes.length,
+        };
+      })
+      .filter((u) => u.scores.length > 0)
+      .sort((a, b) => b.avg - a.avg);
+
+    if (rankedUsers.length === 0) {
+      container.innerHTML = `<div class="text-center text-gray-500 py-16"><i class="fas fa-folder-open text-4xl mb-4"></i><br>لا توجد نتائج مسجلة بعد.</div>`;
+      return;
+    }
+
+    // 3. عرض الشجرة (Tree View)
+    let gradesHtml = "";
+    rankedUsers.forEach((user, idx) => {
+      const nameBgClass = user.isComplete
+        ? "bg-green-50 hover:bg-green-100 border-green-200"
+        : "bg-gray-50 hover:bg-gray-100 border-gray-200";
+      const completionText = user.isComplete
+        ? `<span class="text-green-600 font-bold text-xs mr-2">(أكمل الكل)</span>`
+        : `<span class="text-gray-500 text-xs mr-2">(${user.takenCount}/${state.allQuizzes.length} امتحانات)</span>`;
+
+      let quizzesHTML = "";
+      const safeName = escapeHtml(user.name);
+      user.scores.forEach((s) => {
+        const isBest = s.quizTitle === user.bestQuizTitle;
+        const itemClass = isBest
+          ? "bg-yellow-50 border-r-4 border-yellow-400 text-yellow-700"
+          : "bg-white border border-gray-100";
+
+        quizzesHTML += `
+                  <div class="flex justify-between items-center p-2 rounded-lg ${itemClass} mb-1 text-sm shadow-sm">
+                      <span class="font-medium truncate">${escapeHtml(s.quizTitle)} ${
+          isBest ? '<i class="fas fa-crown text-yellow-600 text-xs mr-1"></i>' : ""
+        }</span>
+                      <span class="font-bold">${s.score}/${s.total}</span>
+                  </div>
+              `;
+      });
+
+      gradesHtml += `
+              <div class="mb-2">
+                  <button onclick="toggleTreeNode('content-user-${idx}', this)" class="flex items-center justify-between w-full text-right p-3 rounded-xl border ${nameBgClass} transition group">
+                      <div class="flex items-center gap-2">
+                          <i class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-300 transform rotate-180"></i>
+                          <span class="font-bold text-gray-800 group-hover:text-blue-600 transition">${safeName}</span>
+                          ${completionText}
+                      </div>
+                      <span class="font-bold text-blue-600 text-lg">${user.avg}%</span>
+                  </button>
+                  <div id="content-user-${idx}" class="pr-5 mt-1 space-y-1 border-r-2 border-blue-100 hidden">
+                      ${quizzesHTML}
+                  </div>
+              </div>
+          `;
+    });
+    container.innerHTML = gradesHtml;
   });
-  container.innerHTML = gradesHtml;
 }
 
 /**
@@ -190,7 +205,7 @@ export async function openStatsModal() {
   document.getElementById("stats-modal").classList.remove("hidden");
 
   const container = document.getElementById("stats-list-container");
-  container.innerHTML = `<div class="text-center text-gray-400 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات من السيرفر...</p></div>`;
+  container.innerHTML = `<div class="text-center text-gray-500 py-16"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p class="font-medium">جاري تحميل البيانات من السيرفر...</p></div>`;
 
   try {
     const [freshScores, freshLeaderboard] = await Promise.all([
@@ -320,10 +335,10 @@ export function renderStatsContent() {
 
       const repeatBadge =
         idx > 0 && item.val === list[idx - 1].val
-          ? '<span class="text-xs text-gray-400 mr-1">(مكرر)</span>'
+          ? '<span class="text-xs text-gray-500 mr-1">(مكرر)</span>'
           : "";
       const rankColors = [
-        "text-yellow-500",
+        "text-yellow-600",
         "text-gray-500",
         "text-orange-500",
       ];
@@ -331,7 +346,7 @@ export function renderStatsContent() {
       html += `
                 <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                     <div class="flex items-center gap-2">
-                        <span class="font-bold ${rankColors[rank - 1] || "text-gray-400"}">#${rank}</span>
+                        <span class="font-bold ${rankColors[rank - 1] || "text-gray-500"}">#${rank}</span>
                         <span class="font-medium text-gray-700">${escapeHtml(item.name)}</span>
                         ${repeatBadge}
                     </div>

@@ -56,6 +56,8 @@ export function showAlert(message, type) {
   const duration = variant === "error" ? 4000 : 2800;
   const toast = document.createElement("div");
   toast.className = `toast-float toast-${variant}`;
+  toast.setAttribute("role", variant === "error" ? "alert" : "status");
+  toast.setAttribute("aria-live", "polite");
   toast.style.position = "relative";
   toast.textContent = "";
   const msgNode = document.createTextNode(message);
@@ -144,6 +146,8 @@ export function showToastMessage(text, variant = "success") {
   if (!text) return;
   const toast = document.createElement("div");
   toast.className = `toast-float toast-${variant}`;
+  toast.setAttribute("role", variant === "error" ? "alert" : "status");
+  toast.setAttribute("aria-live", "polite");
   toast.innerText = text;
   document.body.appendChild(toast);
   requestAnimationFrame(() => {

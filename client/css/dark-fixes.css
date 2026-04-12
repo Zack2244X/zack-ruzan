@@ -251,7 +251,7 @@ body.after-login .mobile-after-login {
 
 /* Make sure the card border radius shadow doesn't get clipped */
 .dark .login-card * {
-  z-index: 2;
+  z-index: var(--z-normal);
 }
 
 /* Ensure Font Awesome icons keep their font-family when parent rules use !important */

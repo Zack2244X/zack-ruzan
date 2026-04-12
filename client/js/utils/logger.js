@@ -1,4 +1,3 @@
-import logger from './utils/logger.js';
 /**
  * @file logger.js
  * @description Wrapper around console methods to prevent debug info leakage in production.

@@ -11,6 +11,7 @@ if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'p
  * @description نقطة الدخول الرئيسية — يجمع كل الوحدات ويربطها بالـ DOM والـ window
  */
 "use strict";
+import { setupFocusManagement } from "./utils/focusManager.js";
 
 // ✅ === Datadog RUM Monitoring (non-blocking) ===
 function initDatadogRumDeferred() {
@@ -377,7 +378,7 @@ function showGlobalCrashFallback(message) {
   panel.style.cssText = [
     "position:fixed",
     "inset:0",
-    "z-index:130",
+    "z-index:var(--z-overlay)",
     "display:flex",
     "align-items:center",
     "justify-content:center",
@@ -990,6 +991,7 @@ if (document.readyState === "loading") {
 //  نقطة البداية
 // ============================================
 export async function startApp() {
+  setupFocusManagement();
   logFunctionStatus("window.onload", false);
 
   // تهيئة الثيم

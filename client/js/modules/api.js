@@ -5,19 +5,24 @@ import { logFunctionStatus } from "./helpers.js";
 
 const DEVICE_ID_KEY = "client-device-id";
 
+const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
 export function getClientDeviceId() {
+  function generateNewId() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return `dev-${crypto.randomUUID()}`;
+    }
+    return `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+  
   try {
     let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (id && id.length >= 12) return id;
-    if (typeof crypto !== "undefined" && crypto.randomUUID) {
-      id = `dev-${crypto.randomUUID()}`;
-    } else {
-      id = `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    if (!id || typeof id !== "string" || !DEVICE_ID_REGEX.test(id)) {
+      id = generateNewId();
+      localStorage.setItem(DEVICE_ID_KEY, id);
     }
-    localStorage.setItem(DEVICE_ID_KEY, id);
     return id;
   } catch {
-    return `dev-fallback-${Math.random().toString(36).slice(2, 12)}`;
+    return `dev-fb-${Math.random().toString(36).slice(2, 12)}`;
   }
 }
 

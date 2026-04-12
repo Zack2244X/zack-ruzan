@@ -1,4 +1,4 @@
-import logger from './utils/logger.js';
+import logger from "./logger.js";
 /**
  * Sanitizes an HTML string to allow only specific safe formatting tags.
  * Preserves text content and <b>, <i>, <u>, <br> tags.

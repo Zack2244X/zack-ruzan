@@ -1,3 +1,4 @@
+import { wrapComponent } from '../utils/ui.js';
 import logger from '../utils/logger.js';
 // زر تحديث يدوي للامتحانات
 export function addManualRefreshButton() {
@@ -183,7 +184,7 @@ function buildAttemptsHtml(attempts, willBePractice) {
   if (attempts === null) {
     return `
             <div class="mt-3 pt-3 border-t border-gray-100 relative z-10">
-                <div class="flex items-center gap-2 text-xs text-gray-400 italic">
+                <div class="flex items-center gap-2 text-xs text-gray-500 italic">
                     <i class="fas fa-exclamation-circle text-amber-400 shrink-0"></i>
                     <span>لم يتمكن من جلب عدد المحاولات</span>
                 </div>
@@ -192,7 +193,7 @@ function buildAttemptsHtml(attempts, willBePractice) {
 
   const attemptsLabel =
     attempts === 0
-      ? `<span class="text-gray-400 font-semibold">لم تحاول بعد</span>`
+      ? `<span class="text-gray-500 font-semibold">لم تحاول بعد</span>`
       : `<span class="font-black text-blue-600 text-sm">${attempts}</span>`;
 
   const practiceWarning = willBePractice
@@ -258,7 +259,7 @@ export async function renderDashboard(forceRefresh = false) {
   if (!state.dataLoaded) {
     logger.log("[dashboard] ⏳ البيانات لم تُحمّل بعد...");
     const spinner = `
-            <div class="col-span-full py-12 text-center text-gray-400">
+            <div class="col-span-full py-12 text-center text-gray-500">
                 <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
                 <p class="font-medium">جاري تحميل البيانات...</p>
             </div>`;
@@ -298,7 +299,7 @@ export async function renderDashboard(forceRefresh = false) {
   if (latestExams.length === 0) {
     latestExamsGrid.innerHTML = `
         <div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed
-                    border-gray-200 text-center text-gray-400 font-medium">
+                    border-gray-200 text-center text-gray-500 font-medium">
             لا توجد امتحانات مضافة حتى الآن.
         </div>`;
   } else {
@@ -391,7 +392,7 @@ export async function renderDashboard(forceRefresh = false) {
   if (latestNotes.length === 0) {
     latestNotesGrid.innerHTML = `
             <div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed
-                        border-gray-200 text-center text-gray-400 font-medium">
+                        border-gray-200 text-center text-gray-500 font-medium">
                 لا توجد مذكرات أو ملفات مضافة حتى الآن.
             </div>`;
   } else {
@@ -446,7 +447,7 @@ export async function renderDashboard(forceRefresh = false) {
                                 relative z-10 mt-auto">
                         <span class="text-xs bg-orange-50 text-orange-800 px-2.5 py-1.5 rounded-md
                                      font-bold truncate max-w-[150px]">${safeSubject}</span>
-                        <span class="text-xs text-gray-400 font-medium flex items-center gap-1">
+                        <span class="text-xs text-gray-500 font-medium flex items-center gap-1">
                             <i class="fas fa-link"></i>
                             ${escapeHtml((config.type || "pdf").toUpperCase())}
                         </span>
@@ -460,6 +461,16 @@ export async function renderDashboard(forceRefresh = false) {
   //  3. لوحة الشرف — أعلى 3
   // ─────────────────────────────────────────────
   const leaderboardList = document.getElementById("leaderboard-list");
+  if (leaderboardList) {
+    await wrapComponent(leaderboardList, async () => {
+      // Let's pretend to have an error simulation check if we type something like state.simulateError === true
+      // Here is the normal leaderboard logic:
+
+  if (leaderboardList) {
+    await wrapComponent(leaderboardList, async () => {
+      // Let's pretend to have an error simulation check if we type something like state.simulateError === true
+      // Here is the normal leaderboard logic:
+
   if (!leaderboardList) {
     logger.warn("[dashboard] leaderboard-list element not found");
     return;
@@ -523,7 +534,7 @@ export async function renderDashboard(forceRefresh = false) {
 
   if (ranked.length === 0) {
     leaderboardList.innerHTML = `
-            <div class="text-center text-gray-400 py-10 bg-gray-50 rounded-2xl">
+            <div class="text-center text-gray-500 py-10 bg-gray-50 rounded-2xl">
                 لا توجد نتائج مسجلة بعد.
             </div>`;
   } else {
@@ -554,6 +565,10 @@ export async function renderDashboard(forceRefresh = false) {
                 </div>`;
     });
     leaderboardList.innerHTML = lbHtml;
+  }
+    });
+  }
+    });
   }
 
   logger.log(

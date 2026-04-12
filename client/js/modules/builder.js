@@ -163,7 +163,7 @@ export function renderBuilderQuestion() {
     div.appendChild(textInput);
     
     const btn = document.createElement("button");
-    btn.className = "w-10 h-10 flex items-center justify-center bg-gray-100 text-gray-400 rounded-lg hover:bg-red-100 hover:text-red-500 transition";
+    btn.className = "w-10 h-10 flex items-center justify-center bg-gray-100 text-gray-500 rounded-lg hover:bg-red-100 hover:text-red-500 transition";
     btn.onclick = () => window.removeBuilderOption(idx);
     
     const icon = document.createElement("i");

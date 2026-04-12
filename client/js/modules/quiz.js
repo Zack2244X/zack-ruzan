@@ -1,3 +1,4 @@
+import { wrapComponent } from '../utils/ui.js';
 import logger from '../utils/logger.js';
 function getClientDeviceId() {
   let id = localStorage.getItem("device_id_progress");
@@ -540,6 +541,9 @@ export function initQuizDOM() {
  * @param {number} index — فهرس الاختبار في allQuizzes
  */
 export async function playQuiz(index) {
+  const quizContainer = document.getElementById("quiz-container");
+  wrapComponent(quizContainer, async () => {
+    if (window.location.search.includes("simulateQuizError")) throw new Error("محاكاة فشل في جلب بيانات الاختبار!");
   logFunctionStatus("playQuiz", false);
 
   // 1. التحقق من صحة البيانات
@@ -649,6 +653,7 @@ export async function playQuiz(index) {
 
   // 8. بدء الاختبار
   initializeQuiz();
+  });
 }
 
 // =============================================

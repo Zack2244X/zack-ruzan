@@ -6,6 +6,43 @@ import logger from '../utils/logger.js';
 import state from "./state.js";
 import { showAlert, logFunctionStatus } from "./helpers.js";
 
+/**
+ * تقوم بفك تشفير توكن JWT بأمان مع معالجة جميع الأخطاء المحتملة
+ * @param {string} token - سلسلة التوكن
+ * @returns {Object|null} - بيانات المستخدم إذا كانت صالحة، أو null في حال الفشل
+ */
+function safeParseToken(token) {
+    // 1. فحص أولي للنوع والقيمة
+    if (!token || typeof token !== 'string') {
+        console.warn('[Auth] Token is missing or not a string');
+        return null;
+    }
+
+    try {
+        let payloadPart = token;
+        
+        // 2. إذا كان التوكن بصيغة JWT (three parts)، استخرج الجزء الأوسط فقط
+        if (token.split('.').length === 3) {
+            payloadPart = token.split('.')[1];
+        }
+
+        // 3. محاولة فك التشفير (قد تفشل إذا كانت السلسلة غير مشفرة بشكل صحيح)
+        const decodedString = atob(payloadPart);
+
+        // 4. محاولة تحويل النص المفكك إلى JSON
+        try {
+            const payload = JSON.parse(decodedString);
+            return payload; // نجاح
+        } catch (jsonError) {
+            console.warn('[Auth] Invalid JSON structure in token payload:', jsonError.message);
+            return null;
+        }
+    } catch (decodeError) {
+        // 5. التعامل مع أخطاء atob (مثل الأحرف غير الصالحة)
+        console.warn('[Auth] Failed to base64 decode token:', decodeError.message);
+        return null;
+    }
+}
 
 // -------------------------------------------------------------
 // Lifecycle Management: Event Listeners Cleanup

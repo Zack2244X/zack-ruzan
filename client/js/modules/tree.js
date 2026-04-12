@@ -215,7 +215,7 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
       const isActive = sub === state.currentSubjectFilter;
       const activeClasses = isActive
         ? "bg-blue-600 text-white shadow-md border-blue-500"
-        : "bg-slate-700/40 text-gray-300 border-slate-600/30 backdrop-blur-md hover:border-slate-500/50 hover:text-gray-200";
+        : "bg-slate-700/40 text-gray-500 border-slate-600/30 backdrop-blur-md hover:border-slate-500/50 hover:text-gray-200";
 
       let adminTools = "";
       if (state.isAdmin && sub !== "الكل") {
@@ -391,8 +391,8 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
       html += `
                 <div id="month-${monthId}" class="mb-2">
                     <button data-tree-action="toggle-node" data-tree-value="content-month-${monthId}" aria-expanded="false" aria-controls="content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
-                        <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
-                        <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
+                        <span><i class="bi bi-folder2-open text-yellow-600 ml-2"></i> ${monthName}</span>
+                        <i class="bi bi-chevron-down text-gray-500 text-xs transition-transform duration-300 transform"></i>
                     </button>
                     <div id="content-month-${monthId}" class="pr-5 mt-1 space-y-3 border-r-2 border-${themeColor}-100 hidden">
             `;
@@ -542,8 +542,8 @@ export function renderEditTree(loadQuizIntoBuilderFn, loadNoteIntoBuilderFn) {
       html += `
                 <div id="edit-month-${monthId}" class="mb-2">
                     <button data-tree-action="toggle-node" data-tree-value="edit-content-month-${monthId}" aria-expanded="false" aria-controls="edit-content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
-                        <span><i class="bi bi-folder2-open text-yellow-500 ml-2"></i> ${monthName}</span>
-                        <i class="bi bi-chevron-down text-gray-400 text-xs transition-transform duration-300 transform"></i>
+                        <span><i class="bi bi-folder2-open text-yellow-600 ml-2"></i> ${monthName}</span>
+                        <i class="bi bi-chevron-down text-gray-500 text-xs transition-transform duration-300 transform"></i>
                     </button>
                     <div id="edit-content-month-${monthId}" class="pr-5 mt-1 space-y-2 border-r-2 border-${themeColor}-100 hidden">
             `;

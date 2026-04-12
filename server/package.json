@@ -13,7 +13,9 @@
     "test": "jest --forceExit --detectOpenHandles --coverage",
     "test:security": "jest --forceExit --detectOpenHandles rateLimit.auth.test.js frontend.safety.test.js sql.safety.test.js",
     "test:sql-safety": "jest --forceExit --detectOpenHandles __tests__/sql.safety.test.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "pre-deploy": "npm run test:security && npm run test:sql-safety",
+    "deploy": "echo 'Deploying...' && ./scripts/local_setup_deploy.sh"
   },
   "dependencies": {
     "compression": "^1.8.1",

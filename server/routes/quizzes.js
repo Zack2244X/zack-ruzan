@@ -49,6 +49,15 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
+    
+    const isStudent = req.user.role === "student";
+    const cacheKey = `quizzes:${isStudent}:${subject}:${active}:${page}:${limit}`;
+    
+    const cachedResponse = getCache(cacheKey);
+    if (cachedResponse) {
+        return res.json(cachedResponse);
+    }
+
     const where = {};
 
     if (req.user.role === "student") {
