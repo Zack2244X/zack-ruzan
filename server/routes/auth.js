@@ -810,12 +810,6 @@ router.post(
       setTokenCookie(res, token);
       setCsrfCookie(res);
 
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
       res.status(201).json({
         message: "تم التسجيل بنجاح! يرجى إكمال اسمك.",
         isNew: true,
@@ -1767,12 +1761,6 @@ router.post(
       );
 
       // Target must log in themselves to get admin token
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
       res.status(201).json({
         message:
           "تم إنشاء حساب المعلم الجديد بنجاح! يجب أن يسجل دخول لتفعيل الحساب.",
@@ -1811,6 +1799,11 @@ router.post("/refresh", authenticate, async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: "المستخدم غير موجود." });
     }
+    
+    // Token Refresh Rotation: أبطل القديم بإصدار رقم إصدار جديد
+    user.tokenVersion += 1;
+    await user.save();
+
     const newToken = generateToken(
       user.id,
       user.role,

@@ -161,10 +161,10 @@ const verifyCsrf = (req, res, next) => {
  * @type {Object}
  */
 const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  httpOnly: true, // لمنع وصول JavaScript للكوكي
+  secure: true, // للتشفير عبر HTTPS فقط
+  sameSite: "strict", // لمنع هجمات CSRF
+  maxAge: 2 * 60 * 60 * 1000, // 2 hours (ليس أبدياً)
   path: "/",
 };
 
