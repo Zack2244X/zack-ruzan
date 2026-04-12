@@ -10,7 +10,12 @@ async function logAccountSession({ userId, email, loginType = "google", ipAddres
       deviceId: sanitizeText(deviceId, 120),
       userAgent: sanitizeText(userAgent, 500)
     });
-  } catch (err) {/**
+  } catch (err) {
+    logger.error("Error logging account session", err);
+  }
+}
+
+/**
  * @file Authentication routes — Google OAuth
  * @description Express router handling Google OAuth login/registration, profile completion,
  *   admin creation/promotion, token refresh, and logout with token revocation.
@@ -24,6 +29,7 @@ async function logAccountSession({ userId, email, loginType = "google", ipAddres
 const router = require("express").Router();
 const { OAuth2Client } = require("google-auth-library");
 const { UniqueConstraintError } = require("sequelize");
+const dbLayer = require("../services/safeQueryLayer");
 const User = require("../models/User");
 const BlockedDevice = require("../models/BlockedDevice");
 const AccountSession = require("../models/AccountSession");
@@ -287,7 +293,7 @@ async function recordAccountSession({
       deviceName,
       userAgent: sanitizeText(userAgent, 500)
     });
-
+  } catch (err) {
     logger.warn("⚠️ تعذر تسجيل account session audit:", { error: err.message });
   }
 }
@@ -323,7 +329,7 @@ async function touchAccountSessionIfNeeded(req, user, loginType = "activity") {
       replacements.push(email);
     }
 
-    const [rows] = await sequelize.query(
+    const [rows] = await dbLayer.executeReadOnlyQuery(
       `SELECT id, ${cols.has("createdAt") ? "createdAt" : "NULL AS createdAt"}
              FROM account_sessions
              WHERE ${uniqueClauses.join(" AND ")}
@@ -379,7 +385,7 @@ async function releaseBlocksForSession({
 
   if (whereParts.length === 0) return 0;
 
-  await sequelize.query(
+  await dbLayer.executeWriteQuery(
     `UPDATE blocked_devices
          SET isActive = 0, updatedAt = NOW(), reason = CONCAT(COALESCE(reason, ''), ' | auto-unblocked by admin login')
          WHERE isActive = 1
@@ -387,7 +393,7 @@ async function releaseBlocksForSession({
     { replacements },
   );
 
-  const [countRows] = await sequelize.query(
+  const [countRows] = await dbLayer.executeReadOnlyQuery(
     `SELECT COUNT(*) AS c
          FROM blocked_devices
          WHERE isActive = 0
@@ -428,7 +434,7 @@ async function targetHasAdminHistory({
   if (targetFilters.length === 0) return false;
 
   if (cols.has("userId")) {
-    const [rowsByUserId] = await sequelize.query(
+    const [rowsByUserId] = await dbLayer.executeReadOnlyQuery(
       `SELECT 1
              FROM account_sessions s
              JOIN users u ON u.id = s.userId
@@ -442,7 +448,7 @@ async function targetHasAdminHistory({
   }
 
   if (cols.has("email")) {
-    const [rowsByEmail] = await sequelize.query(
+    const [rowsByEmail] = await dbLayer.executeReadOnlyQuery(
       `SELECT 1
              FROM account_sessions s
              JOIN users u ON u.email = s.email
@@ -833,7 +839,7 @@ router.get(
         : limit;
       const usersSliceOffset = shouldLoadLargeSlice ? 0 : offset;
 
-      const [accountsOnlyRows] = await sequelize.query(
+      const [accountsOnlyRows] = await dbLayer.executeReadOnlyQuery(
         `SELECT id, fname, lname, email, role, createdAt
              FROM users
              WHERE ${usersWhereParts.join(" AND ")}
@@ -847,7 +853,7 @@ router.get(
         },
       );
 
-      const [usersCountRows] = await sequelize.query(
+      const [usersCountRows] = await dbLayer.executeReadOnlyQuery(
         `SELECT COUNT(*) AS c
              FROM users
              WHERE ${usersWhereParts.join(" AND ")}`,
@@ -869,7 +875,7 @@ router.get(
       // Try to enrich with account_sessions data. If schema differs in production,
       // keep serving users list instead of failing with 500.
       try {
-        const [sessionColumnsRows] = await sequelize.query(
+        const [sessionColumnsRows] = await dbLayer.executeReadOnlyQuery(
           `SHOW COLUMNS FROM account_sessions`,
         );
         const sessionColumns = new Set(
@@ -902,7 +908,7 @@ router.get(
             hasCreatedAtCol ? "createdAt AS lastSeenAt" : "NULL AS lastSeenAt",
           ].join(",\n                            ");
 
-          const [sessionRows] = await sequelize.query(
+          const [sessionRows] = await dbLayer.executeReadOnlyQuery(
             `SELECT
                             ${sessionSelectFields}
                      FROM account_sessions
@@ -1003,7 +1009,7 @@ router.get(
               : limit;
             const guestSliceOffset = shouldLoadLargeSlice ? 0 : offset;
 
-            const [guestRows] = await sequelize.query(
+            const [guestRows] = await dbLayer.executeReadOnlyQuery(
               `SELECT
                             id,
                             ${hasIpCol ? "ipAddress" : "'' AS ipAddress"},
@@ -1023,7 +1029,7 @@ router.get(
             );
             guestSessions = guestRows || [];
 
-            const [guestCountRows] = await sequelize.query(
+            const [guestCountRows] = await dbLayer.executeReadOnlyQuery(
               `SELECT COUNT(*) AS c
                          FROM account_sessions
                          WHERE ${guestWhereParts.join(" AND ")}`,
@@ -1145,8 +1151,8 @@ router.delete(
           ? `AND userId IS NULL`
           : "";
 
-      const [deleteResult] = await sequelize.query(
-        `DELETE FROM account_sessions
+      const [deleteResult] = await dbLayer.executeWriteQuery(
+    `DELETE FROM account_sessions
              WHERE id = ?
              ${extraFilter}`,
         { replacements: [sessionId] },
@@ -1279,7 +1285,7 @@ router.post(
       }
 
       if (dedupeClauses.length > 0) {
-        const [existingRows] = await sequelize.query(
+        const [existingRows] = await dbLayer.executeReadOnlyQuery(
           `SELECT id FROM blocked_devices
                  WHERE isActive = 1 AND (${dedupeClauses.join(" OR ")})
                  ORDER BY id DESC
@@ -1308,8 +1314,8 @@ router.post(
           }
 
           if (updateFields.length > 0) {
-            await sequelize.query(
-              `UPDATE blocked_devices SET ${updateFields.join(", ")} WHERE id = ?`,
+            await dbLayer.executeWriteQuery(
+    `UPDATE blocked_devices SET ${updateFields.join(", ")} WHERE id = ?`,
               { replacements: updateReplacements.concat(existingId) },
             );
           }
@@ -1351,7 +1357,7 @@ router.post(
         placeholders.push("NOW()");
       }
 
-      await sequelize.query(
+      await dbLayer.executeReadOnlyQuery(
         `INSERT INTO blocked_devices
                 (${insertCols.join(", ")})
              VALUES (${placeholders.join(", ")})`,
@@ -1384,7 +1390,7 @@ router.get(
       const { page, limit, offset } = parsePageLimit(req.query, 24, 100);
       const cols = await getBlockedDevicesColumns();
       const emailSelect = cols.has("email") ? "email" : "'' AS email";
-      const [rowsRaw] = await sequelize.query(
+      const [rowsRaw] = await dbLayer.executeReadOnlyQuery(
         `SELECT id, ${emailSelect}, deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt
              FROM blocked_devices
              WHERE isActive = 1
@@ -1444,8 +1450,8 @@ router.delete(
         return res.status(400).json({ error: "معرّف الحظر غير صالح." });
       }
 
-      const [updateResult] = await sequelize.query(
-        `UPDATE blocked_devices
+      const [updateResult] = await dbLayer.executeWriteQuery(
+    `UPDATE blocked_devices
              SET isActive = 0, updatedAt = NOW()
              WHERE id = ?`,
         { replacements: [blockId] },

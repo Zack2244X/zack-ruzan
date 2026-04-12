@@ -786,7 +786,7 @@ app.use("/api/attempts", attemptsRoutes);
 app.use("/api/notes", noteRoutes);
 
 // --- SPA Fallback ---
-app.get("*", (req, res, next) => {
+app.get(/(.*)/, (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   // HTTP Link preload headers — browser starts fetching LCP asset
   // from the very first byte of the response, before HTML is parsed.
