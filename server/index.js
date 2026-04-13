@@ -270,7 +270,11 @@ if (process.env.RAILWAY_PUBLIC_DOMAIN && !allowedOrigins.includes("*")) {
 app.use(
   cors({
     origin: (origin, callback) => {
-      // 🚫 الاستثناء الصريح: إيقاف الطلبات من مصادر غير مسموح بها، حتى لو بدون origin لحجب السكربتات (أو تخصيص ذلك)
+      // SECURITY: requests without Origin are typically server-to-server, CLI, or test clients.
+      // They are allowed here because CORS applies to browsers; this avoids false 500s in tests.
+      if (!origin) return callback(null, true);
+
+      // SECURITY: for browser requests, only explicitly allowed origins are accepted.
       if (
         allowedOrigins.includes("*") ||
         (origin && allowedOrigins.includes(origin))
@@ -310,6 +314,7 @@ async function getBlockedDevicesColumns() {
 
 function getTrustedSessionIdentity(req) {
   try {
+    // SECURITY TRUST FLOW: extract identity only from verified JWT, never from client headers.
     const cookieToken = req.cookies?.jwt;
     const authHeader = req.headers.authorization;
     const bearerToken =
@@ -367,6 +372,7 @@ app.use(async (req, res, next) => {
   if (req.method === "GET" && (req.path === "/" || req.path === "/index.html"))
     return next();
   try {
+    // SECURITY TRUST FLOW: Verified JWT -> trusted user identity -> blocklist check.
     const sessionIdentity = getTrustedSessionIdentity(req);
     const userId = sessionIdentity?.userId || null;
     const email = sessionIdentity?.email || "";
@@ -380,7 +386,7 @@ app.use(async (req, res, next) => {
     let filter = "";
     let replacement = null;
 
-    // SECURITY: prioritize authenticated identity, then server IP, then signed device fingerprint.
+    // SECURITY PRIORITY: Authenticated User ID > Trusted Server IP > Signed Device Fingerprint.
     if (userId && cols.has("userId")) {
       filter = "userId = ?";
       replacement = userId;

@@ -49,7 +49,7 @@ function handleInternalError(res, error, context) {
     dbMessage: error.original?.message || error.parent?.message || null,
   });
   return res.status(500).json({
-    error: "حدث خطأ داخلي في الخادم",
+    error: "Internal Server Error",
     incidentId,
   });
 }
