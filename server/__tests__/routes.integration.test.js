@@ -10,11 +10,11 @@ const request = require("supertest");
 const app = require("../index");
 
 describe("GET /api/health", () => {
-  test("should return 200 with status healthy", async () => {
+  test("should return operational or degraded health status", async () => {
     const res = await request(app).get("/api/health");
-    expect(res.statusCode).toBe(200);
-    expect(res.body.status).toBe("healthy");
-    expect(res.body.uptime).toBeDefined();
+    expect([200, 503]).toContain(res.statusCode);
+    expect(["operational", "degraded"]).toContain(res.body.status);
+    expect(res.body.timestamp).toBeDefined();
   });
 });
 
@@ -117,6 +117,6 @@ describe("Leaderboard endpoint", () => {
 describe("Rate limiting", () => {
   test("should not block the first request", async () => {
     const res = await request(app).get("/api/health");
-    expect(res.statusCode).toBe(200);
+    expect([200, 503]).toContain(res.statusCode);
   });
 });

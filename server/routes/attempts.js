@@ -1,23 +1,21 @@
 const router = require("express").Router();
-const { randomUUID } = require("crypto");
 const Score = require("../models/Score");
 const User = require("../models/User");
 const QuizProgress = require("../models/QuizProgress");
+const Quiz = require("../models/Quiz");
 const { authenticate } = require("../middleware/auth");
+const {
+  validateProgressSchema,
+  validateAttemptsQuery,
+  validateAttemptPlaceholder,
+  validateQuizProgressParam,
+} = require("../middleware/validators");
 const logger = require("../utils/logger");
 const scoresService = require("../services/scoresService");
-const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
+const sendInternalError = require("../utils/errorResponse");
 
-function handleInternalError(res, error, context) {
-  const incidentId = randomUUID();
-  logger.error(
-    `${context} [incidentId=${incidentId}]`,
-    buildSanitizedErrorLog(error, context, incidentId),
-  );
-  return res.status(500).json({
-    error: "حدث خطأ داخلي في الخادم",
-    incidentId,
-  });
+function handleInternalError(req, res, error, context) {
+  return sendInternalError(res, error, req, { action: context });
 }
 
 // GET /api/attempts?quizId=...(&email=...)
@@ -25,10 +23,10 @@ function handleInternalError(res, error, context) {
 // are present. If credentials exist (cookie or Authorization header) we run
 // the regular `authenticate` flow to return the real count. Admin-only
 // `email` queries still require successful authentication as an admin.
-router.get("/", async (req, res) => {
+router.get("/", validateAttemptsQuery, async (req, res) => {
   try {
     const { quizId, email } = req.query;
-    if (!quizId) return res.status(400).json({ error: "quizId مطلوب." });
+    const normalizedQuizId = Number(quizId);
 
     // If no credentials provided and no email param, return 0 to avoid
     // noisy 401 errors from unauthenticated clients (client may call
@@ -73,23 +71,23 @@ router.get("/", async (req, res) => {
     }
 
     const attempts = await Score.count({
-      where: { userId: targetUserId, quizId: String(quizId) },
+      where: { userId: targetUserId, quizId: normalizedQuizId },
     });
     logger.info(
       `[GET /api/attempts] userId=${targetUserId} quizId=${quizId} requestedBy=${req.user ? req.user.id : "anonymous"}`,
     );
     res.json({ attempts });
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/attempts failed");
+    return handleInternalError(req, res, error, "GET /api/attempts failed");
   }
 });
 
 // POST /api/attempts { quizId, email? }
 // Creates a lightweight placeholder Score representing an attempt (for older clients).
-router.post("/", authenticate, async (req, res) => {
+router.post("/", authenticate, validateAttemptPlaceholder, async (req, res) => {
   try {
     const { quizId, email } = req.body || {};
-    if (!quizId) return res.status(400).json({ error: "quizId مطلوب" });
+    const normalizedQuizId = Number(quizId);
 
     let userId = req.user.id;
     if (email) {
@@ -102,7 +100,7 @@ router.post("/", authenticate, async (req, res) => {
 
     const { attemptNumber, isOfficial } = await scoresService.createAttempt(
       userId,
-      quizId,
+      normalizedQuizId,
       {
         answers: [],
         score: 0,
@@ -111,7 +109,7 @@ router.post("/", authenticate, async (req, res) => {
       },
     );
 
-    const updatedCount = await Score.count({ where: { userId, quizId } });
+    const updatedCount = await Score.count({ where: { userId, quizId: normalizedQuizId } });
     logger.info(
       `[POST /api/attempts] recorded placeholder userId=${userId} quizId=${quizId} attempt=${attemptNumber}`,
     );
@@ -121,14 +119,14 @@ router.post("/", authenticate, async (req, res) => {
       isOfficial,
     });
   } catch (error) {
-    return handleInternalError(res, error, "POST /api/attempts failed");
+    return handleInternalError(req, res, error, "POST /api/attempts failed");
   }
 });
 
 // GET /api/attempts/progress/:quizId
-router.get("/progress/:quizId", authenticate, async (req, res) => {
+router.get("/progress/:quizId", authenticate, validateQuizProgressParam, async (req, res) => {
   try {
-    const { quizId } = req.params;
+    const quizId = Number(req.params.quizId);
     // Security: for authenticated users, never trust deviceId ownership.
     // Future hardening: require HMAC-signed device token for guest linkage.
     const progress = await QuizProgress.findOne({
@@ -142,52 +140,63 @@ router.get("/progress/:quizId", authenticate, async (req, res) => {
       progress || { answers: [], timeRemaining: null, currentQuestionIndex: 0 },
     );
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/attempts/progress failed");
+    return handleInternalError(req, res, error, "GET /api/attempts/progress failed");
   }
 });
 
 // POST /api/attempts/progress
-router.post("/progress", authenticate, async (req, res) => {
+router.post("/progress", authenticate, validateProgressSchema, async (req, res) => {
   try {
     const { quizId, answers, timeRemaining, currentQuestionIndex, deviceId } =
       req.body;
-    if (!quizId) return res.status(400).json({ error: "quizId مطلوب" });
+    const normalizedQuizId = Number(quizId);
 
-    let progress = await QuizProgress.findOne({
-      where: {
-        quizId,
-        userId: req.user.id,
-      },
-      order: [["updatedAt", "DESC"]],
+    const quiz = await Quiz.findByPk(normalizedQuizId, {
+      attributes: ["id", "questions"],
+    });
+    if (!quiz) {
+      return res.status(404).json({ error: "الامتحان غير موجود." });
+    }
+
+    const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+    if (questions.length === 0) {
+      return res.status(400).json({ error: "الامتحان لا يحتوي على أسئلة صالحة." });
+    }
+
+    const questionMap = new Map(questions.map((q) => [String(q.id), q]));
+    for (const answer of answers) {
+      const q = questionMap.get(String(answer.questionId));
+      if (!q) {
+        return res.status(400).json({ error: "توجد إجابة لسؤال غير تابع لهذا الامتحان." });
+      }
+      if (
+        !Array.isArray(q.answerOptions) ||
+        answer.selectedIndex < 0 ||
+        answer.selectedIndex >= q.answerOptions.length
+      ) {
+        return res.status(400).json({ error: "قيمة selectedIndex غير صالحة." });
+      }
+    }
+
+    await QuizProgress.upsert({
+      userId: req.user.id,
+      deviceId: deviceId || null,
+      quizId: normalizedQuizId,
+      answers,
+      timeRemaining,
+      currentQuestionIndex,
     });
 
-    if (progress) {
-      progress.answers = answers;
-      progress.timeRemaining = timeRemaining;
-      progress.currentQuestionIndex = currentQuestionIndex;
-      progress.userId = req.user.id;
-      progress.deviceId = deviceId || progress.deviceId;
-      await progress.save();
-    } else {
-      progress = await QuizProgress.create({
-        userId: req.user.id,
-        deviceId,
-        quizId,
-        answers,
-        timeRemaining,
-        currentQuestionIndex,
-      });
-    }
     res.json({ message: "تم حفظ التقدم" });
   } catch (error) {
-    return handleInternalError(res, error, "POST /api/attempts/progress failed");
+    return handleInternalError(req, res, error, "POST /api/attempts/progress failed");
   }
 });
 
 // DELETE /api/attempts/progress/:quizId
-router.delete("/progress/:quizId", authenticate, async (req, res) => {
+router.delete("/progress/:quizId", authenticate, validateQuizProgressParam, async (req, res) => {
   try {
-    const { quizId } = req.params;
+    const quizId = Number(req.params.quizId);
     await QuizProgress.destroy({
       where: {
         quizId,
@@ -196,7 +205,7 @@ router.delete("/progress/:quizId", authenticate, async (req, res) => {
     });
     res.json({ message: "تم الحذف" });
   } catch (error) {
-    return handleInternalError(res, error, "DELETE /api/attempts/progress failed");
+    return handleInternalError(req, res, error, "DELETE /api/attempts/progress failed");
   }
 });
 

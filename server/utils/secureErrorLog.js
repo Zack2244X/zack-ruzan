@@ -5,6 +5,7 @@ const { randomUUID } = require("crypto");
  * Never include raw SQL or full stack traces unless debug logging is explicitly enabled.
  */
 function buildSanitizedErrorLog(error, context, operationId = randomUUID()) {
+  const isProduction = process.env.NODE_ENV === "production";
   const isDebug = String(process.env.LOG_LEVEL || "").toLowerCase() === "debug";
   const sanitized = {
     operationId,
@@ -18,7 +19,7 @@ function buildSanitizedErrorLog(error, context, operationId = randomUUID()) {
     sanitized.database = "Database Operation Failed";
   }
 
-  if (isDebug && error?.stack) {
+  if (!isProduction && isDebug && error?.stack) {
     sanitized.stack = error.stack;
   }
 

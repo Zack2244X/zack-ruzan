@@ -30,9 +30,8 @@ async function logAccountSession({ userId, email, loginType = "google", ipAddres
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
-const { randomUUID } = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
-const { UniqueConstraintError, QueryTypes } = require("sequelize");
+const { UniqueConstraintError } = require("sequelize");
 const dbLayer = require("../services/safeQueryLayer");
 const User = require("../models/User");
 const BlockedDevice = require("../models/BlockedDevice");
@@ -57,19 +56,12 @@ const {
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
 const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
+const sendInternalError = require("../utils/errorResponse");
 const rateLimit = require("express-rate-limit");
-const sequelize = require("../models");
+const { isIP } = require("net");
 
-function handleInternalError(res, error, context) {
-  const incidentId = randomUUID();
-  logger.error(
-    `${context} [incidentId=${incidentId}]`,
-    buildSanitizedErrorLog(error, context, incidentId),
-  );
-  return res.status(500).json({
-    error: "Internal Server Error",
-    incidentId,
-  });
+function handleInternalError(req, res, error, context) {
+  return sendInternalError(res, error, req, { action: context });
 }
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -96,25 +88,6 @@ const adminOpsLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "طلبات إدارية كثيرة جدًا. حاول بعد دقيقة." },
-});
-
-/**
- * Strict limiter for public auth entry points.
- * 5 attempts / 15 minutes per IP + device fingerprint.
- */
-const publicAuthStrictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    const device = String(
-      req.get("x-device-id") || req.body?.deviceId || "no-device",
-    ).substring(0, 80);
-    return `${req.ip}:${device}`;
-  },
-  message: { error: "محاولات كثيرة على مسار التوثيق. حاول بعد 15 دقيقة." },
-  skipSuccessfulRequests: true,
 });
 
 /**
@@ -176,7 +149,7 @@ function isTrustedRequestOrigin(req) {
     const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
     if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
     if (sameOrigin && isLikelyLegacyClient(req)) return true;
-    return process.env.NODE_ENV !== "production";
+    return false;
   }
 
   try {
@@ -186,6 +159,29 @@ function isTrustedRequestOrigin(req) {
   } catch {
     return false;
   }
+}
+
+function hasSuspiciousAutomationSignals(req, normalizedDeviceId = "") {
+  const userAgent = sanitizeText(req.get("user-agent") || "", 500).toLowerCase();
+  if (!userAgent) return true;
+
+  const blockedAgents = [
+    "curl/",
+    "wget/",
+    "python-requests",
+    "httpie",
+    "postmanruntime",
+    "insomnia",
+    "axios/",
+  ];
+  if (blockedAgents.some((sig) => userAgent.includes(sig))) return true;
+
+  const headerDeviceId = sanitizeText(req.get("x-device-id") || "", 120);
+  if (!headerDeviceId || !normalizedDeviceId || headerDeviceId !== normalizedDeviceId) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -265,6 +261,23 @@ function parsePageLimit(query, defaultLimit = 30, maxLimit = 100) {
   return { page, limit, offset };
 }
 
+let blockedDevicesColumnsCache = null;
+let accountSessionsColumnsCache = null;
+
+async function getBlockedDevicesColumns() {
+  if (blockedDevicesColumnsCache) return blockedDevicesColumnsCache;
+  const [rows] = await dbLayer.executeReadOnlyQuery("SHOW COLUMNS FROM blocked_devices");
+  blockedDevicesColumnsCache = new Set((rows || []).map((r) => r.Field));
+  return blockedDevicesColumnsCache;
+}
+
+async function getAccountSessionsColumns() {
+  if (accountSessionsColumnsCache) return accountSessionsColumnsCache;
+  const [rows] = await dbLayer.executeReadOnlyQuery("SHOW COLUMNS FROM account_sessions");
+  accountSessionsColumnsCache = new Set((rows || []).map((r) => r.Field));
+  return accountSessionsColumnsCache;
+}
+
 
 
 async function findActiveBlock({ email = "", deviceId = "", ipAddress = "" }) {
@@ -311,7 +324,10 @@ async function recordAccountSession({
       userAgent: sanitizeText(userAgent, 500)
     });
   } catch (err) {
-    logger.warn("⚠️ تعذر تسجيل account session audit:", { error: err.message });
+    logger.warn(
+      "⚠️ تعذر تسجيل account session audit:",
+      buildSanitizedErrorLog(err, "recordAccountSession"),
+    );
   }
 }
 
@@ -372,9 +388,10 @@ async function touchAccountSessionIfNeeded(req, user, loginType = "activity") {
       userAgent,
     });
   } catch (err) {
-    logger.warn("⚠️ تعذر تحديث account session من /me:", {
-      error: err.message,
-    });
+    logger.warn(
+      "⚠️ تعذر تحديث account session من /me:",
+      buildSanitizedErrorLog(err, "touchAccountSessionIfNeeded"),
+    );
   }
 }
 
@@ -510,6 +527,11 @@ async function verifyGoogleToken(idToken) {
 // ============================================
 //   POST /api/auth/google — تسجيل/دخول بالجيميل
 // ============================================
+router.get("/csrf-bootstrap", (req, res) => {
+  const csrfToken = setCsrfCookie(res);
+  return res.json({ csrfToken });
+});
+
 /**
  * @route POST /api/auth/google
  * @description Handles Google OAuth login and registration.
@@ -524,8 +546,13 @@ async function verifyGoogleToken(idToken) {
  */
 router.post(
   "/google",
-  publicAuthStrictLimiter,
   validateGoogleLogin,
+  (req, res, next) => {
+    if (!req.cookies?.csrf_token) {
+      setCsrfCookie(res);
+    }
+    next();
+  },
   async (req, res) => {
     try {
       if (!isTrustedRequestOrigin(req)) {
@@ -750,7 +777,7 @@ router.post(
       if (error instanceof UniqueConstraintError) {
         return res.status(409).json({ error: "هذا الحساب مسجل بالفعل." });
       }
-      return handleInternalError(res, error, "POST /api/auth/google failed");
+      return handleInternalError(req, res, error, "POST /api/auth/google failed");
     }
   },
 );
@@ -758,7 +785,7 @@ router.post(
 // ============================================
 //   POST /api/auth/guest-session — تسجيل دخول ضيف
 // ============================================
-router.post("/guest-session", publicAuthStrictLimiter, async (req, res) => {
+router.post("/guest-session", async (req, res) => {
   try {
     const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
 
@@ -772,6 +799,21 @@ router.post("/guest-session", publicAuthStrictLimiter, async (req, res) => {
             success: false, 
             error: 'Invalid Device ID format. Must be alphanumeric, 10-50 characters, allowing underscores and hyphens.' 
         });
+    }
+
+    if (!isTrustedRequestOrigin(req)) {
+      logger.warn("🚫 Blocked /api/auth/guest-session due to untrusted origin", {
+        origin: req.get("origin") || null,
+        referer: req.get("referer") || null,
+        ip: req.ip,
+      });
+      return res.status(403).json({ error: "مصدر الطلب غير موثوق." });
+    }
+
+    if (hasSuspiciousAutomationSignals(req, deviceId)) {
+      return res.status(403).json({
+        error: "تعذر التحقق من هوية الجهاز. أعد المحاولة من التطبيق الرسمي.",
+      });
     }
 
     const userAgent = req.get("user-agent") || "";
@@ -803,7 +845,7 @@ router.post("/guest-session", publicAuthStrictLimiter, async (req, res) => {
 
     return res.status(201).json({ ok: true });
   } catch (error) {
-    return handleInternalError(res, error, "POST /api/auth/guest-session failed");
+    return handleInternalError(req, res, error, "POST /api/auth/guest-session failed");
   }
 });
 
@@ -834,11 +876,8 @@ router.get(
         usersWhereReplacements.push(likeQ, likeQ, likeQ, likeQ);
       }
 
-      const shouldLoadLargeSlice = type === "all";
-      const usersSliceLimit = shouldLoadLargeSlice
-        ? Math.min(1000, Math.max(200, limit * 20))
-        : limit;
-      const usersSliceOffset = shouldLoadLargeSlice ? 0 : offset;
+      const usersSliceLimit = limit;
+      const usersSliceOffset = offset;
 
       const [accountsOnlyRows] = await dbLayer.executeReadOnlyQuery(
         `SELECT id, fname, lname, email, role, createdAt
@@ -916,7 +955,7 @@ router.get(
                      WHERE 1=1
                        ${hasLoginTypeCol ? "AND loginType <> 'guest'" : ""}
                      ORDER BY ${hasCreatedAtCol ? "createdAt DESC, id DESC" : "id DESC"}
-                     LIMIT 3000`,
+                     LIMIT 500`,
           );
 
           const latestByUserId = new Map();
@@ -1005,10 +1044,8 @@ router.get(
               }
             }
 
-            const guestSliceLimit = shouldLoadLargeSlice
-              ? Math.min(1000, Math.max(200, limit * 20))
-              : limit;
-            const guestSliceOffset = shouldLoadLargeSlice ? 0 : offset;
+            const guestSliceLimit = limit;
+            const guestSliceOffset = offset;
 
             const [guestRows] = await dbLayer.executeReadOnlyQuery(
               `SELECT
@@ -1123,6 +1160,7 @@ router.get(
       });
     } catch (error) {
       return handleInternalError(
+        req,
         res,
         error,
         "GET /api/auth/accounts-overview failed",
@@ -1170,6 +1208,7 @@ router.delete(
       return res.json({ ok: true, message: "تم حذف الزيارة بنجاح." });
     } catch (error) {
       return handleInternalError(
+        req,
         res,
         error,
         "DELETE /api/auth/account-sessions/:id failed",
@@ -1205,7 +1244,7 @@ router.delete(
       );
       return res.json({ ok: true, message: "تم حذف الحساب بنجاح." });
     } catch (error) {
-      return handleInternalError(res, error, "DELETE /api/auth/accounts/:id failed");
+      return handleInternalError(req, res, error, "DELETE /api/auth/accounts/:id failed");
     }
   },
 );
@@ -1234,6 +1273,9 @@ router.post(
         return res.status(400).json({ error: "صيغة deviceId غير صحيحة." });
       }
       if (ipAddress && !ipRegex.test(ipAddress)) {
+        return res.status(400).json({ error: "صيغة عنوان IP غير صحيحة." });
+      }
+      if (ipAddress && isIP(ipAddress) === 0) {
         return res.status(400).json({ error: "صيغة عنوان IP غير صحيحة." });
       }
 
@@ -1283,67 +1325,6 @@ router.post(
       }
 
       const cols = await getBlockedDevicesColumns();
-
-      const dedupeClauses = [];
-      const dedupeReplacements = [];
-      if (cols.has("email") && email) {
-        dedupeClauses.push("email = ?");
-        dedupeReplacements.push(email);
-      }
-      if (cols.has("deviceId") && deviceId) {
-        dedupeClauses.push("deviceId = ?");
-        dedupeReplacements.push(deviceId);
-      }
-      if (cols.has("ipAddress") && ipAddress) {
-        dedupeClauses.push("ipAddress = ?");
-        dedupeReplacements.push(ipAddress);
-      }
-
-      if (dedupeClauses.length > 0) {
-        const [existingRows] = await dbLayer.executeReadOnlyQuery(
-          `SELECT id FROM blocked_devices
-                 WHERE isActive = 1 AND (${dedupeClauses.join(" OR ")})
-                 ORDER BY id DESC
-                 LIMIT 1`,
-          { replacements: dedupeReplacements },
-        );
-
-        if (existingRows && existingRows.length > 0) {
-          const existingId = Number(existingRows[0].id);
-          const updateFields = [];
-          const updateReplacements = [];
-          if (cols.has("reason")) {
-            updateFields.push("reason = ?");
-            updateReplacements.push(reason);
-          }
-          if (cols.has("deviceName")) {
-            updateFields.push("deviceName = ?");
-            updateReplacements.push(deviceName || null);
-          }
-          if (cols.has("blockedBy")) {
-            updateFields.push("blockedBy = ?");
-            updateReplacements.push(req.user.email || "admin");
-          }
-          if (cols.has("updatedAt")) {
-            updateFields.push("updatedAt = NOW()");
-          }
-
-          if (updateFields.length > 0) {
-            await dbLayer.executeWriteQuery(
-    `UPDATE blocked_devices SET ${updateFields.join(", ")} WHERE id = ?`,
-              { replacements: updateReplacements.concat(existingId) },
-            );
-          }
-
-          return res
-            .status(200)
-            .json({
-              ok: true,
-              message: "هذا الجهاز/الحساب محظور مسبقًا وتم تحديث بيانات الحظر.",
-            });
-        }
-      }
-
       const insertCols = [];
       const placeholders = [];
       const replacements = [];
@@ -1355,13 +1336,25 @@ router.post(
         replacements.push(value);
       };
 
-      pushVal("email", email || null);
-      pushVal("deviceId", deviceId || null);
-      pushVal("ipAddress", ipAddress || null);
+      // Canonical empty strings make DB uniqueness deterministic across NULL values.
+      pushVal("email", email || "");
+      pushVal("deviceId", deviceId || "");
+      pushVal("ipAddress", ipAddress || "");
       pushVal("deviceName", deviceName || null);
       pushVal("reason", reason);
       pushVal("blockedBy", req.user.email || "admin");
       pushVal("isActive", 1);
+
+      const onDuplicateUpdates = [];
+      if (cols.has("reason")) onDuplicateUpdates.push("reason = VALUES(reason)");
+      if (cols.has("deviceName")) {
+        onDuplicateUpdates.push("deviceName = VALUES(deviceName)");
+      }
+      if (cols.has("blockedBy")) {
+        onDuplicateUpdates.push("blockedBy = VALUES(blockedBy)");
+      }
+      if (cols.has("updatedAt")) onDuplicateUpdates.push("updatedAt = NOW()");
+      if (onDuplicateUpdates.length === 0) onDuplicateUpdates.push("id = id");
 
       if (cols.has("createdAt")) {
         insertCols.push("createdAt");
@@ -1372,14 +1365,12 @@ router.post(
         placeholders.push("NOW()");
       }
 
-      await sequelize.query(
+      await dbLayer.executeWriteQuery(
         `INSERT INTO blocked_devices
                 (${insertCols.join(", ")})
-             VALUES (${placeholders.join(", ")})`,
-        {
-          replacements,
-          type: QueryTypes.INSERT,
-        },
+             VALUES (${placeholders.join(", ")})
+             ON DUPLICATE KEY UPDATE ${onDuplicateUpdates.join(", ")}`,
+        { replacements },
       );
 
       logger.warn(
@@ -1387,9 +1378,9 @@ router.post(
       );
       return res
         .status(201)
-        .json({ ok: true, message: "تم حظر الجهاز بنجاح." });
+        .json({ ok: true, message: "تم حفظ الحظر بنجاح (إدراج/تحديث ذري)." });
     } catch (error) {
-      return handleInternalError(res, error, "POST /api/auth/blocked-devices failed");
+      return handleInternalError(req, res, error, "POST /api/auth/blocked-devices failed");
     }
   },
 );
@@ -1405,33 +1396,43 @@ router.get(
       const { page, limit, offset } = parsePageLimit(req.query, 24, 100);
       const cols = await getBlockedDevicesColumns();
       const emailSelect = cols.has("email") ? "email" : "'' AS email";
+      const searchableParts = [];
+      const replacements = [];
+      if (q) {
+        const likeQ = `%${q}%`;
+        if (cols.has("email")) searchableParts.push("LOWER(COALESCE(email, '')) LIKE ?");
+        if (cols.has("deviceId")) searchableParts.push("LOWER(COALESCE(deviceId, '')) LIKE ?");
+        if (cols.has("ipAddress")) searchableParts.push("LOWER(COALESCE(ipAddress, '')) LIKE ?");
+        if (cols.has("deviceName")) searchableParts.push("LOWER(COALESCE(deviceName, '')) LIKE ?");
+        if (cols.has("reason")) searchableParts.push("LOWER(COALESCE(reason, '')) LIKE ?");
+        if (cols.has("blockedBy")) searchableParts.push("LOWER(COALESCE(blockedBy, '')) LIKE ?");
+        for (let i = 0; i < searchableParts.length; i++) replacements.push(likeQ);
+      }
+
+      const whereParts = ["isActive = 1"];
+      if (searchableParts.length > 0) {
+        whereParts.push(`(${searchableParts.join(" OR ")})`);
+      }
+
       const [rowsRaw] = await dbLayer.executeReadOnlyQuery(
         `SELECT id, ${emailSelect}, deviceId, ipAddress, deviceName, reason, blockedBy, isActive, createdAt
              FROM blocked_devices
-             WHERE isActive = 1
-             ORDER BY id DESC`,
+             WHERE ${whereParts.join(" AND ")}
+             ORDER BY id DESC
+             LIMIT ? OFFSET ?`,
+        { replacements: replacements.concat([limit, offset]) },
       );
-      let rows = rowsRaw || [];
 
-      if (q) {
-        rows = rows.filter((row) => {
-          const haystack = [
-            row.email,
-            row.deviceId,
-            row.ipAddress,
-            row.deviceName,
-            row.reason,
-            row.blockedBy,
-          ]
-            .map((v) => String(v || "").toLowerCase())
-            .join(" ");
-          return haystack.includes(q);
-        });
-      }
+      const [countRows] = await dbLayer.executeReadOnlyQuery(
+        `SELECT COUNT(*) AS c
+             FROM blocked_devices
+             WHERE ${whereParts.join(" AND ")}`,
+        { replacements },
+      );
 
-      const total = rows.length;
+      const total = Number(countRows?.[0]?.c || 0);
       const pages = Math.max(1, Math.ceil(total / limit));
-      const devices = rows.slice(offset, offset + limit);
+      const devices = rowsRaw || [];
 
       return res.json({
         devices,
@@ -1445,7 +1446,7 @@ router.get(
         },
       });
     } catch (error) {
-      return handleInternalError(res, error, "GET /api/auth/blocked-devices failed");
+      return handleInternalError(req, res, error, "GET /api/auth/blocked-devices failed");
     }
   },
 );
@@ -1481,6 +1482,7 @@ router.delete(
       return res.json({ ok: true, message: "تم فك الحظر بنجاح." });
     } catch (error) {
       return handleInternalError(
+        req,
         res,
         error,
         "DELETE /api/auth/blocked-devices/:id failed",
@@ -1530,7 +1532,7 @@ router.put(
         },
       });
     } catch (error) {
-      return handleInternalError(res, error, "PUT /api/auth/complete-profile failed");
+      return handleInternalError(req, res, error, "PUT /api/auth/complete-profile failed");
     }
   },
 );
@@ -1707,7 +1709,7 @@ router.post(
       if (error instanceof UniqueConstraintError) {
         return res.status(409).json({ error: "هذا البريد مسجل بالفعل." });
       }
-      return handleInternalError(res, error, "POST /api/auth/create-admin failed");
+      return handleInternalError(req, res, error, "POST /api/auth/create-admin failed");
     }
   },
 );
@@ -1743,7 +1745,7 @@ router.post("/refresh", authenticate, async (req, res) => {
     logger.info(`🔄 تجديد توكن — ${user.email}`);
     res.json({ message: "تم تجديد الجلسة." });
   } catch (error) {
-    return handleInternalError(res, error, "POST /api/auth/refresh failed");
+    return handleInternalError(req, res, error, "POST /api/auth/refresh failed");
   }
 });
 
@@ -1773,7 +1775,7 @@ router.post("/logout", authenticate, async (req, res) => {
     logger.info(`🚪 تسجيل خروج وإلغاء كل التوكنات — ${user.email}`);
     res.json({ message: "تم تسجيل الخروج بنجاح." });
   } catch (error) {
-    return handleInternalError(res, error, "POST /api/auth/logout failed");
+    return handleInternalError(req, res, error, "POST /api/auth/logout failed");
   }
 });
 

@@ -109,6 +109,7 @@ async function createAttempt(userId, quizId, payload = {}) {
         { transaction },
       );
       await transaction.commit();
+      leaderboardCache.del('leaderboard_data');
       return { score, attemptNumber, isOfficial };
     } catch (error) {
       await transaction.rollback();

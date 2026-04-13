@@ -37,14 +37,14 @@ describe("generateToken()", () => {
     expect(decoded.tokenVersion).toBe(0);
   });
 
-  test("should set expiry (7d)", () => {
+  test("should set expiry (2h)", () => {
     const token = generateToken(1, "student", 0);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     expect(decoded.exp).toBeDefined();
     const now = Math.floor(Date.now() / 1000);
-    // Should expire between 6 and 8 days from now
-    expect(decoded.exp - now).toBeGreaterThan(6 * 24 * 3600);
-    expect(decoded.exp - now).toBeLessThan(8 * 24 * 3600);
+    // Should expire around 2 hours from now
+    expect(decoded.exp - now).toBeGreaterThan(90 * 60);
+    expect(decoded.exp - now).toBeLessThan(150 * 60);
   });
 
   test("should include normalized email claim when provided", () => {

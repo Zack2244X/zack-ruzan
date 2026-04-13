@@ -39,9 +39,11 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { isIP, BlockList } = require("net");
 const logger = require("./utils/logger");
 const { sanitizeBody } = require("./middleware/sanitize");
-const { verifyCsrf } = require("./middleware/auth");
+const { verifyCsrf, setCsrfCookie } = require("./middleware/auth");
+const { buildSanitizedErrorLog } = require("./utils/secureErrorLog");
 const {
   enforceHttps,
   enforceCookieSecurity,
@@ -66,6 +68,9 @@ const requiredEnvVars = [
   "JWT_SECRET",
   "GOOGLE_CLIENT_ID",
 ];
+const JWT_ISSUER = process.env.JWT_ISSUER || "quiz-platform-api";
+const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "quiz-platform-client";
+
 const missingEnv = requiredEnvVars.filter((v) => !process.env[v]);
 if (missingEnv.length > 0) {
   logger.error(`❌ متغيرات البيئة الناقصة: ${missingEnv.join(", ")}`);
@@ -150,7 +155,10 @@ const swaggerOptions = {
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
-if (process.env.NODE_ENV !== "production") {
+if (
+  process.env.ENABLE_API_DOCS === "true" &&
+  process.env.NODE_ENV !== "production"
+) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
 
@@ -165,7 +173,102 @@ if (process.env.NODE_ENV !== "production") {
 
 
 // خلف البروكسي (Railway/Render/NGINX)
-app.set("trust proxy", true);
+const proxyHops = process.env.NODE_ENV === "production" ? 1 : 0;
+app.set("trust proxy", proxyHops);
+
+const trustedProxyIps = new Set(
+  (process.env.TRUSTED_PROXY_IPS || "")
+    .split(",")
+    .map((ip) => ip.trim())
+    .filter(Boolean),
+);
+
+const allowedInternalClientIps = new Set(
+  (process.env.ALLOWED_INTERNAL_CLIENT_IPS || "")
+    .split(",")
+    .map((ip) => ip.trim())
+    .filter(Boolean),
+);
+
+function normalizeIp(rawIp) {
+  if (!rawIp) return "";
+  const trimmed = String(rawIp).trim();
+  if (trimmed.startsWith("::ffff:")) return trimmed.substring(7);
+  return trimmed;
+}
+
+function isPrivateIp(ip) {
+  const normalized = normalizeIp(ip);
+  if (!normalized) return false;
+  if (normalized === "127.0.0.1" || normalized === "::1") return true;
+  if (normalized.startsWith("10.") || normalized.startsWith("192.168.")) {
+    return true;
+  }
+
+  const octets = normalized.split(".");
+  if (octets.length === 4) {
+    const first = Number(octets[0]);
+    const second = Number(octets[1]);
+    if (Number.isInteger(first) && Number.isInteger(second)) {
+      if (first === 172 && second >= 16 && second <= 31) return true;
+    }
+  }
+
+  return false;
+}
+
+function isTrustedProxySource(ip) {
+  const normalized = normalizeIp(ip);
+  if (!normalized) return false;
+  if (trustedProxyIps.has(normalized)) return true;
+  if (isPrivateIp(normalized)) return true;
+  return false;
+}
+
+app.use((req, res, next) => {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string") {
+    const ips = forwarded
+      .split(",")
+      .map((ip) => normalizeIp(ip))
+      .filter(Boolean);
+
+    const proxySourceIp = normalizeIp(req.socket?.remoteAddress || "");
+    if (!isTrustedProxySource(proxySourceIp)) {
+      logger.warn(
+        `Untrusted proxy source for X-Forwarded-For: source=${proxySourceIp || "unknown"} path=${req.path}`,
+      );
+      return res.status(400).json({ error: "Invalid request headers" });
+    }
+
+    if (ips.some((ip) => isIP(ip) === 0)) {
+      logger.warn(
+        `Invalid X-Forwarded-For IP format from ${req.ip}: ${forwarded}`,
+      );
+      return res.status(400).json({ error: "Invalid request headers" });
+    }
+
+    const maxHops = proxyHops + 1;
+    if (ips.length > maxHops) {
+      logger.warn(`Invalid X-Forwarded-For length: ${ips.length} from ${req.ip}`);
+      return res.status(400).json({ error: "Invalid request headers" });
+    }
+
+    const clientIp = ips[ips.length - 1];
+    const isAllowedInternalClient = allowedInternalClientIps.has(clientIp);
+    if (
+      process.env.NODE_ENV === "production" &&
+      isPrivateIp(clientIp) &&
+      !isAllowedInternalClient
+    ) {
+      logger.warn(
+        `Spoofed private IP in X-Forwarded-For: ${clientIp} from ${req.ip}`,
+      );
+      return res.status(400).json({ error: "Invalid request headers" });
+    }
+  }
+  return next();
+});
 
 // ============================================
 //     طبقات الأمان والأداء (Security + Perf)
@@ -254,38 +357,82 @@ app.use(
  * Defaults to `['http://localhost:3000']` in development.
  * @type {string[]}
  */
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-      .map((o) => o.trim())
-      .filter(Boolean)
-  : ["http://localhost:3000"];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const internalIps = (process.env.INTERNAL_IPS || "")
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+const isProduction = process.env.NODE_ENV === "production";
 
-// Auto-allow the Railway production domain if RAILWAY_PUBLIC_DOMAIN is set
-if (process.env.RAILWAY_PUBLIC_DOMAIN && !allowedOrigins.includes("*")) {
-  const railwayOrigin = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
-  if (!allowedOrigins.includes(railwayOrigin))
-    allowedOrigins.push(railwayOrigin);
+const internalIpBlockList = new BlockList();
+internalIps.forEach((entry) => {
+  const normalizedEntry = normalizeIp(entry);
+  if (!normalizedEntry) return;
+
+  if (normalizedEntry.includes("/")) {
+    const [baseRaw, prefixRaw] = normalizedEntry.split("/");
+    const base = normalizeIp(baseRaw);
+    const prefix = Number(prefixRaw);
+    const version = isIP(base);
+    if (!version || !Number.isInteger(prefix)) {
+      logger.warn(`Ignoring invalid INTERNAL_IPS entry: ${entry}`);
+      return;
+    }
+    if ((version === 4 && (prefix < 0 || prefix > 32)) || (version === 6 && (prefix < 0 || prefix > 128))) {
+      logger.warn(`Ignoring out-of-range INTERNAL_IPS CIDR prefix: ${entry}`);
+      return;
+    }
+    internalIpBlockList.addSubnet(base, prefix, version === 4 ? "ipv4" : "ipv6");
+    return;
+  }
+
+  const version = isIP(normalizedEntry);
+  if (!version) {
+    logger.warn(`Ignoring invalid INTERNAL_IPS IP: ${entry}`);
+    return;
+  }
+  internalIpBlockList.addAddress(normalizedEntry, version === 4 ? "ipv4" : "ipv6");
+});
+
+function isInternalIp(ip) {
+  const normalizedIp = normalizeIp(ip);
+  if (!normalizedIp) return false;
+  const version = isIP(normalizedIp);
+  if (!version) return false;
+  return internalIpBlockList.check(normalizedIp, version === 4 ? "ipv4" : "ipv6");
 }
 
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      // SECURITY: requests without Origin are typically server-to-server, CLI, or test clients.
-      // They are allowed here because CORS applies to browsers; this avoids false 500s in tests.
-      if (!origin) return callback(null, true);
+  cors((req, callback) => {
+    const origin = req.get("origin");
 
-      // SECURITY: for browser requests, only explicitly allowed origins are accepted.
-      if (
-        allowedOrigins.includes("*") ||
-        (origin && allowedOrigins.includes(origin))
-      ) {
-        callback(null, true);
-      } else {
-        logger.warn("🚫 CORS blocked origin:", { origin });
-        callback(new Error("غير مسموح بالوصول من هذا المصدر."));
+    if (!origin) {
+      if (!isProduction) {
+        return callback(null, { credentials: true, origin: true });
       }
-    },
-    credentials: true,
+
+      const internalHeader =
+        String(req.get("x-internal-request") || "").toLowerCase() === "true";
+      const callerIp = normalizeIp(req.ip);
+      if (internalHeader && isInternalIp(callerIp)) {
+        logger.info(
+          `Internal request allowed from ${callerIp} with X-Internal-Request`,
+        );
+        return callback(null, { credentials: true, origin: true });
+      }
+
+      return callback(new Error("CORS: Origin missing"));
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, { credentials: true, origin: true });
+    }
+
+    logger.warn("🚫 CORS blocked origin:", { origin, ip: normalizeIp(req.ip) });
+    return callback(new Error("CORS not allowed"));
   }),
 );
 
@@ -298,6 +445,15 @@ app.use(
 
 // 5. Cookie Parser
 app.use(cookieParser());
+
+// Ensure CSRF cookie exists before first authenticated/mutating interaction
+// so initial Google login can still pass strict CSRF checks.
+app.use((req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method) && !req.cookies?.csrf_token) {
+    setCsrfCookie(res);
+  }
+  next();
+});
 
 // 6. JSON parsing
 app.use(express.json({ limit: "5mb" }));
@@ -326,6 +482,8 @@ function getTrustedSessionIdentity(req) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
       algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
     });
     if (!decoded?.userId) return null;
 
@@ -589,71 +747,118 @@ app.use((req, res, next) => {
 // ============================================
 //         Rate Limiting — 3 مستويات
 // ============================================
+const createUserAwareRateLimiter = (windowMs, max, options = {}) =>
+  rateLimit({
+    windowMs,
+    max,
+    keyGenerator: (req) => {
+      const authHeader = req.headers.authorization;
+      if (
+        authHeader &&
+        authHeader.startsWith("Bearer ") &&
+        process.env.JWT_SECRET
+      ) {
+        const token = authHeader.split(" ")[1];
+        if (token && token.length <= 2048) {
+          try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+              algorithms: ["HS256"],
+              issuer: JWT_ISSUER,
+              audience: JWT_AUDIENCE,
+            });
+            const userId = decoded?.id || decoded?.userId;
+            if (userId) {
+              return `user:${userId}`;
+            }
+          } catch (_) {
+            // Invalid token: fallback to IP-based limiting.
+          }
+        }
+      }
+
+      return String(req.ip);
+    },
+    ...options,
+  });
+
 /**
  * General API rate limiter: 100 requests per 1 minute.
  * @type {import('express').RequestHandler}
  */
-const generalLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 100, // قواعد متوسطة لمسار البيانات (/api/*)
+const strictLimiterMax = process.env.NODE_ENV === "test" ? 5 : 50;
+
+const strictLimiter = createUserAwareRateLimiter(15 * 60 * 1000, strictLimiterMax, {
   standardHeaders: true,
-  legacyHeaders: true, // لإضافة X-RateLimit-Remaining
-  skip: (req) => {
-    if (req.path.startsWith("/auth")) return true;
-    if (req.path === "/health") return true;
-    return false;
-  },
-  message: { error: "تم تجاوز عدد الطلبات المسموحة، حاول بعد قليل." },
+  legacyHeaders: false,
+  message: { error: "طلبات كثيرة على المسارات الحساسة. حاول بعد قليل." },
 });
 
-/**
- * Authentication rate limiter: 5 requests per 15 minutes.
- * @type {import('express').RequestHandler}
- */
-const authLimiter = rateLimit({
+const mediumLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 200, {
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "تم تجاوز حد الطلبات لمسارات الإنشاء/التعديل." },
+});
+
+const relaxedLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 1000, {
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "تم تجاوز حد الطلبات، حاول لاحقاً." },
+});
+
+const defaultLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 1000, {
+  skip: (req) => String(req.headers["x-guest-mode"] || "").toLowerCase() === "true",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const guestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5, // قواعد صارمة جداً لمسار التسجيل/الدخول
+  max: 100,
+  keyGenerator: (req) => String(req.ip),
+  skip: (req) => String(req.headers["x-guest-mode"] || "").toLowerCase() !== "true",
   standardHeaders: true,
-  legacyHeaders: true, // لإضافة X-RateLimit-Remaining
-  message: { error: "محاولات دخول كثيرة، حاول بعد 15 دقيقة." },
-  skipSuccessfulRequests: true, // لا تحتسب محاولات الدخول الناجحة
+  legacyHeaders: false,
+  message: { error: "تم تجاوز حد طلبات وضع الضيف." },
 });
 
-/**
- * Public flexible rate limiter for non-API routes.
- */
-const publicLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 3000, // Rules for public static files if needed
-  standardHeaders: true,
-  legacyHeaders: true,
-});
-
-/**
- * Admin routes rate limiter: 50 requests per 15 minutes.
- * @type {import('express').RequestHandler}
- */
-const adminLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-  standardHeaders: true,
-  legacyHeaders: true,
-  message: { error: "تم تجاوز عدد طلبات الإدارة." },
-});
-
-app.use("/api", generalLimiter);
-app.use("/api/auth", authLimiter);
-app.use(publicLimiter); // Apply to flexible public paths
-
-// Admin limiter — only apply to write operations (POST/PUT/DELETE) on admin routes
-const applyAdminLimiter = (req, res, next) => {
-  if (["POST", "PUT", "DELETE"].includes(req.method)) {
-    return adminLimiter(req, res, next);
-  }
-  next();
+const applyLimiterByMethod = (methods, limiter) => {
+  const allowedMethods = new Set(methods);
+  return (req, res, next) => {
+    if (!allowedMethods.has(req.method)) return next();
+    return limiter(req, res, next);
+  };
 };
-app.use("/api/quizzes", applyAdminLimiter);
-app.use("/api/notes", applyAdminLimiter);
+
+const strictAuthRoutes = [
+  "/api/auth/google",
+  "/api/auth/guest-session",
+  "/api/auth/create-admin",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+];
+
+strictAuthRoutes.forEach((route) => {
+  app.use(route, strictLimiter);
+});
+
+app.use("/api/quizzes", guestLimiter, defaultLimiter);
+app.use("/api/notes", guestLimiter, defaultLimiter);
+app.use("/api/scores", guestLimiter, defaultLimiter);
+
+app.use(
+  "/api/quizzes",
+  applyLimiterByMethod(["POST", "PUT", "PATCH", "DELETE"], mediumLimiter),
+);
+app.use(
+  "/api/notes",
+  applyLimiterByMethod(["POST", "PUT", "PATCH", "DELETE"], mediumLimiter),
+);
+
+app.use("/api/quizzes", applyLimiterByMethod(["GET"], relaxedLimiter));
+app.use(
+  "/api/scores/leaderboard",
+  applyLimiterByMethod(["GET"], relaxedLimiter),
+);
 
 // ============================================
 //   Health Check Endpoint
@@ -673,78 +878,49 @@ let dbConnected = false;
 let serverReady = false;
 
 app.get("/api/health", async (req, res) => {
-  const healthStatus = {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    components: {}
-  };
+  const timestamp = new Date().toISOString();
+  const incidentId = crypto.randomUUID();
+  let degraded = false;
 
-  let hasError = false;
-
-  // 1. Database Check
-  const dbStart = performance.now();
   try {
     const sequelize = require("./models/index");
     await sequelize.authenticate();
-    await sequelize.transaction(async (t) => {
-      await sequelize.query("SELECT 1", { transaction: t });
-    });
-    healthStatus.components.database = {
-      status: "operational",
-      latencyMs: Math.round(performance.now() - dbStart)
-    };
+    await sequelize.query("SELECT 1");
   } catch (err) {
-    hasError = true;
-    healthStatus.components.database = {
-      status: "degraded",
-      latencyMs: Math.round(performance.now() - dbStart),
-      error: err.message
-    };
+    degraded = true;
+    logger.error(
+      `[health-check:database] [incidentId=${incidentId}]`,
+      buildSanitizedErrorLog(err, "health.database", incidentId),
+    );
   }
 
-  // 2. Memory Usage Check
-  const memStart = performance.now();
-  const os = require("os");
-  const usedheapMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-  const limitMb = 1024;
-  const isHealthyMem = usedheapMb < limitMb;
-  if (isHealthyMem === false) hasError = true;
+  try {
+    const usedHeapMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    if (usedHeapMb >= 1024) degraded = true;
+  } catch (err) {
+    degraded = true;
+    logger.error(
+      `[health-check:memory] [incidentId=${incidentId}]`,
+      buildSanitizedErrorLog(err, "health.memory", incidentId),
+    );
+  }
 
-  healthStatus.components.memory = {
-    status: isHealthyMem ? "operational" : "degraded",
-    heapUsedMb: usedheapMb,
-    limitMb,
-    systemFreeMb: Math.round(os.freemem() / 1024 / 1024),
-    latencyMs: Math.round(performance.now() - memStart)
-  };
-
-  // 3. Disk Space Check
-  const diskStart = performance.now();
   try {
     const stats = await require("fs").promises.statfs(__dirname);
-    const freeSpaceGb = Math.round((stats.bfree * stats.bsize) / (1024 * 1024 * 1024));
-    const totalSpaceGb = Math.round((stats.blocks * stats.bsize) / (1024 * 1024 * 1024));
-    
-    const isDiskHealthy = freeSpaceGb >= 1; 
-    if (isDiskHealthy === false) hasError = true;
-    
-    healthStatus.components.disk = {
-      status: isDiskHealthy ? "operational" : "degraded",
-      freeSpaceGb,
-      totalSpaceGb,
-      latencyMs: Math.round(performance.now() - diskStart)
-    };
+    const freeSpaceGb = (stats.bfree * stats.bsize) / (1024 * 1024 * 1024);
+    if (freeSpaceGb < 1) degraded = true;
   } catch (err) {
-    hasError = true;
-    healthStatus.components.disk = {
-      status: "degraded",
-      latencyMs: Math.round(performance.now() - diskStart),
-      error: err.message
-    };
+    degraded = true;
+    logger.error(
+      `[health-check:disk] [incidentId=${incidentId}]`,
+      buildSanitizedErrorLog(err, "health.disk", incidentId),
+    );
   }
 
-  healthStatus.status = hasError ? "degraded" : "healthy";
-  res.status(hasError ? 503 : 200).json(healthStatus);
+  return res.status(degraded ? 503 : 200).json({
+    status: degraded ? "degraded" : "operational",
+    timestamp,
+  });
 });
 
 // ============================================
@@ -789,9 +965,12 @@ app.get("/config.js", (req, res) => {
 //    (non-httpOnly CSRF token sent to client, verified against X-CSRF-Token header)
 //    snyk:skip=CWE-352
 app.use("/api", (req, res, next) => {
-  if (req.path === "/auth/google" && req.method === "POST") return next();
-  if (req.path === "/auth/guest-session" && req.method === "POST")
+  if (req.method === "POST" && req.path === "/auth/google") {
+    if (!req.cookies?.csrf_token) {
+      setCsrfCookie(res);
+    }
     return next();
+  }
   return verifyCsrf(req, res, next);
 });
 
@@ -821,15 +1000,14 @@ app.use("/api", (req, res) => {
 
 // --- Global Error Handler ---
 app.use((err, req, res, next) => {
-  logger.error("❌ Server Error:", {
-    message: err.message,
-    stack: err.stack,
-    path: req.path,
-  });
-  const isDev = process.env.NODE_ENV !== "production";
+  const incidentId = crypto.randomUUID();
+  logger.error(
+    `❌ Server Error [incidentId=${incidentId}]:`,
+    buildSanitizedErrorLog(err, `global:${req.path}`, incidentId),
+  );
   res.status(err.status || 500).json({
-    error: isDev ? err.message : "حدث خطأ داخلي في السيرفر.",
-    ...(isDev && { stack: err.stack }),
+    error: "حدث خطأ داخلي في السيرفر.",
+    incidentId,
   });
 });
 
@@ -869,7 +1047,8 @@ async function runSafeMigrations() {
   };
 
   // Helper: create index only if it does not already exist (MySQL lacks CREATE INDEX IF NOT EXISTS)
-  const ensureIndex = async (table, indexName, columns) => {
+  const ensureIndex = async (table, indexName, columns, options = {}) => {
+    const uniquePrefix = options.unique ? "UNIQUE " : "";
     const [rows] = await sequelize.query(
       `SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
              WHERE TABLE_SCHEMA = DATABASE()
@@ -880,9 +1059,47 @@ async function runSafeMigrations() {
     );
     if (!rows || rows.length === 0) {
       await sequelize.query(
-        `CREATE INDEX \`${indexName}\` ON \`${table}\` (${columns})`,
+        `CREATE ${uniquePrefix}INDEX \`${indexName}\` ON \`${table}\` (${columns})`,
       );
     }
+  };
+
+  const indexExists = async (table, indexName) => {
+    const [rows] = await sequelize.query(
+      `SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND INDEX_NAME = ?
+             LIMIT 1`,
+      { replacements: [table, indexName] },
+    );
+    return Boolean(rows && rows.length > 0);
+  };
+
+  const tableExists = async (table) => {
+    const [rows] = await sequelize.query(
+      `SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+             LIMIT 1`,
+      { replacements: [table] },
+    );
+    return Boolean(rows && rows.length > 0);
+  };
+
+  const ensureIndexOnAnyExistingTable = async (
+    candidateTables,
+    indexName,
+    columns,
+    options = {},
+  ) => {
+    for (const table of candidateTables) {
+      if (await tableExists(table)) {
+        await ensureIndex(table, indexName, columns, options);
+        return table;
+      }
+    }
+    return null;
   };
 
   // Tables that are safe to create if missing
@@ -984,8 +1201,58 @@ async function runSafeMigrations() {
       "idx_scores_user_deleted",
       "\`userId\`, \`deletedAt\`",
     );
+    await ensureIndex(
+      "blocked_devices",
+      "ux_blocked_devices_active_identity",
+      "\`isActive\`, \`email\`, \`deviceId\`, \`ipAddress\`",
+      { unique: true },
+    );
+    const qpTableNameRaw =
+      typeof QuizProgress.getTableName === "function"
+        ? QuizProgress.getTableName()
+        : "quiz_progresses";
+    const qpTableName =
+      typeof qpTableNameRaw === "string"
+        ? qpTableNameRaw
+        : qpTableNameRaw?.tableName || "quiz_progresses";
+
+    await ensureIndexOnAnyExistingTable(
+      [qpTableName, "quiz_progresses", "QuizProgresses", "quizprogresses"],
+      "ux_quiz_progress_user_quiz",
+      "\`userId\`, \`quizId\`",
+      { unique: true },
+    );
+
+    if (process.env.NODE_ENV === "production") {
+      const existingProgressTable = (
+        await Promise.all(
+          [qpTableName, "quiz_progresses", "QuizProgresses", "quizprogresses"].map(
+            async (table) => ((await tableExists(table)) ? table : null),
+          ),
+        )
+      ).find(Boolean);
+
+      if (!existingProgressTable) {
+        throw new Error(
+          "CRITICAL: Quiz progress table not found for unique-index assurance.",
+        );
+      }
+
+      const hasProgressUniqueIndex = await indexExists(
+        existingProgressTable,
+        "ux_quiz_progress_user_quiz",
+      );
+      if (!hasProgressUniqueIndex) {
+        throw new Error(
+          "CRITICAL: Missing required unique index ux_quiz_progress_user_quiz in production.",
+        );
+      }
+    }
   } catch (e) {
     logger.warn(`⚠️ Migration index skipped: ${e.message.substring(0, 80)}`);
+    if (process.env.NODE_ENV === "production") {
+      throw e;
+    }
   }
 
   // Drop legacy UNIQUE(userId, quizId) index to allow multiple attempts per quiz.

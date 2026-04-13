@@ -1,5 +1,6 @@
 const scoresService = require('../services/scoresService');
 const logger = require('../utils/logger'); // Assuming logger exists
+const sendInternalError = require('../utils/errorResponse');
 
 async function getLeaderboard(req, res) {
   try {
@@ -9,9 +10,11 @@ async function getLeaderboard(req, res) {
     }
     return res.json(result.data);
   } catch (error) {
-    const dbMsg = error.original?.message || error.parent?.message || error.message;
-    logger.error("خطأ في جلب لوحة الشرف:", { error: dbMsg, stack: error.stack });
-    res.status(500).json({ error: "حدث خطأ." });
+    logger.error("خطأ في جلب لوحة الشرف");
+    return sendInternalError(res, error, req, {
+      action: "scoresController.getLeaderboard",
+      userId: req.user?.id || null,
+    });
   }
 }
 
@@ -20,7 +23,10 @@ async function getMyAttemptsCount(req, res) {
     const data = await scoresService.getMyAttemptsCount(req.user.id);
     return res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "حدث خطأ أثناء جلب عدد المحاولات." });
+    return sendInternalError(res, error, req, {
+      action: "scoresController.getMyAttemptsCount",
+      userId: req.user?.id || null,
+    });
   }
 }
 

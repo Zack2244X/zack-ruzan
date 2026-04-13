@@ -16,7 +16,6 @@
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
-const { randomUUID } = require("crypto");
 const scoresController = require("../controllers/scoresController");
 const dbLayer = require("../services/safeQueryLayer");
 const scoresService = require("../services/scoresService");
@@ -36,20 +35,13 @@ const {
   validatePagination,
   validateIdParam,
   validateQuizIdParam,
+  validateScoresAttemptsQuery,
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
-const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
+const sendInternalError = require("../utils/errorResponse");
 
-function handleInternalError(res, error, context) {
-  const incidentId = randomUUID();
-  logger.error(
-    `${context} [incidentId=${incidentId}]`,
-    buildSanitizedErrorLog(error, context, incidentId),
-  );
-  return res.status(500).json({
-    error: "Internal Server Error",
-    incidentId,
-  });
+function handleInternalError(req, res, error, context) {
+  return sendInternalError(res, error, req, { action: context });
 }
 
 // --- In-Memory Cache للوحة المتصدرين ---
@@ -95,6 +87,24 @@ function isTrustedGuestOrigin(req) {
   }
 }
 
+function hasSuspiciousGuestSignals(req) {
+  const userAgent = String(req.get("user-agent") || "").toLowerCase();
+  if (!userAgent) return true;
+  const blockedAgents = [
+    "curl/",
+    "wget/",
+    "python-requests",
+    "httpie",
+    "postmanruntime",
+    "insomnia",
+    "axios/",
+  ];
+  if (blockedAgents.some((sig) => userAgent.includes(sig))) return true;
+
+  const deviceId = String(req.get("x-device-id") || "").trim();
+  return !/^[a-zA-Z0-9_-]{10,120}$/.test(deviceId);
+}
+
 
 
 // ============================================
@@ -120,6 +130,11 @@ const handleGuestMode = (req, res, next) => {
       return res
         .status(403)
         .json({ error: "مصدر الطلب غير موثوق لوضع الضيف." });
+    }
+    if (hasSuspiciousGuestSignals(req)) {
+      return res.status(403).json({
+        error: "تعذر التحقق من جلسة الضيف. استخدم التطبيق الرسمي.",
+      });
     }
     return res.status(200).json({
       message: "تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.",
@@ -151,9 +166,38 @@ router.post(
       const gradedAnswers = [];
       const questions = quiz.questions; // JSON array
 
+      if (!Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({ error: "الامتحان لا يحتوي على أسئلة صالحة للتصحيح." });
+      }
+      if (answers.length > questions.length) {
+        return res.status(400).json({ error: "عدد الإجابات يتجاوز عدد أسئلة الامتحان." });
+      }
+
+      const questionMap = new Map(questions.map((q) => [String(q.id), q]));
+      const seenQuestionIds = new Set();
+
       for (const answer of answers) {
-        const question = questions.find((q) => q.id === answer.questionId);
-        if (!question) continue;
+        const questionId = String(answer.questionId);
+        if (!questionMap.has(questionId)) {
+          return res.status(400).json({ error: "توجد إجابة لسؤال غير موجود في الامتحان." });
+        }
+        if (seenQuestionIds.has(questionId)) {
+          return res.status(400).json({ error: "لا يمكن إرسال إجابتين للسؤال نفسه." });
+        }
+
+        const question = questionMap.get(questionId);
+        if (
+          answer.selectedIndex < 0 ||
+          answer.selectedIndex >= (question.answerOptions || []).length
+        ) {
+          return res.status(400).json({ error: "خيار إجابة غير صالح لأحد الأسئلة." });
+        }
+
+        seenQuestionIds.add(questionId);
+      }
+
+      for (const answer of answers) {
+        const question = questionMap.get(String(answer.questionId));
 
         const selectedOption = question.answerOptions[answer.selectedIndex];
         const isCorrect = selectedOption ? selectedOption.isCorrect : false;
@@ -216,7 +260,7 @@ router.post(
         details: detailedResults,
       });
     } catch (error) {
-      return handleInternalError(res, error, "POST /api/scores failed");
+      return handleInternalError(req, res, error, "POST /api/scores failed");
     }
   },
 );
@@ -256,7 +300,7 @@ router.get("/my", authenticate, validatePagination, async (req, res) => {
       total_pages: Math.ceil(count / limit),
     });
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/scores/my failed");
+    return handleInternalError(req, res, error, "GET /api/scores/my failed");
   }
 });
 
@@ -314,14 +358,10 @@ router.get("/my/attempts", authenticate, scoresController.getMyAttemptsCount);
  * @param {import('express').Response} res - { attempts: number }
  * @returns {Promise<void>}
  */
-router.get("/", authenticate, async (req, res) => {
+router.get("/", authenticate, validateScoresAttemptsQuery, async (req, res) => {
   try {
     const { quizId, email } = req.query;
-
-    // ── التحقق من quizId ──────────────────────────────────────────────
-    if (!quizId) {
-      return res.status(400).json({ error: "quizId مطلوب." });
-    }
+    const normalizedQuizId = Number(quizId);
 
     // ── تحديد userId المستهدف ─────────────────────────────────────────
     let targetUserId = req.user.id;
@@ -344,11 +384,10 @@ router.get("/", authenticate, async (req, res) => {
     }
 
     // ── عدّ المحاولات باستخدام Score.count ───────────────────────────
-    // نستخدم String() على quizId لضمان التوافق مع أنواع البيانات المختلفة
     const attempts = await Score.count({
       where: {
         userId: targetUserId,
-        quizId: String(quizId),
+        quizId: normalizedQuizId,
       },
     });
 
@@ -365,7 +404,7 @@ router.get("/", authenticate, async (req, res) => {
     //   const count = Number(data?.attempts) || 0;
     res.json({ attempts });
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/scores/attempts failed");
+    return handleInternalError(req, res, error, "GET /api/scores/attempts failed");
   }
 });
 
@@ -440,7 +479,7 @@ router.get(
         total_pages: Math.ceil(count / limit)
       });
     } catch (error) {
-      return handleInternalError(res, error, "GET /api/scores/quiz/:quizId failed");
+      return handleInternalError(req, res, error, "GET /api/scores/quiz/:quizId failed");
     }
   },
 );
@@ -506,7 +545,7 @@ router.get(
         totalPages: Math.ceil(count / limit),
       });
     } catch (error) {
-      return handleInternalError(res, error, "GET /api/scores/all failed");
+      return handleInternalError(req, res, error, "GET /api/scores/all failed");
     }
   },
 );
@@ -556,7 +595,7 @@ router.get("/stats", authenticate, requireAdmin, async (req, res) => {
         : 0,
     });
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/scores/stats failed");
+    return handleInternalError(req, res, error, "GET /api/scores/stats failed");
   }
 });
 
@@ -586,7 +625,7 @@ router.delete(
       logger.info(`🗑️ حذف نتيجة #${req.params.id} — بواسطة: ${req.user.email}`);
       res.json({ message: "تم حذف النتيجة بنجاح." });
     } catch (error) {
-      return handleInternalError(res, error, "DELETE /api/scores/:id failed");
+      return handleInternalError(req, res, error, "DELETE /api/scores/:id failed");
     }
   },
 );

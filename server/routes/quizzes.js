@@ -12,7 +12,6 @@
 // ============================================
 const router = require("express").Router();
 const crypto = require("crypto");
-const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
 const sequelize = require("../models/index");
 const Quiz = require("../models/Quiz");
@@ -30,19 +29,10 @@ const {
   validateIdParam,
   validateSubjectParam,
 } = require("../middleware/validators");
-const logger = require("../utils/logger");
-const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
+const sendInternalError = require("../utils/errorResponse");
 
-function handleInternalError(res, error, context) {
-  const incidentId = randomUUID();
-  logger.error(
-    `${context} [incidentId=${incidentId}]`,
-    buildSanitizedErrorLog(error, context, incidentId),
-  );
-  return res.status(500).json({
-    error: "Internal Server Error",
-    incidentId,
-  });
+function handleInternalError(req, res, error, context) {
+  return sendInternalError(res, error, req, { action: context });
 }
 
 // ============================================
@@ -119,7 +109,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
       totalPages: Math.ceil(count / limit),
     });
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/quizzes failed");
+    return handleInternalError(req, res, error, "GET /api/quizzes failed");
   }
 });
 
@@ -148,7 +138,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
     const subjects = results.map((r) => r.subject);
     res.json(subjects);
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/quizzes/subjects/list failed");
+    return handleInternalError(req, res, error, "GET /api/quizzes/subjects/list failed");
   }
 });
 
@@ -184,7 +174,7 @@ router.put(
         modifiedCount: affectedCount,
       });
     } catch (error) {
-      return handleInternalError(res, error, "PUT /api/quizzes/subject/rename failed");
+      return handleInternalError(req, res, error, "PUT /api/quizzes/subject/rename failed");
     }
   },
 );
@@ -219,7 +209,7 @@ router.delete(
         deletedCount,
       });
     } catch (error) {
-      return handleInternalError(res, error, "DELETE /api/quizzes/subject/:name failed");
+      return handleInternalError(req, res, error, "DELETE /api/quizzes/subject/:name failed");
     }
   },
 );
@@ -236,7 +226,7 @@ router.delete(
  * @param {import('express').Response} res - Express response with the quiz object.
  * @returns {Promise<void>}
  */
-router.get("/:id", authenticate, async (req, res) => {
+router.get("/:id", authenticate, validateIdParam, async (req, res) => {
   try {
     const quiz = await Quiz.findByPk(req.params.id, {
       include: [{ model: User, as: "creator", attributes: ["fname", "lname"] }],
@@ -259,7 +249,7 @@ router.get("/:id", authenticate, async (req, res) => {
 
     res.json(quiz);
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/quizzes/:id failed");
+    return handleInternalError(req, res, error, "GET /api/quizzes/:id failed");
   }
 });
 
@@ -363,7 +353,7 @@ router.post(
         quiz,
       });
     } catch (error) {
-      return handleInternalError(res, error, "POST /api/quizzes failed");
+      return handleInternalError(req, res, error, "POST /api/quizzes failed");
     }
   },
 );
@@ -406,7 +396,9 @@ router.put(
         timeLimit: typeof req.body.timeLimit === 'number' ? req.body.timeLimit : undefined,
         isActive: typeof req.body.isActive === 'boolean' ? req.body.isActive : undefined,
         streakGoal: typeof req.body.streakGoal === 'number' ? req.body.streakGoal : undefined,
-        feedback: typeof req.body.feedback === 'string' ? req.body.feedback.trim() : undefined,
+        feedback: req.body.feedback && typeof req.body.feedback === 'object' && !Array.isArray(req.body.feedback)
+          ? req.body.feedback
+          : undefined,
         closingMessage: typeof req.body.closingMessage === 'string' ? req.body.closingMessage.trim() : undefined
       };
 
@@ -440,7 +432,7 @@ router.put(
         quiz,
       });
     } catch (error) {
-      return handleInternalError(res, error, "PUT /api/quizzes/:id failed");
+      return handleInternalError(req, res, error, "PUT /api/quizzes/:id failed");
     }
   },
 );
@@ -477,7 +469,7 @@ router.delete(
       await quiz.destroy();
       res.json({ message: "تم حذف الامتحان بنجاح." });
     } catch (error) {
-      return handleInternalError(res, error, "DELETE /api/quizzes/:id failed");
+      return handleInternalError(req, res, error, "DELETE /api/quizzes/:id failed");
     }
   },
 );

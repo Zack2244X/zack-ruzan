@@ -10,7 +10,6 @@
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
-const { randomUUID } = require("crypto");
 const sequelize = require("../models/index");
 const Note = require("../models/Note");
 const User = require("../models/User");
@@ -25,19 +24,10 @@ const {
   validatePagination,
   validateIdParam,
 } = require("../middleware/validators");
-const logger = require("../utils/logger");
-const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
+const sendInternalError = require("../utils/errorResponse");
 
-function handleInternalError(res, error, context) {
-  const incidentId = randomUUID();
-  logger.error(
-    `${context} [incidentId=${incidentId}]`,
-    buildSanitizedErrorLog(error, context, incidentId),
-  );
-  return res.status(500).json({
-    error: "Internal Server Error",
-    incidentId,
-  });
+function handleInternalError(req, res, error, context) {
+  return sendInternalError(res, error, req, { action: context });
 }
 
 // ============================================
@@ -78,7 +68,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
       totalPages: Math.ceil(count / limit),
     });
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/notes failed");
+    return handleInternalError(req, res, error, "GET /api/notes failed");
   }
 });
 
@@ -105,7 +95,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
     const subjects = results.map((r) => r.subject);
     res.json(subjects);
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/notes/subjects/list failed");
+    return handleInternalError(req, res, error, "GET /api/notes/subjects/list failed");
   }
 });
 
@@ -120,7 +110,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
  * @param {import('express').Response} res - Express response with the note object.
  * @returns {Promise<void>}
  */
-router.get("/:id", authenticate, async (req, res) => {
+router.get("/:id", authenticate, validateIdParam, async (req, res) => {
   try {
     const note = await Note.findByPk(req.params.id, {
       include: [{ model: User, as: "creator", attributes: ["fname", "lname"] }],
@@ -132,7 +122,7 @@ router.get("/:id", authenticate, async (req, res) => {
 
     res.json(note);
   } catch (error) {
-    return handleInternalError(res, error, "GET /api/notes/:id failed");
+    return handleInternalError(req, res, error, "GET /api/notes/:id failed");
   }
 });
 
@@ -170,7 +160,7 @@ router.post(
         note,
       });
     } catch (error) {
-      return handleInternalError(res, error, "POST /api/notes failed");
+      return handleInternalError(req, res, error, "POST /api/notes failed");
     }
   },
 );
@@ -216,7 +206,7 @@ router.put(
         note,
       });
     } catch (error) {
-      return handleInternalError(res, error, "PUT /api/notes/:id failed");
+      return handleInternalError(req, res, error, "PUT /api/notes/:id failed");
     }
   },
 );
@@ -245,7 +235,7 @@ router.delete(
       }
       res.json({ message: "تم حذف المذكرة بنجاح." });
     } catch (error) {
-      return handleInternalError(res, error, "DELETE /api/notes/:id failed");
+      return handleInternalError(req, res, error, "DELETE /api/notes/:id failed");
     }
   },
 );

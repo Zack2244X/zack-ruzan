@@ -10,7 +10,7 @@ describe("Frontend safety checks", () => {
     const filePath = path.join(__dirname, "../../client/js/modules/quiz.js");
     const src = fs.readFileSync(filePath, "utf8");
 
-    expect(src.includes("escapeHtml(currentQ.question)")).toBe(true);
-    expect(src.includes("escapeHtml(currentQ.hint)")).toBe(true);
+    expect(src.includes("sanitizeHTML(currentQ.question)")).toBe(true);
+    expect(src.includes("sanitizeHTML(currentQ.hint)")).toBe(true);
   });
 });

@@ -32,20 +32,62 @@ const JWT_SECRET = (() => {
   return crypto.randomBytes(32).toString("hex");
 })();
 
+if (process.env.NODE_ENV === "production" && JWT_SECRET.length < 32) {
+  logger.error("❌ JWT_SECRET ضعيف. يجب ألا يقل عن 32 حرفًا في الإنتاج.");
+  process.exit(1);
+}
+
+const JWT_ISSUER = process.env.JWT_ISSUER || "quiz-platform-api";
+const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "quiz-platform-client";
+
 // ============================================
 //   سجل محاولات الدخول الفاشلة (قاعدة البيانات)
 //   — DB-backed: يبقى بعد restart وعبر instances —
 // ============================================
 const MAX_FAILED = 5;
 const LOCKOUT_TIME = 30 * 60 * 1000; // 30 minutes
+const inMemoryLoginAttempts = new Map();
+
+function getRecentMemoryAttempt(ip) {
+  const entry = inMemoryLoginAttempts.get(ip);
+  if (!entry) return null;
+  if (Date.now() - Number(entry.lastAttempt || 0) > LOCKOUT_TIME) {
+    inMemoryLoginAttempts.delete(ip);
+    return null;
+  }
+  return entry;
+}
+
+function recordFailedAttemptInMemory(ip) {
+  const entry = getRecentMemoryAttempt(ip);
+  if (!entry) {
+    inMemoryLoginAttempts.set(ip, { count: 1, lastAttempt: Date.now() });
+    return;
+  }
+  inMemoryLoginAttempts.set(ip, {
+    count: Number(entry.count || 0) + 1,
+    lastAttempt: Date.now(),
+  });
+}
+
+function clearFailedAttemptInMemory(ip) {
+  inMemoryLoginAttempts.delete(ip);
+}
+
+function isLockedInMemory(ip) {
+  const entry = getRecentMemoryAttempt(ip);
+  return entry ? Number(entry.count || 0) >= MAX_FAILED : false;
+}
 
 /**
  * Checks whether the given IP is locked out (DB-backed, table: login_attempts).
- * Fails open on DB error to avoid blocking legitimate users.
+ * Uses DB as source of truth with in-memory fallback if DB is unavailable.
  * @param {string} ip
  * @returns {Promise<boolean>}
  */
 async function checkBruteForce(ip) {
+  if (isLockedInMemory(ip)) return true;
+
   try {
     const [[record]] = await dbLayer.executeReadOnlyQuery(
       "SELECT `count`, `last_attempt` FROM `login_attempts` WHERE `ip` = ?",
@@ -62,7 +104,8 @@ async function checkBruteForce(ip) {
     }
     return Number(record.count) >= MAX_FAILED;
   } catch {
-    return false; // fail open — لا نحجب المستخدمين لو DB غير متاحة
+    // Fail closed using local fallback when DB is unavailable.
+    return isLockedInMemory(ip);
   }
 }
 
@@ -72,6 +115,8 @@ async function checkBruteForce(ip) {
  * @returns {Promise<void>}
  */
 async function recordFailedAttempt(ip) {
+  recordFailedAttemptInMemory(ip);
+
   try {
     await dbLayer.executeWriteQuery(
     "INSERT INTO `login_attempts` (`ip`, `count`, `last_attempt`) VALUES (?, 1, ?)" +
@@ -89,6 +134,8 @@ async function recordFailedAttempt(ip) {
  * @returns {Promise<void>}
  */
 async function clearFailedAttempts(ip) {
+  clearFailedAttemptInMemory(ip);
+
   try {
     await dbLayer.executeWriteQuery("DELETE FROM `login_attempts` WHERE `ip` = ?",
  {
@@ -118,6 +165,7 @@ const setCsrfCookie = (res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
+  return token;
 };
 
 /**
@@ -216,7 +264,11 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: "توكن غير صالح." });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    });
 
     if (!decoded.userId || !decoded.role) {
       return res.status(401).json({ error: "توكن غير صالح." });
@@ -309,7 +361,11 @@ const generateToken = (userId, role, tokenVersion = 0, email = "") => {
       jti: crypto.randomBytes(8).toString("hex"),
     },
     JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "2h",
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    },
   );
 };
 

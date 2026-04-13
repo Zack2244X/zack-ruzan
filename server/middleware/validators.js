@@ -10,6 +10,47 @@
 //   Input Validation — express-validator
 // ============================================
 const { body, param, query, validationResult } = require("express-validator");
+const { z } = require("zod");
+
+const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,120}$/;
+
+const quizFeedbackSchema = z
+  .record(z.string().trim().min(1).max(500))
+  .refine((obj) => Object.keys(obj).length <= 30, {
+    message: "feedback يحتوي على عدد مفاتيح أكبر من المسموح.",
+  });
+
+const safeHttpUrl = z.string().trim().url().refine((value) => {
+  try {
+    const parsed = new URL(value);
+    const scheme = parsed.protocol.toLowerCase();
+    return scheme === "http:" || scheme === "https:";
+  } catch {
+    return false;
+  }
+}, "رابط غير صالح. يجب أن يبدأ بـ https:// أو http://");
+
+function formatZodErrors(issues) {
+  return issues.map((issue) => ({
+    field: issue.path.join(".") || "body",
+    message: issue.message,
+  }));
+}
+
+function validateZodBody(schema) {
+  return (req, res, next) => {
+    const parsed = schema.safeParse(req.body || {});
+    if (!parsed.success) {
+      const details = formatZodErrors(parsed.error.issues);
+      return res.status(400).json({
+        error: details[0]?.message || "بيانات الطلب غير صالحة.",
+        details,
+      });
+    }
+    req.body = parsed.data;
+    next();
+  };
+}
 
 /**
  * Express middleware that checks for validation errors from express-validator chains.
@@ -36,27 +77,25 @@ const validate = (req, res, next) => {
  * @type {Array<import('express').RequestHandler>}
  */
 const validateGoogleLogin = [
-  body("idToken")
-    .isString()
-    .withMessage("توكن Google مطلوب.")
-    .isLength({ min: 10, max: 4096 })
-    .withMessage("توكن غير صالح."),
-  body("securityConsent")
-    .exists({ checkNull: true })
-    .withMessage("يجب الموافقة على سياسة الأمان والخصوصية قبل المتابعة.")
-    .custom((v) => v === true || v === "true")
-    .withMessage("يجب الموافقة على سياسة الأمان والخصوصية قبل المتابعة.")
-    .toBoolean(),
-  body("consentVersion")
-    .optional()
-    .isString()
-    .withMessage("نسخة الموافقة غير صالحة.")
-    .isLength({ min: 1, max: 40 })
-    .withMessage("نسخة الموافقة غير صالحة."),
-  body("consentTs")
-    .optional()
-    .isISO8601()
-    .withMessage("تاريخ الموافقة غير صالح."),
+  validateZodBody(
+    z
+      .object({
+        idToken: z.string().trim().min(10).max(4096),
+        securityConsent: z
+          .union([z.boolean(), z.literal("true")])
+          .transform((v) => v === true || v === "true")
+          .refine((v) => v === true, {
+            message: "يجب الموافقة على سياسة الأمان والخصوصية قبل المتابعة.",
+          }),
+        consentVersion: z.string().trim().min(1).max(40).optional(),
+        consentTs: z
+          .string()
+          .datetime({ offset: true })
+          .or(z.string().datetime())
+          .optional(),
+      })
+      .strict(),
+  ),
   validate,
 ];
 
@@ -111,41 +150,52 @@ const validateCreateAdmin = [
  * @type {Array<import('express').RequestHandler>}
  */
 const validateCreateQuiz = [
-  body("title")
-    .trim()
-    .notEmpty()
-    .withMessage("عنوان الامتحان مطلوب.")
-    .isLength({ max: 255 })
-    .withMessage("العنوان طويل جداً."),
-  body("subject")
-    .trim()
-    .notEmpty()
-    .withMessage("المادة مطلوبة.")
-    .isLength({ max: 100 })
-    .withMessage("اسم المادة طويل جداً."),
-  body("questions")
-    .isArray({ min: 1, max: 200 })
-    .withMessage("يجب إضافة سؤال واحد على الأقل (الحد الأقصى 200)."),
-  // Deep validation — each question (field name is "question", not "text")
-  body("questions.*.question")
-    .trim()
-    .notEmpty()
-    .withMessage("نص كل سؤال مطلوب.")
-    .isLength({ max: 2000 })
-    .withMessage("نص السؤال طويل جداً (الحد 2000 حرف)."),
-  body("questions.*.answerOptions")
-    .isArray({ min: 2, max: 6 })
-    .withMessage("كل سؤال يجب أن يحتوي على خيارين على الأقل (الحد الأقصى 6)."),
-  body("questions.*.answerOptions.*.text")
-    .trim()
-    .notEmpty()
-    .withMessage("نص كل خيار مطلوب.")
-    .isLength({ max: 500 })
-    .withMessage("نص الخيار طويل جداً."),
-  body("timeLimit")
-    .optional()
-    .isInt({ min: 60, max: 7200 })
-    .withMessage("المدة بين 1-120 دقيقة."),
+  validateZodBody(
+    z
+      .object({
+        title: z.string().trim().min(1).max(255),
+        subject: z.string().trim().min(1).max(100),
+        description: z.string().trim().max(3000).optional(),
+        timeLimit: z.number().int().min(60).max(7200).optional(),
+        closingMessage: z.string().trim().max(1000).optional(),
+        streakGoal: z.number().int().min(1).max(365).optional(),
+        feedback: quizFeedbackSchema.optional(),
+        questions: z
+          .array(
+            z
+              .object({
+                id: z.string().uuid().optional(),
+                question: z.string().trim().min(1).max(2000),
+                hint: z.string().trim().max(1000).optional(),
+                answerOptions: z
+                  .array(
+                    z
+                      .object({
+                        text: z.string().trim().min(1).max(500),
+                        isCorrect: z.boolean(),
+                        rationale: z.string().trim().max(1000).optional(),
+                      })
+                      .strict(),
+                  )
+                  .min(2)
+                  .max(6),
+              })
+              .strict()
+              .superRefine((question, ctx) => {
+                if (!question.answerOptions.some((opt) => opt.isCorrect)) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "كل سؤال يجب أن يحتوي على إجابة صحيحة واحدة على الأقل.",
+                    path: ["answerOptions"],
+                  });
+                }
+              }),
+          )
+          .min(1)
+          .max(200),
+      })
+      .strict(),
+  ),
   validate,
 ];
 
@@ -156,9 +206,57 @@ const validateCreateQuiz = [
  */
 const validateUpdateQuiz = [
   param("id").isInt().withMessage("معرّف الامتحان غير صالح."),
-  body("title").optional().trim().isLength({ max: 255 }),
-  body("subject").optional().trim().isLength({ max: 100 }),
-  body("timeLimit").optional().isInt({ min: 60, max: 7200 }),
+  validateZodBody(
+    z
+      .object({
+        title: z.string().trim().min(1).max(255).optional(),
+        description: z.string().trim().max(3000).optional(),
+        subject: z.string().trim().min(1).max(100).optional(),
+        timeLimit: z.number().int().min(60).max(7200).optional(),
+        isActive: z.boolean().optional(),
+        streakGoal: z.number().int().min(1).max(365).optional(),
+        closingMessage: z.string().trim().max(1000).optional(),
+        feedback: quizFeedbackSchema.optional(),
+        questions: z
+          .array(
+            z
+              .object({
+                id: z.string().uuid().optional(),
+                question: z.string().trim().min(1).max(2000),
+                hint: z.string().trim().max(1000).optional(),
+                answerOptions: z
+                  .array(
+                    z
+                      .object({
+                        text: z.string().trim().min(1).max(500),
+                        isCorrect: z.boolean(),
+                        rationale: z.string().trim().max(1000).optional(),
+                      })
+                      .strict(),
+                  )
+                  .min(2)
+                  .max(6),
+              })
+              .strict()
+              .superRefine((question, ctx) => {
+                if (!question.answerOptions.some((opt) => opt.isCorrect)) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "كل سؤال يجب أن يحتوي على إجابة صحيحة واحدة على الأقل.",
+                    path: ["answerOptions"],
+                  });
+                }
+              }),
+          )
+          .min(1)
+          .max(200)
+          .optional(),
+      })
+      .strict()
+      .refine((payload) => Object.keys(payload).length > 0, {
+        message: "لا توجد حقول صالحة للتحديث.",
+      }),
+  ),
   validate,
 ];
 
@@ -184,9 +282,25 @@ const validateRenameSubject = [
  * @type {Array<import('express').RequestHandler>}
  */
 const validateSubmitScore = [
-  body("quizId").isInt({ min: 1 }).withMessage("معرّف الامتحان يجب أن يكون رقماً صحيحاً موجباً."),
-  body("answers").isArray({ min: 1 }).withMessage("الإجابات مطلوبة."),
-  body("timeTaken").optional().isInt({ min: 0 }),
+  validateZodBody(
+    z
+      .object({
+        quizId: z.coerce.number().int().positive(),
+        answers: z
+          .array(
+            z
+              .object({
+                questionId: z.string().uuid("معرّف السؤال غير صالح."),
+                selectedIndex: z.number().int().min(0).max(5),
+              })
+              .strict(),
+          )
+          .min(1)
+          .max(200),
+        timeTaken: z.number().int().min(0).max(86400).optional(),
+      })
+      .strict(),
+  ),
   validate,
 ];
 
@@ -196,52 +310,17 @@ const validateSubmitScore = [
  * @type {Array<import('express').RequestHandler>}
  */
 const validateCreateNote = [
-  body("title")
-    .trim()
-    .notEmpty()
-    .withMessage("العنوان مطلوب.")
-    .isLength({ max: 255 })
-    .withMessage("العنوان طويل جداً."),
-  body("subject")
-    .trim()
-    .notEmpty()
-    .withMessage("المادة مطلوبة.")
-    .isLength({ max: 100 }),
-  body("link")
-    .trim()
-    .notEmpty()
-    .withMessage("الرابط مطلوب.")
-    .isURL({ protocols: ["https", "http"], require_protocol: true })
-    .withMessage("رابط غير صالح. يجب أن يبدأ بـ https://")
-    .custom((val) => {
-      // Safer URI scheme validation using URL parsing
-      try {
-        const parsedUrl = new URL(val);
-        const scheme = parsedUrl.protocol.toLowerCase();
-        // Block dangerous schemes
-        const blockedSchemes = [
-          "javascript:",
-          "data:",
-          "vbscript:",
-          "file:",
-          "about:",
-        ];
-        if (blockedSchemes.includes(scheme)) {
-          throw new Error("رابط غير مسموح.");
-        }
-      } catch (e) {
-        // URL parsing failed or custom error thrown above
-        if (e.message.includes("غير مسموح")) {
-          throw e;
-        }
-        throw new Error("رابط غير صالح.");
-      }
-      return true;
-    }),
-  body("type")
-    .optional()
-    .isIn(["pdf", "ppt", "link"])
-    .withMessage("نوع الملف غير مدعوم."),
+  validateZodBody(
+    z
+      .object({
+        title: z.string().trim().min(1).max(255),
+        subject: z.string().trim().min(1).max(100),
+        link: safeHttpUrl,
+        type: z.enum(["pdf", "ppt", "link"]).optional(),
+        description: z.string().trim().max(2000).optional(),
+      })
+      .strict(),
+  ),
   validate,
 ];
 
@@ -252,10 +331,113 @@ const validateCreateNote = [
  */
 const validateUpdateNote = [
   param("id").isInt().withMessage("معرّف المذكرة غير صالح."),
-  body("link")
+  validateZodBody(
+    z
+      .object({
+        title: z.string().trim().min(1).max(255).optional(),
+        subject: z.string().trim().min(1).max(100).optional(),
+        link: safeHttpUrl.optional(),
+        type: z.enum(["pdf", "ppt", "link"]).optional(),
+        description: z.string().trim().max(2000).optional(),
+      })
+      .strict()
+      .refine((payload) => Object.keys(payload).length > 0, {
+        message: "لا توجد حقول صالحة للتحديث.",
+      }),
+  ),
+  validate,
+];
+
+/**
+ * Validation schema for saving quiz progress.
+ * Allows strict payload only and rejects unknown fields.
+ */
+const validateProgressSchema = [
+  validateZodBody(
+    z
+      .object({
+        quizId: z.union([
+          z.number().int().positive(),
+          z.string().regex(/^\d+$/).transform((v) => Number(v)),
+        ]),
+        answers: z
+          .array(
+            z
+              .object({
+                questionId: z.string().uuid(),
+                selectedIndex: z.number().int().min(0).max(5),
+              })
+              .strict(),
+          )
+          .max(200),
+        timeRemaining: z.number().int().min(0).max(7200),
+        currentQuestionIndex: z.number().int().min(0).max(199),
+        deviceId: z.string().regex(DEVICE_ID_REGEX).optional(),
+      })
+      .strict(),
+  ),
+  validate,
+];
+
+/**
+ * Validation for attempts query (quizId required, optional admin email).
+ */
+const validateAttemptsQuery = [
+  query("quizId")
+    .exists({ checkFalsy: true })
+    .withMessage("quizId مطلوب.")
+    .isInt({ min: 1 })
+    .withMessage("معرّف الامتحان غير صالح."),
+  query("email")
     .optional()
-    .isURL({ protocols: ["https", "http"], require_protocol: true })
-    .withMessage("رابط غير صالح."),
+    .isEmail()
+    .withMessage("البريد الإلكتروني غير صالح.")
+    .isLength({ max: 255 })
+    .withMessage("البريد الإلكتروني طويل جداً."),
+  validate,
+];
+
+/**
+ * Validation for legacy attempts placeholder creation.
+ */
+const validateAttemptPlaceholder = [
+  body("quizId")
+    .exists({ checkFalsy: true })
+    .withMessage("quizId مطلوب")
+    .isInt({ min: 1 })
+    .withMessage("معرّف الامتحان غير صالح."),
+  body("email")
+    .optional()
+    .isEmail()
+    .withMessage("البريد الإلكتروني غير صالح.")
+    .isLength({ max: 255 })
+    .withMessage("البريد الإلكتروني طويل جداً."),
+  validate,
+];
+
+/**
+ * Validation for quiz progress path parameter.
+ */
+const validateQuizProgressParam = [
+  param("quizId").isInt({ min: 1 }).withMessage("معرّف الامتحان غير صالح."),
+  validate,
+];
+
+/**
+ * Validation for scores attempts summary query.
+ */
+const validateScoresAttemptsQuery = [
+  query("quizId")
+    .exists({ checkFalsy: true })
+    .withMessage("quizId مطلوب.")
+    .isInt({ min: 1 })
+    .withMessage("معرّف الامتحان غير صالح."),
+  query("email")
+    .optional()
+    .isEmail()
+    .withMessage("البريد الإلكتروني غير صالح.")
+    .isLength({ max: 255 })
+    .withMessage("البريد الإلكتروني طويل جداً."),
   validate,
 ];
 
@@ -319,6 +501,11 @@ module.exports = {
   validateSubmitScore,
   validateCreateNote,
   validateUpdateNote,
+  validateProgressSchema,
+  validateAttemptsQuery,
+  validateAttemptPlaceholder,
+  validateQuizProgressParam,
+  validateScoresAttemptsQuery,
   validatePagination,
   validateIdParam,
   validateSubjectParam,
