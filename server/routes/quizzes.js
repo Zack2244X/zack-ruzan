@@ -12,6 +12,7 @@
 // ============================================
 const router = require("express").Router();
 const crypto = require("crypto");
+const { randomUUID } = require("crypto");
 const { Op } = require("sequelize");
 const sequelize = require("../models/index");
 const Quiz = require("../models/Quiz");
@@ -30,6 +31,21 @@ const {
   validateSubjectParam,
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
+
+function handleInternalError(res, error, context) {
+  const incidentId = randomUUID();
+  logger.error(`${context} [incidentId=${incidentId}]`, {
+    incidentId,
+    message: error.message,
+    stack: error.stack,
+    sql: error.sql || null,
+    dbMessage: error.original?.message || error.parent?.message || null,
+  });
+  return res.status(500).json({
+    error: "Internal Server Error",
+    incidentId,
+  });
+}
 
 // ============================================
 //   GET /api/quizzes — جلب كل الامتحانات
@@ -105,18 +121,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
       totalPages: Math.ceil(count / limit),
     });
   } catch (error) {
-    const dbMsg =
-      error.original?.message || error.parent?.message || error.message;
-    logger.error("خطأ في جلب الامتحانات:", {
-      error: dbMsg,
-      stack: error.stack,
-    });
-    res
-      .status(500)
-      .json({
-        error: "حدث خطأ في جلب الامتحانات.",
-        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-      });
+    return handleInternalError(res, error, "GET /api/quizzes failed");
   }
 });
 
@@ -145,8 +150,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
     const subjects = results.map((r) => r.subject);
     res.json(subjects);
   } catch (error) {
-    logger.error("خطأ في جلب المواد:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ." });
+    return handleInternalError(res, error, "GET /api/quizzes/subjects/list failed");
   }
 });
 
@@ -182,8 +186,7 @@ router.put(
         modifiedCount: affectedCount,
       });
     } catch (error) {
-      logger.error("خطأ في تعديل اسم المادة:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ." });
+      return handleInternalError(res, error, "PUT /api/quizzes/subject/rename failed");
     }
   },
 );
@@ -218,8 +221,7 @@ router.delete(
         deletedCount,
       });
     } catch (error) {
-      logger.error("خطأ في حذف المادة:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ." });
+      return handleInternalError(res, error, "DELETE /api/quizzes/subject/:name failed");
     }
   },
 );
@@ -259,8 +261,7 @@ router.get("/:id", authenticate, async (req, res) => {
 
     res.json(quiz);
   } catch (error) {
-    logger.error("خطأ في جلب الامتحان:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ في جلب الامتحان." });
+    return handleInternalError(res, error, "GET /api/quizzes/:id failed");
   }
 });
 
@@ -364,8 +365,7 @@ router.post(
         quiz,
       });
     } catch (error) {
-      logger.error("خطأ في إنشاء الامتحان:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء إنشاء الامتحان." });
+      return handleInternalError(res, error, "POST /api/quizzes failed");
     }
   },
 );
@@ -442,8 +442,7 @@ router.put(
         quiz,
       });
     } catch (error) {
-      logger.error("خطأ في تعديل الامتحان:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء تعديل الامتحان." });
+      return handleInternalError(res, error, "PUT /api/quizzes/:id failed");
     }
   },
 );
@@ -480,8 +479,7 @@ router.delete(
       await quiz.destroy();
       res.json({ message: "تم حذف الامتحان بنجاح." });
     } catch (error) {
-      logger.error("خطأ في حذف الامتحان:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء حذف الامتحان." });
+      return handleInternalError(res, error, "DELETE /api/quizzes/:id failed");
     }
   },
 );

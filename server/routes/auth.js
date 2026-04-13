@@ -27,8 +27,9 @@ async function logAccountSession({ userId, email, loginType = "google", ipAddres
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
+const { randomUUID } = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
-const { UniqueConstraintError } = require("sequelize");
+const { UniqueConstraintError, QueryTypes } = require("sequelize");
 const dbLayer = require("../services/safeQueryLayer");
 const User = require("../models/User");
 const BlockedDevice = require("../models/BlockedDevice");
@@ -54,6 +55,21 @@ const {
 const logger = require("../utils/logger");
 const rateLimit = require("express-rate-limit");
 const sequelize = require("../models");
+
+function handleInternalError(res, error, context) {
+  const incidentId = randomUUID();
+  logger.error(`${context} [incidentId=${incidentId}]`, {
+    incidentId,
+    message: error.message,
+    stack: error.stack,
+    sql: error.sql || null,
+    dbMessage: error.original?.message || error.parent?.message || null,
+  });
+  return res.status(500).json({
+    error: "حدث خطأ داخلي في الخادم",
+    incidentId,
+  });
+}
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -733,22 +749,7 @@ router.post(
       if (error instanceof UniqueConstraintError) {
         return res.status(409).json({ error: "هذا الحساب مسجل بالفعل." });
       }
-      const mysqlMsg = error.original?.message || error.parent?.message || "";
-      const mysqlCode = error.original?.code || error.parent?.code || "";
-      const sqlQuery = error.sql || "";
-      logger.error("خطأ في تسجيل Google:", {
-        message: error.message,
-        mysqlMsg,
-        mysqlCode,
-        sql: sqlQuery,
-        stack: error.stack,
-      });
-      res.status(500).json({
-        error: "حدث خطأ أثناء التسجيل بالجيميل.",
-        ...(process.env.NODE_ENV !== "production" && {
-          debug: mysqlMsg || error.message,
-        }),
-      });
+      return handleInternalError(res, error, "POST /api/auth/google failed");
     }
   },
 );
@@ -801,8 +802,7 @@ router.post("/guest-session", publicAuthStrictLimiter, async (req, res) => {
 
     return res.status(201).json({ ok: true });
   } catch (error) {
-    logger.error("خطأ في تسجيل guest-session:", { error: error.message });
-    return res.status(500).json({ error: "تعذر تسجيل جلسة الضيف." });
+    return handleInternalError(res, error, "POST /api/auth/guest-session failed");
   }
 });
 
@@ -1121,13 +1121,11 @@ router.get(
         },
       });
     } catch (error) {
-      logger.error("خطأ في جلب accounts-overview:", {
-        error: error.message,
-        stack: error.stack,
-      });
-      return res
-        .status(500)
-        .json({ error: "تعذر تحميل بيانات إدارة الحسابات." });
+      return handleInternalError(
+        res,
+        error,
+        "GET /api/auth/accounts-overview failed",
+      );
     }
   },
 );
@@ -1170,8 +1168,11 @@ router.delete(
       );
       return res.json({ ok: true, message: "تم حذف الزيارة بنجاح." });
     } catch (error) {
-      logger.error("خطأ في حذف الزيارة:", { error: error.message });
-      return res.status(500).json({ error: "تعذر حذف الزيارة." });
+      return handleInternalError(
+        res,
+        error,
+        "DELETE /api/auth/account-sessions/:id failed",
+      );
     }
   },
 );
@@ -1203,8 +1204,7 @@ router.delete(
       );
       return res.json({ ok: true, message: "تم حذف الحساب بنجاح." });
     } catch (error) {
-      logger.error("خطأ في حذف الحساب:", { error: error.message });
-      return res.status(500).json({ error: "تعذر حذف الحساب." });
+      return handleInternalError(res, error, "DELETE /api/auth/accounts/:id failed");
     }
   },
 );
@@ -1222,6 +1222,20 @@ router.post(
       const deviceName = sanitizeText(req.body?.deviceName, 120);
       const reason =
         sanitizeText(req.body?.reason, 255) || "تم الحظر بواسطة الإدارة";
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const deviceIdRegex = /^[a-zA-Z0-9_-]{10,120}$/;
+      const ipRegex = /^[a-zA-Z0-9:.]{3,64}$/;
+
+      if (email && !emailRegex.test(email)) {
+        return res.status(400).json({ error: "صيغة البريد الإلكتروني غير صحيحة." });
+      }
+      if (deviceId && !deviceIdRegex.test(deviceId)) {
+        return res.status(400).json({ error: "صيغة deviceId غير صحيحة." });
+      }
+      if (ipAddress && !ipRegex.test(ipAddress)) {
+        return res.status(400).json({ error: "صيغة عنوان IP غير صحيحة." });
+      }
+
       const currentAdminEmail = sanitizeText(
         req.user?.email,
         255,
@@ -1357,12 +1371,13 @@ router.post(
         placeholders.push("NOW()");
       }
 
-      await dbLayer.executeReadOnlyQuery(
+      await sequelize.query(
         `INSERT INTO blocked_devices
                 (${insertCols.join(", ")})
              VALUES (${placeholders.join(", ")})`,
         {
           replacements,
+          type: QueryTypes.INSERT,
         },
       );
 
@@ -1373,8 +1388,7 @@ router.post(
         .status(201)
         .json({ ok: true, message: "تم حظر الجهاز بنجاح." });
     } catch (error) {
-      logger.error("خطأ في حظر الجهاز:", { error: error.message });
-      return res.status(500).json({ error: "تعذر حظر الجهاز." });
+      return handleInternalError(res, error, "POST /api/auth/blocked-devices failed");
     }
   },
 );
@@ -1430,10 +1444,7 @@ router.get(
         },
       });
     } catch (error) {
-      logger.error("خطأ في جلب الأجهزة المحظورة:", { error: error.message });
-      return res
-        .status(500)
-        .json({ error: "تعذر جلب قائمة الأجهزة المحظورة." });
+      return handleInternalError(res, error, "GET /api/auth/blocked-devices failed");
     }
   },
 );
@@ -1468,8 +1479,11 @@ router.delete(
 
       return res.json({ ok: true, message: "تم فك الحظر بنجاح." });
     } catch (error) {
-      logger.error("خطأ في فك الحظر:", { error: error.message });
-      return res.status(500).json({ error: "تعذر فك حظر الجهاز." });
+      return handleInternalError(
+        res,
+        error,
+        "DELETE /api/auth/blocked-devices/:id failed",
+      );
     }
   },
 );
@@ -1515,8 +1529,7 @@ router.put(
         },
       });
     } catch (error) {
-      logger.error("خطأ في إكمال البروفايل:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء حفظ الاسم." });
+      return handleInternalError(res, error, "PUT /api/auth/complete-profile failed");
     }
   },
 );
@@ -1693,8 +1706,7 @@ router.post(
       if (error instanceof UniqueConstraintError) {
         return res.status(409).json({ error: "هذا البريد مسجل بالفعل." });
       }
-      logger.error("خطأ في إنشاء الأدمن:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء إنشاء حساب المعلم." });
+      return handleInternalError(res, error, "POST /api/auth/create-admin failed");
     }
   },
 );
@@ -1730,8 +1742,7 @@ router.post("/refresh", authenticate, async (req, res) => {
     logger.info(`🔄 تجديد توكن — ${user.email}`);
     res.json({ message: "تم تجديد الجلسة." });
   } catch (error) {
-    logger.error("خطأ في تجديد التوكن:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ أثناء تجديد الجلسة." });
+    return handleInternalError(res, error, "POST /api/auth/refresh failed");
   }
 });
 
@@ -1761,8 +1772,7 @@ router.post("/logout", authenticate, async (req, res) => {
     logger.info(`🚪 تسجيل خروج وإلغاء كل التوكنات — ${user.email}`);
     res.json({ message: "تم تسجيل الخروج بنجاح." });
   } catch (error) {
-    logger.error("خطأ في تسجيل الخروج:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ أثناء تسجيل الخروج." });
+    return handleInternalError(res, error, "POST /api/auth/logout failed");
   }
 });
 

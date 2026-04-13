@@ -16,8 +16,10 @@
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
+const { randomUUID } = require("crypto");
 const scoresController = require("../controllers/scoresController");
 const dbLayer = require("../services/safeQueryLayer");
+const scoresService = require("../services/scoresService");
 
 const { Op } = require("sequelize");
 const sequelize = require("../models/index");
@@ -36,6 +38,21 @@ const {
   validateQuizIdParam,
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
+
+function handleInternalError(res, error, context) {
+  const incidentId = randomUUID();
+  logger.error(`${context} [incidentId=${incidentId}]`, {
+    incidentId,
+    message: error.message,
+    stack: error.stack,
+    sql: error.sql || null,
+    dbMessage: error.original?.message || error.parent?.message || null,
+  });
+  return res.status(500).json({
+    error: "حدث خطأ داخلي في الخادم",
+    incidentId,
+  });
+}
 
 // --- In-Memory Cache للوحة المتصدرين ---
 
@@ -152,38 +169,17 @@ router.post(
         });
       }
 
-      // 3. حفظ السجل مع معالجة Race Condition باستخدام retry loop
-      let score = null;
-      let attemptNumber = (await Score.count({ where: { userId: req.user.id, quizId } })) + 1;
-      let isOfficial = false;
-      const maxRetries = 3;
-
-      for (let i = 0; i < maxRetries; i++) {
-        try {
-          isOfficial = attemptNumber === 1;
-          score = await Score.create({
-            userId: req.user.id,
-            quizId,
-            answers: gradedAnswers,
-            score: correctCount,
-            total: questions.length,
-            timeTaken: timeTaken || 0,
-            isOfficial,
-            attemptNumber,
-          });
-          break; // نجاح
-        } catch (error) {
-          if (error.name === 'SequelizeUniqueConstraintError') {
-            attemptNumber++;
-            continue;
-          }
-          throw error;
-        }
-      }
-
-      if (!score) {
-        throw new Error(`Max attempts reached. Could not resolve race condition.`);
-      }
+      // SECURITY: delegate to atomic service implementation to avoid duplicate race logic.
+      const {
+        score,
+        attemptNumber,
+        isOfficial,
+      } = await scoresService.createAttempt(req.user.id, quizId, {
+        answers: gradedAnswers,
+        score: correctCount,
+        total: questions.length,
+        timeTaken: timeTaken || 0,
+      });
 
       logger.info(
         `[Score] userId=${req.user.id} quizId=${quizId}` +
@@ -222,15 +218,7 @@ router.post(
         details: detailedResults,
       });
     } catch (error) {
-      const dbMsg = error.original?.message || error.message;
-      logger.error("خطأ في تسليم الامتحان:", {
-        error: dbMsg,
-        stack: error.stack,
-      });
-      res.status(500).json({
-        error: "حدث خطأ أثناء تسليم الامتحان.",
-        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-      });
+      return handleInternalError(res, error, "POST /api/scores failed");
     }
   },
 );
@@ -270,13 +258,7 @@ router.get("/my", authenticate, validatePagination, async (req, res) => {
       total_pages: Math.ceil(count / limit),
     });
   } catch (error) {
-    const dbMsg =
-      error.original?.message || error.parent?.message || error.message;
-    logger.error("خطأ في جلب الدرجات:", { error: dbMsg, stack: error.stack });
-    res.status(500).json({
-      error: "حدث خطأ.",
-      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-    });
+    return handleInternalError(res, error, "GET /api/scores/my failed");
   }
 });
 
@@ -294,12 +276,6 @@ router.get("/my", authenticate, validatePagination, async (req, res) => {
  * @returns {Promise<void>}
  */
 router.get("/my/attempts", authenticate, scoresController.getMyAttemptsCount);
-    res.status(500).json({
-      error: "حدث خطأ.",
-      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-    });
-  }
-});
 
 // ============================================
 //   GET /api/attempts — عدد محاولات اختبار محدد
@@ -391,15 +367,7 @@ router.get("/", authenticate, async (req, res) => {
     //   const count = Number(data?.attempts) || 0;
     res.json({ attempts });
   } catch (error) {
-    const dbMsg = error.original?.message || error.message;
-    logger.error("خطأ في GET /api/attempts:", {
-      error: dbMsg,
-      stack: error.stack,
-    });
-    res.status(500).json({
-      error: "حدث خطأ أثناء جلب عدد المحاولات.",
-      ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-    });
+    return handleInternalError(res, error, "GET /api/scores/attempts failed");
   }
 });
 
@@ -474,8 +442,7 @@ router.get(
         total_pages: Math.ceil(count / limit)
       });
     } catch (error) {
-      logger.error("خطأ في جلب نتائج الامتحان:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ." });
+      return handleInternalError(res, error, "GET /api/scores/quiz/:quizId failed");
     }
   },
 );
@@ -541,16 +508,7 @@ router.get(
         totalPages: Math.ceil(count / limit),
       });
     } catch (error) {
-      const dbMsg =
-        error.original?.message || error.parent?.message || error.message;
-      logger.error("خطأ في جلب كل النتائج:", {
-        error: dbMsg,
-        stack: error.stack,
-      });
-      res.status(500).json({
-        error: "حدث خطأ.",
-        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-      });
+      return handleInternalError(res, error, "GET /api/scores/all failed");
     }
   },
 );
@@ -600,8 +558,7 @@ router.get("/stats", authenticate, requireAdmin, async (req, res) => {
         : 0,
     });
   } catch (error) {
-    logger.error("خطأ في الإحصائيات:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ." });
+    return handleInternalError(res, error, "GET /api/scores/stats failed");
   }
 });
 
@@ -631,8 +588,7 @@ router.delete(
       logger.info(`🗑️ حذف نتيجة #${req.params.id} — بواسطة: ${req.user.email}`);
       res.json({ message: "تم حذف النتيجة بنجاح." });
     } catch (error) {
-      logger.error("خطأ في حذف النتيجة:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء حذف النتيجة." });
+      return handleInternalError(res, error, "DELETE /api/scores/:id failed");
     }
   },
 );

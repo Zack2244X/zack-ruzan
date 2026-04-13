@@ -10,6 +10,7 @@
 //   — Sequelize + TiDB —
 // ============================================
 const router = require("express").Router();
+const { randomUUID } = require("crypto");
 const sequelize = require("../models/index");
 const Note = require("../models/Note");
 const User = require("../models/User");
@@ -25,6 +26,21 @@ const {
   validateIdParam,
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
+
+function handleInternalError(res, error, context) {
+  const incidentId = randomUUID();
+  logger.error(`${context} [incidentId=${incidentId}]`, {
+    incidentId,
+    message: error.message,
+    stack: error.stack,
+    sql: error.sql || null,
+    dbMessage: error.original?.message || error.parent?.message || null,
+  });
+  return res.status(500).json({
+    error: "Internal Server Error",
+    incidentId,
+  });
+}
 
 // ============================================
 //   GET /api/notes — جلب كل المذكرات
@@ -64,15 +80,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
       totalPages: Math.ceil(count / limit),
     });
   } catch (error) {
-    const dbMsg =
-      error.original?.message || error.parent?.message || error.message;
-    logger.error("خطأ في جلب المذكرات:", { error: dbMsg, stack: error.stack });
-    res
-      .status(500)
-      .json({
-        error: "حدث خطأ في جلب المذكرات.",
-        ...(process.env.NODE_ENV !== "production" && { debug: dbMsg }),
-      });
+    return handleInternalError(res, error, "GET /api/notes failed");
   }
 });
 
@@ -99,8 +107,7 @@ router.get("/subjects/list", authenticate, async (req, res) => {
     const subjects = results.map((r) => r.subject);
     res.json(subjects);
   } catch (error) {
-    logger.error("خطأ في جلب المواد:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ." });
+    return handleInternalError(res, error, "GET /api/notes/subjects/list failed");
   }
 });
 
@@ -127,8 +134,7 @@ router.get("/:id", authenticate, async (req, res) => {
 
     res.json(note);
   } catch (error) {
-    logger.error("خطأ في جلب المذكرة:", { error: error.message });
-    res.status(500).json({ error: "حدث خطأ." });
+    return handleInternalError(res, error, "GET /api/notes/:id failed");
   }
 });
 
@@ -166,8 +172,7 @@ router.post(
         note,
       });
     } catch (error) {
-      logger.error("خطأ في إضافة المذكرة:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء إضافة المذكرة." });
+      return handleInternalError(res, error, "POST /api/notes failed");
     }
   },
 );
@@ -213,8 +218,7 @@ router.put(
         note,
       });
     } catch (error) {
-      logger.error("خطأ في تعديل المذكرة:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء تعديل المذكرة." });
+      return handleInternalError(res, error, "PUT /api/notes/:id failed");
     }
   },
 );
@@ -243,8 +247,7 @@ router.delete(
       }
       res.json({ message: "تم حذف المذكرة بنجاح." });
     } catch (error) {
-      logger.error("خطأ في حذف المذكرة:", { error: error.message });
-      res.status(500).json({ error: "حدث خطأ أثناء حذف المذكرة." });
+      return handleInternalError(res, error, "DELETE /api/notes/:id failed");
     }
   },
 );

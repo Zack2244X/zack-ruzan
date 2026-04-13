@@ -1,16 +1,25 @@
 const router = require("express").Router();
+const { randomUUID } = require("crypto");
 const Score = require("../models/Score");
 const User = require("../models/User");
+const QuizProgress = require("../models/QuizProgress");
 const { authenticate } = require("../middleware/auth");
 const logger = require("../utils/logger");
+const scoresService = require("../services/scoresService");
 
-/**
- * Simple helper: compute next attempt number and whether it's official
- */
-async function resolveAttemptMeta(userId, quizId) {
-  const existingCount = await Score.count({ where: { userId, quizId } });
-  const attemptNumber = existingCount + 1;
-  return { attemptNumber, isOfficial: attemptNumber === 1 };
+function handleInternalError(res, error, context) {
+  const incidentId = randomUUID();
+  logger.error(`${context} [incidentId=${incidentId}]`, {
+    incidentId,
+    message: error.message,
+    stack: error.stack,
+    sql: error.sql || null,
+    dbMessage: error.original?.message || error.parent?.message || null,
+  });
+  return res.status(500).json({
+    error: "حدث خطأ داخلي في الخادم",
+    incidentId,
+  });
 }
 
 // GET /api/attempts?quizId=...(&email=...)
@@ -73,11 +82,7 @@ router.get("/", async (req, res) => {
     );
     res.json({ attempts });
   } catch (error) {
-    logger.error("خطأ في GET /api/attempts:", {
-      error: error.message,
-      stack: error.stack,
-    });
-    res.status(500).json({ error: "حدث خطأ." });
+    return handleInternalError(res, error, "GET /api/attempts failed");
   }
 });
 
@@ -97,33 +102,28 @@ router.post("/", authenticate, async (req, res) => {
       userId = u.id;
     }
 
-    const { attemptNumber, isOfficial } = await resolveAttemptMeta(
+    const { attemptNumber, isOfficial } = await scoresService.createAttempt(
       userId,
       quizId,
+      {
+        answers: [],
+        score: 0,
+        total: 0,
+        timeTaken: 0,
+      },
     );
-
-    await Score.create({
-      userId,
-      quizId,
-      answers: [],
-      score: 0,
-      total: 0,
-      timeTaken: 0,
-      isOfficial,
-      attemptNumber,
-    });
 
     const updatedCount = await Score.count({ where: { userId, quizId } });
     logger.info(
       `[POST /api/attempts] recorded placeholder userId=${userId} quizId=${quizId} attempt=${attemptNumber}`,
     );
-    res.status(201).json({ attempts: Number(updatedCount) });
-  } catch (error) {
-    logger.error("خطأ في POST /api/attempts:", {
-      error: error.message,
-      stack: error.stack,
+    res.status(201).json({
+      attempts: Number(updatedCount),
+      attemptNumber,
+      isOfficial,
     });
-    res.status(500).json({ error: "حدث خطأ." });
+  } catch (error) {
+    return handleInternalError(res, error, "POST /api/attempts failed");
   }
 });
 
@@ -131,19 +131,12 @@ router.post("/", authenticate, async (req, res) => {
 router.get("/progress/:quizId", authenticate, async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { deviceId } = req.query;
-    const { Op } = require("sequelize");
-
-    const conditions = [{ userId: req.user.id }];
-    if (deviceId) {
-      // فقط نقبل التقدم المرتبط بهذا الجهاز إذا لم يكن يتبع لأي مستخدم آخر (لمنع IDOR وإلغاء الاستيلاء على تقدم الآخرين)
-      conditions.push({ deviceId, userId: null });
-    }
-
-    const progress = await require("../models/QuizProgress").findOne({
+    // Security: for authenticated users, never trust deviceId ownership.
+    // Future hardening: require HMAC-signed device token for guest linkage.
+    const progress = await QuizProgress.findOne({
       where: {
         quizId,
-        [Op.or]: conditions,
+        userId: req.user.id,
       },
       order: [["updatedAt", "DESC"]],
     });
@@ -151,10 +144,7 @@ router.get("/progress/:quizId", authenticate, async (req, res) => {
       progress || { answers: [], timeRemaining: null, currentQuestionIndex: 0 },
     );
   } catch (error) {
-    require("../utils/logger").error("خطأ في GET /progress:", {
-      error: error.message,
-    });
-    res.status(500).json({ error: "حدث خطأ أثناء جلب التقدم" });
+    return handleInternalError(res, error, "GET /api/attempts/progress failed");
   }
 });
 
@@ -165,19 +155,10 @@ router.post("/progress", authenticate, async (req, res) => {
       req.body;
     if (!quizId) return res.status(400).json({ error: "quizId مطلوب" });
 
-    const QuizProgress = require("../models/QuizProgress");
-    const { Op } = require("sequelize");
-
-    const conditions = [{ userId: req.user.id }];
-    if (deviceId) {
-      // فقط نقبل التقدم المرتبط بهذا الجهاز إذا لم يكن يتبع لأي مستخدم آخر (لمنع IDOR وإلغاء الاستيلاء على تقدم الآخرين)
-      conditions.push({ deviceId, userId: null });
-    }
-
     let progress = await QuizProgress.findOne({
       where: {
         quizId,
-        [Op.or]: conditions,
+        userId: req.user.id,
       },
       order: [["updatedAt", "DESC"]],
     });
@@ -201,10 +182,7 @@ router.post("/progress", authenticate, async (req, res) => {
     }
     res.json({ message: "تم حفظ التقدم" });
   } catch (error) {
-    require("../utils/logger").error("خطأ في POST /progress:", {
-      error: error.message,
-    });
-    res.status(500).json({ error: "حدث خطأ أثناء حفظ التقدم" });
+    return handleInternalError(res, error, "POST /api/attempts/progress failed");
   }
 });
 
@@ -212,26 +190,15 @@ router.post("/progress", authenticate, async (req, res) => {
 router.delete("/progress/:quizId", authenticate, async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { deviceId } = req.query;
-    const { Op } = require("sequelize");
-
-    const conditions = [{ userId: req.user.id }];
-    if (deviceId) {
-      conditions.push({ deviceId, userId: null });
-    }
-
-    await require("../models/QuizProgress").destroy({
+    await QuizProgress.destroy({
       where: {
         quizId,
-        [Op.or]: conditions,
+        userId: req.user.id,
       },
     });
     res.json({ message: "تم الحذف" });
   } catch (error) {
-    require("../utils/logger").error("خطأ في DELETE /progress:", {
-      error: error.message,
-    });
-    res.status(500).json({ error: "حدث خطأ أثناء حذف التقدم" });
+    return handleInternalError(res, error, "DELETE /api/attempts/progress failed");
   }
 });
 

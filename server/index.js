@@ -38,6 +38,7 @@ const compression = require("compression");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const logger = require("./utils/logger");
 const { sanitizeBody } = require("./middleware/sanitize");
 const { verifyCsrf } = require("./middleware/auth");
@@ -164,7 +165,7 @@ if (process.env.NODE_ENV !== "production") {
 
 
 // خلف البروكسي (Railway/Render/NGINX)
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 // ============================================
 //     طبقات الأمان والأداء (Security + Perf)
@@ -307,7 +308,7 @@ async function getBlockedDevicesColumns() {
   return blockedDevicesColumnsCache;
 }
 
-async function getSessionEmail(req) {
+function getTrustedSessionIdentity(req) {
   try {
     const cookieToken = req.cookies?.jwt;
     const authHeader = req.headers.authorization;
@@ -316,25 +317,48 @@ async function getSessionEmail(req) {
         ? authHeader.split(" ")[1]
         : "";
     const token = cookieToken || bearerToken;
-    if (!token || token.length > 2048 || !process.env.JWT_SECRET) return "";
+    if (!token || token.length > 2048 || !process.env.JWT_SECRET) return null;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded?.userId) return "";
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
+    if (!decoded?.userId) return null;
 
-    if (typeof decoded.email === "string" && decoded.email.trim()) {
-      return decoded.email.trim().toLowerCase().substring(0, 255);
-    }
-
-    if (decoded.userId) {
-      const user = await User.findByPk(decoded.userId);
-      if (user && user.email) {
-        return String(user.email).trim().toLowerCase().substring(0, 255);
-      }
-    }
+    return {
+      userId: Number(decoded.userId) || null,
+      email:
+        typeof decoded.email === "string" && decoded.email.trim()
+          ? decoded.email.trim().toLowerCase().substring(0, 255)
+          : "",
+    };
   } catch (_) {
-    return "";
+    return null;
   }
-  return "";
+}
+
+function getSignedDeviceFingerprint(req) {
+  const fingerprint = String(req.cookies?.device_fp || "")
+    .trim()
+    .substring(0, 120);
+  const signature = String(req.cookies?.device_fp_sig || "")
+    .trim()
+    .substring(0, 256);
+  const secret = process.env.DEVICE_FP_SECRET || process.env.JWT_SECRET || "";
+
+  if (!fingerprint || !signature || !secret) return "";
+
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(fingerprint)
+    .digest("hex");
+
+  const signatureBuffer = Buffer.from(signature, "hex");
+  const expectedBuffer = Buffer.from(expected, "hex");
+  if (signatureBuffer.length !== expectedBuffer.length) return "";
+
+  // SECURITY: Only accept server-signed device fingerprints to prevent spoofing.
+  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return "";
+  return fingerprint;
 }
 
 app.use(async (req, res, next) => {
@@ -343,57 +367,43 @@ app.use(async (req, res, next) => {
   if (req.method === "GET" && (req.path === "/" || req.path === "/index.html"))
     return next();
   try {
-    const deviceId = String(
-      req.get("x-device-id") || req.body?.deviceId || req.query?.deviceId || "",
-    )
-      .trim()
-      .substring(0, 120);
-    const forwarded = req.headers["x-forwarded-for"];
-    const ipAddress = (
-      typeof forwarded === "string" && forwarded.trim()
-        ? forwarded.split(",")[0].trim()
-        : (req.ip || "").toString()
-    ).substring(0, 64);
-    const sessionEmail = await getSessionEmail(req);
-    const email = String(
-      req.get("x-user-email") ||
-        req.body?.email ||
-        req.query?.email ||
-        sessionEmail ||
-        "",
-    )
-      .trim()
-      .toLowerCase()
-      .substring(0, 255);
+    const sessionIdentity = getTrustedSessionIdentity(req);
+    const userId = sessionIdentity?.userId || null;
+    const email = sessionIdentity?.email || "";
+    // SECURITY: use server-resolved IP only (trust proxy configured at app level).
+    const ipAddress = String(req.ip || "").trim().substring(0, 64);
+    const signedDeviceFingerprint = getSignedDeviceFingerprint(req);
 
-    if (!deviceId && !ipAddress && !email) return next();
+    if (!userId && !ipAddress && !signedDeviceFingerprint) return next();
 
     const cols = await getBlockedDevicesColumns();
-    const filters = [];
-    const replacements = [];
+    let filter = "";
+    let replacement = null;
 
-    if (cols.has("deviceId") && deviceId) {
-      filters.push("deviceId = ?");
-      replacements.push(deviceId);
-    }
-    if (cols.has("ipAddress") && ipAddress) {
-      filters.push("ipAddress = ?");
-      replacements.push(ipAddress);
-    }
-    if (cols.has("email") && email) {
-      filters.push("email = ?");
-      replacements.push(email);
+    // SECURITY: prioritize authenticated identity, then server IP, then signed device fingerprint.
+    if (userId && cols.has("userId")) {
+      filter = "userId = ?";
+      replacement = userId;
+    } else if (userId && email && cols.has("email")) {
+      filter = "email = ?";
+      replacement = email;
+    } else if (ipAddress && cols.has("ipAddress")) {
+      filter = "ipAddress = ?";
+      replacement = ipAddress;
+    } else if (signedDeviceFingerprint && cols.has("deviceId")) {
+      filter = "deviceId = ?";
+      replacement = signedDeviceFingerprint;
     }
 
-    if (filters.length === 0) return next();
+    if (!filter) return next();
 
     const [rows] = await sequelize.query(
       `SELECT id, reason FROM blocked_devices
              WHERE isActive = 1
-               AND (${filters.join(" OR ")})
+               AND (${filter})
              ORDER BY id DESC
              LIMIT 1`,
-      { replacements },
+      { replacements: [replacement] },
     );
 
     if (rows && rows.length > 0) {

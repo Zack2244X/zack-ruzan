@@ -1,6 +1,9 @@
 const dbLayer = require('./safeQueryLayer');
 const NodeCache = require('node-cache');
 const logger = require('../utils/logger'); // Assuming logger exists
+const sequelize = require('../models');
+const Score = require('../models/Score');
+const { QueryTypes } = require('sequelize');
 
 // Cache for 60 seconds
 const leaderboardCache = new NodeCache({ stdTTL: 60 });
@@ -66,3 +69,59 @@ async function getMyAttemptsCount(userId) {
   }));
 }
 module.exports.getMyAttemptsCount = getMyAttemptsCount;
+
+/**
+ * Creates a score attempt with retry semantics to mitigate TOCTOU races.
+ * Security: the DB unique constraint remains the source of truth.
+ */
+async function createAttempt(userId, quizId, payload = {}) {
+  const maxRetries = 5;
+
+  for (let i = 0; i < maxRetries; i++) {
+    const transaction = await sequelize.transaction();
+    try {
+      // SECURITY: lock the user's quiz-attempt row range to reduce concurrent collisions.
+      const [row] = await sequelize.query(
+        `SELECT COALESCE(MAX(attemptNumber), 0) + 1 AS nextAttempt
+           FROM scores
+          WHERE userId = :userId AND quizId = :quizId
+          FOR UPDATE`,
+        {
+          replacements: { userId, quizId },
+          type: QueryTypes.SELECT,
+          transaction,
+        },
+      );
+
+      const attemptNumber = Number(row?.nextAttempt || 1);
+      const isOfficial = attemptNumber === 1;
+      const score = await Score.create(
+        {
+          userId,
+          quizId,
+          answers: payload.answers || [],
+          score: Number(payload.score || 0),
+          total: Number(payload.total || 0),
+          timeTaken: Number(payload.timeTaken || 0),
+          isOfficial,
+          attemptNumber,
+        },
+        { transaction },
+      );
+      await transaction.commit();
+      return { score, attemptNumber, isOfficial };
+    } catch (error) {
+      await transaction.rollback();
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const backoffMs = Math.min(200, 25 * (2 ** i));
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error('Max attempts reached while resolving concurrent submissions.');
+}
+
+module.exports.createAttempt = createAttempt;
