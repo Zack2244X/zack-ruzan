@@ -6,16 +6,14 @@ const QuizProgress = require("../models/QuizProgress");
 const { authenticate } = require("../middleware/auth");
 const logger = require("../utils/logger");
 const scoresService = require("../services/scoresService");
+const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
 
 function handleInternalError(res, error, context) {
   const incidentId = randomUUID();
-  logger.error(`${context} [incidentId=${incidentId}]`, {
-    incidentId,
-    message: error.message,
-    stack: error.stack,
-    sql: error.sql || null,
-    dbMessage: error.original?.message || error.parent?.message || null,
-  });
+  logger.error(
+    `${context} [incidentId=${incidentId}]`,
+    buildSanitizedErrorLog(error, context, incidentId),
+  );
   return res.status(500).json({
     error: "حدث خطأ داخلي في الخادم",
     incidentId,

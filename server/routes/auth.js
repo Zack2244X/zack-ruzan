@@ -11,7 +11,10 @@ async function logAccountSession({ userId, email, loginType = "google", ipAddres
       userAgent: sanitizeText(userAgent, 500)
     });
   } catch (err) {
-    logger.error("Error logging account session", err);
+    logger.error(
+      "Error logging account session",
+      buildSanitizedErrorLog(err, "logAccountSession"),
+    );
   }
 }
 
@@ -53,18 +56,16 @@ const {
   validateCreateAdmin,
 } = require("../middleware/validators");
 const logger = require("../utils/logger");
+const { buildSanitizedErrorLog } = require("../utils/secureErrorLog");
 const rateLimit = require("express-rate-limit");
 const sequelize = require("../models");
 
 function handleInternalError(res, error, context) {
   const incidentId = randomUUID();
-  logger.error(`${context} [incidentId=${incidentId}]`, {
-    incidentId,
-    message: error.message,
-    stack: error.stack,
-    sql: error.sql || null,
-    dbMessage: error.original?.message || error.parent?.message || null,
-  });
+  logger.error(
+    `${context} [incidentId=${incidentId}]`,
+    buildSanitizedErrorLog(error, context, incidentId),
+  );
   return res.status(500).json({
     error: "Internal Server Error",
     incidentId,

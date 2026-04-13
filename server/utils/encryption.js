@@ -7,33 +7,60 @@ const logger = require('../utils/logger');
  */
 
 const crypto = require("crypto");
+let cachedEncryptionKey = null;
+
+function decodeKeyMaterial(rawKey) {
+  const isHex = /^[0-9a-fA-F]+$/.test(rawKey) && rawKey.length % 2 === 0;
+  if (isHex) return Buffer.from(rawKey, "hex");
+  return Buffer.from(rawKey, "utf8");
+}
+
+function keyLooksWeak(rawKey) {
+  const lower = String(rawKey || "").toLowerCase();
+  const weakMarkers = ["default", "dev", "test", "password", "123", "qwerty"];
+  if (weakMarkers.some((marker) => lower.includes(marker))) return true;
+
+  const uniqueChars = new Set(lower.replace(/\s+/g, "")).size;
+  if (uniqueChars < 10) return true;
+
+  return false;
+}
 
 /**
- * Get encryption key from environment or generate a new one.
- * ⚠️ SECURITY: In production, use a strong 32-byte key from env var
+ * Get encryption key from environment and enforce strict validation.
+ * SECURITY: application must not run without a strong key.
  * @returns {Buffer} 32-byte encryption key
  */
 function getEncryptionKey() {
+  if (cachedEncryptionKey) return cachedEncryptionKey;
+
   const keyEnv = process.env.ENCRYPTION_KEY;
-  if (!keyEnv) {
+  if (!keyEnv || !String(keyEnv).trim()) {
+    throw new Error("CRITICAL: Missing Encryption Key");
+  }
+
+  const keyBuffer = decodeKeyMaterial(String(keyEnv).trim());
+  if (keyBuffer.length < 32) {
+    throw new Error("CRITICAL: Weak Encryption Key (minimum 32 bytes required)");
+  }
+
+  if (keyLooksWeak(keyEnv)) {
+    const weakMsg =
+      "Weak ENCRYPTION_KEY detected. Use high-entropy key material (>=32 bytes).";
     if (process.env.NODE_ENV === "production") {
-      logger.error("🚨 ENCRYPTION_KEY not set in production!");
-      process.exit(1);
+      throw new Error(`CRITICAL: ${weakMsg}`);
     }
-    // Development: use a fixed key (never do this in production!)
-    return crypto
-      .createHash("sha256")
-      .update("dev-default-key-change-in-production")
-      .digest();
+    // Colored warning in local/dev environments.
+    // eslint-disable-next-line no-console
+    console.warn(`\x1b[33m[SECURITY WARNING]\x1b[0m ${weakMsg}`);
   }
-  // Expect hex-encoded 32-byte key (64 characters)
-  if (keyEnv.length !== 64) {
-    logger.warn(
-      `⚠️ ENCRYPTION_KEY length is ${keyEnv.length}, expected 64 (32 bytes hex).`,
-    );
-  }
-  return Buffer.from(keyEnv, "hex");
+
+  cachedEncryptionKey = keyBuffer;
+  return cachedEncryptionKey;
 }
+
+// Startup guard: fail fast if key configuration is unsafe.
+getEncryptionKey();
 
 /**
  * Encrypts a string using AES-256-GCM.
