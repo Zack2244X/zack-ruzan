@@ -40,9 +40,16 @@ function initDatadogRumDeferred() {
           return;
         }
 
+        const datadogClientToken =
+          window.__PUBLIC_CONFIG?.datadogClientToken || "";
+        if (!datadogClientToken) {
+          logger.warn("[Datadog RUM] missing client token in public config");
+          return;
+        }
+
         ddRum.init({
           applicationId: "6448291b-03d3-42ba-b7c2-601d82b6dc22",
-          clientToken: "pub15a8b071a3ff68888a70f256a3d12cb6",
+          clientToken: datadogClientToken,
           site: "us5.datadoghq.com",
           service: "quiz-platform",
           env: "production",

@@ -51,26 +51,30 @@ jobs:
 
       - name: Verify server starts
         working-directory: ./server
-        run: node -e "try { require('./index.js'); console.log('✅ Server module loads OK'); } catch(e) { if (!e.message.includes('ECONNREFUSED') && !e.message.includes('connect')) { throw e; } console.log('✅ Module structure OK (DB not available in CI)'); }"
+        run: |
+          export JWT_SECRET="ci-jwt-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          export ENCRYPTION_KEY="$(node -e \"process.stdout.write(require('crypto').randomBytes(32).toString('hex'))\")"
+          node -e "try { require('./index.js'); console.log('✅ Server module loads OK'); } catch(e) { if (!e.message.includes('ECONNREFUSED') && !e.message.includes('connect')) { throw e; } console.log('✅ Module structure OK (DB not available in CI)'); }"
         env:
           DB_HOST: localhost
           DB_NAME: test
           DB_USER: test
           DB_PASS: test
           GOOGLE_CLIENT_ID: test
-          JWT_SECRET: ci-test-secret-key-12345
           NODE_ENV: development
 
       - name: Run unit tests
         working-directory: ./server
-        run: npm test
+        run: |
+          export JWT_SECRET="ci-jwt-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          export ENCRYPTION_KEY="$(node -e \"process.stdout.write(require('crypto').randomBytes(32).toString('hex'))\")"
+          npm test
         env:
           DB_HOST: localhost
           DB_NAME: test
           DB_USER: test
           DB_PASS: test
           GOOGLE_CLIENT_ID: test
-          JWT_SECRET: ci-test-secret-key-12345
           ADMIN_EMAILS: admin@test.com
           NODE_ENV: test
 

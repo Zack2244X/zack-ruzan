@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const STRONG_TEST_JWT_SECRET = "ci-jwt-policy-test-" + "a".repeat(48);
 
 describe("JWT expiry policy", () => {
   const baseEnv = { ...process.env };
@@ -14,7 +15,7 @@ describe("JWT expiry policy", () => {
     process.env.DB_HOST = "localhost";
     process.env.DB_NAME = "test_db";
     process.env.DB_USER = "test_user";
-    process.env.JWT_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    process.env.JWT_SECRET = STRONG_TEST_JWT_SECRET;
     process.env.JWT_EXPIRES_IN = "7d";
 
     jest.resetModules();
@@ -34,7 +35,7 @@ describe("JWT expiry policy", () => {
     process.env.DB_HOST = "localhost";
     process.env.DB_NAME = "test_db";
     process.env.DB_USER = "test_user";
-    process.env.JWT_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    process.env.JWT_SECRET = STRONG_TEST_JWT_SECRET;
     process.env.JWT_EXPIRES_IN = "6h";
 
     jest.resetModules();

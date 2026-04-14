@@ -80,7 +80,7 @@ jobs:
         run: docker build -t quiz-platform:security-scan .
 
       - name: Scan image for HIGH/CRITICAL vulnerabilities
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: quiz-platform:security-scan
           format: table

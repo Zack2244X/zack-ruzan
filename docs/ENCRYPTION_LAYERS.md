@@ -208,7 +208,7 @@ const resetToken = generateSecureToken();
 # ⚠️ في الإنتاج، يجب تعيين هذه:
 
 # 1. Encryption Key (32 bytes hex = 64 characters)
-ENCRYPTION_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a1b2c3d4e5
+ENCRYPTION_KEY=<GENERATE_WITH_NODE_RANDOM_BYTES_32_HEX>
 
 # Generate with:
 # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
