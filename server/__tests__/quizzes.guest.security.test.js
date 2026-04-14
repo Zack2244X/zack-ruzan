@@ -35,7 +35,10 @@ describe("GET /api/quizzes guest security", () => {
 
     const res = await request(app)
       .get("/api/quizzes")
-      .set("X-Guest-Mode", "true");
+      .set("X-Guest-Mode", "true")
+      .set("Sec-Fetch-Site", "same-origin")
+      .set("X-Device-Id", "guestdev_1234567890")
+      .set("User-Agent", "Mozilla/5.0 (Test Browser)");
 
     expect(res.statusCode).toBe(200);
     expect(findSpy).toHaveBeenCalledTimes(1);
@@ -67,12 +70,20 @@ describe("GET /api/quizzes guest security", () => {
       .spyOn(Quiz, "findAndCountAll")
       .mockResolvedValue({ count: 1, rows: [quizRow] });
 
-    const req = request(app).get("/api/quizzes").set("X-Guest-Mode", "true");
+    const req = request(app)
+      .get("/api/quizzes")
+      .set("X-Guest-Mode", "true")
+      .set("Sec-Fetch-Site", "same-origin")
+      .set("X-Device-Id", "guestdev_1234567890")
+      .set("User-Agent", "Mozilla/5.0 (Test Browser)");
 
     const first = await req;
     const second = await request(app)
       .get("/api/quizzes")
-      .set("X-Guest-Mode", "true");
+      .set("X-Guest-Mode", "true")
+      .set("Sec-Fetch-Site", "same-origin")
+      .set("X-Device-Id", "guestdev_1234567890")
+      .set("User-Agent", "Mozilla/5.0 (Test Browser)");
 
     expect(first.statusCode).toBe(200);
     expect(second.statusCode).toBe(200);

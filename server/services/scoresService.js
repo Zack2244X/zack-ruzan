@@ -1,6 +1,5 @@
 const dbLayer = require('./safeQueryLayer');
 const NodeCache = require('node-cache');
-const logger = require('../utils/logger'); // Assuming logger exists
 const sequelize = require('../models');
 const Score = require('../models/Score');
 const { QueryTypes } = require('sequelize');
@@ -18,7 +17,7 @@ async function getLeaderboard() {
 
     const [rows] = await dbLayer.executeReadOnlyQuery(`
     SELECT
-        s.userId, u.fname, u.lname, u.email,
+      s.userId, u.fname, u.lname,
         SUM(s.score) AS totalScore,
         SUM(s.total) AS totalMax,
         COUNT(s.id) AS examsCount,
@@ -32,13 +31,15 @@ async function getLeaderboard() {
         ) ranked_scores WHERE ranked_scores.rn = 1
     ) s
     INNER JOIN users u ON s.userId = u.id AND u.deletedAt IS NULL
-    GROUP BY s.userId, u.fname, u.lname, u.email
+    GROUP BY s.userId, u.fname, u.lname
     ORDER BY fullMarksCount DESC, avgPercentage DESC, totalScore DESC
     LIMIT 50
   `);
 
   const result = rows.map((entry) => ({
-    userName: entry.fname ? `${entry.fname} ${entry.lname || ""}`.trim() : entry.email || "مستخدم محذوف",
+    userName: entry.fname
+      ? `${entry.fname} ${entry.lname || ""}`.trim()
+      : "مستخدم بدون اسم",
     totalScore: parseInt(entry.totalScore) || 0,
     totalMax: parseInt(entry.totalMax) || 0,
     examsCount: parseInt(entry.examsCount) || 0,

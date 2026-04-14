@@ -3597,9 +3597,7 @@
           if (loaded) return;
           loaded = true;
           var s1 = document.createElement("script");
-          s1.src =
-            "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js";
-          s1.crossOrigin = "anonymous";
+          s1.src = "/js/vendor/gsap.min.js";
           s1.onload = function () {
             try {
               // Intentionally DO NOT inject ScrollTrigger here to avoid its

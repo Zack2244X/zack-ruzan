@@ -108,7 +108,10 @@ describe("Leaderboard endpoint", () => {
   test("GET /api/scores/leaderboard should allow guest-mode header", async () => {
     const res = await request(app)
       .get("/api/scores/leaderboard")
-      .set("X-Guest-Mode", "true");
+      .set("X-Guest-Mode", "true")
+      .set("Sec-Fetch-Site", "same-origin")
+      .set("X-Device-Id", "guestdev_1234567890")
+      .set("User-Agent", "Mozilla/5.0 (Test Browser)");
 
     expect([200, 500]).toContain(res.statusCode);
   });

@@ -6,9 +6,64 @@ const isDebug = String(process.env.LOG_LEVEL || "").toLowerCase() === "debug";
 const SENSITIVE_FIELDS = new Set([
   "password",
   "confirmpassword",
+  "passcode",
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "secret",
+  "clientsecret",
+  "apikey",
+  "api_key",
+  "access_token",
   "token",
   "refreshtoken",
+  "idtoken",
+  "session",
+  "sessionid",
+  "deviceid",
+  "otp",
+  "pin",
+  "privatekey",
+  "private_key",
+  "signature",
+  "csrf",
+  "csrftoken",
 ]);
+
+const SENSITIVE_KEY_FRAGMENTS = [
+  "password",
+  "secret",
+  "token",
+  "cookie",
+  "session",
+  "authorization",
+  "api_key",
+  "apikey",
+  "clientkey",
+  "privatekey",
+  "csrf",
+  "otp",
+  "pin",
+  "signature",
+];
+
+function isSensitiveKey(key) {
+  if (SENSITIVE_FIELDS.has(key)) return true;
+  return SENSITIVE_KEY_FRAGMENTS.some((fragment) => key.includes(fragment));
+}
+
+function looksSensitiveValue(value) {
+  if (typeof value !== "string") return false;
+
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+
+  if (/^bearer\s+\S+/i.test(trimmed)) return true;
+  if (/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(trimmed)) return true;
+  if (trimmed.length >= 80 && !trimmed.includes(" ")) return true;
+
+  return false;
+}
 
 function cloneSafe(value) {
   if (value === undefined || value === null) return value;
@@ -27,7 +82,11 @@ function redactSensitive(input) {
   const redacted = { ...input };
   Object.keys(redacted).forEach((key) => {
     const lowered = String(key).toLowerCase();
-    if (SENSITIVE_FIELDS.has(lowered)) {
+    if (isSensitiveKey(lowered)) {
+      redacted[key] = "[REDACTED]";
+      return;
+    }
+    if (looksSensitiveValue(redacted[key])) {
       redacted[key] = "[REDACTED]";
       return;
     }
@@ -43,6 +102,8 @@ function sendInternalError(res, err, req, additionalContext = {}) {
 
   const safeBody = redactSensitive(cloneSafe(req?.body));
   const safeQuery = redactSensitive(cloneSafe(req?.query));
+  const safeAdditionalContext =
+    redactSensitive(cloneSafe(additionalContext)) || {};
 
   const logContext = {
     incidentId,
@@ -55,7 +116,7 @@ function sendInternalError(res, err, req, additionalContext = {}) {
     userId: req?.user?.id || req?.user?.userId || null,
     query: safeQuery,
     body: safeBody,
-    ...additionalContext,
+    ...safeAdditionalContext,
   };
 
   logger.error("Internal server error", logContext);

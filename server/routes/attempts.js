@@ -18,6 +18,36 @@ function handleInternalError(req, res, error, context) {
   return sendInternalError(res, error, req, { action: context });
 }
 
+function runAuthenticateInline(req, res) {
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const cleanup = () => {
+      res.off("finish", onResponseComplete);
+      res.off("close", onResponseComplete);
+    };
+
+    const settle = (authenticated) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(authenticated);
+    };
+
+    const onResponseComplete = () => settle(false);
+
+    res.once("finish", onResponseComplete);
+    res.once("close", onResponseComplete);
+
+    authenticate(req, res, () => settle(true));
+
+    // Fast path when middleware already sent the response synchronously.
+    if (res.headersSent) {
+      settle(false);
+    }
+  });
+}
+
 // GET /api/attempts?quizId=...(&email=...)
 // Allows unauthenticated callers to receive `{ attempts: 0 }` when no credentials
 // are present. If credentials exist (cookie or Authorization header) we run
@@ -41,14 +71,10 @@ router.get("/", validateAttemptsQuery, async (req, res) => {
     }
 
     // If credentials are present, attempt authentication. `authenticate`
-    // sends a response on failure (401), so abort if headers were sent.
+    // sends a response on failure (401), so abort cleanly when it fails.
     if (hasCookie || hasAuthHeader) {
-      await new Promise((resolve) => {
-        // Call authenticate middleware inline
-        const { authenticate } = require("../middleware/auth");
-        authenticate(req, res, () => resolve());
-      });
-      if (res.headersSent) return; // authentication failed and response sent
+      const authenticated = await runAuthenticateInline(req, res);
+      if (!authenticated || res.headersSent) return;
     }
 
     // At this point: either req.user is set (authenticated) or email was

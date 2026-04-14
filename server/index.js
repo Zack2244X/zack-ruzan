@@ -821,6 +821,15 @@ const guestLimiter = rateLimit({
   message: { error: "تم تجاوز حد طلبات وضع الضيف." },
 });
 
+const healthLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: process.env.NODE_ENV === "test" ? 240 : 60,
+  keyGenerator: (req) => String(req.ip),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "تم تجاوز حد طلبات فحص الحالة. حاول بعد قليل." },
+});
+
 const applyLimiterByMethod = (methods, limiter) => {
   const allowedMethods = new Set(methods);
   return (req, res, next) => {
@@ -844,6 +853,7 @@ strictAuthRoutes.forEach((route) => {
 app.use("/api/quizzes", guestLimiter, defaultLimiter);
 app.use("/api/notes", guestLimiter, defaultLimiter);
 app.use("/api/scores", guestLimiter, defaultLimiter);
+app.use("/api/attempts", defaultLimiter);
 
 app.use(
   "/api/quizzes",
@@ -853,12 +863,17 @@ app.use(
   "/api/notes",
   applyLimiterByMethod(["POST", "PUT", "PATCH", "DELETE"], mediumLimiter),
 );
+app.use(
+  "/api/attempts",
+  applyLimiterByMethod(["POST", "PUT", "PATCH", "DELETE"], mediumLimiter),
+);
 
 app.use("/api/quizzes", applyLimiterByMethod(["GET"], relaxedLimiter));
 app.use(
   "/api/scores/leaderboard",
   applyLimiterByMethod(["GET"], relaxedLimiter),
 );
+app.use("/api/health", healthLimiter);
 
 // ============================================
 //   Health Check Endpoint

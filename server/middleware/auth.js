@@ -41,6 +41,7 @@ const JWT_ISSUER = process.env.JWT_ISSUER || "quiz-platform-api";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "quiz-platform-client";
 const DEFAULT_JWT_EXPIRES_IN = "2h";
 const MAX_PRODUCTION_JWT_TTL_SECONDS = 12 * 60 * 60;
+const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,120}$/;
 
 function parseDurationToSeconds(duration) {
   if (duration === undefined || duration === null) return null;
@@ -417,6 +418,82 @@ const generateToken = (userId, role, tokenVersion = 0, email = "") => {
   );
 };
 
+function isTrustedGuestRequestOrigin(req) {
+  const isLikelyLegacyClient = (request) => {
+    const ua = String(request.get("user-agent") || "").toLowerCase();
+    const xrw = String(request.get("x-requested-with") || "").toLowerCase();
+    if (xrw && xrw !== "null") return true;
+    return (
+      ua.includes("wv") ||
+      ua.includes("webview") ||
+      ua.includes("okhttp") ||
+      ua.includes("cfnetwork")
+    );
+  };
+
+  const allowed = new Set(
+    (process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean),
+  );
+
+  allowed.add("http://localhost:3000");
+  allowed.add("http://localhost:5173");
+  allowed.add("http://127.0.0.1:3000");
+  allowed.add("http://127.0.0.1:5173");
+
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+  }
+
+  const host = req.get("host");
+  const forwardedProto = req.get("x-forwarded-proto");
+  const protocol = forwardedProto || req.protocol || "https";
+  const sameOrigin = host ? `${protocol}://${host}` : null;
+
+  const origin = req.get("origin");
+  if (origin) {
+    if (sameOrigin && origin === sameOrigin) return true;
+    return allowed.has(origin);
+  }
+
+  const referer = req.get("referer");
+  if (!referer) {
+    const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
+    if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
+    if (sameOrigin && isLikelyLegacyClient(req)) return true;
+    return false;
+  }
+
+  try {
+    const refOrigin = new URL(referer).origin;
+    if (sameOrigin && refOrigin === sameOrigin) return true;
+    return allowed.has(refOrigin);
+  } catch {
+    return false;
+  }
+}
+
+function hasSuspiciousGuestSignals(req) {
+  const userAgent = String(req.get("user-agent") || "").toLowerCase();
+  if (!userAgent) return true;
+
+  const blockedAgents = [
+    "curl/",
+    "wget/",
+    "python-requests",
+    "httpie",
+    "postmanruntime",
+    "insomnia",
+    "axios/",
+  ];
+  if (blockedAgents.some((sig) => userAgent.includes(sig))) return true;
+
+  const deviceId = String(req.get("x-device-id") || "").trim();
+  return !DEVICE_ID_REGEX.test(deviceId);
+}
+
 // ============================================
 //   authenticateOrGuest — قراءة عامة للضيوف
 // ============================================
@@ -428,10 +505,26 @@ const generateToken = (userId, role, tokenVersion = 0, email = "") => {
  */
 const authenticateOrGuest = async (req, res, next) => {
   const isReadOnlyMethod = req.method === "GET" || req.method === "HEAD";
-  if (isReadOnlyMethod && req.headers["x-guest-mode"] === "true") {
+  const wantsGuestMode =
+    String(req.headers["x-guest-mode"] || "").toLowerCase() === "true";
+
+  if (isReadOnlyMethod && wantsGuestMode) {
+    if (!isTrustedGuestRequestOrigin(req)) {
+      return res.status(403).json({
+        error: "مصدر الطلب غير موثوق لوضع الضيف.",
+      });
+    }
+
+    if (hasSuspiciousGuestSignals(req)) {
+      return res.status(403).json({
+        error: "تعذر التحقق من جلسة الضيف. استخدم التطبيق الرسمي.",
+      });
+    }
+
     req.user = { role: "guest", id: null, email: null, isGuest: true };
     return next();
   }
+
   return authenticate(req, res, next);
 };
 
