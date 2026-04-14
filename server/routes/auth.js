@@ -261,6 +261,8 @@ function parsePageLimit(query, defaultLimit = 30, maxLimit = 100) {
   return { page, limit, offset };
 }
 
+const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,120}$/;
+
 let blockedDevicesColumnsCache = null;
 let accountSessionsColumnsCache = null;
 
@@ -587,10 +589,7 @@ router.post(
       await clearFailedAttempts(req.ip);
 
 
-    const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
-
-    // استخراج المعرف من الطلب
-    const { deviceId } = req.body;
+    const deviceId = sanitizeText(req.body?.deviceId, 120);
 
     // التحقق من وجوده ومطابقته للنمط
     if (!deviceId || !DEVICE_ID_REGEX.test(deviceId)) {
@@ -787,10 +786,7 @@ router.post(
 // ============================================
 router.post("/guest-session", async (req, res) => {
   try {
-    const DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,50}$/;
-
-    // استخراج المعرف من الطلب
-    const { deviceId } = req.body;
+    const deviceId = sanitizeText(req.body?.deviceId, 120);
 
     // التحقق من وجوده ومطابقته للنمط
     if (!deviceId || !DEVICE_ID_REGEX.test(deviceId)) {

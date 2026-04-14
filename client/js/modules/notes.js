@@ -205,26 +205,39 @@ export function forceDownload(url) {
     // Keep original value if decoding fails.
   }
 
-  // التحقق من أن الرابط آمن — منع javascript: و data: و vbscript:
-  const lowerUrl = normalizedUrl.toLowerCase();
-  if (!lowerUrl.startsWith("http://") && !lowerUrl.startsWith("https://")) {
-    showAlert("⚠️ رابط غير آمن. يجب أن يبدأ بـ https://", "warning");
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(normalizedUrl);
+  } catch (_) {
+    showAlert("⚠️ رابط غير صالح.", "warning");
     return;
   }
 
+  // التحقق من البروتوكول + منع embedded credentials داخل الرابط
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    showAlert("⚠️ رابط غير آمن. يجب أن يبدأ بـ https:// أو http://", "warning");
+    return;
+  }
+
+  if (parsedUrl.username || parsedUrl.password) {
+    showAlert("⚠️ الرابط يحتوي على بيانات اعتماد غير مسموح بها.", "warning");
+    return;
+  }
+
+  normalizedUrl = parsedUrl.toString();
   let finalUrl = normalizedUrl;
 
   try {
     // 1. Google Drive
-    if (url.includes("drive.google.com/file/d/")) {
-      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (normalizedUrl.includes("drive.google.com/file/d/")) {
+      const match = normalizedUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (match && match[1]) {
         finalUrl = "https://drive.google.com/uc?export=download&id=" + match[1];
       }
     }
     // 2. SharePoint / OneDrive الجامعي أو العملي
-    else if (url.includes("sharepoint.com")) {
-      const spMatch = url.match(
+    else if (normalizedUrl.includes("sharepoint.com")) {
+      const spMatch = normalizedUrl.match(
         /^(https:\/\/[^\/]+)\/:.:\/.+?\/((?:personal|sites)\/[^\/]+)\/([^?\/]+)/,
       );
 
@@ -238,30 +251,35 @@ export function forceDownload(url) {
           sitePath +
           "/_layouts/15/download.aspx?share=" +
           shareId;
-      } else if (url.includes("/Documents/")) {
-        const siteRoot = url.match(
+      } else if (normalizedUrl.includes("/Documents/")) {
+        const siteRoot = normalizedUrl.match(
           /^(https:\/\/[^\/]+\/(?:sites|personal)\/[^\/]+)/,
         );
         if (siteRoot) {
-          const filePath = url.split("?")[0];
+          const filePath = normalizedUrl.split("?")[0];
           finalUrl =
             siteRoot[1] +
             "/_layouts/15/download.aspx?SourceUrl=" +
             encodeURIComponent(filePath);
         }
       } else {
-        finalUrl = url.includes("?")
-          ? url + "&download=1"
-          : url + "?download=1";
+        finalUrl = normalizedUrl.includes("?")
+          ? normalizedUrl + "&download=1"
+          : normalizedUrl + "?download=1";
       }
     }
     // 3. OneDrive الشخصي
-    else if (url.includes("onedrive.live.com") || url.includes("1drv.ms")) {
-      finalUrl = url.includes("?") ? url + "&download=1" : url + "?download=1";
+    else if (
+      normalizedUrl.includes("onedrive.live.com") ||
+      normalizedUrl.includes("1drv.ms")
+    ) {
+      finalUrl = normalizedUrl.includes("?")
+        ? normalizedUrl + "&download=1"
+        : normalizedUrl + "?download=1";
     }
 
-    window.location.href = finalUrl;
+    window.location.assign(finalUrl);
   } catch (error) {
-    window.open(url, "_blank");
+    showAlert("⚠️ تعذر فتح الرابط. حاول مرة أخرى.", "warning");
   }
 }

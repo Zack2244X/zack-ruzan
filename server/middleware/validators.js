@@ -81,6 +81,8 @@ const validateGoogleLogin = [
     z
       .object({
         idToken: z.string().trim().min(10).max(4096),
+        deviceId: z.string().regex(DEVICE_ID_REGEX),
+        deviceName: z.string().trim().max(120).optional(),
         securityConsent: z
           .union([z.boolean(), z.literal("true")])
           .transform((v) => v === true || v === "true")

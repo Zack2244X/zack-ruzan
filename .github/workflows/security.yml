@@ -13,6 +13,16 @@ permissions:
   security-events: write
 
 jobs:
+  compose-policy:
+    name: Compose Exposure Policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce compose port policy
+        run: npm run check:compose-security
+
   dependency-review:
     name: Dependency Review
     if: github.event_name == 'pull_request'

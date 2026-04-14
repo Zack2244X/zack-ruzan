@@ -31,7 +31,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRES_IN
-        value: 7d
+        value: 2h
       - key: ADMIN_CREATE_SECRET
         sync: false
       - key: ALLOWED_ORIGINS

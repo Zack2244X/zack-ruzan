@@ -30,6 +30,11 @@ const {
   validateSubjectParam,
 } = require("../middleware/validators");
 const sendInternalError = require("../utils/errorResponse");
+const { getCache, setCache, clearCache } = require("../utils/cache");
+
+function clearQuizzesCache() {
+  clearCache();
+}
 
 function handleInternalError(req, res, error, context) {
   return sendInternalError(res, error, req, { action: context });
@@ -53,10 +58,11 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
-    
-    const isStudent = req.user.role === "student";
-    const cacheKey = `quizzes:${isStudent}:${subject}:${active}:${page}:${limit}`;
-    
+
+    const viewerRole = req.user?.role || "guest";
+    const isRestrictedViewer = viewerRole !== "admin";
+    const cacheKey = `quizzes:${viewerRole}:${subject || "all"}:${active || "all"}:${page}:${limit}`;
+
     const cachedResponse = getCache(cacheKey);
     if (cachedResponse) {
         return res.json(cachedResponse);
@@ -64,7 +70,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
 
     const where = {};
 
-    if (req.user.role === "student") {
+    if (isRestrictedViewer) {
       where.isActive = true;
     } else if (active !== undefined) {
       where.isActive = active === "true";
@@ -83,7 +89,7 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
     });
 
     // للطلاب: إخفاء التبريرات والأجوبة الصحيحة لمنع الغش (يتم التقييم في الخادم)
-    if (req.user.role === "student") {
+    if (isRestrictedViewer) {
       const sanitized = quizzes.map((quiz) => {
         const q = quiz.toJSON();
         q.questions = q.questions.map((question) => ({
@@ -94,20 +100,24 @@ router.get("/", authenticateOrGuest, validatePagination, async (req, res) => {
         }));
         return q;
       });
-      return res.json({
+      const payload = {
         data: sanitized,
         total: count,
         page,
         totalPages: Math.ceil(count / limit),
-      });
+      };
+      setCache(cacheKey, payload, 60);
+      return res.json(payload);
     }
 
-    res.json({
+    const payload = {
       data: quizzes,
       total: count,
       page,
       totalPages: Math.ceil(count / limit),
-    });
+    };
+    setCache(cacheKey, payload, 60);
+    res.json(payload);
   } catch (error) {
     return handleInternalError(req, res, error, "GET /api/quizzes failed");
   }
@@ -168,6 +178,7 @@ router.put(
         { subject: newName },
         { where: { subject: oldName } },
       );
+      clearQuizzesCache();
 
       res.json({
         message: `تم تعديل اسم المادة من "${oldName}" إلى "${newName}".`,
@@ -203,6 +214,7 @@ router.delete(
       const deletedCount = await Quiz.destroy({
         where: { subject: subjectName },
       });
+      clearQuizzesCache();
 
       res.json({
         message: `تم حذف مجلد "${subjectName}" وجميع امتحاناته.`,
@@ -347,6 +359,7 @@ router.post(
         questions: processedQuestions,
         createdBy: req.user.id,
       });
+      clearQuizzesCache();
 
       res.status(201).json({
         message: "تم إنشاء الامتحان بنجاح!",
@@ -426,6 +439,7 @@ router.put(
       quiz.changed("questions", true);
       quiz.changed("feedback", true);
       await quiz.save();
+      clearQuizzesCache();
 
       res.json({
         message: "تم تحديث الامتحان بنجاح!",
@@ -467,6 +481,7 @@ router.delete(
       }
 
       await quiz.destroy();
+      clearQuizzesCache();
       res.json({ message: "تم حذف الامتحان بنجاح." });
     } catch (error) {
       return handleInternalError(req, res, error, "DELETE /api/quizzes/:id failed");

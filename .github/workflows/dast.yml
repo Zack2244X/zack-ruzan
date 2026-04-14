@@ -1,0 +1,39 @@
+name: DAST Baseline Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '45 2 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: DAST Target Preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure target URL secret exists
+        env:
+          DAST_TARGET_URL: ${{ secrets.DAST_TARGET_URL }}
+        run: |
+          set -e
+          if [ -z "$DAST_TARGET_URL" ]; then
+            echo "::error::Missing secret DAST_TARGET_URL. Set it to your staging/production scan URL."
+            exit 1
+          fi
+
+  zap-baseline:
+    name: OWASP ZAP Baseline
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ secrets.DAST_TARGET_URL }}
+          fail_action: true
+          allow_issue_writing: false
+          cmd_options: "-a -m 5 -T 10"
+          artifact_name: dast-zap-baseline-report

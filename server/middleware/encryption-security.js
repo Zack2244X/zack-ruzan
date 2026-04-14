@@ -6,6 +6,83 @@
 
 const logger = require("../utils/logger");
 const { hashSHA256 } = require("../utils/encryption");
+const { isIP } = require("net");
+
+function normalizeIp(rawIp) {
+  if (!rawIp) return "";
+  const trimmed = String(rawIp).trim();
+  if (trimmed.startsWith("::ffff:")) return trimmed.substring(7);
+  return trimmed;
+}
+
+function isPrivateIp(ip) {
+  const normalized = normalizeIp(ip);
+  if (!normalized) return false;
+  if (normalized === "127.0.0.1" || normalized === "::1") return true;
+  if (normalized.startsWith("10.") || normalized.startsWith("192.168.")) {
+    return true;
+  }
+
+  const octets = normalized.split(".");
+  if (octets.length === 4) {
+    const first = Number(octets[0]);
+    const second = Number(octets[1]);
+    if (Number.isInteger(first) && Number.isInteger(second)) {
+      if (first === 172 && second >= 16 && second <= 31) return true;
+    }
+  }
+
+  return false;
+}
+
+function getTrustedProxyIps() {
+  return new Set(
+    (process.env.TRUSTED_PROXY_IPS || "")
+      .split(",")
+      .map((ip) => normalizeIp(ip))
+      .filter(Boolean),
+  );
+}
+
+function isTrustedProxySource(ip) {
+  const normalized = normalizeIp(ip);
+  if (!normalized) return false;
+  if (getTrustedProxyIps().has(normalized)) return true;
+  return isPrivateIp(normalized);
+}
+
+function getEffectiveProtocol(req) {
+  const directProtocol = (req.protocol || "http").toLowerCase();
+  const forwardedProtoHeader = String(req.get("X-Forwarded-Proto") || "");
+  const forwardedProto = forwardedProtoHeader
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .find(Boolean);
+
+  const remoteIp = normalizeIp(req.socket?.remoteAddress || req.ip || "");
+  const trustForwarded = isTrustedProxySource(remoteIp);
+  if (trustForwarded && (forwardedProto === "https" || forwardedProto === "http")) {
+    return forwardedProto;
+  }
+
+  if (forwardedProtoHeader && !trustForwarded) {
+    logger.warn(
+      `Ignoring spoofable X-Forwarded-Proto from untrusted source ${remoteIp || "unknown"}`,
+    );
+  }
+
+  return directProtocol;
+}
+
+function buildSafeRedirectHost(req) {
+  const host = String(req.get("host") || "").trim();
+  const isValidHost = /^[A-Za-z0-9.-]+(?::\d{1,5})?$/.test(host);
+  if (isValidHost) return host;
+
+  const fallback = String(req.hostname || "").trim();
+  if (/^[A-Za-z0-9.-]+$/.test(fallback)) return fallback;
+  return "";
+}
 
 /**
  * Middleware: Enforce HTTPS in production by redirecting HTTP to HTTPS.
@@ -28,12 +105,16 @@ const enforceHttps = (req, res, next) => {
     return next();
   }
 
-  const protocol = req.get("X-Forwarded-Proto") || req.protocol;
+  const protocol = getEffectiveProtocol(req);
   if (protocol !== "https") {
+    const safeHost = buildSafeRedirectHost(req);
+    if (!safeHost) {
+      return res.status(400).json({ error: "Invalid host header" });
+    }
     logger.warn(
       `⚠️ HTTP request detected (protocol: ${protocol}). Redirecting to HTTPS.`,
     );
-    const redirectUrl = `https://${req.get("host")}${req.url}`;
+    const redirectUrl = `https://${safeHost}${req.originalUrl || req.url || "/"}`;
     return res.redirect(301, redirectUrl);
   }
 

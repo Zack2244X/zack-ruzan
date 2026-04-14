@@ -39,6 +39,54 @@ if (process.env.NODE_ENV === "production" && JWT_SECRET.length < 32) {
 
 const JWT_ISSUER = process.env.JWT_ISSUER || "quiz-platform-api";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "quiz-platform-client";
+const DEFAULT_JWT_EXPIRES_IN = "2h";
+const MAX_PRODUCTION_JWT_TTL_SECONDS = 12 * 60 * 60;
+
+function parseDurationToSeconds(duration) {
+  if (duration === undefined || duration === null) return null;
+  const raw = String(duration).trim().toLowerCase();
+  if (!raw) return null;
+
+  // Support formats like: 7200, 15m, 2h, 1d
+  const match = raw.match(/^(\d+)([smhd])?$/);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = match[2] || "s";
+  if (unit === "s") return amount;
+  if (unit === "m") return amount * 60;
+  if (unit === "h") return amount * 60 * 60;
+  if (unit === "d") return amount * 24 * 60 * 60;
+  return null;
+}
+
+function resolveJwtExpiresIn() {
+  const configured = String(process.env.JWT_EXPIRES_IN || "").trim();
+  if (!configured) return DEFAULT_JWT_EXPIRES_IN;
+
+  const ttlSeconds = parseDurationToSeconds(configured);
+  if (!ttlSeconds) {
+    logger.warn(
+      `⚠️ JWT_EXPIRES_IN غير صالح (${configured}) — استخدام القيمة الافتراضية ${DEFAULT_JWT_EXPIRES_IN}`,
+    );
+    return DEFAULT_JWT_EXPIRES_IN;
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    ttlSeconds > MAX_PRODUCTION_JWT_TTL_SECONDS
+  ) {
+    logger.warn(
+      `⚠️ JWT_EXPIRES_IN طويل في الإنتاج (${configured}) — تم تقليصه تلقائياً إلى ${DEFAULT_JWT_EXPIRES_IN}`,
+    );
+    return DEFAULT_JWT_EXPIRES_IN;
+  }
+
+  return configured;
+}
+
+const JWT_EXPIRES_IN = resolveJwtExpiresIn();
 
 // ============================================
 //   سجل محاولات الدخول الفاشلة (قاعدة البيانات)
@@ -362,7 +410,7 @@ const generateToken = (userId, role, tokenVersion = 0, email = "") => {
     },
     JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "2h",
+      expiresIn: JWT_EXPIRES_IN,
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     },

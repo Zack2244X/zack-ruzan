@@ -22,6 +22,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Preflight required deploy secrets
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+          IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+        run: |
+          set -e
+          missing=""
+          for var_name in DOCKER_USERNAME DOCKER_TOKEN IMAGE_NAME DROPLET_HOST DROPLET_USER SSH_PRIVATE_KEY REMOTE_APP_DIR; do
+            eval "value=\${$var_name}"
+            if [ -z "$value" ]; then
+              missing="$missing $var_name"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required deployment secrets:$missing"
+            exit 1
+          fi
+
+          echo "All required deployment secrets are configured."
+
       - name: Use Node.js
         uses: actions/setup-node@v5
         with:
@@ -31,6 +57,9 @@ jobs:
         run: |
           npm ci
           npm run build:css
+
+      - name: Enforce compose port policy
+        run: npm run check:compose-security
 
       - name: Run server tests
         run: |
@@ -65,6 +94,22 @@ jobs:
             docker-compose pull
             docker-compose up -d --remove-orphans
             docker image prune -f
+
+      - name: Verify no public port 3000 on host
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+            if ss -tuln | grep -E '(0\.0\.0\.0:3000|\[::\]:3000)' >/dev/null; then
+              echo "Public port 3000 detected on host. Blocking deployment success."
+              ss -tuln | grep -E '(0\.0\.0\.0:3000|\[::\]:3000)' || true
+              exit 1
+            fi
+            echo "No public port 3000 detected."
 
       - name: Post-deploy health check
         env:
