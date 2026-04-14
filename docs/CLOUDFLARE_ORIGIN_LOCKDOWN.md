@@ -15,6 +15,18 @@ Changed files:
 - [nginx/nginx-simple.conf](nginx/nginx-simple.conf)
 
 ## What you still need to do on the droplet
+### Fast path (recommended: one command)
+1. SSH to the droplet and run from project root:
+   - `chmod +x ./scripts/apply-cloudflare-origin-lockdown.sh`
+   - `ADMIN_IPV4=<YOUR_PUBLIC_IP> ./scripts/apply-cloudflare-origin-lockdown.sh`
+2. Validate from your local machine:
+   - `curl -I https://zackpro.codes`
+   - `curl -k -I --resolve zackpro.codes:443:46.101.209.56 https://zackpro.codes`
+
+If needed, use dry-run first:
+- `ADMIN_IPV4=<YOUR_PUBLIC_IP> DRY_RUN=1 ./scripts/apply-cloudflare-origin-lockdown.sh`
+
+### Manual path (detailed)
 1. SSH into the DigitalOcean droplet.
 2. Generate UFW commands from this repo:
    - `chmod +x ./scripts/generate-cloudflare-ufw-rules.sh`
