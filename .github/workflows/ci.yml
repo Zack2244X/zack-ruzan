@@ -53,7 +53,7 @@ jobs:
         working-directory: ./server
         run: |
           export JWT_SECRET="ci-jwt-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
-          export ENCRYPTION_KEY="$(node -e \"process.stdout.write(require('crypto').randomBytes(32).toString('hex'))\")"
+          export ENCRYPTION_KEY="$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')"
           node -e "try { require('./index.js'); console.log('✅ Server module loads OK'); } catch(e) { if (!e.message.includes('ECONNREFUSED') && !e.message.includes('connect')) { throw e; } console.log('✅ Module structure OK (DB not available in CI)'); }"
         env:
           DB_HOST: localhost
@@ -67,7 +67,7 @@ jobs:
         working-directory: ./server
         run: |
           export JWT_SECRET="ci-jwt-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
-          export ENCRYPTION_KEY="$(node -e \"process.stdout.write(require('crypto').randomBytes(32).toString('hex'))\")"
+          export ENCRYPTION_KEY="$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')"
           npm test
         env:
           DB_HOST: localhost
