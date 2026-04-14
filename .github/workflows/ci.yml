@@ -60,8 +60,9 @@ jobs:
           DB_NAME: test
           DB_USER: test
           DB_PASS: test
+          DB_PASSWORD: test
           GOOGLE_CLIENT_ID: test
-          NODE_ENV: development
+          NODE_ENV: test
 
       - name: Run unit tests
         working-directory: ./server
@@ -74,6 +75,7 @@ jobs:
           DB_NAME: test
           DB_USER: test
           DB_PASS: test
+          DB_PASSWORD: test
           GOOGLE_CLIENT_ID: test
           ADMIN_EMAILS: admin@test.com
           NODE_ENV: test
