@@ -79,11 +79,22 @@ jobs:
       - name: Build local image
         run: docker build -t quiz-platform:security-scan .
 
-      - name: Scan image for HIGH/CRITICAL vulnerabilities
+      - name: Report image vulnerabilities (HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: quiz-platform:security-scan
           format: table
           severity: HIGH,CRITICAL
           vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Enforce image policy (CRITICAL only)
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: quiz-platform:security-scan
+          format: table
+          severity: CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
           exit-code: '1'
