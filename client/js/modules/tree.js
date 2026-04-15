@@ -51,7 +51,7 @@ function expandFirstTreeBranch(treeRoot) {
   // ✅ FIX: Use requestAnimationFrame to batch DOM operations and prevent layout thrashing
   requestAnimationFrame(() => {
     const firstYearButton = treeRoot.querySelector(
-      "button[onclick*='content-year-'], button[onclick*='edit-content-year-']",
+      "button[data-tree-action='toggle-node'][data-tree-value*='content-year-'], button[data-tree-action='toggle-node'][data-tree-value*='edit-content-year-']",
     );
     if (!firstYearButton) return;
 
@@ -69,7 +69,7 @@ function expandFirstTreeBranch(treeRoot) {
     }
 
     const firstMonthButton = firstYearContent?.querySelector(
-      "button[onclick*='content-month-'], button[onclick*='edit-content-month-']",
+      "button[data-tree-action='toggle-node'][data-tree-value*='content-month-'], button[data-tree-action='toggle-node'][data-tree-value*='edit-content-month-']",
     );
     if (!firstMonthButton) return;
 
@@ -371,30 +371,35 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
   // رسم الشجرة
   let html = "";
   const themeColor = state.currentViewMode === "notes" ? "rose" : "emerald";
+  const treeIdPrefix = state.currentViewMode === "notes" ? "notes" : "exams";
 
   const years = Object.keys(treeData).sort((a, b) => b - a);
   years.forEach((year) => {
+    const yearNodeId = `${treeIdPrefix}-year-${year}`;
+    const yearContentId = `${treeIdPrefix}-content-year-${year}`;
     html += `
-            <div id="year-${year}" class="mb-2">
-                <button data-tree-action="toggle-node" data-tree-value="content-year-${year}" aria-expanded="false" aria-controls="content-year-${year}" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-2xl hover:bg-gray-200 transition">
+            <div id="${yearNodeId}" class="mb-2">
+                <button data-tree-action="toggle-node" data-tree-value="${yearContentId}" aria-expanded="false" aria-controls="${yearContentId}" class="flex items-center justify-between w-full text-right font-extrabold text-gray-800 bg-gray-100 p-3 rounded-2xl hover:bg-gray-200 transition">
                     <span><i class="bi bi-calendar3 text-${themeColor}-500 ml-2"></i> ${year}</span>
                     <i class="bi bi-chevron-down text-gray-500 text-sm transition-transform duration-300 transform"></i>
                 </button>
-                <div id="content-year-${year}" class="pr-4 mt-2 space-y-2 border-r-2 border-gray-200 hidden">
+                <div id="${yearContentId}" class="pr-4 mt-2 space-y-2 border-r-2 border-gray-200 hidden">
         `;
 
     const months = Object.keys(treeData[year]).sort((a, b) => b - a);
     months.forEach((monthNum) => {
       const monthName = treeData[year][monthNum].name;
       const monthId = `${year}-${monthNum}`;
+      const monthNodeId = `${treeIdPrefix}-month-${monthId}`;
+      const monthContentId = `${treeIdPrefix}-content-month-${monthId}`;
 
       html += `
-                <div id="month-${monthId}" class="mb-2">
-                    <button data-tree-action="toggle-node" data-tree-value="content-month-${monthId}" aria-expanded="false" aria-controls="content-month-${monthId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
+                <div id="${monthNodeId}" class="mb-2">
+                    <button data-tree-action="toggle-node" data-tree-value="${monthContentId}" aria-expanded="false" aria-controls="${monthContentId}" class="flex items-center justify-between w-full text-right font-bold text-gray-700 p-3 hover:bg-${themeColor}-50 rounded-2xl transition">
                         <span><i class="bi bi-folder2-open text-yellow-600 ml-2"></i> ${monthName}</span>
                         <i class="bi bi-chevron-down text-gray-500 text-xs transition-transform duration-300 transform"></i>
                     </button>
-                    <div id="content-month-${monthId}" class="pr-5 mt-1 space-y-3 border-r-2 border-${themeColor}-100 hidden">
+                    <div id="${monthContentId}" class="pr-5 mt-1 space-y-3 border-r-2 border-${themeColor}-100 hidden">
             `;
 
       const days = Object.keys(treeData[year][monthNum].days).sort(
@@ -402,13 +407,15 @@ export function renderHistoryTree(playQuizFn, forceDownloadFn) {
       );
       days.forEach((day) => {
         const dayId = `${year}-${monthNum}-${day}`;
+        const dayNodeId = `${treeIdPrefix}-day-${dayId}`;
+        const dayContentId = `${treeIdPrefix}-content-day-${dayId}`;
         html += `
-                    <div id="day-${dayId}" class="mb-2 relative">
+                    <div id="${dayNodeId}" class="mb-2 relative">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="w-3 h-3 rounded-full bg-green-500 shadow-sm border-2 border-white absolute -right-[23px]"></span>
                             <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md">يوم ${day}</span>
                         </div>
-                        <div id="content-day-${dayId}" class="pr-2 space-y-2">
+                        <div id="${dayContentId}" class="pr-2 space-y-2">
                 `;
 
         treeData[year][monthNum].days[day].forEach((item) => {

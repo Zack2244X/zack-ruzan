@@ -69,6 +69,7 @@ console.log(`Bundle app.bundle.min.js (${bundleSz} KB)`);
 
 // ── JS: admin IIFE bundle (builder + grades — lazy loaded after first admin action) ──
 esbuild.buildSync({
+  entryPoints: [path.join(jsDir, "app.admin.entry.js")],
   outfile: path.join(jsDir, "app.admin.bundle.min.js"),
   minify: true,
   bundle: true,
@@ -82,6 +83,7 @@ console.log(`Bundle app.admin.bundle.min.js (${adminSz} KB)`);
 
 // ── JS: features IIFE bundle (quiz + tree + notes — lazy loaded on first feature interaction) ──
 esbuild.buildSync({
+  entryPoints: [path.join(jsDir, "app.features.entry.js")],
   outfile: path.join(jsDir, "app.features.bundle.min.js"),
   minify: true,
   bundle: true,

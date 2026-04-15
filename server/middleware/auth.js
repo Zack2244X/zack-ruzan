@@ -144,16 +144,27 @@ async function checkBruteForce(ip) {
     );
     if (!record) return false;
     if (Date.now() - Number(record.last_attempt) > LOCKOUT_TIME) {
-      dbLayer.executeWriteQuery("DELETE FROM `login_attempts` WHERE `ip` = ?",
- {
-          replacements: [ip],
-        })
-        .catch(() => {});
+      try {
+        await dbLayer.executeWriteQuery(
+          "DELETE FROM `login_attempts` WHERE `ip` = ?",
+          {
+            replacements: [ip],
+          },
+        );
+      } catch (cleanupErr) {
+        logger.warn(
+          `⚠️ Failed to cleanup expired brute-force record for ip=${ip}: ${cleanupErr.message}`,
+        );
+      }
       return false;
     }
     return Number(record.count) >= MAX_FAILED;
-  } catch {
-    // Fail closed using local fallback when DB is unavailable.
+  } catch (err) {
+    logger.warn(
+      `⚠️ Brute-force DB check failed for ip=${ip}: ${err.message}`,
+    );
+    // In production, fail closed when DB is unavailable to prevent brute-force bypass.
+    if (process.env.NODE_ENV === "production") return true;
     return isLockedInMemory(ip);
   }
 }
@@ -172,8 +183,10 @@ async function recordFailedAttempt(ip) {
         " ON DUPLICATE KEY UPDATE `count` = `count` + 1, `last_attempt` = ?",
       { replacements: [ip, Date.now(), Date.now()] },
     );
-  } catch {
-    /* fire-and-forget */
+  } catch (err) {
+    logger.warn(
+      `⚠️ Failed to record failed login attempt for ip=${ip}: ${err.message}`,
+    );
   }
 }
 
@@ -190,8 +203,10 @@ async function clearFailedAttempts(ip) {
  {
       replacements: [ip],
     });
-  } catch {
-    /* fire-and-forget */
+  } catch (err) {
+    logger.warn(
+      `⚠️ Failed to clear failed login attempts for ip=${ip}: ${err.message}`,
+    );
   }
 }
 
@@ -258,7 +273,7 @@ const verifyCsrf = (req, res, next) => {
  */
 const COOKIE_OPTIONS = {
   httpOnly: true, // لمنع وصول JavaScript للكوكي
-  secure: true, // للتشفير عبر HTTPS فقط
+  secure: process.env.NODE_ENV === "production", // للتشفير عبر HTTPS في الإنتاج
   sameSite: "strict", // لمنع هجمات CSRF
   maxAge: 2 * 60 * 60 * 1000, // 2 hours (ليس أبدياً)
   path: "/",
@@ -448,8 +463,7 @@ function isTrustedGuestRequestOrigin(req) {
   }
 
   const host = req.get("host");
-  const forwardedProto = req.get("x-forwarded-proto");
-  const protocol = forwardedProto || req.protocol || "https";
+  const protocol = req.protocol || "https";
   const sameOrigin = host ? `${protocol}://${host}` : null;
 
   const origin = req.get("origin");
@@ -462,7 +476,13 @@ function isTrustedGuestRequestOrigin(req) {
   if (!referer) {
     const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
     if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
-    if (sameOrigin && isLikelyLegacyClient(req)) return true;
+    if (
+      process.env.NODE_ENV !== "production" &&
+      sameOrigin &&
+      isLikelyLegacyClient(req)
+    ) {
+      return true;
+    }
     return false;
   }
 

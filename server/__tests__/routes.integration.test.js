@@ -65,6 +65,28 @@ describe("API routes return proper errors without auth", () => {
     const res = await request(app).get("/api/auth/blocked-devices");
     expect(res.statusCode).toBe(401);
   });
+
+  test("GET /api/attempts without auth should return 401", async () => {
+    const res = await request(app).get("/api/attempts?quizId=1");
+    expect(res.statusCode).toBe(401);
+  });
+
+  test("POST /api/scores in guest mode should be rejected", async () => {
+    const res = await request(app)
+      .post("/api/scores")
+      .set("X-Guest-Mode", "true")
+      .send({
+        quizId: 1,
+        answers: [
+          {
+            questionId: "11111111-1111-1111-1111-111111111111",
+            selectedIndex: 0,
+          },
+        ],
+      });
+
+    expect(res.statusCode).toBe(403);
+  });
 });
 
 describe("CSRF Protection", () => {

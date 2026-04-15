@@ -184,6 +184,14 @@ const Quiz = sequelize.define(
                     isCorrect: decrypted === "true",
                   };
                 } catch (e) {
+                  logger.warn(
+                    "⚠️ Quiz answer decryption fallback applied",
+                    {
+                      quizId: quiz?.id || null,
+                      questionId: q?.id || null,
+                      error: e.message,
+                    },
+                  );
                   // Already in plaintext or invalid format
                   return {
                     ...opt,

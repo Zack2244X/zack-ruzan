@@ -72,7 +72,8 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
  */
 const createAdminLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 3,
+  max: 1,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "محاولات كثيرة لإنشاء أدمن. حاول بعد ساعة." },
@@ -134,8 +135,7 @@ function isTrustedRequestOrigin(req) {
   }
 
   const host = req.get("host");
-  const forwardedProto = req.get("x-forwarded-proto");
-  const protocol = forwardedProto || req.protocol || "https";
+  const protocol = req.protocol || "https";
   const sameOrigin = host ? `${protocol}://${host}` : null;
 
   const origin = req.get("origin");
@@ -148,7 +148,13 @@ function isTrustedRequestOrigin(req) {
   if (!referer) {
     const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
     if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
-    if (sameOrigin && isLikelyLegacyClient(req)) return true;
+    if (
+      process.env.NODE_ENV !== "production" &&
+      sameOrigin &&
+      isLikelyLegacyClient(req)
+    ) {
+      return true;
+    }
     return false;
   }
 
@@ -667,12 +673,11 @@ router.post(
         const shouldBeAdmin = ADMIN_EMAILS.includes(
           googleData.email.toLowerCase(),
         );
-        const correctRole = shouldBeAdmin ? "admin" : "student";
-        if (user.role !== correctRole) {
+        if (shouldBeAdmin && user.role !== "admin") {
           logger.info(
-            `🔄 تحديث دور المستخدم: ${user.email} من ${user.role} إلى ${correctRole}`,
+            `🔄 تحديث دور المستخدم: ${user.email} من ${user.role} إلى admin`,
           );
-          user.role = correctRole;
+          user.role = "admin";
           user.tokenVersion = (user.tokenVersion || 0) + 1; // إلغاء الجلسات القديمة
         }
         await user.save();

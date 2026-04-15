@@ -17,10 +17,8 @@
 // ============================================
 const router = require("express").Router();
 const scoresController = require("../controllers/scoresController");
-const dbLayer = require("../services/safeQueryLayer");
 const scoresService = require("../services/scoresService");
 
-const { Op } = require("sequelize");
 const sequelize = require("../models/index");
 const Score = require("../models/Score");
 const Quiz = require("../models/Quiz");
@@ -44,68 +42,14 @@ function handleInternalError(req, res, error, context) {
   return sendInternalError(res, error, req, { action: context });
 }
 
-// --- In-Memory Cache للوحة المتصدرين ---
-
-function isTrustedGuestOrigin(req) {
-  const allowed = new Set(
-    (process.env.ALLOWED_ORIGINS || "")
-      .split(",")
-      .map((o) => o.trim())
-      .filter(Boolean),
-  );
-  allowed.add("http://localhost:3000");
-  allowed.add("http://localhost:5173");
-  allowed.add("http://127.0.0.1:3000");
-  allowed.add("http://127.0.0.1:5173");
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    allowed.add(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+const rejectGuestScoreSubmission = (req, res, next) => {
+  if (String(req.headers["x-guest-mode"] || "").toLowerCase() === "true") {
+    return res.status(403).json({
+      error: "وضع الضيف مخصص للقراءة فقط. سجّل دخولك لإرسال الدرجات.",
+    });
   }
-
-  const host = req.get("host");
-  const forwardedProto = req.get("x-forwarded-proto");
-  const protocol = forwardedProto || req.protocol || "https";
-  const sameOrigin = host ? `${protocol}://${host}` : null;
-
-  const origin = req.get("origin");
-  if (origin) {
-    if (sameOrigin && origin === sameOrigin) return true;
-    return allowed.has(origin);
-  }
-
-  const referer = req.get("referer");
-  if (!referer) {
-    const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
-    if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
-    return process.env.NODE_ENV !== "production";
-  }
-  try {
-    const refOrigin = new URL(referer).origin;
-    if (sameOrigin && refOrigin === sameOrigin) return true;
-    return allowed.has(refOrigin);
-  } catch {
-    return false;
-  }
-}
-
-function hasSuspiciousGuestSignals(req) {
-  const userAgent = String(req.get("user-agent") || "").toLowerCase();
-  if (!userAgent) return true;
-  const blockedAgents = [
-    "curl/",
-    "wget/",
-    "python-requests",
-    "httpie",
-    "postmanruntime",
-    "insomnia",
-    "axios/",
-  ];
-  if (blockedAgents.some((sig) => userAgent.includes(sig))) return true;
-
-  const deviceId = String(req.get("x-device-id") || "").trim();
-  return !/^[a-zA-Z0-9_-]{10,120}$/.test(deviceId);
-}
-
-
+  return next();
+};
 
 // ============================================
 //   POST /api/scores — تسليم إجابات الامتحان
@@ -118,37 +62,14 @@ function hasSuspiciousGuestSignals(req) {
  *   answer against the stored correct options, and creates a Score record.
  *   First attempt per user per quiz is marked isOfficial = true (counts for leaderboard).
  *   Subsequent attempts are marked isOfficial = false (practice only, no leaderboard effect).
- * @access Public read — authenticated users or guest-mode header.
+ * @access Private — authenticated users only.
  * @param {import('express').Request}  req - body: { quizId, answers, timeTaken? }
  * @param {import('express').Response} res - { message, result, details, meta }
  * @returns {Promise<void>}
  */
-// middleware لمعالجة الضيف قبل التحقق من التوكن
-const handleGuestMode = (req, res, next) => {
-  if (req.headers["x-guest-mode"] === "true") {
-    if (!isTrustedGuestOrigin(req)) {
-      return res
-        .status(403)
-        .json({ error: "مصدر الطلب غير موثوق لوضع الضيف." });
-    }
-    if (hasSuspiciousGuestSignals(req)) {
-      return res.status(403).json({
-        error: "تعذر التحقق من جلسة الضيف. استخدم التطبيق الرسمي.",
-      });
-    }
-    return res.status(200).json({
-      message: "تم الدخول كضيف. لن يتم حفظ أي درجات أو بيانات.",
-      result: null,
-      meta: { isOfficial: false, attemptNumber: 0 },
-      details: [],
-    });
-  }
-  next();
-};
-
 router.post(
   "/",
-  handleGuestMode,
+  rejectGuestScoreSubmission,
   authenticate,
   validateSubmitScore,
   async (req, res) => {
@@ -213,7 +134,6 @@ router.post(
 
       // SECURITY: delegate to atomic service implementation to avoid duplicate race logic.
       const {
-        score,
         attemptNumber,
         isOfficial,
       } = await scoresService.createAttempt(req.user.id, quizId, {
@@ -622,6 +542,9 @@ router.delete(
         return res.status(404).json({ error: "النتيجة غير موجودة." });
       }
       await score.destroy();
+      if (typeof scoresService.invalidateLeaderboardCache === "function") {
+        scoresService.invalidateLeaderboardCache();
+      }
       logger.info(`🗑️ حذف نتيجة #${req.params.id} — بواسطة: ${req.user.email}`);
       res.json({ message: "تم حذف النتيجة بنجاح." });
     } catch (error) {

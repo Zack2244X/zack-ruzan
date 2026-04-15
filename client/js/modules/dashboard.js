@@ -410,9 +410,10 @@ export async function renderDashboard(forceRefresh = false) {
       const safeTitle = escapeHtml(config.title);
       const safeDesc = escapeHtml(config.description || "");
       const safeSubject = escapeHtml(config.subject || "عام");
+      const encodedLink = encodeURIComponent(String(config.link || ""));
 
       notesHtml += `
-                <div onclick="forceDownload('${escapeHtml(config.link)}')"
+            <div onclick="forceDownload('${encodedLink}')"
                      class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
                             cursor-pointer border border-gray-100 hover:border-orange-400 group
                             relative overflow-hidden">

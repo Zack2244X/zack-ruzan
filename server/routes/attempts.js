@@ -49,25 +49,20 @@ function runAuthenticateInline(req, res) {
 }
 
 // GET /api/attempts?quizId=...(&email=...)
-// Allows unauthenticated callers to receive `{ attempts: 0 }` when no credentials
-// are present. If credentials exist (cookie or Authorization header) we run
-// the regular `authenticate` flow to return the real count. Admin-only
-// `email` queries still require successful authentication as an admin.
+// Requires authentication. Admin-only `email` queries still require admin role.
 router.get("/", validateAttemptsQuery, async (req, res) => {
   try {
     const { quizId, email } = req.query;
     const normalizedQuizId = Number(quizId);
 
-    // If no credentials provided and no email param, return 0 to avoid
-    // noisy 401 errors from unauthenticated clients (client may call
-    // this before login completes).
+    // Require auth credentials for this endpoint.
     const hasCookie = Boolean(req.cookies && req.cookies.jwt);
     const hasAuthHeader = Boolean(
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer "),
     );
-    if (!hasCookie && !hasAuthHeader && !email) {
-      return res.json({ attempts: 0 });
+    if (!hasCookie && !hasAuthHeader) {
+      return res.status(401).json({ error: "يجب تسجيل الدخول أولاً." });
     }
 
     // If credentials are present, attempt authentication. `authenticate`
@@ -93,7 +88,9 @@ router.get("/", validateAttemptsQuery, async (req, res) => {
     } else {
       // authenticated user's own attempts
       targetUserId = req.user ? req.user.id : null;
-      if (!targetUserId) return res.json({ attempts: 0 });
+      if (!targetUserId) {
+        return res.status(401).json({ error: "يجب تسجيل الدخول أولاً." });
+      }
     }
 
     const attempts = await Score.count({

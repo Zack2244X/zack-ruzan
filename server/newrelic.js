@@ -14,15 +14,13 @@ exports.config = {
   app_name: [process.env.NEW_RELIC_APP_NAME || "Quiz Platform Server"],
 
   // License key - pulled from environment variable
-  license_key:
-    process.env.NEW_RELIC_LICENSE_KEY || "process.env.NEW_RELIC_API_KEY",
+  license_key: process.env.NEW_RELIC_LICENSE_KEY || "",
 
   // Logging config
   logging: {
     level: process.env.NODE_ENV === "production" ? "info" : "debug",
     enabled: process.env.NEW_RELIC_LOG_ENABLED !== "false",
     filepath: "stdout",
-    filet: false,
   },
 
   // Advanced configuration

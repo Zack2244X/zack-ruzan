@@ -124,6 +124,16 @@ if (missingEnv.length > 0) {
   logger.warn("⚠️ متابعة في وضع التطوير بدون بعض المتغيرات...");
 }
 
+if (
+  process.env.NODE_ENV === "production" &&
+  !String(process.env.DEVICE_FP_SECRET || "").trim()
+) {
+  logger.error(
+    "❌ DEVICE_FP_SECRET is required in production for device fingerprint signing.",
+  );
+  process.exit(1);
+}
+
 // Optional: Log New Relic status
 if (process.env.NEW_RELIC_LICENSE_KEY) {
   logger.info("✅ New Relic APM مفعل");
@@ -328,6 +338,18 @@ app.use((req, res, next) => {
   next();
 });
 
+const cspConnectSources = [
+  "'self'",
+  ...Array.from(
+    new Set(
+      String(process.env.CSP_CONNECT_SRC || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ),
+];
+
 // 2. Helmet — هيدرز أمان شاملة
 app.use(
   helmet({
@@ -335,10 +357,18 @@ app.use(
       directives: {
         "default-src": ["'self'"],
         "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
-        "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+        // Keep style attributes allowed (runtime JS sets element.style),
+        // but require nonce for inline <style> blocks.
+        "style-src": ["'self'", "https://cdn.jsdelivr.net"],
+        "style-src-elem": [
+          "'self'",
+          "https://cdn.jsdelivr.net",
+          (req, res) => `'nonce-${res.locals.nonce}'`,
+        ],
+        "style-src-attr": ["'unsafe-inline'"],
         "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
         "img-src": ["'self'", "data:", "blob:"],
-        "connect-src": ["'self'", "https://api.example.com"],
+        "connect-src": cspConnectSources,
         "object-src": ["'none'"],
         "frame-ancestors": ["'none'"]
       }
@@ -608,7 +638,17 @@ function getSignedDeviceFingerprint(req) {
   const signature = String(req.cookies?.device_fp_sig || "")
     .trim()
     .substring(0, 256);
-  const secret = process.env.DEVICE_FP_SECRET || process.env.JWT_SECRET || "";
+  const secret = String(process.env.DEVICE_FP_SECRET || "").trim();
+
+  if (!secret) {
+    if (!getSignedDeviceFingerprint._warnedMissingSecret) {
+      logger.warn(
+        "DEVICE_FP_SECRET is not configured; signed device fingerprint checks are disabled.",
+      );
+      getSignedDeviceFingerprint._warnedMissingSecret = true;
+    }
+    return "";
+  }
 
   if (!fingerprint || !signature || !secret) return "";
 
@@ -752,7 +792,20 @@ const renderSPA = (req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   require("fs").readFile(require("path").join(__dirname, "../client/index.html"), "utf8", (err, html) => {
     if (err) return res.status(500).send("HTML Load Error");
-    res.send(html.replace(/<script\b/g, `<script nonce="${res.locals.nonce}"`));
+    const nonce = res.locals.nonce;
+    const withNonceMeta = html.replace(
+      /<head>/i,
+      `<head><meta name="csp-nonce" content="${nonce}" />`,
+    );
+    const withNonceScripts = withNonceMeta.replace(
+      /<script\b/gi,
+      `<script nonce="${nonce}"`,
+    );
+    const withNonceStyles = withNonceScripts.replace(
+      /<style\b/gi,
+      `<style nonce="${nonce}"`,
+    );
+    res.send(withNonceStyles);
   });
 };
 app.get(["/", "/index.html"], renderSPA);

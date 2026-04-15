@@ -7,6 +7,10 @@ const { QueryTypes } = require('sequelize');
 // Cache for 60 seconds
 const leaderboardCache = new NodeCache({ stdTTL: 60 });
 
+function invalidateLeaderboardCache() {
+  leaderboardCache.del("leaderboard_data");
+}
+
 async function getLeaderboard() {
   const cacheKey = 'leaderboard_data';
   const cachedData = leaderboardCache.get(cacheKey);
@@ -110,7 +114,7 @@ async function createAttempt(userId, quizId, payload = {}) {
         { transaction },
       );
       await transaction.commit();
-      leaderboardCache.del('leaderboard_data');
+      invalidateLeaderboardCache();
       return { score, attemptNumber, isOfficial };
     } catch (error) {
       await transaction.rollback();
@@ -127,3 +131,4 @@ async function createAttempt(userId, quizId, payload = {}) {
 }
 
 module.exports.createAttempt = createAttempt;
+module.exports.invalidateLeaderboardCache = invalidateLeaderboardCache;

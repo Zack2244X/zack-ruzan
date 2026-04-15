@@ -198,12 +198,20 @@ export async function updateExistingNote(
 export function forceDownload(url) {
   logFunctionStatus("forceDownload", false);
   logger.log(`[forceDownload] بدء تحميل —`, url);
-  let normalizedUrl = String(url || "").trim();
+  const decodeHtmlEntities = (value) => {
+    const textArea = document.createElement("textarea");
+    textArea.innerHTML = String(value || "");
+    return textArea.value;
+  };
+
+  let normalizedUrl = decodeHtmlEntities(String(url || "").trim());
   try {
     normalizedUrl = decodeURIComponent(normalizedUrl);
   } catch (_) {
     // Keep original value if decoding fails.
   }
+
+  normalizedUrl = decodeHtmlEntities(normalizedUrl).trim();
 
   let parsedUrl;
   try {
