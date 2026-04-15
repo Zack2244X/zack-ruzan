@@ -508,9 +508,14 @@ app.use(
         return callback(null, { credentials: true, origin: true });
       }
 
+      // Internal health checks and reverse-proxy hops frequently omit Origin.
+      const callerIp = normalizeIp(req.ip);
+      if (isPrivateIp(callerIp)) {
+        return callback(null, { credentials: true, origin: true });
+      }
+
       const internalHeader =
         String(req.get("x-internal-request") || "").toLowerCase() === "true";
-      const callerIp = normalizeIp(req.ip);
       if (internalHeader && isInternalIp(callerIp)) {
         logger.info(
           `Internal request allowed from ${callerIp} with X-Internal-Request`,
