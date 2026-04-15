@@ -94,8 +94,17 @@ jobs:
             git fetch --all --prune
             git checkout main
             git reset --hard origin/main
-            docker-compose pull || true
-            docker-compose up -d --build --remove-orphans
+            if docker compose version >/dev/null 2>&1; then
+              DC="docker compose"
+            else
+              DC="docker-compose"
+            fi
+
+            # Recover from stale renamed containers that can block service recreate with name conflicts.
+            docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_yourapp-(db|redis)-1$' | xargs -r docker rm -f || true
+
+            $DC pull || true
+            $DC up -d --build --remove-orphans
             docker image prune -f
 
       - name: Verify no public port 3000 on host
