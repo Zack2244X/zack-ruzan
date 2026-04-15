@@ -36,13 +36,19 @@ const helmet = require("helmet");
 const hpp = require("hpp");
 const compression = require("compression");
 const cookieParser = require("cookie-parser");
-const rateLimit = require("express-rate-limit");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { isIP, BlockList } = require("net");
 const logger = require("./utils/logger");
 const { sanitizeBody } = require("./middleware/sanitize");
 const { verifyCsrf, setCsrfCookie } = require("./middleware/auth");
+const {
+  createDdosAnomalyGuard,
+  createDistributedWindowLimiter,
+  createUserAwareRateLimiter: createDistributedRateLimiter,
+  closeDdosRedisClient,
+} = require("./middleware/ddosProtection");
+const { createCircuitBreaker } = require("./utils/circuitBreaker");
 const { buildSanitizedErrorLog } = require("./utils/secureErrorLog");
 const {
   enforceHttps,
@@ -70,6 +76,46 @@ const requiredEnvVars = [
 ];
 const JWT_ISSUER = process.env.JWT_ISSUER || "quiz-platform-api";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE || "quiz-platform-client";
+const HEALTHCHECK_TOKEN = String(process.env.HEALTHCHECK_TOKEN || "").trim();
+
+function getPositiveIntEnv(name, fallback) {
+  const parsed = Number(process.env[name]);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
+}
+
+const dbCircuitBreaker = createCircuitBreaker({
+  name: "database",
+  failureThreshold: getPositiveIntEnv("DB_CIRCUIT_FAILURE_THRESHOLD", 5),
+  recoveryTimeMs: getPositiveIntEnv("DB_CIRCUIT_RECOVERY_MS", 30_000),
+  halfOpenSuccesses: getPositiveIntEnv("DB_CIRCUIT_HALF_OPEN_SUCCESSES", 2),
+});
+const dbCircuitTimeoutMs = getPositiveIntEnv("DB_CIRCUIT_TIMEOUT_MS", 4000);
+
+async function executeDbGuarded(operation, options = {}) {
+  const timeoutMs = options.timeoutMs || dbCircuitTimeoutMs;
+  return dbCircuitBreaker.execute(operation, { timeoutMs });
+}
+
+function verifyHealthAccess(req, res, next) {
+  if (process.env.NODE_ENV !== "production") return next();
+
+  const callerIp = normalizeIp(req.ip || req.socket?.remoteAddress || "");
+  if (callerIp === "127.0.0.1" || callerIp === "::1") return next();
+  if (isPrivateIp(callerIp)) return next();
+
+  if (!HEALTHCHECK_TOKEN) {
+    logger.error("❌ HEALTHCHECK_TOKEN is missing in production.");
+    return res.status(503).json({ error: "Health check temporarily unavailable." });
+  }
+
+  const provided = String(req.get("x-health-token") || "").trim();
+  if (!provided || provided !== HEALTHCHECK_TOKEN) {
+    return res.status(401).json({ error: "Unauthorized health check request." });
+  }
+
+  return next();
+}
 
 const missingEnv = requiredEnvVars.filter((v) => !process.env[v]);
 if (missingEnv.length > 0) {
@@ -446,6 +492,44 @@ app.use(
 // 5. Cookie Parser
 app.use(cookieParser());
 
+const enableAdvancedDdosProtection =
+  process.env.ENABLE_ADVANCED_DDOS_PROTECTION !== "false" &&
+  process.env.NODE_ENV !== "test";
+
+if (enableAdvancedDdosProtection) {
+  const apiAnomalyGuard = createDdosAnomalyGuard({
+    bucketMs: getPositiveIntEnv("DDOS_BURST_WINDOW_MS", 10_000),
+    maxPerBucket: getPositiveIntEnv("DDOS_BURST_MAX", 120),
+    scoreThreshold: getPositiveIntEnv("DDOS_SCORE_THRESHOLD", 4),
+    banMs: getPositiveIntEnv("DDOS_BAN_MS", 10 * 60 * 1000),
+  });
+
+  const apiBurstLimiter = createDistributedWindowLimiter({
+    keyPrefix: "ddos:api",
+    windowMs: getPositiveIntEnv("DDOS_API_WINDOW_MS", 10_000),
+    max: getPositiveIntEnv("DDOS_API_MAX", 180),
+    message: "تم تجاوز حد الاندفاع العام. حاول بعد قليل.",
+    getKey: (req) => String(req.ip || "unknown"),
+  });
+
+  const writeBurstLimiter = createDistributedWindowLimiter({
+    keyPrefix: "ddos:write",
+    windowMs: getPositiveIntEnv("DDOS_WRITE_WINDOW_MS", 60_000),
+    max: getPositiveIntEnv("DDOS_WRITE_MAX", 120),
+    message: "تم تجاوز حد طلبات التعديل/الإنشاء. حاول بعد قليل.",
+    getKey: (req) => String(req.ip || "unknown"),
+  });
+
+  const mutatingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+  app.use("/api", apiAnomalyGuard);
+  app.use("/api", apiBurstLimiter);
+  app.use("/api", (req, res, next) => {
+    if (!mutatingMethods.has(req.method)) return next();
+    return writeBurstLimiter(req, res, next);
+  });
+}
+
 // Ensure CSRF cookie exists before first authenticated/mutating interaction
 // so initial Google login can still pass strict CSRF checks.
 app.use((req, res, next) => {
@@ -748,7 +832,7 @@ app.use((req, res, next) => {
 //         Rate Limiting — 3 مستويات
 // ============================================
 const createUserAwareRateLimiter = (windowMs, max, options = {}) =>
-  rateLimit({
+  createDistributedRateLimiter({
     windowMs,
     max,
     keyGenerator: (req) => {
@@ -778,7 +862,9 @@ const createUserAwareRateLimiter = (windowMs, max, options = {}) =>
 
       return String(req.ip);
     },
-    ...options,
+    skip: options.skip,
+    message: options.message,
+    redisPrefix: options.redisPrefix,
   });
 
 /**
@@ -788,45 +874,39 @@ const createUserAwareRateLimiter = (windowMs, max, options = {}) =>
 const strictLimiterMax = process.env.NODE_ENV === "test" ? 5 : 50;
 
 const strictLimiter = createUserAwareRateLimiter(15 * 60 * 1000, strictLimiterMax, {
-  standardHeaders: true,
-  legacyHeaders: false,
+  redisPrefix: "rl:strict:",
   message: { error: "طلبات كثيرة على المسارات الحساسة. حاول بعد قليل." },
 });
 
 const mediumLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 200, {
-  standardHeaders: true,
-  legacyHeaders: false,
+  redisPrefix: "rl:medium:",
   message: { error: "تم تجاوز حد الطلبات لمسارات الإنشاء/التعديل." },
 });
 
 const relaxedLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 1000, {
-  standardHeaders: true,
-  legacyHeaders: false,
+  redisPrefix: "rl:relaxed:",
   message: { error: "تم تجاوز حد الطلبات، حاول لاحقاً." },
 });
 
 const defaultLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 1000, {
+  redisPrefix: "rl:default:",
   skip: (req) => String(req.headers["x-guest-mode"] || "").toLowerCase() === "true",
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
-const guestLimiter = rateLimit({
+const guestLimiter = createDistributedRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  redisPrefix: "rl:guest:",
   keyGenerator: (req) => String(req.ip),
   skip: (req) => String(req.headers["x-guest-mode"] || "").toLowerCase() !== "true",
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: "تم تجاوز حد طلبات وضع الضيف." },
 });
 
-const healthLimiter = rateLimit({
+const healthLimiter = createDistributedRateLimiter({
   windowMs: 60 * 1000,
   max: process.env.NODE_ENV === "test" ? 240 : 60,
+  redisPrefix: "rl:health:",
   keyGenerator: (req) => String(req.ip),
-  standardHeaders: true,
-  legacyHeaders: false,
   message: { error: "تم تجاوز حد طلبات فحص الحالة. حاول بعد قليل." },
 });
 
@@ -892,15 +972,17 @@ app.use("/api/health", healthLimiter);
 let dbConnected = false;
 let serverReady = false;
 
-app.get("/api/health", async (req, res) => {
+app.get("/api/health", verifyHealthAccess, async (req, res) => {
   const timestamp = new Date().toISOString();
   const incidentId = crypto.randomUUID();
   let degraded = false;
 
   try {
-    const sequelize = require("./models/index");
-    await sequelize.authenticate();
-    await sequelize.query("SELECT 1");
+    await executeDbGuarded(async () => {
+      const sequelize = require("./models/index");
+      await sequelize.authenticate();
+      await sequelize.query("SELECT 1");
+    });
   } catch (err) {
     degraded = true;
     logger.error(
@@ -932,10 +1014,16 @@ app.get("/api/health", async (req, res) => {
     );
   }
 
-  return res.status(degraded ? 503 : 200).json({
+  const payload = {
     status: degraded ? "degraded" : "operational",
     timestamp,
-  });
+  };
+
+  if (process.env.NODE_ENV !== "production") {
+    payload.dbCircuitState = dbCircuitBreaker.getState().state;
+  }
+
+  return res.status(degraded ? 503 : 200).json(payload);
 });
 
 // ============================================
@@ -1304,7 +1392,9 @@ async function startServer(retries = 3) {
   const enableAlter = process.env.DB_SYNC_ALTER === "true";
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      await sequelize.authenticate();
+      await executeDbGuarded(() => sequelize.authenticate(), {
+        timeoutMs: getPositiveIntEnv("DB_STARTUP_TIMEOUT_MS", 10_000),
+      });
       dbConnected = true;
       logger.info("✅ تم الاتصال بقاعدة البيانات TiDB بنجاح.");
       break;
@@ -1383,6 +1473,12 @@ async function gracefulShutdown(signal) {
     server.close(async () => {
       logger.info("🔌 HTTP server مغلق");
       try {
+        await closeDdosRedisClient();
+        logger.info("🔌 Redis security backend مغلق");
+      } catch (e) {
+        logger.error("خطأ في إغلاق Redis:", e.message);
+      }
+      try {
         await sequelize.close();
         logger.info("🔌 Database connection مغلق");
       } catch (e) {
@@ -1395,6 +1491,11 @@ async function gracefulShutdown(signal) {
       process.exit(1);
     }, 10000);
   } else {
+    try {
+      await closeDdosRedisClient();
+    } catch (_) {
+      // ignore
+    }
     process.exit(0);
   }
 }

@@ -28,10 +28,12 @@
     "google-auth-library": "9.15.1",
     "helmet": "7.2.0",
     "hpp": "0.2.3",
+    "ioredis": "5.7.0",
     "jsonwebtoken": "9.0.3",
     "mysql2": "3.20.0",
     "newrelic": "13.18.0",
     "node-cache": "5.1.2",
+    "rate-limit-redis": "4.2.3",
     "sanitize-html": "2.17.2",
     "sequelize": "6.37.8",
     "swagger-jsdoc": "6.2.8",
@@ -40,6 +42,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.2",
     "@jest/globals": "30.2.0",
     "eslint": "^9.39.4",
     "jest": "30.3.0",

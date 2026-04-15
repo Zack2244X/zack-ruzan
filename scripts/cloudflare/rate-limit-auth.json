@@ -1,0 +1,17 @@
+{
+  "description": "Auth endpoint anti-flood",
+  "rule": {
+    "description": "Auth endpoint anti-flood",
+    "expression": "http.request.uri.path starts_with \"/api/auth/\" and http.request.method eq \"POST\"",
+    "action": "managed_challenge",
+    "enabled": true,
+    "ratelimit": {
+      "characteristics": [
+        "ip.src"
+      ],
+      "period": 10,
+      "requests_per_period": 20,
+      "mitigation_timeout": 600
+    }
+  }
+}

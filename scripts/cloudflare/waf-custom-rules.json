@@ -1,0 +1,23 @@
+{
+  "description": "Quiz Platform custom WAF protections",
+  "rules": [
+    {
+      "description": "Managed challenge suspicious automation on auth routes",
+      "expression": "(http.request.uri.path starts_with \"/api/auth/\") and (http.request.method in {\"POST\" \"PUT\" \"PATCH\" \"DELETE\"}) and ((not cf.client.bot) and (http.user_agent matches \"(?i)(curl|wget|python|scrapy|sqlmap|nikto|nmap|masscan|zgrab|headless|postmanruntime|insomnia)\"))",
+      "action": "managed_challenge",
+      "enabled": true
+    },
+    {
+      "description": "Block non-canonical host header",
+      "expression": "(http.host ne \"zackpro.codes\") and (ip.src ne 127.0.0.1)",
+      "action": "block",
+      "enabled": true
+    },
+    {
+      "description": "Managed challenge for health endpoint probing",
+      "expression": "http.request.uri.path in {\"/healthz\" \"/api/health\"}",
+      "action": "managed_challenge",
+      "enabled": true
+    }
+  ]
+}
