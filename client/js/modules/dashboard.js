@@ -461,100 +461,91 @@ export async function renderDashboard(forceRefresh = false) {
   //  3. لوحة الشرف — أعلى 3
   // ─────────────────────────────────────────────
   const leaderboardList = document.getElementById("leaderboard-list");
-  if (leaderboardList) {
-    await wrapComponent(leaderboardList, async () => {
-      // Let's pretend to have an error simulation check if we type something like state.simulateError === true
-      // Here is the normal leaderboard logic:
-
-  if (leaderboardList) {
-    await wrapComponent(leaderboardList, async () => {
-      // Let's pretend to have an error simulation check if we type something like state.simulateError === true
-      // Here is the normal leaderboard logic:
-
+  let sourceLeaderboard = [];
   if (!leaderboardList) {
     logger.warn("[dashboard] leaderboard-list element not found");
-    return;
-  }
+  } else {
+    await wrapComponent(leaderboardList, async () => {
+      const totalExams = state.allQuizzes.length || 1;
+      // Prefer leaderboard from server if available (always includes names)
+      sourceLeaderboard =
+        Array.isArray(state.serverLeaderboard) &&
+        state.serverLeaderboard.length > 0
+          ? state.serverLeaderboard
+          : (() => {
+              // fallback: calculate locally from scores (may lack names for students)
+              const scoresByUser = {};
+              const sourceScores =
+                state.serverScores?.length > 0
+                  ? state.serverScores
+                  : state.allUserScores;
+              sourceScores.forEach((entry) => {
+                if (entry.isOfficial === false) return;
+                const userName = entry.userName || "طالب";
+                const userKey = entry.userId
+                  ? `id:${entry.userId}`
+                  : `name:${userName}`;
+                const total = Number(entry.total) || 0;
+                const score = Number(entry.score) || 0;
+                if (total <= 0) return;
+                if (!scoresByUser[userKey]) {
+                  scoresByUser[userKey] = {
+                    userId: entry.userId || null,
+                    userName,
+                    totalScore: 0,
+                    totalMax: 0,
+                    examsCount: 0,
+                    fullMarksCount: 0,
+                  };
+                }
+                scoresByUser[userKey].totalScore += score;
+                scoresByUser[userKey].totalMax += total;
+                scoresByUser[userKey].examsCount += 1;
+                if (score === total) scoresByUser[userKey].fullMarksCount += 1;
+              });
+              return Object.values(scoresByUser).map((u) => ({
+                ...u,
+                avgPercentage:
+                  u.totalMax > 0
+                    ? Math.round((u.totalScore / u.totalMax) * 100)
+                    : 0,
+              }));
+            })();
 
-  const totalExams = state.allQuizzes.length || 1;
-  // Prefer leaderboard from server if available (always includes names)
-  const sourceLeaderboard =
-    Array.isArray(state.serverLeaderboard) && state.serverLeaderboard.length > 0
-      ? state.serverLeaderboard
-      : (() => {
-          // fallback: calculate locally from scores (may lack names for students)
-          const scoresByUser = {};
-          const sourceScores =
-            state.serverScores?.length > 0
-              ? state.serverScores
-              : state.allUserScores;
-          sourceScores.forEach((entry) => {
-            if (entry.isOfficial === false) return;
-            const userName = entry.userName || "طالب";
-            const userKey = entry.userId
-              ? `id:${entry.userId}`
-              : `name:${userName}`;
-            const total = Number(entry.total) || 0;
-            const score = Number(entry.score) || 0;
-            if (total <= 0) return;
-            if (!scoresByUser[userKey]) {
-              scoresByUser[userKey] = {
-                userId: entry.userId || null,
-                userName,
-                totalScore: 0,
-                totalMax: 0,
-                examsCount: 0,
-                fullMarksCount: 0,
-              };
-            }
-            scoresByUser[userKey].totalScore += score;
-            scoresByUser[userKey].totalMax += total;
-            scoresByUser[userKey].examsCount += 1;
-            if (score === total) scoresByUser[userKey].fullMarksCount += 1;
-          });
-          return Object.values(scoresByUser).map((u) => ({
-            ...u,
-            avgPercentage:
-              u.totalMax > 0
-                ? Math.round((u.totalScore / u.totalMax) * 100)
-                : 0,
-          }));
-        })();
+      const ranked = sourceLeaderboard
+        .filter((item) => item.totalScore > 0)
+        .sort((a, b) => {
+          if (b.fullMarksCount !== a.fullMarksCount)
+            return b.fullMarksCount - a.fullMarksCount;
+          if (b.avgPercentage !== a.avgPercentage)
+            return b.avgPercentage - a.avgPercentage;
+          if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+          return String(a.userName).localeCompare(String(b.userName), "ar");
+        });
 
-  const ranked = sourceLeaderboard
-    .filter((item) => item.totalScore > 0)
-    .sort((a, b) => {
-      if (b.fullMarksCount !== a.fullMarksCount)
-        return b.fullMarksCount - a.fullMarksCount;
-      if (b.avgPercentage !== a.avgPercentage)
-        return b.avgPercentage - a.avgPercentage;
-      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      return String(a.userName).localeCompare(String(b.userName), "ar");
-    });
-
-  if (ranked.length === 0) {
-    leaderboardList.innerHTML = `
+      if (ranked.length === 0) {
+        leaderboardList.innerHTML = `
             <div class="text-center text-gray-500 py-10 bg-gray-50 rounded-2xl">
                 لا توجد نتائج مسجلة بعد.
             </div>`;
-  } else {
-    const rankNames = ["المركز الأول", "المركز الثاني", "المركز الثالث"];
-    const colors = [
-      "bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700",
-      "bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600",
-      "bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700",
-    ];
-    const medals = ["🥇", "🥈", "🥉"];
+      } else {
+        const rankNames = ["المركز الأول", "المركز الثاني", "المركز الثالث"];
+        const colors = [
+          "bg-gradient-to-l from-yellow-50 to-white border-yellow-200 text-yellow-700",
+          "bg-gradient-to-l from-gray-50 to-white border-gray-200 text-gray-600",
+          "bg-gradient-to-l from-orange-50 to-white border-orange-200 text-orange-700",
+        ];
+        const medals = ["🥇", "🥈", "🥉"];
 
-    let lbHtml = "";
-    ranked.slice(0, 3).forEach((entry, i) => {
-      const safeName = escapeHtml(entry.userName);
-      const fullMarkLabel =
-        entry.fullMarksCount > 0
-          ? `🌟 ${entry.fullMarksCount}/${totalExams} درجة نهائية`
-          : `${entry.examsCount}/${totalExams} امتحان`;
+        let lbHtml = "";
+        ranked.slice(0, 3).forEach((entry, i) => {
+          const safeName = escapeHtml(entry.userName);
+          const fullMarkLabel =
+            entry.fullMarksCount > 0
+              ? `🌟 ${entry.fullMarksCount}/${totalExams} درجة نهائية`
+              : `${entry.examsCount}/${totalExams} امتحان`;
 
-      lbHtml += `
+          lbHtml += `
                 <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
                             border ${colors[i] || colors[2]} flex items-center gap-4 mb-3">
                     <span class="text-2xl">${medals[i] || "🏅"}</span>
@@ -563,11 +554,9 @@ export async function renderDashboard(forceRefresh = false) {
                         <div class="text-xs font-bold text-gray-500">${rankNames[i] || "متميز"} • ${fullMarkLabel}</div>
                     </div>
                 </div>`;
-    });
-    leaderboardList.innerHTML = lbHtml;
-  }
-    });
-  }
+        });
+        leaderboardList.innerHTML = lbHtml;
+      }
     });
   }
 

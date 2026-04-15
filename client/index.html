@@ -2145,8 +2145,8 @@
                 // ensure bootstrap loader is present so queued calls will be flushed
                 if (!document.querySelector('script[src^="/js/bootstrap"]')) {
                   const s = document.createElement("script");
-                  s.src = "/js/bootstrap.min.js?v=72";
-                  s.defer = true;
+                  s.type = "module";
+                  s.src = "/js/bootstrap.js?v=82";
                   document.head.appendChild(s);
                 }
               };
@@ -3619,7 +3619,7 @@
     </script>
 
     <!-- Public config (inlined via small JS endpoint) - avoids /api/config XHR -->
-    <script src="/js/sanitize.js" defer></script>
+    <script src="/js/sanitize.js?v=2" defer></script>
     <script src="/config.js?v=2" defer></script>
 
     <!-- Small safe stub to prevent early GSAP console errors while libs load deferred -->
@@ -3638,7 +3638,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script src="/js/bootstrap.min.js?v=75" defer></script>
+    <script type="module" src="/js/bootstrap.js?v=82"></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>

@@ -64,19 +64,15 @@ export function getAuthHeaders() {
   headers["X-Device-Id"] = getClientDeviceId();
   const csrf = getCsrfToken();
   if (csrf) headers["X-CSRF-Token"] = csrf;
-  // إرسال هيدر الضيف إذا كانت الجلسة الحالية جلسة ضيف
+  // إرسال هيدر الضيف عندما يكون وضع الضيف مفعلاً أو المستخدم الحالي ضيفاً.
+  // لا نمسح العلامات هنا لتجنب فقدان وضع الضيف أثناء تزامن بدء التطبيق.
   try {
-    const isGuestFlag =
+    const hasGuestFlag =
       sessionStorage.getItem("guest-mode") === "true" ||
       localStorage.getItem("guest-mode") === "true";
     const isCurrentUserGuest = state.currentUser?.role === "guest";
-    // لا ترسل هيدر الضيف إذا أصبح المستخدم مسجلاً بحساب فعلي
-    if (isGuestFlag && isCurrentUserGuest) {
+    if (hasGuestFlag || isCurrentUserGuest) {
       headers["X-Guest-Mode"] = "true";
-    } else if (isGuestFlag && !isCurrentUserGuest) {
-      sessionStorage.removeItem("guest-mode");
-      localStorage.removeItem("guest-mode");
-      document.body.classList.remove("guest-mode");
     }
   } catch (e) {
     /* تجاهل خطأ sessionStorage */

@@ -1,4 +1,4 @@
-import logger from './utils/logger.js';
+import logger from './utils/logger.js?v=2';
 // Lightweight bootstrap: set minimal fallbacks and lazily load the full app when needed.
 // Goal: avoid sending the large bundled app to anonymous users and defer heavy modules.
 (function () {
@@ -20,6 +20,55 @@ import logger from './utils/logger.js';
   // Keep any calls queued by inline fallbacks before bootstrap executes.
   window.__lazyCalls = window.__lazyCalls || [];
   window.__appLoading = false;
+  window.sourceLeaderboard = window.sourceLeaderboard || [];
+
+  function splitInlineArgs(argsText) {
+    const out = [];
+    let current = "";
+    let quote = null;
+
+    for (let i = 0; i < argsText.length; i += 1) {
+      const ch = argsText[i];
+      if ((ch === '"' || ch === "'") && argsText[i - 1] !== "\\") {
+        if (!quote) quote = ch;
+        else if (quote === ch) quote = null;
+        current += ch;
+        continue;
+      }
+
+      if (ch === "," && !quote) {
+        out.push(current.trim());
+        current = "";
+        continue;
+      }
+
+      current += ch;
+    }
+
+    const last = current.trim();
+    if (last) out.push(last);
+    return out;
+  }
+
+  function decodeInlineArg(token, element, event) {
+    const t = String(token || "").trim();
+    if (t === "this") return element;
+    if (t === "event") return event;
+    if (t === "true") return true;
+    if (t === "false") return false;
+    if (t === "null") return null;
+    if (t === "undefined") return undefined;
+    if (/^-?\d+(?:\.\d+)?$/.test(t)) return Number(t);
+
+    if (
+      (t.startsWith("'") && t.endsWith("'")) ||
+      (t.startsWith('"') && t.endsWith('"'))
+    ) {
+      return t.slice(1, -1).replace(/\\'/g, "'").replace(/\\"/g, '"');
+    }
+
+    return t;
+  }
 
   // safe error handlers (small)
   window.addEventListener("error", (e) => {
@@ -105,7 +154,91 @@ import logger from './utils/logger.js';
     "animateElement",
     "pauseAllAnimations",
     "resumeAllAnimations",
+    "showGuestModal",
+    "closeGuestModal",
+    "agreeGuestLogin",
+    "startGuestLogin",
   ];
+
+  const INLINE_BRIDGE_ALLOWED_FUNCTIONS = new Set(lazyNames);
+
+  function invokeInlineCode(code, element, event) {
+    const statements = String(code || "")
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    let lastResult;
+    for (const stmt of statements) {
+      const callMatch = stmt.match(/^([A-Za-z_$][\w$]*)\s*\((.*)\)$/);
+      const bareCallMatch = stmt.match(/^([A-Za-z_$][\w$]*)$/);
+      const fnName = callMatch
+        ? callMatch[1]
+        : bareCallMatch
+          ? bareCallMatch[1]
+          : "";
+
+      if (!fnName || !INLINE_BRIDGE_ALLOWED_FUNCTIONS.has(fnName)) continue;
+
+      const fn = window[fnName];
+      if (typeof fn !== "function") continue;
+
+      const rawArgs = callMatch ? splitInlineArgs(callMatch[2]) : [];
+      const args = rawArgs.map((arg) => decodeInlineArg(arg, element, event));
+      lastResult = fn(...args);
+    }
+
+    return lastResult;
+  }
+
+  function installInlineHandlerBridge() {
+    if (window.__inlineBridgeInstalled) return;
+
+    const migrate = () => {
+      const attrs = ["onclick", "onchange", "onsubmit", "oninput", "onblur"];
+      attrs.forEach((attr) => {
+        document.querySelectorAll(`[${attr}]`).forEach((el) => {
+          const val = el.getAttribute(attr);
+          if (!val) return;
+          el.setAttribute(`data-inline-${attr}`, val);
+          el.removeAttribute(attr);
+        });
+      });
+    };
+
+    const handleAttr = (event, domEventName) => {
+      const attrName = `data-inline-on${domEventName}`;
+      const inlineAttrName = `on${domEventName}`;
+      const selector = `[${attrName}], [${inlineAttrName}]`;
+      const target = event.target?.closest?.(selector);
+      if (!target) return;
+
+      let code = target.getAttribute(attrName);
+      if (!code) {
+        code = target.getAttribute(inlineAttrName);
+        if (code) {
+          target.setAttribute(attrName, code);
+          target.removeAttribute(inlineAttrName);
+        }
+      }
+
+      const result = invokeInlineCode(code, target, event);
+      if (result === false) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    migrate();
+    document.addEventListener("click", (e) => handleAttr(e, "click"), true);
+    document.addEventListener("change", (e) => handleAttr(e, "change"), true);
+    document.addEventListener("input", (e) => handleAttr(e, "input"), true);
+    document.addEventListener("submit", (e) => handleAttr(e, "submit"), true);
+    document.addEventListener("blur", (e) => handleAttr(e, "blur"), true);
+    window.__inlineBridgeInstalled = true;
+  }
+
+  installInlineHandlerBridge();
 
   function triggerAppLoad() {
     if (window.__appLoadTriggered) return;
@@ -139,7 +272,7 @@ import logger from './utils/logger.js';
     // Primary: minified IIFE bundle (one request, all modules pre-bundled).
     // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
     // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
-    const bundleUrl = "/js/app.bundle.min.js?v=76";
+    const bundleUrl = "/js/app.bundle.min.js?v=82";
     const esmUrl = "/js/app.js";
 
     const bundleScript = document.createElement("script");

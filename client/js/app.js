@@ -947,7 +947,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=41";
+        s.src = "/js/app.features.bundle.min.js?v=42";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();

@@ -82,9 +82,15 @@ import {
 import { startLeaderboardAutoRefresh } from "./dashboard.js";
 
 function getClientDevicePayload() {
+  const rawDeviceName =
+    typeof navigator !== "undefined" && navigator.userAgent
+      ? navigator.userAgent
+      : "Unknown Device";
+  const deviceName = String(rawDeviceName).trim().slice(0, 120) || "Unknown Device";
+
   return {
     deviceId: getClientDeviceId(),
-    deviceName: navigator.userAgent || "Unknown Device",
+    deviceName,
   };
 }
 
@@ -92,6 +98,31 @@ function buildSecurityConsentPayload() {
   return {
     securityConsent: true,
   };
+}
+
+function recoverLoginUiAfterOAuthFailure(userMessage = "") {
+  // Redirect flow can hide the login screen before verification completes.
+  // On any auth failure, force the UI back to a usable login state.
+  try {
+    const loadingScreen = document.getElementById("loading-screen");
+    if (loadingScreen) loadingScreen.classList.remove("show");
+    document.body.classList.remove("loading-active");
+    try {
+      window.__loadingStartTs = 0;
+    } catch {
+      /* ignore */
+    }
+
+    showLoginScreen();
+
+    const errorEl = document.getElementById("login-error");
+    if (errorEl && userMessage) {
+      errorEl.textContent = userMessage;
+      errorEl.classList.remove("hidden");
+    }
+  } catch (e) {
+    logger.warn("[auth] failed to recover login UI after OAuth error:", e);
+  }
 }
 
 /**
@@ -150,12 +181,9 @@ export function handleGoogleRedirectToken() {
     sessionStorage.removeItem("googleLoginMode");
     sessionStorage.removeItem("googleState");
     logger.error("❌ Google OAuth error:", error, errorDesc);
-    const errorEl = document.getElementById("login-error");
-    if (errorEl) {
-      errorEl.textContent =
-        "❌ خطأ من Google: " + decodeURIComponent(errorDesc || "غير معروف");
-      errorEl.classList.remove("hidden");
-    }
+    recoverLoginUiAfterOAuthFailure(
+      "❌ خطأ من Google: " + decodeURIComponent(errorDesc || "غير معروف"),
+    );
     return true;
   }
 
@@ -185,10 +213,10 @@ export function handleGoogleRedirectToken() {
   if (!idToken) return false;
 
   if (expectedState && returnedState && expectedState !== returnedState) {
-    showAlert(
-      "❌ فشل التحقق من تسجيل Google (state mismatch). حاول مرة أخرى.",
-      "error",
-    );
+    const msg =
+      "❌ فشل التحقق من تسجيل Google (state mismatch). حاول مرة أخرى.";
+    showAlert(msg, "error");
+    recoverLoginUiAfterOAuthFailure(msg);
     return true;
   }
 
@@ -197,11 +225,16 @@ export function handleGoogleRedirectToken() {
   if (expectedNonce) {
     const payload = safeParseToken(idToken);
     if (!payload) {
-      logoutUser().catch(() => {});
+      const msg = "❌ فشل قراءة بيانات تسجيل Google. حاول مرة أخرى.";
+      showAlert(msg, "error");
+      recoverLoginUiAfterOAuthFailure(msg);
       return true;
     }
     if (payload.nonce !== expectedNonce) {
-      showAlert("❌ فشل التحقق من تسجيل Google (nonce mismatch). حاول مرة أخرى.", "error");
+      const msg =
+        "❌ فشل التحقق من تسجيل Google (nonce mismatch). حاول مرة أخرى.";
+      showAlert(msg, "error");
+      recoverLoginUiAfterOAuthFailure(msg);
       return true;
     }
   }
@@ -457,8 +490,10 @@ export async function handleStudentGoogleLogin(
   } catch (err) {
     loadingEl.classList.add("hidden");
     logger.error("❌ Login error details:", err);
-    errorEl.textContent = "❌ " + (err.message || "حدث خطأ أثناء تسجيل الدخول");
+    const message = "❌ " + (err.message || "حدث خطأ أثناء تسجيل الدخول");
+    errorEl.textContent = message;
     errorEl.classList.remove("hidden");
+    recoverLoginUiAfterOAuthFailure(message);
   }
 }
 

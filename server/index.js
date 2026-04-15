@@ -335,9 +335,11 @@ app.use(
       directives: {
         "default-src": ["'self'"],
         "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
-        "style-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+        "font-src": ["'self'", "data:", "https://cdn.jsdelivr.net"],
         "img-src": ["'self'", "data:", "blob:"],
-        "connect-src": ["'self'"],
+        "connect-src": ["'self'", "https://api.example.com"],
+        "object-src": ["'none'"],
         "frame-ancestors": ["'none'"]
       }
     },
@@ -358,26 +360,6 @@ app.use(
     },
   }),
 );
-
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      "script-src 'self' 'nonce-" + res.locals.nonce + "'",
-      "script-src-attr 'none'",
-      "style-src 'self' 'nonce-" + res.locals.nonce + "'",
-      "style-src-attr 'none'",
-      "img-src 'self' data: https:",
-      "font-src 'self'",
-      "connect-src 'self' https://api.example.com",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join("; "),
-  );
-  next();
-});
 
 // ✅ ENCRYPTION SECURITY: Apply encryption and HTTPS enforcement
 app.use(enforceHttps); // Redirect HTTP → HTTPS in production
@@ -457,6 +439,42 @@ app.use(
 
     if (!origin) {
       if (!isProduction) {
+        return callback(null, { credentials: true, origin: true });
+      }
+
+      // Browser top-level navigations often omit Origin.
+      // Allow non-API page requests while keeping API traffic strict.
+      const isNonApiPageRequest =
+        ["GET", "HEAD"].includes(req.method) &&
+        !String(req.path || "").startsWith("/api/");
+      if (isNonApiPageRequest) {
+        return callback(null, { credentials: true, origin: true });
+      }
+
+      // Same-origin browser fetches can also omit Origin on some requests.
+      const secFetchSite = String(req.get("sec-fetch-site") || "").toLowerCase();
+      const isLikelySameOriginFetch = ["same-origin", "same-site", "none"].includes(
+        secFetchSite,
+      );
+
+      const referer = String(req.get("referer") || "");
+      const hasTrustedReferer = (() => {
+        if (!referer) return false;
+        try {
+          const refererOrigin = new URL(referer).origin;
+          return allowedOrigins.some((allowed) => {
+            try {
+              return new URL(allowed).origin === refererOrigin;
+            } catch {
+              return false;
+            }
+          });
+        } catch {
+          return false;
+        }
+      })();
+
+      if (isLikelySameOriginFetch || hasTrustedReferer) {
         return callback(null, { credentials: true, origin: true });
       }
 

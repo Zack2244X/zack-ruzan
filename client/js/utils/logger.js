@@ -12,20 +12,27 @@ const isDev = (typeof process !== 'undefined' && process.env.NODE_ENV === 'devel
               localStorage.getItem('debug') === 'true';
 
 export const logger = {
+  info: (...args) => {
+    if (isDev) console.info(...args);
+  },
   log: (...args) => {
-    if (isDev) logger.info(...args);
+    if (isDev) console.log(...args);
   },
   warn: (...args) => {
-    if (isDev) logger.info(...args);
+    if (isDev) console.warn(...args);
   },
   debug: (...args) => {
     if (isDev) console.debug(...args);
   },
   error: (...args) => {
-    // Errors are usually kept even in production, or can be masked.
-    // We retain them but you can change this if needed.
-    logger.info(...args);
+    // Keep error logging safe in all modes.
+    console.error(...args);
   }
 };
+
+// Legacy non-module bundles in this project read `logger` from global scope.
+if (typeof window !== "undefined") {
+  window.logger = logger;
+}
 
 export default logger;
