@@ -574,10 +574,18 @@ if (enableAdvancedDdosProtection) {
   });
 
   const mutatingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+  const isApiHealthPath = (req) => String(req.path || "") === "/health";
 
-  app.use("/api", apiAnomalyGuard);
-  app.use("/api", apiBurstLimiter);
   app.use("/api", (req, res, next) => {
+    if (isApiHealthPath(req)) return next();
+    return apiAnomalyGuard(req, res, next);
+  });
+  app.use("/api", (req, res, next) => {
+    if (isApiHealthPath(req)) return next();
+    return apiBurstLimiter(req, res, next);
+  });
+  app.use("/api", (req, res, next) => {
+    if (isApiHealthPath(req)) return next();
     if (!mutatingMethods.has(req.method)) return next();
     return writeBurstLimiter(req, res, next);
   });
