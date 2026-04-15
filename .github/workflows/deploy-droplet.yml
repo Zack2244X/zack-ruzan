@@ -25,17 +25,14 @@ jobs:
       - name: Preflight required deploy secrets
         id: preflight
         env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-          IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
-          DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
-          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DROPLET_HOST: ${{ secrets.DROPLET_HOST != '' && secrets.DROPLET_HOST || '165.22.80.240' }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER != '' && secrets.DROPLET_USER || 'root' }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR }}
+          REMOTE_APP_DIR: ${{ secrets.REMOTE_APP_DIR != '' && secrets.REMOTE_APP_DIR || '/srv/yourapp' }}
         run: |
           set -e
           missing=""
-          for var_name in DOCKER_USERNAME DOCKER_TOKEN IMAGE_NAME DROPLET_HOST DROPLET_USER SSH_PRIVATE_KEY REMOTE_APP_DIR; do
+          for var_name in DROPLET_HOST DROPLET_USER SSH_PRIVATE_KEY REMOTE_APP_DIR; do
             eval "value=\${$var_name}"
             if [ -z "$value" ]; then
               missing="$missing $var_name"
@@ -77,41 +74,36 @@ jobs:
         if: steps.preflight.outputs.ready == 'true'
         run: npm --prefix server audit --omit=dev --audit-level=high
 
-      - name: Log in to Docker registry
-        if: steps.preflight.outputs.ready == 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-
-      - name: Build and push image
-        if: steps.preflight.outputs.ready == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          push: true
-          tags: ${{ secrets.IMAGE_NAME }}
-
       - name: Deploy to Droplet via SSH
         if: steps.preflight.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
+          host: ${{ secrets.DROPLET_HOST != '' && secrets.DROPLET_HOST || '165.22.80.240' }}
+          username: ${{ secrets.DROPLET_USER != '' && secrets.DROPLET_USER || 'root' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
             set -e
-            cd ${{ secrets.REMOTE_APP_DIR }}
-            docker-compose pull
-            docker-compose up -d --remove-orphans
+            APP_DIR="${{ secrets.REMOTE_APP_DIR != '' && secrets.REMOTE_APP_DIR || '/srv/yourapp' }}"
+            if [ ! -d "$APP_DIR" ]; then
+              echo "Remote app dir not found: $APP_DIR"
+              exit 1
+            fi
+
+            cd "$APP_DIR"
+            git fetch --all --prune
+            git checkout main
+            git reset --hard origin/main
+            docker-compose pull || true
+            docker-compose up -d --build --remove-orphans
             docker image prune -f
 
       - name: Verify no public port 3000 on host
         if: steps.preflight.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.DROPLET_HOST }}
-          username: ${{ secrets.DROPLET_USER }}
+          host: ${{ secrets.DROPLET_HOST != '' && secrets.DROPLET_HOST || '165.22.80.240' }}
+          username: ${{ secrets.DROPLET_USER != '' && secrets.DROPLET_USER || 'root' }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
