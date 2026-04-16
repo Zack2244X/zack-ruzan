@@ -73,18 +73,40 @@
     return document;
   }
 
+  function hasLegacyIconClass(el) {
+    if (!el || !el.classList) return false;
+    const classes = Array.from(el.classList);
+    for (let i = 0; i < classes.length; i += 1) {
+      const cls = classes[i];
+      if (ICON_CLASS_PATTERN.test(cls) || BASE_ICON_CLASSES.has(cls)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function isPotentialIconElement(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.tagName === "I") return true;
+    if (el.hasAttribute("data-lucide")) return true;
+    if (el.tagName === "SPAN" && hasLegacyIconClass(el)) return true;
+    return false;
+  }
+
   function collectIconCandidates(root) {
     const iconNodes = [];
     if (!root) return iconNodes;
 
-    if (root.nodeType === 1 && root.tagName === "I") {
+    if (isPotentialIconElement(root)) {
       iconNodes.push(root);
     }
 
     if (typeof root.querySelectorAll === "function") {
-      const found = root.querySelectorAll("i");
+      const found = root.querySelectorAll("i, span");
       for (let i = 0; i < found.length; i += 1) {
-        iconNodes.push(found[i]);
+        if (isPotentialIconElement(found[i])) {
+          iconNodes.push(found[i]);
+        }
       }
     }
 
@@ -164,7 +186,16 @@
   }
 
   function renderIconElement(el) {
-    if (!el || !el.tagName || el.tagName !== "I") return;
+    if (!el || !el.tagName) return;
+
+    // Only auto-convert non-i elements when they are pure icon placeholders.
+    if (el.tagName !== "I") {
+      const text = (el.textContent || "").trim();
+      const hasNestedElements = el.children && el.children.length > 0;
+      if (!el.hasAttribute("data-lucide") && (text || hasNestedElements)) {
+        return;
+      }
+    }
 
     const spec = resolveIconSpec(el);
     if (!spec) return;
@@ -287,7 +318,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["class", "data-lucide"],
+      attributeFilter: ["class", "style", "data-lucide"],
     });
   }
 
@@ -331,6 +362,20 @@
     initPalette();
     ensureLucideReady();
     queueIconApply(document);
+
+    // A second pass after full page load catches late-initialized modal markup.
+    window.addEventListener(
+      "load",
+      function () {
+        queueIconApply(document);
+      },
+      { once: true },
+    );
+
+    setTimeout(function () {
+      queueIconApply(document);
+    }, 1200);
+
     initObserver();
   }
 
