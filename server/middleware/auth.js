@@ -476,6 +476,13 @@ function isTrustedGuestRequestOrigin(req) {
   if (!referer) {
     const fetchSite = (req.get("sec-fetch-site") || "").toLowerCase();
     if (fetchSite === "same-origin" || fetchSite === "same-site") return true;
+
+    // Some clients (older browsers/webviews) omit Origin/Referer/Sec-Fetch-* on
+    // same-site GETs. Allow only read-only requests in this fallback path.
+    if (["GET", "HEAD"].includes(req.method) && sameOrigin) {
+      return true;
+    }
+
     if (
       process.env.NODE_ENV !== "production" &&
       sameOrigin &&

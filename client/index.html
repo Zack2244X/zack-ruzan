@@ -3565,15 +3565,37 @@
           var original = window.startGuestLogin;
           if (typeof original !== "function" || original.__auditWrapped) return;
 
+          var getCsrfTokenFromCookie = function () {
+            try {
+              var parts = document.cookie.split(";");
+              for (var i = 0; i < parts.length; i++) {
+                var c = parts[i].trim();
+                if (c.indexOf("csrf_token=") === 0) {
+                  return c.substring("csrf_token=".length);
+                }
+              }
+            } catch (e) {}
+            return "";
+          };
+
           window.startGuestLogin = function () {
             try {
+              var deviceId = getClientDeviceId();
+              var csrfToken = getCsrfTokenFromCookie();
+              var headers = {
+                "Content-Type": "application/json",
+                "X-Device-Id": deviceId,
+              };
+              if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
               fetch("/api/auth/guest-session", {
                 method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Device-Id": getClientDeviceId(),
-                },
-                body: JSON.stringify({ deviceName: navigator.userAgent || "" }),
+                headers: headers,
+                credentials: "include",
+                body: JSON.stringify({
+                  deviceId: deviceId,
+                  deviceName: navigator.userAgent || "",
+                }),
                 keepalive: true,
               }).catch(function () {});
             } catch (e) {}
