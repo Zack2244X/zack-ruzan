@@ -263,6 +263,12 @@ export function renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn) {
  * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
 let _renderHistoryTreeDebounced = null;
+let _renderHistoryTreeCallbackRef = null;
+const _fallbackRenderHistoryTree = () => {
+  if (typeof window.renderHistoryTree === "function") {
+    window.renderHistoryTree();
+  }
+};
 export function setSubjectFilter(
   subject,
   renderHistoryTree,
@@ -273,9 +279,18 @@ export function setSubjectFilter(
   state.currentSubjectFilter = subject;
   renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
 
+  const safeRenderHistoryTree =
+    typeof renderHistoryTree === "function"
+      ? renderHistoryTree
+      : _fallbackRenderHistoryTree;
+
   // ✅ FIX: Use debounced render to prevent excessive DOM updates on rapid filter changes
-  if (!_renderHistoryTreeDebounced) {
-    _renderHistoryTreeDebounced = debounce(renderHistoryTree, 300);
+  if (
+    !_renderHistoryTreeDebounced ||
+    _renderHistoryTreeCallbackRef !== safeRenderHistoryTree
+  ) {
+    _renderHistoryTreeDebounced = debounce(safeRenderHistoryTree, 300);
+    _renderHistoryTreeCallbackRef = safeRenderHistoryTree;
   }
   _renderHistoryTreeDebounced();
 }
@@ -288,6 +303,12 @@ export function setSubjectFilter(
  * @param {Function} [confirmDeleteSubjectFn] — دالة تأكيد حذف المادة
  */
 let _renderEditTreeDebounced = null;
+let _renderEditTreeCallbackRef = null;
+const _fallbackRenderEditTree = () => {
+  if (typeof window.renderEditTree === "function") {
+    window.renderEditTree();
+  }
+};
 export function setEditSubjectFilter(
   subject,
   renderEditTree,
@@ -298,9 +319,18 @@ export function setEditSubjectFilter(
   state.editSubjectFilter = subject;
   renderSubjectFilters(renameSubjectFn, confirmDeleteSubjectFn);
 
+  const safeRenderEditTree =
+    typeof renderEditTree === "function"
+      ? renderEditTree
+      : _fallbackRenderEditTree;
+
   // ✅ FIX: Use debounced render to prevent excessive DOM updates on rapid filter changes
-  if (!_renderEditTreeDebounced) {
-    _renderEditTreeDebounced = debounce(renderEditTree, 300);
+  if (
+    !_renderEditTreeDebounced ||
+    _renderEditTreeCallbackRef !== safeRenderEditTree
+  ) {
+    _renderEditTreeDebounced = debounce(safeRenderEditTree, 300);
+    _renderEditTreeCallbackRef = safeRenderEditTree;
   }
   _renderEditTreeDebounced();
 }

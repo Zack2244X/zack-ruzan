@@ -17,6 +17,63 @@ const closeAdminSheet = () => window.closeAdminSheet?.();
 const closeBottomSheet = () => window.closeBottomSheet?.();
 const _showThemeToggle = (v) => window._showThemeToggle?.(v);
 
+const PDF_JS_VERSION = "4.4.168";
+const PDF_JS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.min.js`;
+const PDF_JS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.js`;
+const MAX_PDF_IMPORT_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_PDF_IMPORT_PAGES = 80;
+const PDF_IMPORT_TIMEOUT_MS = 20000;
+
+let pdfJsLoadPromise = null;
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timer = null;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+function ensurePdfSizeWithinLimit(file) {
+  if (!file || typeof file.size !== "number") return;
+  if (file.size <= MAX_PDF_IMPORT_SIZE_BYTES) return;
+
+  const maxMb = Math.floor(MAX_PDF_IMPORT_SIZE_BYTES / (1024 * 1024));
+  throw new Error(`حجم ملف PDF كبير جداً. الحد الأقصى ${maxMb}MB.`);
+}
+
+async function ensurePdfJsLibLoaded() {
+  if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === "function") {
+    return window.pdfjsLib;
+  }
+
+  if (!pdfJsLoadPromise) {
+    pdfJsLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = PDF_JS_LIB_URL;
+      script.async = true;
+      script.onload = () => {
+        if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === "function") {
+          resolve(window.pdfjsLib);
+          return;
+        }
+        reject(new Error("تم تحميل مكتبة PDF لكن لم تتم تهيئتها بشكل صحيح."));
+      };
+      script.onerror = () => reject(new Error("تعذر تحميل مكتبة قراءة PDF"));
+      document.head.appendChild(script);
+    }).catch((err) => {
+      pdfJsLoadPromise = null;
+      throw err;
+    });
+  }
+
+  return pdfJsLoadPromise;
+}
+
 /**
  * فتح نافذة بناء اختبار جديد — تصفير الواجهة للخطوة 1
  */
@@ -510,19 +567,16 @@ export async function handleImportFileChange(event) {
     if (file.type === "text/plain" || name.endsWith(".txt")) {
       text = await file.text();
     } else if (file.type === "application/pdf" || name.endsWith(".pdf")) {
-      if (!window.pdfjsLib) {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement("script");
-          s.src =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js";
-          s.onload = resolve;
-          s.onerror = () => reject(new Error("تعذر تحميل مكتبة قراءة PDF"));
-          document.head.appendChild(s);
-        });
-      }
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";
-      text = await extractTextFromPdf(file);
+      ensurePdfSizeWithinLimit(file);
+
+      const pdfLib = await ensurePdfJsLibLoaded();
+      pdfLib.GlobalWorkerOptions.workerSrc = PDF_JS_WORKER_URL;
+
+      text = await withTimeout(
+        extractTextFromPdf(file),
+        PDF_IMPORT_TIMEOUT_MS,
+        "انتهت مهلة استخراج النص من PDF. حاول ملفاً أصغر أو أقل صفحات.",
+      );
     } else {
       throw new Error("صيغة الملف غير مدعومة. استخدم TXT أو PDF.");
     }
@@ -549,14 +603,50 @@ export async function handleImportFileChange(event) {
  */
 export async function extractTextFromPdf(file) {
   logFunctionStatus("extractTextFromPdf", false);
+
+  if (!window.pdfjsLib || typeof window.pdfjsLib.getDocument !== "function") {
+    throw new Error("مكتبة PDF غير متاحة حالياً. حاول مرة أخرى.");
+  }
+
   const data = new Uint8Array(await file.arrayBuffer());
-  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const pdfHeader = new TextDecoder("ascii")
+    .decode(data.slice(0, 5))
+    .trim();
+  if (!pdfHeader.startsWith("%PDF")) {
+    throw new Error("الملف المحدد ليس PDF صالحاً.");
+  }
+
+  const loadingTask = window.pdfjsLib.getDocument({ data });
+  const pdf = await loadingTask.promise;
+
+  if (pdf.numPages > MAX_PDF_IMPORT_PAGES) {
+    throw new Error(`عدد صفحات PDF كبير جداً. الحد الأقصى ${MAX_PDF_IMPORT_PAGES} صفحة.`);
+  }
+
   let fullText = "";
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    fullText += content.items.map((item) => item.str).join(" ") + "\n";
+    const pageText = content.items
+      .map((item) => (typeof item?.str === "string" ? item.str : ""))
+      .join(" ")
+      .trim();
+
+    if (pageText) {
+      fullText += pageText + "\n";
+    }
   }
+
+  if (!fullText.trim()) {
+    throw new Error("تعذر استخراج نص قابل للقراءة من ملف PDF.");
+  }
+
+  try {
+    await loadingTask.destroy();
+  } catch (_) {
+    // Ignore cleanup errors from pdf.js task destroy.
+  }
+
   return fullText;
 }
 
@@ -580,6 +670,10 @@ export function parseIconQuestions(rawText) {
 
   const pushCurrent = () => {
     if (!current) return;
+    current.answerOptions = current.answerOptions.filter((opt) =>
+      Boolean(opt?.text?.trim()),
+    );
+
     if (current.answerOptions.length < 2) {
       logger.warn(
         `تم تخطي السؤال "${current.question}" لعدم وجود خيارات كافية.`,
@@ -590,7 +684,10 @@ export function parseIconQuestions(rawText) {
       current.answerOptions = current.answerOptions.slice(0, 6);
     }
     if (!current.answerOptions.some((o) => o.isCorrect)) {
-      current.answerOptions[0].isCorrect = true;
+      logger.warn(
+        `تم تخطي السؤال "${current.question}" لأنه لا يحتوي على إجابة صحيحة محددة بعلامة *.`,
+      );
+      return;
     }
     questions.push(current);
     current = null;
