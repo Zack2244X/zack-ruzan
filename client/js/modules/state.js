@@ -6,83 +6,103 @@ import logger from '../utils/logger.js';
  */
 
 /** @type {Object} الحالة المركزية للتطبيق */
-const state = {
-  /** @type {Object|null} بيانات الاختبار الحالي */
-  currentQuizData: null,
-  /** @type {string} فلتر المادة النشط */
-  currentSubjectFilter: "الكل",
-  /** @type {Array} جميع الاختبارات */
-  allQuizzes: [],
-  /** @type {string} فلتر المادة في نافذة التعديل */
-  editSubjectFilter: "الكل",
-  /** @type {Array} درجات المستخدم */
-  allUserScores: [],
-  /** @type {string|null} العرض الحالي (exams/notes) */
-  currentViewMode: null,
-  /** @type {Object|null} المستخدم الحالي */
-  currentUser: null,
-  /** @type {Array} جميع المذكرات */
-  allNotes: [],
-  /** @type {string} تبويب التعديل النشط */
-  editTabMode: "exams",
-  /** @type {number} رقم المذكرة قيد التعديل */
-  editingNoteIndex: -1,
-  /** @type {number} رقم السؤال الحالي */
-  currentQuestionIndex: 0,
-  /** @type {number} النتيجة */
-  score: 0,
-  /** @type {string|null} المادة المراد حذفها */
-  subjectToDelete: null,
-  /** @type {number} عدد الإجابات الصحيحة المتتالية */
-  streak: 0,
-  /** @type {number|null} مؤقت الاختبار */
-  timerInterval: null,
-  /** @type {number} الوقت المتبقي */
-  timeRemaining: 0,
-  /** @type {Array} إجابات المستخدم */
-  userAnswers: [],
-  /** @type {number} عدد الأسئلة الكلي */
-  totalQuestions: 0,
-  /** @type {Array} لوحة الشرف من السيرفر */
-  serverLeaderboard: [],
-  /** @type {Array} الدرجات من السيرفر */
-  serverScores: [],
-  /** @type {boolean} هل بدأ الاختبار */
-  quizStarted: false,
-  /** @type {boolean} هل في وضع التعديل */
-  isEditMode: false,
-  /** @type {boolean} هل أدمن */
-  isAdmin: false,
-  /** @type {boolean} هل تم تحميل البيانات */
-  dataLoaded: false,
-  /** @type {number} بداية المؤقت */
-  timerStartTime: 0,
-  /** @type {number} إجمالي ثواني المؤقت */
-  timerTotalSeconds: 0,
-  /** @type {string} وضع تسجيل الدخول بجوجل */
-  googleLoginMode: "student",
-  /** @type {number} عدد محاولات إعادة GSI */
-  gsiRetries: 0,
-  /** @type {Object|null} مسودة الاختبار في البناء */
-  quizDraft: null,
-  /** @type {number} رقم السؤال الحالي في البناء */
-  bCurrentQIndex: 0,
-  /** @type {string|null} المادة المراد تعديل اسمها */
-  subjectToRename: null,
-  /** @type {number|null} مؤقت تجديد التوكن */
-  tokenRefreshTimer: null,
-  /** @type {string} معرف Google OAuth */
-  GOOGLE_CLIENT_ID:
-    "124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com",
+const SHARED_STATE_KEY = "__quizPlatformSharedState";
 
-  /**
-   * @type {Object} عدد محاولات كل طالب لكل اختبار
-   * @description هيكل البيانات: { [studentEmail]: { [quizId]: attemptCount } }
-   * @example
-   * // { "student@example.com": { "quiz_01": 3, "quiz_02": 1 } }
-   */
-  quizAttempts: {},
-};
+function createInitialState() {
+  return {
+    /** @type {Object|null} بيانات الاختبار الحالي */
+    currentQuizData: null,
+    /** @type {string} فلتر المادة النشط */
+    currentSubjectFilter: "الكل",
+    /** @type {Array} جميع الاختبارات */
+    allQuizzes: [],
+    /** @type {string} فلتر المادة في نافذة التعديل */
+    editSubjectFilter: "الكل",
+    /** @type {Array} درجات المستخدم */
+    allUserScores: [],
+    /** @type {string|null} العرض الحالي (exams/notes) */
+    currentViewMode: null,
+    /** @type {Object|null} المستخدم الحالي */
+    currentUser: null,
+    /** @type {Array} جميع المذكرات */
+    allNotes: [],
+    /** @type {string} تبويب التعديل النشط */
+    editTabMode: "exams",
+    /** @type {number} رقم المذكرة قيد التعديل */
+    editingNoteIndex: -1,
+    /** @type {number} رقم السؤال الحالي */
+    currentQuestionIndex: 0,
+    /** @type {number} النتيجة */
+    score: 0,
+    /** @type {string|null} المادة المراد حذفها */
+    subjectToDelete: null,
+    /** @type {number} عدد الإجابات الصحيحة المتتالية */
+    streak: 0,
+    /** @type {number|null} مؤقت الاختبار */
+    timerInterval: null,
+    /** @type {number} الوقت المتبقي */
+    timeRemaining: 0,
+    /** @type {Array} إجابات المستخدم */
+    userAnswers: [],
+    /** @type {number} عدد الأسئلة الكلي */
+    totalQuestions: 0,
+    /** @type {Array} لوحة الشرف من السيرفر */
+    serverLeaderboard: [],
+    /** @type {Array} الدرجات من السيرفر */
+    serverScores: [],
+    /** @type {boolean} هل بدأ الاختبار */
+    quizStarted: false,
+    /** @type {boolean} هل في وضع التعديل */
+    isEditMode: false,
+    /** @type {boolean} هل أدمن */
+    isAdmin: false,
+    /** @type {boolean} هل تم تحميل البيانات */
+    dataLoaded: false,
+    /** @type {number} بداية المؤقت */
+    timerStartTime: 0,
+    /** @type {number} إجمالي ثواني المؤقت */
+    timerTotalSeconds: 0,
+    /** @type {string} وضع تسجيل الدخول بجوجل */
+    googleLoginMode: "student",
+    /** @type {number} عدد محاولات إعادة GSI */
+    gsiRetries: 0,
+    /** @type {Object|null} مسودة الاختبار في البناء */
+    quizDraft: null,
+    /** @type {number} رقم السؤال الحالي في البناء */
+    bCurrentQIndex: 0,
+    /** @type {string|null} المادة المراد تعديل اسمها */
+    subjectToRename: null,
+    /** @type {number|null} مؤقت تجديد التوكن */
+    tokenRefreshTimer: null,
+    /** @type {string} معرف Google OAuth */
+    GOOGLE_CLIENT_ID:
+      "124349544803-hr3h69k1uhi78aamk8iacj9e1rjpjsgf.apps.googleusercontent.com",
+
+    /**
+     * @type {Object} عدد محاولات كل طالب لكل اختبار
+     * @description هيكل البيانات: { [studentEmail]: { [quizId]: attemptCount } }
+     * @example
+     * // { "student@example.com": { "quiz_01": 3, "quiz_02": 1 } }
+     */
+    quizAttempts: {},
+  };
+}
+
+const globalScope = typeof globalThis !== "undefined" ? globalThis : {};
+const existingSharedState = globalScope[SHARED_STATE_KEY];
+
+const state =
+  existingSharedState && typeof existingSharedState === "object"
+    ? existingSharedState
+    : createInitialState();
+
+if (!existingSharedState || typeof existingSharedState !== "object") {
+  try {
+    globalScope[SHARED_STATE_KEY] = state;
+  } catch {
+    // Ignore non-writable global scope edge cases.
+  }
+}
 
 // ─────────────────────────────────────────────
 //  دوال إدارة عدد المحاولات

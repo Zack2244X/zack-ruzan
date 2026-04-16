@@ -877,7 +877,7 @@ Object.assign(window, {
     if (!_adminLoadPromise) {
       _adminLoadPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.admin.bundle.min.js?v=86";
+        s.src = "/js/app.admin.bundle.min.js?v=87";
         s.onload = () => {
           _adminLoaded = true;
           resolve();
@@ -947,7 +947,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=86";
+        s.src = "/js/app.features.bundle.min.js?v=87";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();
