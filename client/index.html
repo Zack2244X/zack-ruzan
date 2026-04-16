@@ -98,9 +98,9 @@
       crossorigin
     />
     <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
-    <link rel="preload" href="/css/styles.min.css?v=55" as="style" />
+    <link rel="preload" href="/css/styles.min.css?v=56" as="style" />
     <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
-    <link rel="stylesheet" href="/css/styles.min.css?v=55" />
+    <link rel="stylesheet" href="/css/styles.min.css?v=56" />
     <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
     <link rel="stylesheet" href="/css/login-extra.min.css?v=44" />
     <link rel="stylesheet" href="/css/fonts.css?v=44" />
@@ -203,18 +203,6 @@
       #notes-history-tree {
         font-family: inherit !important;
         box-sizing: border-box;
-      }
-      /* Keep Font Awesome font-family intact inside bottom sheets (otherwise icons become squares/lines) */
-      .bottom-sheet-content .fa,
-      .bottom-sheet-content .fas,
-      .bottom-sheet-content .far,
-      .bottom-sheet-content .fab {
-        font-family: "Font Awesome 5 Free" !important;
-        font-weight: 900 !important;
-      }
-      .bottom-sheet-content .fab {
-        font-family: "Font Awesome 5 Brands" !important;
-        font-weight: 400 !important;
       }
       /* Admin sheet icons: stronger direct glow on icon glyphs in dark mode */
       [data-theme="dark"] #admin-content button span i,
@@ -353,14 +341,8 @@
       }
     </style>
 
-    <!-- Icon fonts: load reliably on mobile (no deferred/preload-only icon CSS) -->
-    <link rel="stylesheet" href="/css/icons.css?v=3" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-      integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+"
-      crossorigin="anonymous"
-    />
+    <!-- Modern icon system runtime (local vendor, no external icon font dependency) -->
+    <script src="/js/vendor/lucide.min.js?v=1" defer></script>
     <!-- Fonts are preloaded + loaded from /css/fonts.css for stable first paint. -->
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
@@ -3658,6 +3640,9 @@
       }
       if (!window.ScrollTrigger) window.ScrollTrigger = null;
     </script>
+
+    <!-- Icon replacement engine: converts old fa/bi markup to modern Lucide SVGs (auto for dynamic DOM too) -->
+    <script src="/js/icon-system.js?v=1" defer></script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
     <script type="module" src="/js/bootstrap.js?v=87"></script>

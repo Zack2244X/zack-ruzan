@@ -34,11 +34,52 @@
   --radius-lg: 16px;
   --radius-xl: 24px;
   --radius-full: 9999px;
+  --icon-stroke-width: 2.2;
+  --icon-accent: #0ea5e9;
+  --icon-accent-soft: rgba(14, 165, 233, 0.36);
 
   /* Legacy aliases — use new smooth UX vars from design-variables.css */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-icon-palette="ocean"] {
+  --icon-accent: #0ea5e9;
+  --icon-accent-soft: rgba(14, 165, 233, 0.36);
+}
+
+:root[data-icon-palette="amber"] {
+  --icon-accent: #f59e0b;
+  --icon-accent-soft: rgba(245, 158, 11, 0.4);
+}
+
+:root[data-icon-palette="mint"] {
+  --icon-accent: #14b8a6;
+  --icon-accent-soft: rgba(20, 184, 166, 0.36);
+}
+
+/* Modern SVG icon wrappers (Lucide) */
+.ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: -0.125em;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.ui-icon .ui-icon-svg {
+  width: 1em;
+  height: 1em;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: var(--icon-stroke-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* === Reduced graphics fallback (applied when device tier is low) === */
@@ -1044,9 +1085,8 @@ a:focus:not(:focus-visible) {
    Dock Icon Gradient (active state)
    ============================================ */
 .dock-btn.active .dock-icon {
-  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #fb923c);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--icon-accent);
+  filter: drop-shadow(0 0 8px var(--icon-accent-soft));
 }
 
 .dock-btn .dock-icon {

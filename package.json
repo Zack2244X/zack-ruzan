@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "dompurify": "^3.3.3",
-    "gsap": "^3.12.5"
+    "gsap": "^3.12.5",
+    "lucide": "^0.469.0"
   }
 }
