@@ -705,7 +705,7 @@ async function loadApp() {
               logger.error("Dashboard failed:", e);
             }
             // Start auto-polling for guest mode too
-            startDataPolling(30000);
+            startDataPolling(180000);
             logger.log("[app] ✓ الضيف — البيانات العامة جاهزة + polling نشط");
           })
           .catch((e) => {
@@ -877,7 +877,7 @@ Object.assign(window, {
     if (!_adminLoadPromise) {
       _adminLoadPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.admin.bundle.min.js?v=85";
+        s.src = "/js/app.admin.bundle.min.js?v=86";
         s.onload = () => {
           _adminLoaded = true;
           resolve();
@@ -947,7 +947,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=85";
+        s.src = "/js/app.features.bundle.min.js?v=86";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();

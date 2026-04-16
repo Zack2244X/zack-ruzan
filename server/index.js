@@ -984,11 +984,24 @@ const defaultLimiter = createUserAwareRateLimiter(15 * 60 * 1000, 1000, {
   skip: (req) => String(req.headers["x-guest-mode"] || "").toLowerCase() === "true",
 });
 
+const GUEST_DEVICE_ID_REGEX = /^[a-zA-Z0-9_-]{10,120}$/;
+const guestLimiterMax = process.env.NODE_ENV === "test" ? 30 : getPositiveIntEnv("GUEST_RATE_LIMIT_MAX", 180);
+
+function getGuestRateLimitKey(req) {
+  const ipPart = String(req.ip || req.socket?.remoteAddress || "unknown");
+  const headerDeviceId = String(req.get("x-device-id") || "").trim();
+  if (GUEST_DEVICE_ID_REGEX.test(headerDeviceId)) {
+    // Split counters by device to avoid one shared IP exhausting guest quota.
+    return `${ipPart}:${headerDeviceId}`;
+  }
+  return ipPart;
+}
+
 const guestLimiter = createDistributedRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: guestLimiterMax,
   redisPrefix: "rl:guest:",
-  keyGenerator: (req) => String(req.ip),
+  keyGenerator: getGuestRateLimitKey,
   skip: (req) => String(req.headers["x-guest-mode"] || "").toLowerCase() !== "true",
   message: { error: "تم تجاوز حد طلبات وضع الضيف." },
 });
