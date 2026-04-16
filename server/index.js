@@ -472,6 +472,13 @@ app.use(
         return callback(null, { credentials: true, origin: true });
       }
 
+      // Some browsers/webviews/proxies drop Origin on same-site read requests.
+      // Keep writes strict, but allow read-only requests to avoid blank public data modules.
+      const isSafeReadRequest = ["GET", "HEAD"].includes(req.method);
+      if (isSafeReadRequest) {
+        return callback(null, { credentials: true, origin: true });
+      }
+
       // Browser top-level navigations often omit Origin.
       // Allow non-API page requests while keeping API traffic strict.
       const isNonApiPageRequest =
