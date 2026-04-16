@@ -1018,8 +1018,7 @@ a:focus:not(:focus-visible) {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Bottom sheets: add padding so content clears bottom nav + home indicator */
-#tree-content,
+/* Admin sheet keeps extra bottom spacing for nav/home-indicator clearance. */
 #admin-content {
   padding-bottom: max(7rem, calc(7rem + env(safe-area-inset-bottom)));
   max-height: 85vh;
@@ -1523,7 +1522,6 @@ select {
 
 /* Extra-small devices: protect bottom-sheet content from clipping. */
 @media (max-width: 375px) {
-  #tree-content,
   #admin-content {
     max-height: 82dvh;
     padding-bottom: max(7.5rem, calc(7.5rem + env(safe-area-inset-bottom)));
