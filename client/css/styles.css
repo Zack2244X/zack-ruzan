@@ -1261,6 +1261,94 @@ a:focus:not(:focus-visible) {
   backdrop-filter: blur(10px);
 }
 
+/* Remove bright/white pills in dark mode inside exams and notes sheets */
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="play-quiz"],
+.dark #tree-content #history-tree [data-tree-action="play-quiz"] {
+  background: linear-gradient(
+    145deg,
+    rgba(2, 44, 34, 0.9),
+    rgba(15, 118, 110, 0.42)
+  ) !important;
+  border-color: rgba(45, 212, 191, 0.44) !important;
+  box-shadow: 0 10px 24px rgba(2, 44, 34, 0.34);
+}
+
+[data-theme="dark"] #notes-content #notes-history-tree [data-tree-action="download-note"],
+.dark #notes-content #notes-history-tree [data-tree-action="download-note"] {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 5, 25, 0.9),
+    rgba(157, 23, 77, 0.42)
+  ) !important;
+  border-color: rgba(244, 63, 94, 0.44) !important;
+  box-shadow: 0 10px 24px rgba(76, 5, 25, 0.34);
+}
+
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="play-quiz"] .text-gray-900,
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="play-quiz"] .text-gray-500,
+.dark #tree-content #history-tree [data-tree-action="play-quiz"] .text-gray-900,
+.dark #tree-content #history-tree [data-tree-action="play-quiz"] .text-gray-500 {
+  color: #99f6e4 !important;
+}
+
+[data-theme="dark"] #notes-content #notes-history-tree [data-tree-action="download-note"] .text-gray-900,
+[data-theme="dark"] #notes-content #notes-history-tree [data-tree-action="download-note"] .text-gray-500,
+.dark #notes-content #notes-history-tree [data-tree-action="download-note"] .text-gray-900,
+.dark #notes-content #notes-history-tree [data-tree-action="download-note"] .text-gray-500 {
+  color: #fecdd3 !important;
+}
+
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="play-quiz"] .bg-emerald-100,
+.dark #tree-content #history-tree [data-tree-action="play-quiz"] .bg-emerald-100 {
+  background: rgba(6, 78, 59, 0.72) !important;
+  border: 1px solid rgba(45, 212, 191, 0.42) !important;
+  color: #2dd4bf !important;
+}
+
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="play-quiz"] .bg-gray-100,
+.dark #tree-content #history-tree [data-tree-action="play-quiz"] .bg-gray-100 {
+  background: rgba(8, 47, 73, 0.66) !important;
+  border: 1px solid rgba(34, 211, 238, 0.36) !important;
+  color: #67e8f9 !important;
+}
+
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="stop-propagation"] > span,
+.dark #tree-content #history-tree [data-tree-action="stop-propagation"] > span {
+  background: rgba(15, 23, 42, 0.82) !important;
+  border-color: rgba(45, 212, 191, 0.5) !important;
+  color: #2dd4bf !important;
+}
+
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="stop-propagation"] > div,
+.dark #tree-content #history-tree [data-tree-action="stop-propagation"] > div {
+  background: rgba(3, 46, 58, 0.56) !important;
+  border-color: rgba(45, 212, 191, 0.34) !important;
+  color: #99f6e4 !important;
+}
+
+[data-theme="dark"] #tree-content #history-tree [data-tree-action="copy-quiz-link"],
+.dark #tree-content #history-tree [data-tree-action="copy-quiz-link"] {
+  background: linear-gradient(145deg, #0f766e, #115e59) !important;
+  border: 1px solid rgba(45, 212, 191, 0.55) !important;
+  color: #ccfbf1 !important;
+}
+
+[data-theme="dark"] #notes-content #notes-history-tree [data-tree-action="download-note"] .bg-rose-100,
+.dark #notes-content #notes-history-tree [data-tree-action="download-note"] .bg-rose-100 {
+  background: rgba(136, 19, 55, 0.72) !important;
+  border: 1px solid rgba(244, 63, 94, 0.42) !important;
+  color: #fb7185 !important;
+}
+
+[data-theme="dark"] #tree-content #history-tree .bg-green-50,
+[data-theme="dark"] #notes-content #notes-history-tree .bg-green-50,
+.dark #tree-content #history-tree .bg-green-50,
+.dark #notes-content #notes-history-tree .bg-green-50 {
+  background: rgba(4, 120, 87, 0.54) !important;
+  border: 1px solid rgba(45, 212, 191, 0.36) !important;
+  color: #2dd4bf !important;
+}
+
 /* Modal content scrollbar: visible, slim, and theme-aware */
 .modal-scrollbar {
   scrollbar-width: thin;
@@ -1438,6 +1526,13 @@ a:focus:not(:focus-visible) {
 [data-theme="dark"] .bg-red-50,
 [data-theme="dark"] .bg-yellow-50 {
   background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] #tree-content .bg-slate-50,
+.dark #tree-content .bg-slate-50 {
+  background: rgba(15, 23, 42, 0.82) !important;
+  border-color: rgba(45, 212, 191, 0.46) !important;
+  color: #2dd4bf !important;
 }
 
 [data-theme="dark"] .bg-gray-100 {
