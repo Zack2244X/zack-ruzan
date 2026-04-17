@@ -555,6 +555,33 @@ export function initQuizDOM() {
   submitButton = document.getElementById("submit-btn");
 }
 
+/**
+ * يتحقق من جاهزية عناصر واجهة الاختبار قبل بدء العرض.
+ * يمنع حالة الشاشة الفارغة إذا لم تُهيَّأ العناصر لأي سبب.
+ * @returns {boolean}
+ */
+function ensureQuizDOMReady() {
+  initQuizDOM();
+
+  const requiredElements = [
+    questionTextEl,
+    questionHintEl,
+    optionsContainerEl,
+    currentQuestionNumberEl,
+    totalQuestionsEl,
+    timerDisplayEl,
+    progressBarEl,
+    feedbackBoxEl,
+    feedbackMessageEl,
+    rationaleTextEl,
+    nextButton,
+    previousButton,
+    submitButton,
+  ];
+
+  return requiredElements.every(Boolean);
+}
+
 // =============================================
 //  ★ playQuiz — يدعم إعادة المحاولة ★
 // =============================================
@@ -578,6 +605,20 @@ export async function playQuiz(index) {
     handleError(new Error("بيانات الاختبار غير صالحة"), { context: "playQuiz — validateQuizData", index, errors, hideAlert: true });
     showAlert(
       `❌ لا يمكن تشغيل الاختبار — بيانات غير صالحة:\n• ${errorSummary}${errors.length > 5 ? `\n(و ${errors.length - 5} أخطاء أخرى)` : ""}`,
+      "error",
+    );
+    return;
+  }
+
+  if (!ensureQuizDOMReady()) {
+    const domError = new Error("Quiz DOM is not ready");
+    handleError(domError, {
+      context: "playQuiz — ensureQuizDOMReady",
+      index,
+      hideAlert: true,
+    });
+    showAlert(
+      "❌ تعذر فتح واجهة الاختبار حالياً. يرجى إعادة تحميل الصفحة والمحاولة مرة أخرى.",
       "error",
     );
     return;
@@ -637,7 +678,9 @@ export async function playQuiz(index) {
     1,
     Math.round((state.currentQuizData.config.timeLimit || 0) / 60),
   );
-  subtitleEl.textContent = `${state.currentQuizData.config.description || "اختبار تفاعلي"} (${state.totalQuestions} سؤالاً في ${timeInMinutes} دقيقة)`;
+  if (subtitleEl) {
+    subtitleEl.textContent = `${state.currentQuizData.config.description || "اختبار تفاعلي"} (${state.totalQuestions} سؤالاً في ${timeInMinutes} دقيقة)`;
+  }
   timerDisplayEl.textContent = formatTime(state.timeRemaining);
 
   document.getElementById("results-screen").classList.add("hidden");
