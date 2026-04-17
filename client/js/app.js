@@ -437,7 +437,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=131";
+  const SW_SCRIPT_URL = "/sw.js?v=132";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
