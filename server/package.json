@@ -34,7 +34,7 @@
     "newrelic": "13.18.0",
     "node-cache": "5.1.2",
     "rate-limit-redis": "4.2.3",
-    "sanitize-html": "2.17.2",
+    "sanitize-html": "2.17.3",
     "sequelize": "6.37.8",
     "swagger-jsdoc": "6.2.8",
     "swagger-ui-express": "5.0.1",
@@ -64,5 +64,8 @@
       "routes/**/*.js",
       "utils/**/*.js"
     ]
+  },
+  "overrides": {
+    "protobufjs": "7.5.5"
   }
 }
