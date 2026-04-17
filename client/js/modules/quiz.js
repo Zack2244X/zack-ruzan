@@ -139,6 +139,27 @@ function getQuizId(quizData) {
   return quizData?.id ?? quizData?.config?.id ?? null;
 }
 
+/**
+ * يحدد إن كانت البيانات تحتوي مفاتيح إجابة صريحة يمكن استخدامها للتصحيح المحلي.
+ * في وضع الطالب/الضيف قد يُخفي السيرفر الحقل isCorrect لحماية الإجابات.
+ * @param {Object} quizData
+ * @returns {boolean}
+ */
+function hasLocalAnswerKeys(quizData) {
+  if (!Array.isArray(quizData?.questions)) return false;
+
+  return quizData.questions.some(
+    (question) =>
+      Array.isArray(question?.answerOptions) &&
+      question.answerOptions.some(
+        (option) =>
+          option &&
+          typeof option === "object" &&
+          Object.prototype.hasOwnProperty.call(option, "isCorrect"),
+      ),
+  );
+}
+
 // =============================================
 //  استمرارية النتيجة المعلّقة
 // =============================================
@@ -216,6 +237,7 @@ function validateQuizData(quizData) {
     return { valid: false, errors };
   }
 
+  const hasAnswerKeyMetadata = hasLocalAnswerKeys(quizData);
   const seenQuestionIds = new Set();
 
   quizData.questions.forEach((q, idx) => {
@@ -239,15 +261,17 @@ function validateQuizData(quizData) {
     if (!Array.isArray(q.answerOptions) || q.answerOptions.length < 2) {
       errors.push(`${prefix}: يجب توفير خيارَين على الأقل ضمن answerOptions.`);
     } else {
-      const correctOptions = q.answerOptions.filter(
-        (o) => o?.isCorrect === true,
-      );
-      if (correctOptions.length === 0)
-        errors.push(`${prefix}: لا يوجد خيار صحيح (isCorrect: true) محدد.`);
-      else if (correctOptions.length > 1)
-        errors.push(
-          `${prefix}: تم تحديد ${correctOptions.length} إجابات صحيحة — يُسمح بواحدة فقط.`,
+      if (hasAnswerKeyMetadata) {
+        const correctOptions = q.answerOptions.filter(
+          (o) => o?.isCorrect === true,
         );
+        if (correctOptions.length === 0)
+          errors.push(`${prefix}: لا يوجد خيار صحيح (isCorrect: true) محدد.`);
+        else if (correctOptions.length > 1)
+          errors.push(
+            `${prefix}: تم تحديد ${correctOptions.length} إجابات صحيحة — يُسمح بواحدة فقط.`,
+          );
+      }
 
       q.answerOptions.forEach((opt, oi) => {
         if (!opt || typeof opt !== "object")
@@ -844,7 +868,14 @@ export function selectAnswer(selectedIndex) {
   logFunctionStatus("selectAnswer", false);
 
   const currentQ = state.currentQuizData.questions[state.currentQuestionIndex];
-  const isCorrect = currentQ.answerOptions[selectedIndex].isCorrect;
+  const selectedOption = currentQ.answerOptions[selectedIndex] || null;
+  const hasLocalCorrectness =
+    selectedOption &&
+    typeof selectedOption === "object" &&
+    Object.prototype.hasOwnProperty.call(selectedOption, "isCorrect");
+  const isCorrect = hasLocalCorrectness
+    ? selectedOption.isCorrect === true
+    : null;
 
   // Save answer silently (overwrite previous if any)
   state.userAnswers[state.currentQuestionIndex] = {
@@ -856,7 +887,7 @@ export function selectAnswer(selectedIndex) {
 
   // Recalculate score from all answers
   state.score = state.userAnswers.reduce((total, answer) => {
-    return total + (answer && answer.isCorrect ? 1 : 0);
+    return total + (answer && answer.isCorrect === true ? 1 : 0);
   }, 0);
 
   // Only mark visually as selected, without correct/incorrect colors
@@ -1028,17 +1059,6 @@ export async function submitQuiz() {
     const quizId = getQuizId(state.currentQuizData);
     const numericId = Number(quizId);
 
-    // حفظ النتيجة محلياً (للعرض في لوحة التحكم بدون reload)
-    if (state.currentUser) {
-      state.allUserScores.push({
-        userName: state.currentUser.fullName,
-        quizTitle: state.currentQuizData.config.title,
-        score: state.score,
-        total: state.totalQuestions,
-        date: new Date().toLocaleDateString("ar-EG"),
-      });
-    }
-
     // إرسال النتيجة للسيرفر — السيرفر يحدد isOfficial تلقائياً
     if (
       state.currentUser &&
@@ -1063,6 +1083,96 @@ export async function submitQuiz() {
       try {
         const scoreResult = await submitScoreWithRetry(scorePayload);
         clearPendingScore(numericId);
+
+        // في العرض المقيّد (student/guest) يعتمد التصحيح على السيرفر.
+        const serverScore = Number(scoreResult?.result?.score);
+        const serverTotal = Number(scoreResult?.result?.total);
+        if (
+          Number.isFinite(serverScore) &&
+          Number.isFinite(serverTotal) &&
+          serverTotal > 0
+        ) {
+          state.score = serverScore;
+          state.totalQuestions = serverTotal;
+        }
+
+        if (
+          typeof scoreResult?.result?.closingMessage === "string" &&
+          scoreResult.result.closingMessage.trim()
+        ) {
+          state.currentQuizData.config.closingMessage =
+            scoreResult.result.closingMessage;
+        }
+
+        // تجهيز بيانات المراجعة مع الإجابات الصحيحة من رد السيرفر.
+        if (
+          Array.isArray(scoreResult?.details) &&
+          scoreResult.details.length === state.currentQuizData.questions.length
+        ) {
+          state.currentQuizData.questions = state.currentQuizData.questions.map(
+            (question, questionIndex) => {
+              const detail = scoreResult.details[questionIndex];
+              if (!detail || !Array.isArray(detail.options)) return question;
+
+              return {
+                ...question,
+                question:
+                  typeof detail.question === "string" && detail.question.trim()
+                    ? detail.question
+                    : question.question,
+                hint:
+                  typeof detail.hint === "string"
+                    ? detail.hint
+                    : question.hint || "",
+                answerOptions: detail.options.map((option, optionIndex) => ({
+                  text:
+                    typeof option?.text === "string"
+                      ? option.text
+                      : question.answerOptions?.[optionIndex]?.text || "",
+                  isCorrect: option?.isCorrect === true,
+                  rationale:
+                    typeof option?.rationale === "string"
+                      ? option.rationale
+                      : question.answerOptions?.[optionIndex]?.rationale || "",
+                })),
+              };
+            },
+          );
+
+          state.userAnswers = scoreResult.details.map((detail, questionIndex) => {
+            const previousAnswer = state.userAnswers[questionIndex];
+            const selectedIndex = Number.isInteger(detail?.selectedIndex)
+              ? detail.selectedIndex
+              : Number.isInteger(previousAnswer?.selectedIndex)
+                ? previousAnswer.selectedIndex
+                : -1;
+
+            const selectedOption =
+              Array.isArray(detail?.options) && selectedIndex >= 0
+                ? detail.options[selectedIndex]
+                : null;
+
+            return {
+              selectedIndex,
+              isCorrect:
+                selectedIndex >= 0 ? selectedOption?.isCorrect === true : null,
+              rationale:
+                typeof selectedOption?.rationale === "string"
+                  ? selectedOption.rationale
+                  : "",
+              feedbackMessage: "",
+            };
+          });
+        }
+
+        // حفظ النتيجة محلياً بعد اعتماد نتيجة التصحيح النهائية.
+        state.allUserScores.push({
+          userName: state.currentUser.fullName,
+          quizTitle: state.currentQuizData.config.title,
+          score: state.score,
+          total: state.totalQuestions,
+          date: new Date().toLocaleDateString("ar-EG"),
+        });
 
         // قراءة meta من رد السيرفر
         const meta = scoreResult.meta || {
