@@ -437,9 +437,10 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
+  const SW_SCRIPT_URL = "/sw.js?v=129";
   const registerServiceWorker = () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register(SW_SCRIPT_URL)
       .then((reg) => {
         // لما يكون في تحديث جديد للـ SW، اعمل reload تلقائي
         reg.addEventListener("updatefound", () => {
