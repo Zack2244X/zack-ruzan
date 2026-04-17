@@ -17,11 +17,22 @@ import { setupFocusManagement } from "./utils/focusManager.js";
 function initDatadogRumDeferred() {
   const isDatadogEnabledByConfig =
     window.__PUBLIC_CONFIG?.datadogRumEnabled === true;
+  const datadogClientToken =
+    String(window.__PUBLIC_CONFIG?.datadogClientToken || "").trim();
   const isLocalRuntime = ["localhost", "127.0.0.1", "::1"].includes(
     window.location.hostname,
   );
+  const hasTrackingOptOut =
+    navigator.globalPrivacyControl === true ||
+    navigator.doNotTrack === "1" ||
+    window.doNotTrack === "1";
 
-  if (!isDatadogEnabledByConfig || isLocalRuntime) {
+  if (
+    !isDatadogEnabledByConfig ||
+    isLocalRuntime ||
+    !datadogClientToken ||
+    hasTrackingOptOut
+  ) {
     logger.log("[Datadog RUM] disabled by config/runtime");
     return;
   }
@@ -37,13 +48,6 @@ function initDatadogRumDeferred() {
         const ddRum = window.DD_RUM;
         if (!ddRum || typeof ddRum.init !== "function") {
           logger.warn("[Datadog RUM] agent loaded but DD_RUM is unavailable");
-          return;
-        }
-
-        const datadogClientToken =
-          window.__PUBLIC_CONFIG?.datadogClientToken || "";
-        if (!datadogClientToken) {
-          logger.warn("[Datadog RUM] missing client token in public config");
           return;
         }
 
@@ -437,7 +441,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=136";
+  const SW_SCRIPT_URL = "/sw.js?v=137";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -948,7 +952,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=91";
+        s.src = "/js/app.features.bundle.min.js?v=92";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();

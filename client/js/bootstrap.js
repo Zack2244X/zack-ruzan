@@ -272,7 +272,7 @@ import logger from './utils/logger.js?v=2';
     // Primary: minified IIFE bundle (one request, all modules pre-bundled).
     // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
     // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
-    const bundleUrl = "/js/app.bundle.min.js?v=95";
+    const bundleUrl = "/js/app.bundle.min.js?v=96";
     const esmUrl = "/js/app.js";
 
     const bundleScript = document.createElement("script");
@@ -412,6 +412,42 @@ import logger from './utils/logger.js?v=2';
     if (saved) {
       hideLoginScreen();
       showLoadingScreen();
+
+      const resetSavedSession = () => {
+        sessionStorage.removeItem("currentUser");
+        sessionStorage.removeItem("isAdmin");
+        hideLoadingScreen();
+        if (typeof window.showLoginScreenWithDesktop === "function") {
+          window.showLoginScreenWithDesktop();
+        }
+      };
+
+      let parsedSavedUser = null;
+      try {
+        parsedSavedUser = JSON.parse(saved);
+      } catch {
+        parsedSavedUser = null;
+      }
+
+      const hasGuestModeFlag =
+        sessionStorage.getItem("guest-mode") === "true" ||
+        localStorage.getItem("guest-mode") === "true";
+      const isGuestSession =
+        hasGuestModeFlag || parsedSavedUser?.role === "guest";
+      if (isGuestSession) {
+        triggerAppLoad();
+        return;
+      }
+
+      const hasCsrfCookieHint = document.cookie
+        .split(";")
+        .map((cookie) => cookie.trim())
+        .some((cookie) => cookie.startsWith("csrf_token="));
+      if (!hasCsrfCookieHint) {
+        resetSavedSession();
+        return;
+      }
+
       fetch("/api/auth/me", {
         credentials: "include",
       })
@@ -420,20 +456,10 @@ import logger from './utils/logger.js?v=2';
             triggerAppLoad();
             return;
           }
-          sessionStorage.removeItem("currentUser");
-          sessionStorage.removeItem("isAdmin");
-          hideLoadingScreen();
-          if (typeof window.showLoginScreenWithDesktop === "function") {
-            window.showLoginScreenWithDesktop();
-          }
+          resetSavedSession();
         })
         .catch(() => {
-          sessionStorage.removeItem("currentUser");
-          sessionStorage.removeItem("isAdmin");
-          hideLoadingScreen();
-          if (typeof window.showLoginScreenWithDesktop === "function") {
-            window.showLoginScreenWithDesktop();
-          }
+          resetSavedSession();
         });
       return;
     }

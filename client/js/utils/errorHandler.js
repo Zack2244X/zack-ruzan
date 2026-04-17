@@ -1,6 +1,30 @@
 import { showAlert } from "../modules/helpers.js";
 import logger from '../utils/logger.js';
 
+function canSendRemoteErrorReport(context = {}) {
+  if (context?.skipRemoteReport) return false;
+
+  try {
+    const reportingEnabled =
+      window.__PUBLIC_CONFIG?.clientErrorReportingEnabled === true;
+    if (!reportingEnabled) return false;
+
+    const isGuestSession =
+      sessionStorage.getItem("guest-mode") === "true" ||
+      localStorage.getItem("guest-mode") === "true";
+    if (isGuestSession) return false;
+
+    const hasCsrfCookie = document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .some((cookie) => cookie.startsWith("csrf_token="));
+
+    return hasCsrfCookie;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Handle, categorize, report and display errors.
  * @param {Error} error 
@@ -52,24 +76,26 @@ export function handleError(error, context = {}) {
   }
 
   // 4. Send background report
-  try {
-    const payload = {
-      message: error.message,
-      stack: error.stack,
-      category,
-      context,
-      url: window.location.href,
-      userAgent: navigator.userAgent
-    };
-    
-    // Background fetch without blocking user
-    fetch("/api/logs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      keepalive: true
-    }).catch(() => {});
-  } catch (ignore) {}
+  if (canSendRemoteErrorReport(context)) {
+    try {
+      const payload = {
+        message: error.message,
+        stack: error.stack,
+        category,
+        context,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+      };
+
+      // Background fetch without blocking user
+      fetch("/api/logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (ignore) {}
+  }
 }
 
 /**

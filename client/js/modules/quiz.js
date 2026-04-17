@@ -41,6 +41,18 @@ import {
   closeAdminSheet,
 } from "./navigation.js";
 
+function isGuestModeSession() {
+  try {
+    return (
+      state.currentUser?.role === "guest" ||
+      sessionStorage.getItem("guest-mode") === "true" ||
+      localStorage.getItem("guest-mode") === "true"
+    );
+  } catch {
+    return state.currentUser?.role === "guest";
+  }
+}
+
 // =============================================
 //  ثوابت النظام
 // =============================================
@@ -301,13 +313,15 @@ async function submitScoreWithRetry(
   maxRetries = MAX_SCORE_RETRIES,
   baseDelayMs = SCORE_RETRY_BASE_DELAY_MS,
 ) {
-  try {
-    await apiCall(
-      "DELETE",
-      `/api/attempts/progress/${payload.quizId}?deviceId=${getClientDeviceId()}`,
-    );
-  } catch (e) {
-    handleError(e, { context: "cleanup progress", hideAlert: true });
+  if (!isGuestModeSession()) {
+    try {
+      await apiCall(
+        "DELETE",
+        `/api/attempts/progress/${payload.quizId}?deviceId=${getClientDeviceId()}`,
+      );
+    } catch (e) {
+      handleError(e, { context: "cleanup progress", hideAlert: true });
+    }
   }
 
   return await withRetry(
@@ -691,31 +705,34 @@ export async function playQuiz(index) {
   renderAttemptBanner(attemptCount);
 
   // 7. استعادة التقدم إن وجد
-  try {
-    const progressObj = await withRetry(
-      () => apiCall(
-        "GET",
-        `/api/attempts/progress/${quizId}?deviceId=${getClientDeviceId()}`
-      ),
-      { context: "get progress on playQuiz" }
-    );
-    if (
-      progressObj &&
-      progressObj.timeRemaining !== null &&
-      progressObj.answers &&
-      progressObj.answers.length > 0
-    ) {
-      logger.log("Restoring progress", progressObj);
+  if (!isGuestModeSession()) {
+    try {
+      const progressObj = await withRetry(
+        () =>
+          apiCall(
+            "GET",
+            `/api/attempts/progress/${quizId}?deviceId=${getClientDeviceId()}`,
+          ),
+        { context: "get progress on playQuiz" },
+      );
+      if (
+        progressObj &&
+        progressObj.timeRemaining !== null &&
+        progressObj.answers &&
+        progressObj.answers.length > 0
+      ) {
+        logger.log("Restoring progress", progressObj);
 
-      // Validate length matches
-      if (progressObj.answers.length === state.totalQuestions) {
-        state.userAnswers = progressObj.answers;
-        state.timeRemaining = progressObj.timeRemaining;
-        state.currentQuestionIndex = progressObj.currentQuestionIndex || 0;
+        // Validate length matches
+        if (progressObj.answers.length === state.totalQuestions) {
+          state.userAnswers = progressObj.answers;
+          state.timeRemaining = progressObj.timeRemaining;
+          state.currentQuestionIndex = progressObj.currentQuestionIndex || 0;
+        }
       }
+    } catch (e) {
+      handleError(e, { context: "Failed to load progress", hideAlert: true });
     }
-  } catch (e) {
-    handleError(e, { context: "Failed to load progress", hideAlert: true });
   }
 
   // 8. بدء الاختبار
@@ -871,7 +888,7 @@ function showCustomExitModal() {
 
     try {
       const quizId = getQuizId(state.currentQuizData);
-      if (quizId) {
+      if (quizId && !isGuestModeSession()) {
         await apiCall("POST", "/api/attempts/progress", {
           quizId: String(quizId),
           answers: state.userAnswers,
