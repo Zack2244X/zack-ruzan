@@ -1194,14 +1194,70 @@ a:focus:not(:focus-visible) {
   box-shadow: var(--shadow) !important;
 }
 
-/* History tree buttons */
-#history-tree button,
-#notes-history-tree button {
-  background: rgba(71, 85, 105, 0.4) !important;
-  color: #e5e7eb !important;
-  border: 1px solid rgba(100, 116, 139, 0.3) !important;
+/* Dark mode: strong non-neutral contrast for exams/notes sheets */
+[data-theme="dark"] #subject-filters-container button,
+.dark #subject-filters-container button {
+  background: linear-gradient(
+    145deg,
+    rgba(4, 47, 46, 0.9),
+    rgba(15, 118, 110, 0.45)
+  ) !important;
+  color: #2dd4bf !important;
+  border: 1px solid rgba(45, 212, 191, 0.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.2);
+}
+
+[data-theme="dark"] #notes-subject-filters-container button,
+.dark #notes-subject-filters-container button {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 5, 25, 0.92),
+    rgba(157, 23, 77, 0.5)
+  ) !important;
+  color: #f43f5e !important;
+  border: 1px solid rgba(244, 63, 94, 0.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.2);
+}
+
+[data-theme="dark"] #subject-filters-container button.bg-blue-600,
+.dark #subject-filters-container button.bg-blue-600 {
+  background: linear-gradient(145deg, #115e59, #134e4a) !important;
+  color: #14b8a6 !important;
+  border-color: rgba(20, 184, 166, 0.82) !important;
+}
+
+[data-theme="dark"] #notes-subject-filters-container button.bg-blue-600,
+.dark #notes-subject-filters-container button.bg-blue-600 {
+  background: linear-gradient(145deg, #be123c, #881337) !important;
+  color: #e11d48 !important;
+  border-color: rgba(225, 29, 72, 0.85) !important;
+}
+
+[data-theme="dark"] #history-tree button,
+.dark #history-tree button {
+  background: linear-gradient(
+    145deg,
+    rgba(4, 47, 46, 0.94),
+    rgba(15, 118, 110, 0.5)
+  ) !important;
+  color: #2dd4bf !important;
+  border: 1px solid rgba(45, 212, 191, 0.44) !important;
   border-radius: 1rem !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] #notes-history-tree button,
+.dark #notes-history-tree button {
+  background: linear-gradient(
+    145deg,
+    rgba(76, 5, 25, 0.94),
+    rgba(157, 23, 77, 0.52)
+  ) !important;
+  color: #f43f5e !important;
+  border: 1px solid rgba(244, 63, 94, 0.44) !important;
+  border-radius: 1rem !important;
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.18);
   backdrop-filter: blur(10px);
 }
 
@@ -1397,19 +1453,106 @@ a:focus:not(:focus-visible) {
 /* Dark mode / global: keep sheet containers visually card-like and fully rounded */
 #tree-content,
 #notes-content {
-  background: rgba(30, 41, 59, 0.5) !important;
-  border-color: rgba(100, 116, 139, 0.2) !important;
   border-radius: 1.875rem !important;
   overflow: hidden;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
 }
 
+#tree-content {
+  background:
+    radial-gradient(
+      circle at 8% 2%,
+      rgba(20, 184, 166, 0.2),
+      transparent 34%
+    ),
+    rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(20, 184, 166, 0.3) !important;
+}
+
+#notes-content {
+  background:
+    radial-gradient(circle at 8% 2%, rgba(225, 29, 72, 0.2), transparent 34%),
+    rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(225, 29, 72, 0.3) !important;
+}
+
 .sheet-header {
-  background: rgba(30, 41, 59, 0.4) !important;
-  border-bottom: 1px solid rgba(100, 116, 139, 0.2) !important;
   backdrop-filter: blur(15px) !important;
   -webkit-backdrop-filter: blur(15px) !important;
+}
+
+#tree-content .sheet-header {
+  background: linear-gradient(
+    180deg,
+    rgba(6, 78, 59, 0.52),
+    rgba(15, 23, 42, 0.36)
+  ) !important;
+  border-bottom: 1px solid rgba(20, 184, 166, 0.32) !important;
+}
+
+#notes-content .sheet-header {
+  background: linear-gradient(
+    180deg,
+    rgba(159, 18, 57, 0.52),
+    rgba(15, 23, 42, 0.36)
+  ) !important;
+  border-bottom: 1px solid rgba(225, 29, 72, 0.32) !important;
+}
+
+.sheet-icon-badge {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#sheet-icon-badge {
+  background: linear-gradient(145deg, #052e2b, #0f766e);
+}
+
+#notes-sheet-icon-badge {
+  background: linear-gradient(145deg, #4a044e, #9d174d);
+}
+
+#sheet-icon,
+#notes-sheet-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+}
+
+#sheet-icon {
+  color: #2dd4bf !important;
+}
+
+#notes-sheet-icon {
+  color: #f43f5e !important;
+}
+
+#sheet-icon .ui-icon-svg,
+#notes-sheet-icon .ui-icon-svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  stroke-width: 2.8;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+}
+
+[data-theme="dark"] #tree-content button[aria-label="إغلاق"],
+[data-theme="dark"] #notes-content button[aria-label="إغلاق"],
+.dark #tree-content button[aria-label="إغلاق"],
+.dark #notes-content button[aria-label="إغلاق"] {
+  background: rgba(127, 29, 29, 0.38) !important;
+  border-color: rgba(220, 38, 38, 0.45) !important;
+  color: #f43f5e !important;
 }
 
 .sheet-handle {
