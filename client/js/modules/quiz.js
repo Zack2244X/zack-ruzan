@@ -770,51 +770,102 @@ function showCustomExitModal() {
 
   const modal = document.createElement("div");
   modal.id = "quiz-exit-modal";
-  modal.className = "fixed inset-0 flex items-center justify-center z-50";
+  modal.className = "quiz-exit-confirm-overlay";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-labelledby", "quiz-exit-modal-title");
+  modal.setAttribute("aria-describedby", "quiz-exit-modal-warning");
+
+  document.body.classList.add("modal-open");
+
   const card = document.createElement("div");
-  card.className =
-    "rounded-2xl shadow-2xl p-8 max-w-[90vw] min-w-[320px] text-center bg-slate-900/70 border border-white/20";
+  card.className = "quiz-exit-confirm-card";
+
+  const icon = document.createElement("div");
+  icon.className = "quiz-exit-confirm-icon";
+  icon.textContent = "⚠️";
 
   const message = document.createElement("div");
-  message.className = "text-white text-lg font-bold mb-6 leading-8";
+  message.id = "quiz-exit-modal-title";
+  message.className = "quiz-exit-confirm-title";
   message.textContent = "هل أنت متأكد أنك تريد الخروج من الاختبار؟";
 
   const warn = document.createElement("span");
-  warn.className = "block text-sm text-orange-300 mt-2";
+  warn.id = "quiz-exit-modal-warning";
+  warn.className = "quiz-exit-confirm-warning";
   warn.textContent = "سيتم فقدان التقدم الحالي.";
-  message.appendChild(warn);
+
+  const note = document.createElement("p");
+  note.className = "quiz-exit-confirm-note";
+  note.textContent = "سنحفظ آخر تقدم تلقائيًا قبل العودة للواجهة الرئيسية.";
 
   const actions = document.createElement("div");
-  actions.className = "flex gap-4 justify-center";
+  actions.className = "quiz-exit-confirm-actions";
 
   const cancelBtn = document.createElement("button");
   cancelBtn.id = "exit-cancel-btn";
   cancelBtn.type = "button";
-  cancelBtn.className =
-    "px-8 py-3 bg-white text-slate-900 rounded-xl font-bold shadow";
+  cancelBtn.className = "quiz-exit-confirm-btn quiz-exit-confirm-btn--cancel";
   cancelBtn.textContent = "إلغاء";
 
   const okBtn = document.createElement("button");
   okBtn.id = "exit-ok-btn";
   okBtn.type = "button";
-  okBtn.className =
-    "px-8 py-3 bg-rose-600 text-white rounded-xl font-bold shadow hover:bg-rose-700 transition";
+  okBtn.className = "quiz-exit-confirm-btn quiz-exit-confirm-btn--ok";
   okBtn.textContent = "خروج";
 
   actions.appendChild(cancelBtn);
   actions.appendChild(okBtn);
+  card.appendChild(icon);
   card.appendChild(message);
+  card.appendChild(warn);
+  card.appendChild(note);
   card.appendChild(actions);
   modal.appendChild(card);
 
   document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add("show"));
+  cancelBtn.focus();
 
-  document.getElementById("exit-cancel-btn").addEventListener("click", () => {
-    modal.remove();
+  const syncBodyModalState = () => {
+    const hasVisibleOverlay = !!document.querySelector(
+      ".confirm-overlay.show, [id$='-modal']:not(.hidden):not(#quiz-exit-modal)",
+    );
+    if (!hasVisibleOverlay) {
+      document.body.classList.remove("modal-open");
+    }
+  };
+
+  const closeModal = () => {
+    modal.classList.remove("show");
+    setTimeout(() => {
+      modal.remove();
+      syncBodyModalState();
+    }, 250);
+    document.removeEventListener("keydown", handleEscClose);
+  };
+
+  const handleEscClose = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeModal();
+    }
+  };
+
+  document.addEventListener("keydown", handleEscClose);
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
   });
 
-  document.getElementById("exit-ok-btn").addEventListener("click", async () => {
-    const exitBtn = document.getElementById("exit-ok-btn");
+  cancelBtn.addEventListener("click", () => {
+    closeModal();
+  });
+
+  okBtn.addEventListener("click", async () => {
+    const exitBtn = okBtn;
     exitBtn.textContent = "جارٍ الحفظ...";
     exitBtn.disabled = true;
 
@@ -833,7 +884,7 @@ function showCustomExitModal() {
       handleError(e, { context: "Failed to save progress", hideAlert: true });
     }
 
-    modal.remove();
+    closeModal();
     clearInterval(state.timerInterval); // ✅ إيقاف التايمر عند الخروج
     state.quizStarted = false;
 

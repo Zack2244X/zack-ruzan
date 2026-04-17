@@ -1161,6 +1161,203 @@ a:focus:not(:focus-visible) {
   pointer-events: auto;
 }
 
+/* ============================================
+   Quiz Exit Confirm Modal
+   ============================================ */
+.quiz-exit-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(37, 99, 235, 0.16),
+      transparent 44%
+    ),
+    radial-gradient(
+      circle at 85% 86%,
+      rgba(249, 115, 22, 0.14),
+      transparent 46%
+    ),
+    rgba(15, 23, 42, 0.3);
+  -webkit-backdrop-filter: blur(10px) saturate(125%);
+  backdrop-filter: blur(10px) saturate(125%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+.quiz-exit-confirm-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.quiz-exit-confirm-card {
+  width: min(94vw, 420px);
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(248, 250, 252, 0.92) 100%
+  );
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.24);
+  color: #0f172a;
+  text-align: center;
+  padding: 24px 20px 18px;
+  transform: translateY(8px) scale(0.96) translateZ(0);
+  transition: transform var(--transition-slow);
+  will-change: transform;
+}
+
+.quiz-exit-confirm-overlay.show .quiz-exit-confirm-card {
+  transform: translateY(0) scale(1) translateZ(0);
+}
+
+.quiz-exit-confirm-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.22),
+    rgba(249, 115, 22, 0.2)
+  );
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.quiz-exit-confirm-title {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.75;
+  color: inherit;
+}
+
+.quiz-exit-confirm-warning {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #c2410c;
+}
+
+.quiz-exit-confirm-note {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.quiz-exit-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.quiz-exit-confirm-btn {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.quiz-exit-confirm-btn:hover {
+  transform: translateY(-1px);
+}
+
+.quiz-exit-confirm-btn:disabled {
+  opacity: 0.78;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.quiz-exit-confirm-btn--cancel {
+  background: rgba(241, 245, 249, 0.95);
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+.quiz-exit-confirm-btn--cancel:hover {
+  background: #e2e8f0;
+}
+
+.quiz-exit-confirm-btn--ok {
+  background: linear-gradient(140deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.32);
+}
+
+.quiz-exit-confirm-btn--ok:hover {
+  background: linear-gradient(140deg, #dc2626, #b91c1c);
+}
+
+[data-theme="dark"] .quiz-exit-confirm-overlay {
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(14, 165, 233, 0.2),
+      transparent 44%
+    ),
+    radial-gradient(
+      circle at 85% 86%,
+      rgba(251, 146, 60, 0.14),
+      transparent 46%
+    ),
+    rgba(2, 6, 23, 0.58);
+}
+
+[data-theme="dark"] .quiz-exit-confirm-card {
+  background: linear-gradient(
+    165deg,
+    rgba(15, 23, 42, 0.94) 0%,
+    rgba(2, 6, 23, 0.88) 100%
+  );
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #f8fafc;
+  box-shadow: 0 28px 62px rgba(2, 6, 23, 0.68);
+}
+
+[data-theme="dark"] .quiz-exit-confirm-warning {
+  color: #fdba74;
+}
+
+[data-theme="dark"] .quiz-exit-confirm-note {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .quiz-exit-confirm-btn--cancel {
+  background: rgba(30, 41, 59, 0.78);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+[data-theme="dark"] .quiz-exit-confirm-btn--cancel:hover {
+  background: rgba(51, 65, 85, 0.88);
+}
+
+[data-theme="dark"] .quiz-exit-confirm-btn--ok {
+  box-shadow: 0 12px 26px rgba(248, 113, 113, 0.2);
+}
+
 [data-theme="dark"] .confirm-dialog {
   background: #1e293b;
   color: var(--text);
@@ -1602,6 +1799,12 @@ a:focus:not(:focus-visible) {
 @supports not (
   (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
 ) {
+  .quiz-exit-confirm-overlay {
+    background: rgba(15, 23, 42, 0.58);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
   .glass-card,
   .glass-soft,
   [id$="-modal"] > div,
