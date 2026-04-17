@@ -790,7 +790,7 @@ function showCustomExitModal() {
   message.className = "quiz-exit-confirm-title";
   message.textContent = "هل أنت متأكد أنك تريد الخروج من الاختبار؟";
 
-  const warn = document.createElement("span");
+  const warn = document.createElement("div");
   warn.id = "quiz-exit-modal-warning";
   warn.className = "quiz-exit-confirm-warning";
   warn.textContent = "سيتم فقدان التقدم الحالي.";
