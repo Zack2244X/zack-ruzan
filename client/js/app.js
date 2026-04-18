@@ -436,7 +436,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=139";
+  const SW_SCRIPT_URL = "/sw.js?v=140";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -945,7 +945,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=93";
+        s.src = "/js/app.features.bundle.min.js?v=94";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();
