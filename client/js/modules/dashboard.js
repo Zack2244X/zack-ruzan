@@ -49,6 +49,49 @@ function setHtmlIfChanged(element, html) {
   element.__lastRenderedHtml = nextHtml;
 }
 
+function bindDelegatedDashboardActions() {
+  const root = document.getElementById("dashboard-view");
+  if (!root || root.dataset.dashboardActionsBound === "1") return;
+
+  root.addEventListener("click", (event) => {
+    const actionEl = event.target.closest("[data-dashboard-action]");
+    if (!actionEl || !root.contains(actionEl)) return;
+
+    const action = actionEl.getAttribute("data-dashboard-action");
+    const value = actionEl.getAttribute("data-dashboard-value") || "";
+
+    switch (action) {
+      case "play-quiz": {
+        const index = Number(value);
+        if (Number.isInteger(index) && index >= 0) {
+          if (typeof window.playQuiz === "function") {
+            window.playQuiz(index);
+          }
+        }
+        break;
+      }
+      case "copy-quiz-link":
+        event.stopPropagation();
+        if (typeof window.copyQuizLink === "function") {
+          window.copyQuizLink(value, event);
+        }
+        break;
+      case "download-note":
+        if (typeof window.forceDownload === "function") {
+          window.forceDownload(value);
+        }
+        break;
+      case "stop-propagation":
+        event.stopPropagation();
+        break;
+      default:
+        break;
+    }
+  });
+
+  root.dataset.dashboardActionsBound = "1";
+}
+
 export function startLeaderboardAutoRefresh() {
   if (leaderboardRefreshTimer) clearInterval(leaderboardRefreshTimer);
 
@@ -288,6 +331,7 @@ export async function renderDashboard(forceRefresh = false) {
   const latestExamsGrid = document.getElementById("latest-exams-grid");
   const latestNotesGrid = document.getElementById("latest-notes-grid");
   const leaderboardList = document.getElementById("leaderboard-list");
+  bindDelegatedDashboardActions();
 
   // ── حالة التحميل ──────────────────────────────────────────────────────
   if (!state.dataLoaded) {
@@ -362,7 +406,7 @@ export async function renderDashboard(forceRefresh = false) {
             <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
                         cursor-pointer border border-gray-100 hover:border-blue-400 group
                         relative overflow-hidden flex flex-col">
-                <div onclick="playQuiz(${realIndex})" class="h-full w-full">
+            <div data-dashboard-action="play-quiz" data-dashboard-value="${realIndex}" class="h-full w-full">
 
                     <div class="absolute -left-6 -top-6 w-24 h-24 exam-card-hover-glow rounded-full
                             opacity-0 group-hover:opacity-100 transition duration-500"></div>
@@ -397,12 +441,12 @@ export async function renderDashboard(forceRefresh = false) {
                                      rounded-md">${q.questions.length} أسئلة</span>
                     </div>
 
-                    <div class="mt-3 flex items-center gap-2 text-xs" onclick="event.stopPropagation()">
+                    <div class="mt-3 flex items-center gap-2 text-xs" data-dashboard-action="stop-propagation">
                         <span class="px-2 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 font-bold">رابط</span>
                         <div class="flex-1 px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600 truncate" dir="ltr">
                             ${escapeHtml(shareUrl)}
                         </div>
-                        <button class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-bold hover:bg-blue-700 transition" onclick="copyQuizLink('${escapeHtml(String(q.config.id ?? q.id ?? ""))}', event)">
+                      <button class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-bold hover:bg-blue-700 transition" data-dashboard-action="copy-quiz-link" data-dashboard-value="${escapeHtml(String(q.config.id ?? q.id ?? ""))}">
                             نسخ
                         </button>
                     </div>
@@ -446,7 +490,7 @@ export async function renderDashboard(forceRefresh = false) {
       const encodedLink = encodeURIComponent(String(config.link || ""));
 
       notesHtml += `
-            <div onclick="forceDownload('${encodedLink}')"
+        <div data-dashboard-action="download-note" data-dashboard-value="${escapeHtml(encodedLink)}"
                      class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition duration-300
                             cursor-pointer border border-gray-100 hover:border-orange-400 group
                             relative overflow-hidden">
