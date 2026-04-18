@@ -104,17 +104,15 @@
   --breakpoint-2xl: 1400px;
 }
 
-/* DARK MODE OVERRIDES */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --primary-50: #0c4a6e;
-    --primary-500: #60a5fa;
-    --primary-900: #f0f9ff;
-    --gray-50: #1f2937;
-    --gray-900: #f9fafb;
-    --gray-800: #111827;
-  }
+/* Dark-Only Overrides (unconditional) */
+:root {
+  color-scheme: dark;
+  --primary-50: #0c4a6e;
+  --primary-500: #60a5fa;
+  --primary-900: #f0f9ff;
+  --gray-50: #1f2937;
+  --gray-900: #f9fafb;
+  --gray-800: #111827;
 }
 
 /* ========================================
@@ -653,30 +651,28 @@ img {
    14. DARK MODE OVERRIDES
    ======================================== */
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--gray-50);
-    color: var(--gray-900);
-  }
+body {
+  background-color: var(--gray-50);
+  color: var(--gray-900);
+}
 
-  .card {
-    background: var(--gray-800);
-    color: var(--gray-100);
-  }
+.card {
+  background: var(--gray-800);
+  color: var(--gray-100);
+}
 
-  .form-input,
-  .form-textarea,
-  .form-select {
-    background: var(--gray-800);
-    border-color: var(--gray-600);
-    color: var(--gray-100);
-  }
+.form-input,
+.form-textarea,
+.form-select {
+  background: var(--gray-800);
+  border-color: var(--gray-600);
+  color: var(--gray-100);
+}
 
-  .form-input:focus,
-  .form-textarea:focus,
-  .form-select:focus {
-    background: var(--gray-800);
-  }
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  background: var(--gray-800);
 }
 
 /* ========================================

@@ -11,14 +11,12 @@ const state = window.__appState;
 const fetchScoresFromServer = () => window.__api.fetchScoresFromServer();
 const fetchLeaderboardFromServer = () =>
   window.__api.fetchLeaderboardFromServer();
-const _showThemeToggle = (v) => window._showThemeToggle?.(v);
 
 /**
  * فتح مودل الدرجات — يجلب أحدث بيانات من السيرفر ثم يعرضها
  */
 export async function openGradesModal() {
   logFunctionStatus("openGradesModal", true);
-  _showThemeToggle(false);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.add("hidden");
   document.getElementById("grades-modal").classList.remove("hidden");
@@ -60,7 +58,6 @@ export async function openGradesModal() {
  */
 export function closeGradesModal() {
   logFunctionStatus("closeGradesModal", false);
-  _showThemeToggle(true);
   document.getElementById("grades-modal").classList.add("hidden");
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.remove("hidden");
@@ -199,7 +196,6 @@ export async function renderGradesList() {
  */
 export async function openStatsModal() {
   logFunctionStatus("openStatsModal", true);
-  _showThemeToggle(false);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.add("hidden");
   document.getElementById("stats-modal").classList.remove("hidden");
@@ -240,7 +236,6 @@ export async function openStatsModal() {
 export function closeStatsModal() {
   logFunctionStatus("closeStatsModal", false);
   document.getElementById("stats-modal").classList.add("hidden");
-  _showThemeToggle(true);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.remove("hidden");
 }
@@ -381,7 +376,6 @@ export function renderStatsContent() {
  */
 export function openEditSelectionModal() {
   logFunctionStatus("openEditSelectionModal", false);
-  _showThemeToggle(false);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.add("hidden");
   document.getElementById("edit-selection-modal").classList.remove("hidden");

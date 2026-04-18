@@ -75,7 +75,6 @@ import {
 import {
   navToHome,
   showLoginScreen,
-  _showThemeToggle,
   openAdminAuthOrPanel,
   updateDockUI,
 } from "./navigation.js";
@@ -324,7 +323,6 @@ export async function handleGoogleAdminResponse(response) {
 /** إغلاق مودل مصادقة الأدمن */
 export function closeAdminAuth() {
   document.getElementById("admin-auth-modal").classList.add("hidden");
-  _showThemeToggle(true);
   const errorEl = document.getElementById("admin-auth-error");
   const loadingEl = document.getElementById("admin-auth-loading");
   if (errorEl) errorEl.classList.add("hidden");

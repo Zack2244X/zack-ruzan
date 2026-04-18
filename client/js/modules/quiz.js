@@ -36,7 +36,6 @@ import {
 import { handleError, withRetry } from "../utils/errorHandler.js";
 import { apiCall } from "./api.js";
 import {
-  _showThemeToggle,
   closeBottomSheet,
   closeAdminSheet,
 } from "./navigation.js";
@@ -699,7 +698,6 @@ export async function playQuiz(index) {
 
   document.getElementById("results-screen").classList.add("hidden");
   document.getElementById("quiz-container").classList.remove("hidden");
-  _showThemeToggle(false);
 
   // 6. عرض لافتة المحاولة — توضيح قبل البدء
   renderAttemptBanner(attemptCount);
@@ -913,8 +911,6 @@ function showCustomExitModal() {
 
     const outBtn = document.getElementById("quiz-exit-btn");
     if (outBtn) outBtn.remove();
-
-    _showThemeToggle(true);
   });
 }
 
@@ -1389,7 +1385,6 @@ export function exitToMain(renderDashboard) {
   document.getElementById("quiz-container").classList.add("hidden");
   document.getElementById("dashboard-view").classList.remove("hidden");
   renderDashboard();
-  _showThemeToggle(true);
 }
 
 window.reviewQuiz = function () {

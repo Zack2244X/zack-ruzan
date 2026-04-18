@@ -154,9 +154,4 @@ export function updateAttemptCount(email, quizId) {
   return state.quizAttempts[email][quizId];
 }
 
-// ─────────────────────────────────────────────
-
-/** @constant {string} مفتاح تخزين الثيم */
-export const THEME_KEY = "app-theme";
-
 export default state;

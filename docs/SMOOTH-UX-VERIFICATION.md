@@ -123,7 +123,7 @@ Attention Animations (250-400ms):
     --duration-slower: 1ms;
 }
 
-✓ prefers-color-scheme: dark
+✓ Dark mode forced by default
 ✓ prefers-contrast: more
 ✓ High contrast mode support
 ```

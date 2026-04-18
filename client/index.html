@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="dark" data-theme="dark">
   <head>
     <!-- طبقات الحماية الأمنية للواجهة الأمامية 🛡️ -->
     <!-- 1. منع اختطاف النقرات (Anti-Clickjacking Framebreaker) -->
@@ -25,22 +25,6 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
-    <!-- Apply theme class before first paint to avoid flash of wrong color scheme -->
-    <script>
-      (function () {
-        try {
-          var theme = localStorage.getItem("app-theme");
-          if (
-            !theme &&
-            window.matchMedia &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches
-          ) {
-            theme = "dark";
-          }
-          if (theme === "dark") document.documentElement.classList.add("dark");
-        } catch (e) {}
-      })();
-    </script>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -98,9 +82,9 @@
       crossorigin
     />
     <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
-    <link rel="preload" href="/css/styles.min.css?v=61" as="style" />
+    <link rel="preload" href="/css/styles.min.css?v=63" as="style" />
     <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
-    <link rel="stylesheet" href="/css/styles.min.css?v=61" />
+    <link rel="stylesheet" href="/css/styles.min.css?v=63" />
     <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
     <link rel="stylesheet" href="/css/login-extra.min.css?v=44" />
     <link rel="stylesheet" href="/css/fonts.css?v=44" />
@@ -362,8 +346,7 @@
       }
 
       /* Keep home controls hidden while accounts management modal is open. */
-      body.accounts-management-open #ios-bottom-nav,
-      body.accounts-management-open #theme-toggle {
+      body.accounts-management-open #ios-bottom-nav {
         display: none !important;
         visibility: hidden !important;
         pointer-events: none !important;
@@ -1218,10 +1201,6 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       }
 
-      #theme-toggle {
-        display: none;
-      }
-
       .logo-image {
         width: 100%;
         height: 100%;
@@ -1283,17 +1262,6 @@
         الخاص بك!
       </div>
     </noscript>
-    <!-- Hidden by default — shown only on dashboard home by _syncMainInteractionState() -->
-    <button
-      id="theme-toggle"
-      data-inline-onclick="toggleTheme()"
-      title="تبديل الثيم"
-      aria-label="تبديل الثيم"
-      class="icon-btn"
-    >
-      <i class="fas fa-moon" aria-hidden="true"></i>
-    </button>
-
     <!-- iOS Bottom Nav -->
     <nav
       id="ios-bottom-nav"
@@ -2130,7 +2098,7 @@
                 if (!document.querySelector('script[src^="/js/bootstrap"]')) {
                   const s = document.createElement("script");
                   s.type = "module";
-                  s.src = "/js/bootstrap.js?v=96";
+                  s.src = "/js/bootstrap.js?v=97";
                   document.head.appendChild(s);
                 }
               };
@@ -3647,7 +3615,7 @@
     <script src="/js/icon-system.js?v=2" defer></script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script type="module" src="/js/bootstrap.js?v=96"></script>
+    <script type="module" src="/js/bootstrap.js?v=97"></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>

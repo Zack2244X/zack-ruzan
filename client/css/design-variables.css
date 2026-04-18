@@ -207,39 +207,37 @@
 }
 
 /* ==========================================
-   DARK MODE OVERRIDES
+   Dark-Only Overrides (unconditional)
    ========================================== */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+:root {
+  color-scheme: dark;
 
-    /* Primary Colors */
-    --primary-50: #0c4a6e;
-    --primary-500: #60a5fa;
-    --primary-light: #60a5fa;
-    --primary-900: #f0f9ff;
+  /* Primary Colors */
+  --primary-50: #0c4a6e;
+  --primary-500: #60a5fa;
+  --primary-light: #60a5fa;
+  --primary-900: #f0f9ff;
 
-    /* Secondary Colors */
-    --secondary-500: #a78bfa;
-    --secondary-600: #a78bfa;
-    --secondary-700: #c4b5fd;
+  /* Secondary Colors */
+  --secondary-500: #a78bfa;
+  --secondary-600: #a78bfa;
+  --secondary-700: #c4b5fd;
 
-    /* Neutral Palette */
-    --gray-50: #1f2937;
-    --gray-100: #111827;
-    --gray-900: #f9fafb;
-    --gray-800: #111827;
+  /* Neutral Palette */
+  --gray-50: #1f2937;
+  --gray-100: #111827;
+  --gray-900: #f9fafb;
+  --gray-800: #111827;
 
-    /* Background Colors */
-    --bg: #0f172a;
-    --bg-soft: rgba(15, 23, 42, 0.68);
-    --card: rgba(30, 41, 59, 0.92);
-    --card-strong: rgba(30, 41, 59, 0.85);
-    --border: #334155;
-    --text: #f1f5f9;
-    --muted: #94a3b8;
-  }
+  /* Background Colors */
+  --bg: #0f172a;
+  --bg-soft: rgba(15, 23, 42, 0.68);
+  --card: rgba(30, 41, 59, 0.92);
+  --card-strong: rgba(30, 41, 59, 0.85);
+  --border: #334155;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
 }
 
 /* ==========================================

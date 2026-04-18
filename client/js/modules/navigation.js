@@ -33,7 +33,7 @@ export function cleanupListeners(group) {
  * @module navigation
  * @description دوال التنقل، إدارة النوافذ، الثيم، والشريط السفلي
  */
-import state, { THEME_KEY } from "./state.js";
+import state from "./state.js";
 import { logFunctionStatus } from "./helpers.js";
 import { getLenisInstance } from "./scroll.js";
 
@@ -554,27 +554,9 @@ export function _syncMainInteractionState() {
   // Global touchmove interception can break native modal scrolling on some mobile browsers.
   // Body lock + Lenis stop are sufficient for preventing background scroll.
   setModalTouchScrollLock(false);
-
-  const t = document.getElementById("theme-toggle");
-  if (t) t.style.display = onHome && !blocked ? "" : "none";
   // تحكم مركزي في ظهور الشريط السفلي: يظهر فقط في الرئيسية وبدون أي طبقات مفتوحة
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.toggle("hidden", !onHome || blocked);
-}
-
-/**
- * إظهار/إخفاء زر تبديل الثيم
- * @param {boolean} show — إظهار أم إخفاء
- */
-export function _showThemeToggle(show) {
-  logFunctionStatus("_showThemeToggle", false);
-  const t = document.getElementById("theme-toggle");
-  if (!t) return;
-  if (!show) {
-    t.style.display = "none";
-    return;
-  }
-  _syncMainInteractionState();
 }
 
 /**
@@ -750,7 +732,6 @@ export function openBottomSheet(mode = null) {
     _syncMainInteractionState();
   });
   // Swipe-to-close disabled to keep touch scrolling fully native inside modal content.
-  _showThemeToggle(false);
   _syncMainInteractionState();
 }
 
@@ -783,7 +764,6 @@ export function closeBottomSheet() {
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.remove("hidden");
   if (state.currentViewMode) updateDockUI("home");
-  _showThemeToggle(true);
 }
 
 /** إغلاق قائمة الأدمن السفلية */
@@ -802,7 +782,6 @@ export function closeAdminSheet() {
     });
   }
   updateDockUI("home");
-  _showThemeToggle(true);
 }
 
 /** إغلاق جميع النوافذ المنبثقة */
@@ -836,55 +815,6 @@ export function closeAllOverlays() {
   _syncMainInteractionState();
 }
 
-/**
- * تطبيق الثيم (فاتح/داكن)
- * @param {'light'|'dark'} theme — الثيم المطلوب
- */
-export function applyTheme(theme) {
-  logFunctionStatus("applyTheme", false);
-  const root = document.documentElement;
-  const icon = document.querySelector("#theme-toggle i");
-  const finalTheme = theme === "dark" ? "dark" : "light";
-  root.setAttribute("data-theme", finalTheme);
-  localStorage.setItem(THEME_KEY, finalTheme);
-  if (icon)
-    icon.className = finalTheme === "dark" ? "fas fa-sun" : "fas fa-moon";
-  // Ensure compatibility with Tailwind's `dark` class mode and other CSS relying on `.dark`
-  try {
-    if (finalTheme === "dark") {
-      root.classList.add("dark");
-      document.body.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-      document.body.classList.remove("dark");
-    }
-  } catch (err) {
-    logger.warn("applyTheme: failed to toggle .dark class", err);
-  }
-}
-
-/** تبديل الثيم بين فاتح وداكن */
-export function toggleTheme() {
-  logFunctionStatus("toggleTheme", false);
-  const current =
-    document.documentElement.getAttribute("data-theme") || "light";
-  applyTheme(current === "light" ? "dark" : "light");
-}
-
-/** تهيئة الثيم عند بدء التطبيق */
-export function initTheme() {
-  logFunctionStatus("initTheme", false);
-  const stored = localStorage.getItem(THEME_KEY);
-  if (stored) {
-    applyTheme(stored);
-  } else {
-    const prefersDark = window.matchMedia?.(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    applyTheme(prefersDark ? "dark" : "light");
-  }
-}
-
 /** الانتقال للصفحة الرئيسية */
 export function navToHome() {
   logFunctionStatus("navToHome", false);
@@ -892,7 +822,6 @@ export function navToHome() {
   document.getElementById("dashboard-view").classList.remove("hidden");
   document.getElementById("quiz-container").classList.add("hidden");
   updateDockUI("home");
-  _showThemeToggle(true);
 }
 
 /**

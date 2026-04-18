@@ -15,7 +15,6 @@ const state = window.__appState;
 const apiCall = (...a) => window.__api.apiCall(...a);
 const closeAdminSheet = () => window.closeAdminSheet?.();
 const closeBottomSheet = () => window.closeBottomSheet?.();
-const _showThemeToggle = (v) => window._showThemeToggle?.(v);
 
 const PDF_JS_VERSION = "4.4.168";
 const PDF_JS_LIB_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.min.js`;
@@ -81,7 +80,6 @@ export function openCreateSection() {
   logFunctionStatus("openCreateSection", false);
   closeAdminSheet();
   closeBottomSheet();
-  _showThemeToggle(false);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.add("hidden");
   document.getElementById("create-section-modal").classList.remove("hidden");
@@ -106,7 +104,6 @@ export function openCreateSection() {
 export function closeCreateSection() {
   logFunctionStatus("closeCreateSection", false);
   document.getElementById("create-section-modal").classList.add("hidden");
-  _showThemeToggle(true);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.remove("hidden");
 }

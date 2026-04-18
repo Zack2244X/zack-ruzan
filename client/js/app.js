@@ -119,15 +119,11 @@ import {
 } from "./modules/api.js";
 import {
   _syncMainInteractionState,
-  _showThemeToggle,
   updateDockUI,
   openBottomSheet,
   closeBottomSheet,
   closeAdminSheet,
   closeAllOverlays,
-  applyTheme,
-  toggleTheme,
-  initTheme,
   navToHome,
   navToSection as _navToSection,
   openAdminAuthOrPanel,
@@ -264,8 +260,8 @@ const INLINE_BRIDGE_ALLOWED_FUNCTIONS = new Set([
   "closeDeleteExamModal",
   "closeDeleteModal",
   "closeEditSelectionModal",
-  "closeGradesModal",
   "closeGuestModal",
+  "closeGradesModal",
   "closeRenameModal",
   "closeStatsModal",
   "closeStudentMenu",
@@ -296,7 +292,6 @@ const INLINE_BRIDGE_ALLOWED_FUNCTIONS = new Set([
   "startGoogleRedirectLogin",
   "submitQuiz",
   "switchEditTab",
-  "toggleTheme",
   "triggerImportExamFile",
   "updateBuilderData",
 ]);
@@ -441,7 +436,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=137";
+  const SW_SCRIPT_URL = "/sw.js?v=139";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -796,10 +791,8 @@ Object.assign(window, {
   closeBottomSheet,
   closeAdminSheet,
   closeAllOverlays,
-  toggleTheme,
   updateDockUI,
   toggleTreeNode,
-  _showThemeToggle,
   _syncMainInteractionState,
 
   // Auth
@@ -882,7 +875,7 @@ Object.assign(window, {
     if (!_adminLoadPromise) {
       _adminLoadPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.admin.bundle.min.js?v=87";
+        s.src = "/js/app.admin.bundle.min.js?v=88";
         s.onload = () => {
           _adminLoaded = true;
           resolve();
@@ -952,7 +945,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=92";
+        s.src = "/js/app.features.bundle.min.js?v=93";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();
@@ -1005,9 +998,6 @@ if (document.readyState === "loading") {
 export async function startApp() {
   setupFocusManagement();
   logFunctionStatus("window.onload", false);
-
-  // تهيئة الثيم
-  initTheme();
 
   // Hide any bootstrap loading overlay once the app bootstraps
   if (typeof window.hideLoadingScreen === "function") {

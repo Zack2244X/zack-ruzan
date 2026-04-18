@@ -7,14 +7,12 @@ import state from "./state.js";
 import { escapeHtml, showAlert, logFunctionStatus } from "./helpers.js";
 import { sanitizeHTML } from "../utils/sanitize.js";
 import { apiCall } from "./api.js";
-import { _showThemeToggle } from "./navigation.js";
 
 /**
  * فتح مودل إضافة مذكرة جديدة — تصفير الحقول
  */
 export function openAddNoteModal() {
   logFunctionStatus("openAddNoteModal", false);
-  _showThemeToggle(false);
   const dock = document.getElementById("ios-bottom-nav");
   if (dock) dock.classList.add("hidden");
   document.getElementById("new-n-title").value = "";
@@ -29,7 +27,6 @@ export function openAddNoteModal() {
  */
 export function closeAddNoteModal() {
   logFunctionStatus("closeAddNoteModal", false);
-  _showThemeToggle(true);
   document.getElementById("add-note-modal").classList.add("hidden");
   const saveBtn = document.getElementById("save-note-btn");
   if (saveBtn) {

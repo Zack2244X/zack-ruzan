@@ -14,21 +14,32 @@
 
 /* === CSS Variables (Design Tokens) === */
 :root {
-  --bg: #f5f7fb;
-  --bg-soft: rgba(255, 255, 255, 0.68);
-  --card: rgba(255, 255, 255, 0.92);
-  --card-strong: rgba(255, 255, 255, 0.85);
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --muted: #475569;
-  --primary: #2563eb;
-  --primary-light: #3b82f6;
-  --success: #16a34a;
-  --warning: #ea580c;
-  --danger: #ef4444;
-  --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
-  --shadow-sm: 0 4px 12px rgba(15, 23, 42, 0.06);
-  --glass-blur: 16px;
+  --bg:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(37, 99, 235, 0.09),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 80% 10%,
+      rgba(16, 185, 129, 0.08),
+      transparent 32%
+    ),
+    #0b1220;
+  --bg-soft: rgba(255, 255, 255, 0.08);
+  --card: rgba(255, 255, 255, 0.06);
+  --card-strong: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e2e8f0;
+  --muted: #cbd5e1;
+  --primary: #60a5fa;
+  --primary-light: #93bbfc;
+  --success: #22c55e;
+  --warning: #fb923c;
+  --danger: #f87171;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --glass-blur: 18px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -115,8 +126,7 @@ body.gpu-low #ios-bottom-nav,
 body.gpu-low .bottom-sheet-content,
 body.gpu-low [id$="-modal"] > div,
 body.gpu-low .glass-card,
-body.gpu-low .glass-soft,
-body.gpu-low #theme-toggle {
+body.gpu-low .glass-soft {
   will-change: auto !important; /* حرير VRAM layers */
   transform: none !important; /* لا GPU layer إجباري */
   background: var(--card) !important;
@@ -161,8 +171,7 @@ body.reduced-graphics {
    blur(16px) على GPU متوسط + شاشة DPR 2.5x = حساب كثيف
    نخفضه لـ 6px: يبدو جيداً بدون ضغط زائد
    ─────────────────────────────────────────────────────────────────── */
-body.gpu-medium .glass-card,
-body.gpu-medium #theme-toggle {
+body.gpu-medium .glass-card {
   backdrop-filter: blur(6px) !important;
   -webkit-backdrop-filter: blur(6px) !important;
   --glass-blur: 6px;
@@ -205,7 +214,6 @@ body.vendor-adreno .glass-card,
 body.vendor-adreno .glass-soft,
 body.vendor-adreno .bottom-sheet-content,
 body.vendor-adreno #ios-bottom-nav,
-body.vendor-adreno #theme-toggle,
 body.vendor-adreno [id$="-modal"] > div {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -248,35 +256,7 @@ body.vendor-powervr #ios-bottom-nav {
   background: var(--card-strong) !important;
 }
 
-/* === Dark Theme Variables === */
-[data-theme="dark"] {
-  --bg:
-    radial-gradient(
-      circle at 20% 20%,
-      rgba(37, 99, 235, 0.09),
-      transparent 30%
-    ),
-    radial-gradient(
-      circle at 80% 10%,
-      rgba(16, 185, 129, 0.08),
-      transparent 32%
-    ),
-    #0b1220;
-  --bg-soft: rgba(255, 255, 255, 0.08);
-  --card: rgba(255, 255, 255, 0.06);
-  --card-strong: rgba(255, 255, 255, 0.09);
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #e2e8f0;
-  --muted: #cbd5e1;
-  --primary: #60a5fa;
-  --primary-light: #93bbfc;
-  --success: #22c55e;
-  --warning: #fb923c;
-  --danger: #f87171;
-  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
-  --glass-blur: 18px;
-}
+/* Dark mode is the only supported theme; tokens above are canonical defaults. */
 
 /* === Base & Reset === */
 *,
@@ -595,43 +575,6 @@ body::before {
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-}
-
-/* ── Theme Toggle Button ────────────────────────────────────────── */
-/* Hover uses translateY — not bottom/margin change                 */
-#theme-toggle {
-  position: fixed;
-  bottom: 18px;
-  right: 18px;
-  z-index: var(--z-dropdown);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--card-strong);
-  color: var(--text);
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  cursor: pointer;
-
-  /* Use transform for hover animation, not top/bottom */
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  will-change: transform;
-  transform: translateZ(0);
-}
-
-#theme-toggle:hover {
-  /* translateY + scale replaces any positional shift */
-  transform: translateY(-2px) scale(1.02);
-}
-
-#theme-toggle i {
-  font-size: 18px;
 }
 
 /* ── Alert Banner ───────────────────────────────────────────────── */
@@ -1808,7 +1751,6 @@ a:focus:not(:focus-visible) {
   .glass-card,
   .glass-soft,
   [id$="-modal"] > div,
-  #theme-toggle,
   #ios-bottom-nav,
   .bottom-sheet-content {
     background: var(--card);
@@ -1884,27 +1826,6 @@ select {
     max-height: 95vh !important;
     /* translateY keyframe — no top/bottom animation */
     animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-}
-
-/* ============================================
-   Mobile: Theme Toggle repositioned to top-left
-   ============================================ */
-@media (max-width: 640px) {
-  #theme-toggle {
-    position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 8px) !important;
-    bottom: auto !important;
-    left: 12px !important;
-    right: auto !important;
-    width: 42px;
-    height: 42px;
-    z-index: var(--z-toast);
-    /* translateZ instead of positional hacks */
-    transform: translateZ(0);
-  }
-  #theme-toggle i {
-    font-size: 16px;
   }
 }
 
@@ -2133,7 +2054,6 @@ select {
    ============================================ */
 @media print {
   #ios-bottom-nav,
-  #theme-toggle,
   .bottom-sheet-overlay,
   .bottom-sheet-content,
   [id$="-modal"] {
