@@ -463,10 +463,25 @@ export function _syncMainInteractionState() {
     const el = document.getElementById(id);
     return el && !el.classList.contains("hidden");
   });
+  // Treat a sheet as open only when its container is visible.
+  // This prevents stale "active" classes on content nodes from locking the UI.
+  const isSheetOpen = (sheetId, contentId, overlayId) => {
+    const sheet = document.getElementById(sheetId);
+    const content = document.getElementById(contentId);
+    const overlay = document.getElementById(overlayId);
+    if (!sheet || !content) return false;
+
+    const sheetVisible = !sheet.classList.contains("hidden");
+    const contentActive = content.classList.contains("active");
+    const overlayActive = overlay?.classList.contains("active") || false;
+
+    return sheetVisible && (contentActive || overlayActive);
+  };
+
   const sheetOpen =
-    document.getElementById("tree-content")?.classList.contains("active") ||
-    document.getElementById("notes-content")?.classList.contains("active") ||
-    document.getElementById("admin-content")?.classList.contains("active");
+    isSheetOpen("tree-bottom-sheet", "tree-content", "tree-overlay") ||
+    isSheetOpen("notes-bottom-sheet", "notes-content", "notes-overlay") ||
+    isSheetOpen("admin-bottom-sheet", "admin-content", "admin-overlay");
   // guest-modal uses display:none/block instead of hidden class
   // Check style.display only — offsetParent forces reflow
   const guestModalOpen = (() => {
