@@ -146,7 +146,7 @@ body.after-login .mobile-after-login {
       rgba(255, 255, 255, 0.02),
       transparent 20%
     ),
-    url("/fonts/../icons/placeholder.png");
+    url("/icons/bg.webp");
   background-size: cover;
 }
 
