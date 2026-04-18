@@ -3,6 +3,7 @@
   const BASE_ICON_CLASSES = new Set(["fa", "fas", "far", "fab", "bi"]);
   const SPIN_ICON_CLASSES = new Set(["fa-spin", "fa-pulse"]);
   const ICON_PALETTES = new Set(["ocean", "amber", "mint"]);
+  const LUCIDE_RUNTIME_SRC = "/js/vendor/lucide.min.js?v=1";
   const ICON_CANDIDATE_SELECTOR =
     "i, span[data-lucide], span[class*='fa-'], span[class*='bi-'], span.fa, span.fas, span.far, span.fab, span.bi";
 
@@ -68,6 +69,7 @@
   let applyInProgress = false;
   let lucideWaitTimer = null;
   let flushDebounceTimer = null;
+  let lucideScriptPromise = null;
   const pendingRoots = new Set();
 
   function normalizeRoot(root) {
@@ -273,8 +275,66 @@
     }, 40);
   }
 
+  function loadLucideRuntime() {
+    if (window.lucide && window.lucide.icons) {
+      return Promise.resolve(true);
+    }
+
+    if (lucideScriptPromise) {
+      return lucideScriptPromise;
+    }
+
+    lucideScriptPromise = new Promise((resolve) => {
+      const existing = document.querySelector(
+        "script[data-lucide-runtime='1'],script[src*='/js/vendor/lucide.min.js']",
+      );
+
+      if (existing) {
+        if (window.lucide && window.lucide.icons) {
+          resolve(true);
+          return;
+        }
+
+        existing.addEventListener(
+          "load",
+          () => resolve(!!(window.lucide && window.lucide.icons)),
+          { once: true },
+        );
+        existing.addEventListener("error", () => resolve(false), {
+          once: true,
+        });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = LUCIDE_RUNTIME_SRC;
+      script.async = true;
+      script.setAttribute("data-lucide-runtime", "1");
+
+      const nonce =
+        document
+          .querySelector('meta[name="csp-nonce"]')
+          ?.getAttribute("content") || "";
+      if (nonce) {
+        script.setAttribute("nonce", nonce);
+      }
+
+      script.onload = () => resolve(!!(window.lucide && window.lucide.icons));
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+
+    return lucideScriptPromise;
+  }
+
   function ensureLucideReady() {
     if (window.lucide && window.lucide.icons) return;
+    loadLucideRuntime().then((ready) => {
+      if (ready) {
+        queueIconApply(document);
+      }
+    });
+
     if (lucideWaitTimer) return;
 
     let attempts = 0;

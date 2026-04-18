@@ -325,8 +325,7 @@
       }
     </style>
 
-    <!-- Modern icon system runtime (local vendor, no external icon font dependency) -->
-    <script src="/js/vendor/lucide.min.js?v=1" defer></script>
+    <!-- Modern icon runtime is loaded lazily by icon-system.js when needed. -->
     <!-- Fonts are preloaded + loaded from /css/fonts.css for stable first paint. -->
 
     <!-- تم حذف أداة التشخيص: لا تظهر أي overlay للمستخدمين -->
@@ -2095,7 +2094,7 @@
                 if (!document.querySelector('script[src^="/js/bootstrap"]')) {
                   const s = document.createElement("script");
                   s.type = "module";
-                  s.src = "/js/bootstrap.js?v=100";
+                  s.src = "/js/bootstrap.js?v=101";
                   document.head.appendChild(s);
                 }
               };
@@ -3609,10 +3608,10 @@
     </script>
 
     <!-- Icon replacement engine: converts old fa/bi markup to modern Lucide SVGs (auto for dynamic DOM too) -->
-    <script src="/js/icon-system.js?v=3" defer></script>
+    <script src="/js/icon-system.js?v=4" defer></script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script type="module" src="/js/bootstrap.js?v=100"></script>
+    <script type="module" src="/js/bootstrap.js?v=101"></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
