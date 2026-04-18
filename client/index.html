@@ -3843,8 +3843,56 @@
       if (!window.ScrollTrigger) window.ScrollTrigger = null;
     </script>
 
-    <!-- Icon replacement engine: converts old fa/bi markup to modern Lucide SVGs (auto for dynamic DOM too) -->
-    <script src="/js/icon-system.js?v=8" defer></script>
+    <!-- Icon replacement engine: eager on desktop, deferred on mobile startup. -->
+    <script>
+      (function () {
+        const iconRuntimeSrc = "/js/icon-system.js?v=9";
+        let iconRuntimeLoaded = false;
+
+        const loadIconRuntime = function () {
+          if (iconRuntimeLoaded) return;
+          iconRuntimeLoaded = true;
+
+          const script = document.createElement("script");
+          script.src = iconRuntimeSrc;
+          script.defer = true;
+          document.head.appendChild(script);
+        };
+
+        const isMobileStartup = function () {
+          try {
+            if (window.matchMedia?.("(pointer: coarse)").matches) return true;
+            if (window.matchMedia?.("(max-width: 900px)").matches) return true;
+          } catch (e) {
+            // ignore media-query failures
+          }
+          return false;
+        };
+
+        window.__loadIconRuntime = loadIconRuntime;
+
+        if (!isMobileStartup()) {
+          loadIconRuntime();
+          return;
+        }
+
+        const scheduleMobileIconLoad = function () {
+          if ("requestIdleCallback" in window) {
+            requestIdleCallback(loadIconRuntime, { timeout: 12000 });
+          } else {
+            setTimeout(loadIconRuntime, 8000);
+          }
+        };
+
+        if (document.readyState === "complete") {
+          scheduleMobileIconLoad();
+        } else {
+          window.addEventListener("load", scheduleMobileIconLoad, {
+            once: true,
+          });
+        }
+      })();
+    </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
     <script type="module" src="/js/bootstrap.js?v=105" defer></script>
