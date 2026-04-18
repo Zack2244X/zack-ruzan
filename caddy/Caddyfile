@@ -13,6 +13,9 @@ zackpro.codes, www.zackpro.codes {
     output file /data/caddy/access.log
   }
 
+  # Compress proxied responses (HTML/CSS/JS/JSON) for lower transfer cost.
+  encode zstd gzip
+
   # Block standard enumeration / vulnerability scanning bots (like Burp Suite scripts, Nikto, Nmap)
   @scanners {
       header User-Agent *Burp*

@@ -14,7 +14,7 @@ if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'p
 import { setupFocusManagement } from "./utils/focusManager.js";
 
 // ✅ === Datadog RUM Monitoring (non-blocking) ===
-function initDatadogRumDeferred() {
+async function initDatadogRumDeferred() {
   const isDatadogEnabledByConfig =
     window.__PUBLIC_CONFIG?.datadogRumEnabled === true;
   const datadogClientToken =
@@ -27,6 +27,24 @@ function initDatadogRumDeferred() {
     navigator.doNotTrack === "1" ||
     window.doNotTrack === "1";
 
+  const shouldSkipDatadogForPower = async () => {
+    try {
+      const conn =
+        navigator.connection ||
+        navigator.mozConnection ||
+        navigator.webkitConnection;
+      if (conn?.saveData === true) return true;
+
+      if ("getBattery" in navigator) {
+        const battery = await navigator.getBattery();
+        if (battery && battery.charging === false) return true;
+      }
+    } catch (e) {
+      // Ignore power checks if the API is unavailable.
+    }
+    return false;
+  };
+
   if (
     !isDatadogEnabledByConfig ||
     isLocalRuntime ||
@@ -34,6 +52,11 @@ function initDatadogRumDeferred() {
     hasTrackingOptOut
   ) {
     logger.log("[Datadog RUM] disabled by config/runtime");
+    return;
+  }
+
+  if (await shouldSkipDatadogForPower()) {
+    logger.log("[Datadog RUM] skipped in power-saver mode");
     return;
   }
 
@@ -93,7 +116,9 @@ function initDatadogRumDeferred() {
   }
 }
 
-initDatadogRumDeferred();
+initDatadogRumDeferred().catch((e) => {
+  logger.warn("[Datadog RUM] init flow failed:", e?.message || e);
+});
 
 // === الوحدات (Modules) ===
 import state from "./modules/state.js";
@@ -439,7 +464,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=145";
+  const SW_SCRIPT_URL = "/sw.js?v=146";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -1079,24 +1104,58 @@ export async function startApp() {
       /* ignore */
     }
 
-    const tier = perf?.tier || "high";
+    const conn =
+      navigator.connection ||
+      navigator.mozConnection ||
+      navigator.webkitConnection;
+    const saveDataMode = conn?.saveData === true;
+    const unpluggedMode = perf?.batteryCharging === false;
+    const veryLowBattery =
+      typeof perf?.batteryLevel === "number" &&
+      perf?.batteryLevel !== -1 &&
+      perf.batteryLevel < 0.3;
+
+    const powerSaverMode = saveDataMode || unpluggedMode || veryLowBattery;
+    const effectivePerf = powerSaverMode ? { ...(perf || {}), tier: "low" } : perf;
+    const tier = effectivePerf?.tier || "high";
+
+    try {
+      window.__devicePerfEffective = effectivePerf;
+      window.__powerSaverMode = powerSaverMode;
+    } catch (e) {
+      /* ignore */
+    }
+
+    if (powerSaverMode) {
+      document.documentElement.classList.add("power-save-mode");
+      document.body.classList.add("power-save-mode");
+      logger.log("[app] 🔋 power-saver mode active — low runtime profile enabled");
+    } else {
+      document.documentElement.classList.remove("power-save-mode");
+      document.body.classList.remove("power-save-mode");
+    }
 
     // Load motion libs only for devices that can benefit from them.
-    if (window.__loadMotionLibs && tier !== "low") {
+    if (window.__loadMotionLibs && tier !== "low" && !powerSaverMode) {
       window.__loadMotionLibs();
     }
 
-    if (perf && perf.tier === "low") {
+    if (effectivePerf && effectivePerf.tier === "low") {
       document.body.classList.add("reduced-graphics");
     }
 
-    if (tier !== "low") {
-      await initAnimations(perf);
+    if (tier !== "low" && !powerSaverMode) {
+      await initAnimations(effectivePerf);
     } else {
+      try {
+        pauseAllAnimations();
+      } catch (e) {
+        /* ignore */
+      }
       logger.log("[app] ⏭️ تخطي initAnimations على الأجهزة الضعيفة");
     }
 
-    await applyPerformanceBasedAnimationSettings(perf);
+    await applyPerformanceBasedAnimationSettings(effectivePerf);
 
     // تهيئة Lenis بشكل مؤجل لتفادي التأثير على الطلاء الأول
     try {
@@ -1111,7 +1170,7 @@ export async function startApp() {
 
     const startScroll = () => {
       try {
-        const _p = window.__devicePerf;
+        const _p = window.__devicePerfEffective || window.__devicePerf;
         const _t = _p?.tier || "high";
         const _m =
           navigator.maxTouchPoints > 1 &&

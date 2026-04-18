@@ -70,6 +70,7 @@
   let lucideWaitTimer = null;
   let flushDebounceTimer = null;
   let lucideScriptPromise = null;
+  let legacyOnlyMode = false;
   const pendingRoots = new Set();
 
   function normalizeRoot(root) {
@@ -232,6 +233,7 @@
   }
 
   function flushIconApplyQueue() {
+    if (legacyOnlyMode) return;
     if (applyInProgress) return;
 
     if (!window.lucide || !window.lucide.icons) {
@@ -257,6 +259,7 @@
   }
 
   function queueIconApply(root) {
+    if (legacyOnlyMode) return;
     const normalizedRoot = normalizeRoot(root);
     pendingRoots.add(normalizedRoot);
 
@@ -273,6 +276,60 @@
       }
       requestAnimationFrame(() => flushIconApplyQueue());
     }, 40);
+  }
+
+  async function shouldPreferLegacyIcons() {
+    try {
+      if (window.__powerSaverMode === true) return true;
+
+      const conn =
+        navigator.connection ||
+        navigator.mozConnection ||
+        navigator.webkitConnection;
+      if (conn?.saveData === true) return true;
+
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        return true;
+      }
+
+      if ("getBattery" in navigator) {
+        const battery = await navigator.getBattery();
+        if (battery && battery.charging === false) return true;
+      }
+    } catch (e) {
+      // Ignore power capability errors and continue with default mode.
+    }
+    return false;
+  }
+
+  function enableLegacyOnlyMode() {
+    if (legacyOnlyMode) return;
+    legacyOnlyMode = true;
+
+    if (flushDebounceTimer) {
+      clearTimeout(flushDebounceTimer);
+      flushDebounceTimer = null;
+    }
+
+    if (lucideWaitTimer) {
+      clearInterval(lucideWaitTimer);
+      lucideWaitTimer = null;
+    }
+
+    pendingRoots.clear();
+    applyQueued = false;
+
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+
+    document.documentElement.setAttribute("data-icon-runtime", "legacy");
+    try {
+      window.__iconLegacyMode = true;
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   function loadLucideRuntime() {
@@ -328,6 +385,7 @@
   }
 
   function ensureLucideReady() {
+    if (legacyOnlyMode) return;
     if (window.lucide && window.lucide.icons) return;
     loadLucideRuntime().then((ready) => {
       if (ready) {
@@ -438,23 +496,37 @@
 
   function bootstrap() {
     initPalette();
-    ensureLucideReady();
-    queueIconApply(document);
 
-    // A second pass after full page load catches late-initialized modal markup.
-    window.addEventListener(
-      "load",
-      function () {
+    shouldPreferLegacyIcons()
+      .then((preferLegacy) => {
+        if (preferLegacy) {
+          enableLegacyOnlyMode();
+          return;
+        }
+
+        ensureLucideReady();
         queueIconApply(document);
-      },
-      { once: true },
-    );
 
-    setTimeout(function () {
-      queueIconApply(document);
-    }, 1200);
+        // A second pass after full page load catches late-initialized modal markup.
+        window.addEventListener(
+          "load",
+          function () {
+            queueIconApply(document);
+          },
+          { once: true },
+        );
 
-    initObserver();
+        setTimeout(function () {
+          queueIconApply(document);
+        }, 1200);
+
+        initObserver();
+      })
+      .catch(() => {
+        ensureLucideReady();
+        queueIconApply(document);
+        initObserver();
+      });
   }
 
   if (document.readyState === "loading") {
