@@ -545,6 +545,22 @@
     setIconPalette(stored || "ocean");
   }
 
+  function getInitialIconRoot() {
+    const loginScreen = document.getElementById("login-screen");
+    if (loginScreen) return loginScreen;
+    return document;
+  }
+
+  function isMobileStartup() {
+    try {
+      if (window.matchMedia?.("(pointer: coarse)").matches) return true;
+      if (window.matchMedia?.("(max-width: 900px)").matches) return true;
+    } catch (e) {
+      // ignore media-query failures and keep conservative defaults
+    }
+    return false;
+  }
+
   window.applyModernIcons = function (root) {
     queueIconApply(root || document);
   };
@@ -567,21 +583,34 @@
           return;
         }
 
+        const mobileStartup = isMobileStartup();
         ensureLucideReady();
-        queueIconApply(document);
+        queueIconApply(getInitialIconRoot());
 
         // A second pass after full page load catches late-initialized modal markup.
         window.addEventListener(
           "load",
           function () {
-            queueIconApply(document);
+            const runFullPass = function () {
+              queueIconApply(document);
+            };
+
+            if (mobileStartup && "requestIdleCallback" in window) {
+              requestIdleCallback(runFullPass, { timeout: 5000 });
+            } else if (mobileStartup) {
+              setTimeout(runFullPass, 2500);
+            } else {
+              runFullPass();
+            }
           },
           { once: true },
         );
 
         setTimeout(function () {
-          queueIconApply(document);
-        }, 1200);
+          if (!mobileStartup) {
+            queueIconApply(document);
+          }
+        }, mobileStartup ? 3200 : 1200);
 
         initObserver();
       })

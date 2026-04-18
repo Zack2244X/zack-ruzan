@@ -3844,7 +3844,7 @@
     </script>
 
     <!-- Icon replacement engine: converts old fa/bi markup to modern Lucide SVGs (auto for dynamic DOM too) -->
-    <script src="/js/icon-system.js?v=6" defer></script>
+    <script src="/js/icon-system.js?v=7" defer></script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
     <script type="module" src="/js/bootstrap.js?v=105" defer></script>
@@ -3861,10 +3861,11 @@
       };
     </script>
 
-    <!-- Lamp animation is loaded lazily to keep first interaction responsive. -->
+    <!-- Lamp animation is loaded only when the user intends to use it on mobile. -->
     <script>
       (function () {
         let lampAnimationLoaded = false;
+        let lampIntentBound = false;
 
         const loadLampAnimation = function () {
           if (lampAnimationLoaded) return;
@@ -3876,34 +3877,66 @@
           document.head.appendChild(script);
         };
 
+        const revealLoginCardFallback = function () {
+          const card = document.getElementById("login-card");
+          const cone = document.getElementById("light-cone");
+          const glow = document.getElementById("floor-glow");
+          const lamp = document.getElementById("lamp-svg");
+
+          if (card) {
+            card.classList.remove("off");
+            card.classList.add("appear");
+          }
+          if (cone) cone.classList.remove("off");
+          if (glow) glow.classList.remove("off");
+          if (lamp) lamp.classList.remove("off");
+        };
+
+        const onLampIntent = function () {
+          revealLoginCardFallback();
+          loadLampAnimation();
+        };
+
+        const bindLampIntent = function () {
+          if (lampIntentBound) return;
+          lampIntentBound = true;
+
+          const lamp = document.getElementById("lamp-svg");
+          const rope = document.getElementById("rope-canvas");
+
+          if (lamp) {
+            lamp.addEventListener("pointerdown", onLampIntent, {
+              passive: true,
+            });
+            lamp.addEventListener("touchstart", onLampIntent, {
+              passive: true,
+            });
+            lamp.addEventListener("keydown", function (e) {
+              if (e.key === "Enter" || e.key === " ") {
+                onLampIntent();
+              }
+            });
+          }
+
+          if (rope) {
+            rope.addEventListener("pointerdown", onLampIntent, {
+              passive: true,
+            });
+            rope.addEventListener("touchstart", onLampIntent, {
+              passive: true,
+            });
+          }
+        };
+
         window.__loadLampAnimation = loadLampAnimation;
 
-        if ("requestIdleCallback" in window) {
-          requestIdleCallback(loadLampAnimation, { timeout: 2500 });
-        } else {
-          setTimeout(loadLampAnimation, 900);
-        }
-
-        document.addEventListener("pointerdown", loadLampAnimation, {
-          once: true,
-          passive: true,
-          capture: true,
-        });
-        document.addEventListener("touchstart", loadLampAnimation, {
-          once: true,
-          passive: true,
-          capture: true,
-        });
-        document.addEventListener(
-          "keydown",
-          function () {
-            loadLampAnimation();
-          },
-          {
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", bindLampIntent, {
             once: true,
-            capture: true,
-          },
-        );
+          });
+        } else {
+          bindLampIntent();
+        }
       })();
     </script>
 
