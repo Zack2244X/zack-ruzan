@@ -27,6 +27,12 @@ let _rafId = null;
 /** @type {boolean} هل التمرير الناعم مُفعَّل حالياً */
 let _smoothEnabled = true;
 
+/** @type {boolean} تفعيل ربط ScrollTrigger مع Lenis */
+let _scrollTriggerSyncEnabled = true;
+
+/** @type {boolean} guard لمنع تكديس تحديثات ScrollTrigger داخل نفس الإطار */
+let _scrollTriggerUpdateQueued = false;
+
 /** @type {IntersectionObserver|null} مراقب الدخول للمنظور */
 let _scrollObserver = null;
 
@@ -50,8 +56,13 @@ const _observedElements = new Map();
  * @param {DOMHighResTimeStamp} time — الوقت المُمرَّر من RAF
  */
 function _rafLoop(time) {
-  if (!_lenis) return; // الوحدة أُلغيت — أوقف الحلقة
-  _lenis.raf(time);
+  if (!_lenis) {
+    _rafId = null;
+    return; // الوحدة أُلغيت — أوقف الحلقة
+  }
+  if (_smoothEnabled) {
+    _lenis.raf(time);
+  }
   _rafId = requestAnimationFrame(_rafLoop);
 }
 
@@ -177,9 +188,11 @@ export function initScroll(options = {}) {
  * @returns {import('lenis').default}
  */
 function _initWithClass(LenisClass, options) {
+  _smoothEnabled = true;
+
   _lenis = new LenisClass({
     // ─── إعدادات الحركة ─────────────────────────────────────────────────
-    duration: 1.2, // مدة انتقال التمرير بالثواني
+    duration: 1.0, // مدة انتقال أقصر لخفض الكلفة وتحسين الاستجابة
     easing: (
       t, // منحنى ease-out-expo لشعور طبيعي
     ) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
@@ -202,6 +215,12 @@ function _initWithClass(LenisClass, options) {
   // ابدأ حلقة RAF
   _rafId = requestAnimationFrame(_rafLoop);
 
+  // On touch devices, avoid per-scroll ScrollTrigger sync to reduce main-thread pressure.
+  const isMobileRuntime =
+    navigator.maxTouchPoints > 1 &&
+    !!window.matchMedia?.("(hover: none)").matches;
+  _scrollTriggerSyncEnabled = !isMobileRuntime;
+
   // ── ربط Lenis بـ GSAP ScrollTrigger ─────────────────────────────────────
   // Lenis يُحرِّك موضع التمرير بشكل مستقل عبر RAF.
   // ScrollTrigger بالمقابل يقرأ window.scrollY مباشرةً.
@@ -209,9 +228,15 @@ function _initWithClass(LenisClass, options) {
   // → جانك ظاهر بوضوح على الأجهزة البطيئة (Adreno/Mali mid-range).
   // الحل: عند كل تحديث Lenis نُخبر ScrollTrigger بإعادة حساب مواضعه.
   _lenis.on("scroll", () => {
+    if (!_scrollTriggerSyncEnabled || _scrollTriggerUpdateQueued) return;
+    _scrollTriggerUpdateQueued = true;
     try {
-      window.ScrollTrigger?.update?.();
+      requestAnimationFrame(() => {
+        _scrollTriggerUpdateQueued = false;
+        window.ScrollTrigger?.update?.();
+      });
     } catch (e) {
+      _scrollTriggerUpdateQueued = false;
       /* ignore */
     }
   });
@@ -239,6 +264,8 @@ function _initWithClass(LenisClass, options) {
 export function setScrollTierOptions(tier, isMobile = false) {
   if (!_lenis) return;
   try {
+    _scrollTriggerSyncEnabled = !isMobile && tier !== "low";
+
     if (tier === "low" || isMobile) {
       // Mobile or Low tier: disable JS smooth scrolling entirely to save GPU/CPU
       if (_lenis.options) {
@@ -315,6 +342,9 @@ export function enableSmoothScroll() {
   _smoothEnabled = true;
   if (_lenis) {
     _lenis.start();
+    if (_rafId === null) {
+      _rafId = requestAnimationFrame(_rafLoop);
+    }
     logger.log("[scroll] التمرير الناعم: مُفعَّل");
   }
 }
@@ -327,6 +357,10 @@ export function disableSmoothScroll() {
   _smoothEnabled = false;
   if (_lenis) {
     _lenis.stop();
+    if (_rafId !== null) {
+      cancelAnimationFrame(_rafId);
+      _rafId = null;
+    }
     logger.log("[scroll] التمرير الناعم: مُعطَّل");
   }
 }

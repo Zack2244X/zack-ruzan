@@ -276,9 +276,8 @@ export async function initAnimations(perfOverride) {
   gsap.defaults({
     ease: "power2.out",
     duration: 0.4 * speedMultiplier,
-    // force3D: true — يُجبر GSAP على استخدام translate3d بدل translate2d
-    // هذا يضمن إنشاء GPU compositing layer لكل حركة تلقائياً
-    force3D: true,
+    // auto = دع GSAP يحدد متى يحتاج 3D compositing بدل فرضه على كل العناصر.
+    force3D: "auto",
   });
   // تفعيل RAF mode صراحةً — يضمن مزامنة الحركات مع vsync المتصفح
   if (gsap.ticker?.useRAF) gsap.ticker.useRAF(true);
@@ -302,10 +301,10 @@ function applyTierSettings(tier) {
         // تعطيل lagSmoothing تماماً — يتيح للـ ticker العمل بأقصى سرعة
         // lagSmoothing يُبطّئ الحركة عمداً عند أي تأخر وهو عكس ما نريد على الشاشات عالية التردد
         gsap.ticker.lagSmoothing(0);
-        // 0 = uncapped — GSAP يطابق معدل vsync الفعلي للشاشة (60/90/120/144Hz)
-        gsap.ticker.fps(0);
+        // Cap at 60fps to protect CPU/GPU budget while keeping smooth interactions.
+        gsap.ticker.fps(60);
       }
-      logger.log("[Animations] ⚡ High tier — حركات كاملة / ticker uncapped");
+      logger.log("[Animations] ⚡ High tier — حركات كاملة / ticker 60fps");
       break;
 
     case "medium":
@@ -314,11 +313,11 @@ function applyTierSettings(tier) {
       if (gsap?.ticker) {
         // تخفيف — 33ms = فريم واحد بـ30fps كـ threshold للـ lag
         gsap.ticker.lagSmoothing(500, 33);
-        // uncapped أيضاً — الشاشة 120Hz ستستفيد تلقائياً
-        gsap.ticker.fps(0);
+        // Medium tier keeps lower cap to preserve frame budget.
+        gsap.ticker.fps(45);
       }
       logger.log(
-        "[Animations] 🔆 Medium tier — حركات مخففة / ticker uncapped",
+        "[Animations] 🔆 Medium tier — حركات مخففة / ticker 45fps",
       );
       break;
 

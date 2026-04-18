@@ -613,9 +613,15 @@ export function initOverlayScrollLock() {
 
   if (typeof MutationObserver === "undefined") return;
 
+  let syncQueued = false;
   const observer = new MutationObserver(() => {
+    if (syncQueued) return;
+    syncQueued = true;
     // تأجيل frame واحد حتى تكتمل تغييرات الـ class، ثم نزامن مع DOM
-    requestAnimationFrame(() => _syncMainInteractionState());
+    requestAnimationFrame(() => {
+      syncQueued = false;
+      _syncMainInteractionState();
+    });
   });
 
   const observeEl = (id) => {

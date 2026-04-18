@@ -362,11 +362,13 @@ function installInlineHandlerBridge() {
   };
 
   migrate();
-  document.addEventListener("click", (e) => handleAttr(e, "click"), true);
-  document.addEventListener("change", (e) => handleAttr(e, "change"), true);
-  document.addEventListener("input", (e) => handleAttr(e, "input"), true);
-  document.addEventListener("submit", (e) => handleAttr(e, "submit"), true);
-  document.addEventListener("blur", (e) => handleAttr(e, "blur"), true);
+  // Use bubbling listeners to avoid global capture-phase overhead on every DOM event.
+  document.addEventListener("click", (e) => handleAttr(e, "click"));
+  document.addEventListener("change", (e) => handleAttr(e, "change"));
+  document.addEventListener("input", (e) => handleAttr(e, "input"));
+  document.addEventListener("submit", (e) => handleAttr(e, "submit"));
+  // focusout bubbles and covers legacy onblur handlers without capture listeners.
+  document.addEventListener("focusout", (e) => handleAttr(e, "blur"));
   window.__inlineBridgeInstalled = true;
 }
 
@@ -436,7 +438,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=141";
+  const SW_SCRIPT_URL = "/sw.js?v=142";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -945,7 +947,7 @@ Object.assign(window, {
     if (!_featuresPromise) {
       _featuresPromise = new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=94";
+        s.src = "/js/app.features.bundle.min.js?v=95";
         s.onload = () => {
           _featuresLoaded = true;
           resolve();
@@ -1068,23 +1070,31 @@ export async function startApp() {
 
   // ── تهيئة وحدات الحركة والتمرير بشكل غير حاجب للعرض الأول ───────────────
   (async function initNonCriticalRuntime() {
-    // Load motion libs (GSAP + Lenis) before using them
-    if (window.__loadMotionLibs) {
-      window.__loadMotionLibs();
-    }
-
-    // قياس مستوى الجهاز ثم تهيئة الأنيميشن في الخلفية
+    // قياس مستوى الجهاز أولاً ثم قرر تحميل مكتبات الحركة الثقيلة.
     const perf = await getDevicePerformanceTier({ skipFPSTest: true });
     try {
       window.__devicePerf = perf;
     } catch (e) {
       /* ignore */
     }
+
+    const tier = perf?.tier || "high";
+
+    // Load motion libs only for devices that can benefit from them.
+    if (window.__loadMotionLibs && tier !== "low") {
+      window.__loadMotionLibs();
+    }
+
     if (perf && perf.tier === "low") {
       document.body.classList.add("reduced-graphics");
     }
 
-    await initAnimations(perf);
+    if (tier !== "low") {
+      await initAnimations(perf);
+    } else {
+      logger.log("[app] ⏭️ تخطي initAnimations على الأجهزة الضعيفة");
+    }
+
     await applyPerformanceBasedAnimationSettings(perf);
 
     // تهيئة Lenis بشكل مؤجل لتفادي التأثير على الطلاء الأول
@@ -1105,11 +1115,16 @@ export async function startApp() {
         const _m =
           navigator.maxTouchPoints > 1 &&
           !!window.matchMedia?.("(hover: none)").matches;
-        const scrollOpts = {};
+
         if (_t === "low") {
-          scrollOpts.smoothWheel = false;
-          scrollOpts.duration = 0;
-        } else if (_t === "medium" || _m) {
+          // Keep native scrolling for weakest devices to cut RAF/GPU overhead.
+          disableSmoothScroll();
+          offScrollEnter();
+          return;
+        }
+
+        const scrollOpts = {};
+        if (_t === "medium" || _m) {
           scrollOpts.duration = _m ? 0.8 : 1.0;
           scrollOpts.touchMultiplier = _m ? 1.0 : 1.5;
         }
