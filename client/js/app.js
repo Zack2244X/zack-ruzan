@@ -362,11 +362,12 @@ function installInlineHandlerBridge() {
   };
 
   migrate();
-  // Use bubbling listeners to avoid global capture-phase overhead on every DOM event.
-  document.addEventListener("click", (e) => handleAttr(e, "click"));
+  // Use capture for click/submit so legacy inline handlers are migrated
+  // before the browser attempts blocked inline execution under CSP.
+  document.addEventListener("click", (e) => handleAttr(e, "click"), true);
   document.addEventListener("change", (e) => handleAttr(e, "change"));
   document.addEventListener("input", (e) => handleAttr(e, "input"));
-  document.addEventListener("submit", (e) => handleAttr(e, "submit"));
+  document.addEventListener("submit", (e) => handleAttr(e, "submit"), true);
   // focusout bubbles and covers legacy onblur handlers without capture listeners.
   document.addEventListener("focusout", (e) => handleAttr(e, "blur"));
   window.__inlineBridgeInstalled = true;
@@ -438,7 +439,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=143";
+  const SW_SCRIPT_URL = "/sw.js?v=144";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)

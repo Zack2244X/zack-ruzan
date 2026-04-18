@@ -229,11 +229,11 @@ import logger from './utils/logger.js?v=2';
     };
 
     migrate();
-    // Use bubbling listeners to avoid global capture-phase overhead during bootstrap.
-    document.addEventListener("click", (e) => handleAttr(e, "click"));
+    // Use capture for click/submit to migrate legacy inline handlers before CSP blocks them.
+    document.addEventListener("click", (e) => handleAttr(e, "click"), true);
     document.addEventListener("change", (e) => handleAttr(e, "change"));
     document.addEventListener("input", (e) => handleAttr(e, "input"));
-    document.addEventListener("submit", (e) => handleAttr(e, "submit"));
+    document.addEventListener("submit", (e) => handleAttr(e, "submit"), true);
     document.addEventListener("focusout", (e) => handleAttr(e, "blur"));
     window.__inlineBridgeInstalled = true;
   }
@@ -272,7 +272,7 @@ import logger from './utils/logger.js?v=2';
     // Primary: minified IIFE bundle (one request, all modules pre-bundled).
     // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
     // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
-    const bundleUrl = "/js/app.bundle.min.js?v=101";
+    const bundleUrl = "/js/app.bundle.min.js?v=102";
     const esmUrl = "/js/app.js";
 
     const bundleScript = document.createElement("script");
