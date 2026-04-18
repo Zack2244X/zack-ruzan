@@ -83,11 +83,54 @@
     />
     <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
     <link rel="preload" href="/css/styles.min.css?v=63" as="style" />
+    <link rel="preload" href="/css/dark-fixes.min.css?v=44" as="style" />
+    <link rel="preload" href="/css/login-extra.min.css?v=44" as="style" />
     <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
     <link rel="stylesheet" href="/css/styles.min.css?v=63" />
-    <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
-    <link rel="stylesheet" href="/css/login-extra.min.css?v=44" />
     <link rel="stylesheet" href="/css/fonts.css?v=44" />
+
+    <script>
+      (function () {
+        const asyncCssFiles = [
+          "/css/dark-fixes.min.css?v=44",
+          "/css/login-extra.min.css?v=44",
+        ];
+
+        const loadCssFile = (href) => {
+          if (document.querySelector(`link[rel=\"stylesheet\"][href=\"${href}\"]`)) {
+            return;
+          }
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = href;
+          link.setAttribute("data-async-css", "1");
+          document.head.appendChild(link);
+        };
+
+        const scheduleAsyncCssLoad = function () {
+          const run = function () {
+            asyncCssFiles.forEach(loadCssFile);
+          };
+          if ("requestIdleCallback" in window) {
+            requestIdleCallback(run, { timeout: 1500 });
+          } else {
+            setTimeout(run, 50);
+          }
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", scheduleAsyncCssLoad, {
+            once: true,
+          });
+        } else {
+          scheduleAsyncCssLoad();
+        }
+      })();
+    </script>
+    <noscript>
+      <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
+      <link rel="stylesheet" href="/css/login-extra.min.css?v=44" />
+    </noscript>
 
     <!-- Fonts are preloaded selectively (Cairo critical weights) and loaded via /css/fonts.css. -->
 
@@ -3611,7 +3654,7 @@
     <script src="/js/icon-system.js?v=6" defer></script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script type="module" src="/js/bootstrap.js?v=105"></script>
+    <script type="module" src="/js/bootstrap.js?v=105" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
