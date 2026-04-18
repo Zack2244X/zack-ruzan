@@ -38,6 +38,7 @@ import { apiCall } from "./api.js";
 import {
   closeBottomSheet,
   closeAdminSheet,
+  _syncMainInteractionState,
 } from "./navigation.js";
 
 function isGuestModeSession() {
@@ -843,12 +844,7 @@ function showCustomExitModal() {
   cancelBtn.focus();
 
   const syncBodyModalState = () => {
-    const hasVisibleOverlay = !!document.querySelector(
-      ".confirm-overlay.show, [id$='-modal']:not(.hidden):not(#quiz-exit-modal)",
-    );
-    if (!hasVisibleOverlay) {
-      document.body.classList.remove("modal-open");
-    }
+    _syncMainInteractionState();
   };
 
   const closeModal = () => {
@@ -911,6 +907,8 @@ function showCustomExitModal() {
 
     const outBtn = document.getElementById("quiz-exit-btn");
     if (outBtn) outBtn.remove();
+
+    _syncMainInteractionState();
   });
 }
 
@@ -1384,6 +1382,7 @@ export function exitToMain(renderDashboard) {
   document.getElementById("results-screen").classList.add("hidden");
   document.getElementById("quiz-container").classList.add("hidden");
   document.getElementById("dashboard-view").classList.remove("hidden");
+  _syncMainInteractionState();
   renderDashboard();
 }
 
