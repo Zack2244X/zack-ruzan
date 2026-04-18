@@ -3940,6 +3940,82 @@
       })();
     </script>
 
+    <!-- Suppress Cloudflare Browser Insights beacon on mobile startup to reduce TBT. -->
+    <script>
+      (function () {
+        const isMobileStartup = function () {
+          try {
+            if (window.matchMedia?.("(pointer: coarse)").matches) return true;
+            if (window.matchMedia?.("(max-width: 900px)").matches) return true;
+          } catch (e) {
+            // ignore media-query failures
+          }
+          return false;
+        };
+
+        if (!isMobileStartup()) return;
+
+        const isBeaconScript = function (node) {
+          if (!node || node.nodeType !== 1 || node.tagName !== "SCRIPT") return false;
+          const src = node.getAttribute("src") || "";
+          return (
+            src.includes("static.cloudflareinsights.com/beacon.min.js") ||
+            node.hasAttribute("data-cf-beacon")
+          );
+        };
+
+        const blockBeaconScript = function (script) {
+          if (!isBeaconScript(script)) return false;
+          try {
+            script.removeAttribute("src");
+            script.type = "application/x-blocked-js";
+            script.remove();
+          } catch (e) {
+            // ignore DOM removal errors
+          }
+          return true;
+        };
+
+        const scanForBeaconScripts = function (root) {
+          const scope = root && root.nodeType === 1 ? root : document;
+          const scripts = scope.querySelectorAll
+            ? scope.querySelectorAll(
+                "script[src*='static.cloudflareinsights.com/beacon.min.js'],script[data-cf-beacon]",
+              )
+            : [];
+          scripts.forEach((script) => blockBeaconScript(script));
+        };
+
+        scanForBeaconScripts(document);
+
+        const observer = new MutationObserver((mutations) => {
+          for (let i = 0; i < mutations.length; i += 1) {
+            const mutation = mutations[i];
+            for (let j = 0; j < mutation.addedNodes.length; j += 1) {
+              const node = mutation.addedNodes[j];
+              if (!node || node.nodeType !== 1) continue;
+              if (blockBeaconScript(node)) continue;
+              scanForBeaconScripts(node);
+            }
+          }
+        });
+
+        observer.observe(document.documentElement || document.body, {
+          childList: true,
+          subtree: true,
+        });
+
+        // No need to observe forever; beacon injection happens during startup.
+        setTimeout(() => observer.disconnect(), 8000);
+
+        try {
+          window.__cfBeaconSuppressedOnMobile = true;
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
+
     <script>
       window.validateIconsInConsole = function () {
         return true;
