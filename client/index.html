@@ -82,8 +82,20 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
-    <link rel="preload" href="/css/styles.min.css?v=64" as="style" />
+    <link
+      rel="preload"
+      href="/css/tailwind.min.css?v=44"
+      as="style"
+      data-preload-css="core"
+      data-href="/css/tailwind.min.css?v=44"
+    />
+    <link
+      rel="preload"
+      href="/css/styles.min.css?v=64"
+      as="style"
+      data-preload-css="core"
+      data-href="/css/styles.min.css?v=64"
+    />
 
         <style id="critical-css">
       /* Critical CSS (Above-the-fold only): keep this block intentionally small.
@@ -278,6 +290,40 @@
 
         let cssLoadScheduled = false;
         let deferredCssScheduled = false;
+
+        const isMobileStartup = function () {
+          try {
+            if (window.matchMedia?.("(pointer: coarse)").matches) return true;
+            if (window.matchMedia?.("(max-width: 900px)").matches) return true;
+          } catch (e) {
+            // ignore media-query failures
+          }
+          return false;
+        };
+
+        const tuneCssPreloadsForMobile = function () {
+          if (!isMobileStartup()) return;
+
+          const preloadLinks = document.querySelectorAll(
+            'link[data-preload-css="core"]',
+          );
+
+          preloadLinks.forEach((link) => {
+            const href = link.getAttribute("data-href") || link.getAttribute("href");
+            if (!href) return;
+
+            const asyncPreload = document.createElement("link");
+            asyncPreload.rel = "prefetch";
+            asyncPreload.as = "style";
+            asyncPreload.href = href;
+            asyncPreload.setAttribute("data-prefetch-css", "core");
+
+            link.removeAttribute("href");
+            link.parentNode?.replaceChild(asyncPreload, link);
+          });
+        };
+
+        tuneCssPreloadsForMobile();
 
         const scheduleDeferredCss = function () {
           if (deferredCssScheduled) return;
