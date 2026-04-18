@@ -3,7 +3,7 @@
   const BASE_ICON_CLASSES = new Set(["fa", "fas", "far", "fab", "bi"]);
   const SPIN_ICON_CLASSES = new Set(["fa-spin", "fa-pulse"]);
   const ICON_PALETTES = new Set(["ocean", "amber", "mint"]);
-  const LUCIDE_RUNTIME_SRC = "/js/vendor/lucide.min.js?v=1";
+  const LUCIDE_RUNTIME_SRC = "/js/vendor/lucide.subset.min.js?v=1";
   const ICON_CANDIDATE_SELECTOR =
     "i, span[data-lucide], span[class*='fa-'], span[class*='bi-'], span.fa, span.fas, span.far, span.fab, span.bi";
 
@@ -343,7 +343,7 @@
 
     lucideScriptPromise = new Promise((resolve) => {
       const existing = document.querySelector(
-        "script[data-lucide-runtime='1'],script[src*='/js/vendor/lucide.min.js']",
+        "script[data-lucide-runtime='1'],script[src*='/js/vendor/lucide.subset.min.js'],script[src*='/js/vendor/lucide.min.js']",
       );
 
       if (existing) {

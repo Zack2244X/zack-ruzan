@@ -6,6 +6,8 @@ const files = [
   "client/js/app.bundle.min.js",
   "client/js/app.features.bundle.min.js",
   "client/js/app.admin.bundle.min.js",
+  "client/js/vendor/lucide.min.js",
+  "client/js/vendor/lucide.subset.min.js",
   "client/css/tailwind.min.css",
   "client/css/styles.min.css",
   "client/css/icons.css",
