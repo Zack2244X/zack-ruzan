@@ -3,6 +3,8 @@
   const BASE_ICON_CLASSES = new Set(["fa", "fas", "far", "fab", "bi"]);
   const SPIN_ICON_CLASSES = new Set(["fa-spin", "fa-pulse"]);
   const ICON_PALETTES = new Set(["ocean", "amber", "mint"]);
+  const ICON_CANDIDATE_SELECTOR =
+    "i, span[data-lucide], span[class*='fa-'], span[class*='bi-'], span.fa, span.fas, span.far, span.fab, span.bi";
 
   const ICON_MAP = {
     "bi-calendar3": "calendar-days",
@@ -65,6 +67,7 @@
   let applyQueued = false;
   let applyInProgress = false;
   let lucideWaitTimer = null;
+  let flushDebounceTimer = null;
   const pendingRoots = new Set();
 
   function normalizeRoot(root) {
@@ -102,7 +105,7 @@
     }
 
     if (typeof root.querySelectorAll === "function") {
-      const found = root.querySelectorAll("i, span");
+      const found = root.querySelectorAll(ICON_CANDIDATE_SELECTOR);
       for (let i = 0; i < found.length; i += 1) {
         if (isPotentialIconElement(found[i])) {
           iconNodes.push(found[i]);
@@ -258,10 +261,16 @@
     if (applyQueued) return;
     applyQueued = true;
 
-    requestAnimationFrame(() => {
+    if (flushDebounceTimer) clearTimeout(flushDebounceTimer);
+    flushDebounceTimer = setTimeout(() => {
+      flushDebounceTimer = null;
       applyQueued = false;
-      flushIconApplyQueue();
-    });
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(() => flushIconApplyQueue(), { timeout: 120 });
+        return;
+      }
+      requestAnimationFrame(() => flushIconApplyQueue());
+    }, 40);
   }
 
   function ensureLucideReady() {
@@ -289,6 +298,15 @@
   function initObserver() {
     if (observer || !document.body) return;
 
+    const mayContainIcons = (node) => {
+      if (!node || node.nodeType !== 1) return false;
+      if (isPotentialIconElement(node)) return true;
+      if (typeof node.querySelector === "function") {
+        return !!node.querySelector(ICON_CANDIDATE_SELECTOR);
+      }
+      return false;
+    };
+
     observer = new MutationObserver((mutations) => {
       if (applyInProgress) return;
 
@@ -298,7 +316,7 @@
         if (mutation.type === "childList") {
           for (let j = 0; j < mutation.addedNodes.length; j += 1) {
             const node = mutation.addedNodes[j];
-            if (node && node.nodeType === 1) {
+            if (mayContainIcons(node)) {
               queueIconApply(node);
             }
           }
@@ -307,7 +325,7 @@
         if (
           mutation.type === "attributes" &&
           mutation.target &&
-          mutation.target.nodeType === 1
+          mayContainIcons(mutation.target)
         ) {
           queueIconApply(mutation.target);
         }
@@ -318,7 +336,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["class", "style", "data-lucide"],
+      attributeFilter: ["class", "data-lucide"],
     });
   }
 

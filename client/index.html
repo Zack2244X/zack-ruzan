@@ -593,7 +593,7 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
-        backdrop-filter: blur(20px);
+        backdrop-filter: blur(12px);
         box-shadow: 0 0 80px rgba(0, 0, 0, 0.5);
         transform-origin: 50% 60%;
         will-change: transform, opacity;
@@ -636,11 +636,9 @@
         0% {
           opacity: 0;
           transform: scale(0.78) translateY(45px);
-          filter: blur(10px);
         }
         55% {
           opacity: 1;
-          filter: blur(0);
         }
         80% {
           transform: scale(1.03) translateY(-4px);
@@ -648,7 +646,6 @@
         100% {
           transform: scale(1) translateY(0);
           opacity: 1;
-          filter: blur(0);
         }
       }
 
@@ -696,7 +693,7 @@
           );
         background-blend-mode: normal, screen;
         /* slight blur to soften transitions and create glow */
-        filter: blur(1.6px);
+        filter: blur(0.9px);
         /* stronger outer glow and deeper inner inset shadow for luxe look */
         box-shadow:
           0 0 96px rgba(233, 180, 60, 0.42),
@@ -1051,7 +1048,7 @@
               rgba(255, 255, 255, 0) 20%
             );
           background-blend-mode: normal, screen;
-          filter: blur(1px);
+          filter: blur(0.6px);
           box-shadow:
             0 0 54px rgba(233, 180, 60, 0.34),
             0 8px 36px rgba(0, 0, 0, 0.5) inset;
@@ -1112,8 +1109,8 @@
           rgba(255, 255, 255, 0.1),
           rgba(2, 6, 16, 0.76)
         ) !important;
-        backdrop-filter: blur(16px) saturate(145%) !important;
-        -webkit-backdrop-filter: blur(16px) saturate(145%) !important;
+        backdrop-filter: blur(10px) saturate(135%) !important;
+        -webkit-backdrop-filter: blur(10px) saturate(135%) !important;
       }
       #guest-modal .guest-modal-card {
         background: linear-gradient(
@@ -1122,8 +1119,8 @@
           rgba(255, 255, 255, 0.12)
         ) !important;
         border: 1px solid rgba(255, 255, 255, 0.34) !important;
-        backdrop-filter: blur(28px) saturate(160%) !important;
-        -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+        backdrop-filter: blur(14px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
         box-shadow:
           0 30px 70px rgba(0, 0, 0, 0.42),
           inset 0 1px 0 rgba(255, 255, 255, 0.46),
@@ -2098,7 +2095,7 @@
                 if (!document.querySelector('script[src^="/js/bootstrap"]')) {
                   const s = document.createElement("script");
                   s.type = "module";
-                  s.src = "/js/bootstrap.js?v=98";
+                  s.src = "/js/bootstrap.js?v=99";
                   document.head.appendChild(s);
                 }
               };
@@ -3612,10 +3609,10 @@
     </script>
 
     <!-- Icon replacement engine: converts old fa/bi markup to modern Lucide SVGs (auto for dynamic DOM too) -->
-    <script src="/js/icon-system.js?v=2" defer></script>
+    <script src="/js/icon-system.js?v=3" defer></script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script type="module" src="/js/bootstrap.js?v=98"></script>
+    <script type="module" src="/js/bootstrap.js?v=99"></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>

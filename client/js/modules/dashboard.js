@@ -31,10 +31,41 @@ window.forceDashboardRefresh = async function () {
 };
 // تحديث دوري للوحة الشرف كل دقيقة
 let leaderboardRefreshTimer = null;
+let leaderboardVisibilityListenerBound = false;
+
+function isDashboardActive() {
+  const dashboard = document.getElementById("dashboard-view");
+  if (!dashboard || dashboard.classList.contains("hidden")) return false;
+  if (typeof document !== "undefined" && document.visibilityState !== "visible")
+    return false;
+  return true;
+}
+
+function setHtmlIfChanged(element, html) {
+  if (!element) return;
+  const nextHtml = html || "";
+  if (element.__lastRenderedHtml === nextHtml) return;
+  element.innerHTML = nextHtml;
+  element.__lastRenderedHtml = nextHtml;
+}
 
 export function startLeaderboardAutoRefresh() {
   if (leaderboardRefreshTimer) clearInterval(leaderboardRefreshTimer);
+
+  if (!leaderboardVisibilityListenerBound && typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (!leaderboardRefreshTimer) return;
+      if (!isDashboardActive()) return;
+      if (typeof renderDashboard === "function") {
+        renderDashboard(true);
+      }
+    });
+    leaderboardVisibilityListenerBound = true;
+  }
+
   leaderboardRefreshTimer = setInterval(() => {
+    if (!isDashboardActive()) return;
     // إعادة تحميل لوحة الشرف من السيرفر وتحديث العرض
     if (typeof renderDashboard === "function") {
       // forceRefresh=true لتجاوز الكاش
@@ -254,6 +285,9 @@ export async function deleteQuiz(index, renderDashboardFn) {
 
 export async function renderDashboard(forceRefresh = false) {
   logFunctionStatus("renderDashboard", false);
+  const latestExamsGrid = document.getElementById("latest-exams-grid");
+  const latestNotesGrid = document.getElementById("latest-notes-grid");
+  const leaderboardList = document.getElementById("leaderboard-list");
 
   // ── حالة التحميل ──────────────────────────────────────────────────────
   if (!state.dataLoaded) {
@@ -263,12 +297,9 @@ export async function renderDashboard(forceRefresh = false) {
                 <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
                 <p class="font-medium">جاري تحميل البيانات...</p>
             </div>`;
-    document.getElementById("latest-exams-grid")?.replaceChildren();
-    document.getElementById("latest-notes-grid")?.replaceChildren();
-    document.getElementById("leaderboard-list")?.replaceChildren();
-    document.getElementById("latest-exams-grid").innerHTML = spinner;
-    document.getElementById("latest-notes-grid").innerHTML = spinner;
-    document.getElementById("leaderboard-list").innerHTML = spinner;
+    setHtmlIfChanged(latestExamsGrid, spinner);
+    setHtmlIfChanged(latestNotesGrid, spinner);
+    setHtmlIfChanged(leaderboardList, spinner);
     return;
   }
 
@@ -294,14 +325,15 @@ export async function renderDashboard(forceRefresh = false) {
   // ─────────────────────────────────────────────
   //  1. آخر 4 امتحانات
   // ─────────────────────────────────────────────
-  const latestExamsGrid = document.getElementById("latest-exams-grid");
-
   if (latestExams.length === 0) {
-    latestExamsGrid.innerHTML = `
+    setHtmlIfChanged(
+      latestExamsGrid,
+      `
         <div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed
                     border-gray-200 text-center text-gray-500 font-medium">
             لا توجد امتحانات مضافة حتى الآن.
-        </div>`;
+        </div>`,
+    );
   } else {
     let examsHtml = "";
 
@@ -380,21 +412,22 @@ export async function renderDashboard(forceRefresh = false) {
             </div>`;
     });
 
-    latestExamsGrid.innerHTML = examsHtml;
+        setHtmlIfChanged(latestExamsGrid, examsHtml);
   }
 
   // ─────────────────────────────────────────────
   //  2. آخر 3 مذكرات
   // ─────────────────────────────────────────────
-  const latestNotesGrid = document.getElementById("latest-notes-grid");
-
   const latestNotes = state.allNotes.slice(-3).reverse();
   if (latestNotes.length === 0) {
-    latestNotesGrid.innerHTML = `
+    setHtmlIfChanged(
+      latestNotesGrid,
+      `
             <div class="col-span-full py-12 bg-gray-50/50 rounded-3xl border-2 border-dashed
                         border-gray-200 text-center text-gray-500 font-medium">
                 لا توجد مذكرات أو ملفات مضافة حتى الآن.
-            </div>`;
+            </div>`,
+    );
   } else {
     let notesHtml = "";
     latestNotes.forEach((n) => {
@@ -455,13 +488,12 @@ export async function renderDashboard(forceRefresh = false) {
                     </div>
                 </div>`;
     });
-    latestNotesGrid.innerHTML = notesHtml;
+    setHtmlIfChanged(latestNotesGrid, notesHtml);
   }
 
   // ─────────────────────────────────────────────
   //  3. لوحة الشرف — أعلى 3
   // ─────────────────────────────────────────────
-  const leaderboardList = document.getElementById("leaderboard-list");
   let sourceLeaderboard = [];
   if (!leaderboardList) {
     logger.warn("[dashboard] leaderboard-list element not found");
@@ -525,10 +557,13 @@ export async function renderDashboard(forceRefresh = false) {
         });
 
       if (ranked.length === 0) {
-        leaderboardList.innerHTML = `
+        setHtmlIfChanged(
+          leaderboardList,
+          `
             <div class="text-center text-gray-500 py-10 bg-gray-50 rounded-2xl">
                 لا توجد نتائج مسجلة بعد.
-            </div>`;
+            </div>`,
+        );
       } else {
         const rankNames = ["المركز الأول", "المركز الثاني", "المركز الثالث"];
         const colors = [
@@ -556,7 +591,7 @@ export async function renderDashboard(forceRefresh = false) {
                     </div>
                 </div>`;
         });
-        leaderboardList.innerHTML = lbHtml;
+        setHtmlIfChanged(leaderboardList, lbHtml);
       }
     });
   }
