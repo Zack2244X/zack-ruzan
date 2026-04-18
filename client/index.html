@@ -84,7 +84,6 @@
     />
     <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
     <link rel="preload" href="/css/styles.min.css?v=64" as="style" />
-    <link rel="stylesheet" href="/css/fonts.css?v=44" />
 
         <style id="critical-css">
       /* Critical CSS (Above-the-fold only): keep this block intentionally small.
@@ -193,6 +192,7 @@
 
     <script>
       (function () {
+        const fontCssFile = "/css/fonts.css?v=44";
         const coreCssFiles = [
           "/css/tailwind.min.css?v=44",
           "/css/styles.min.css?v=64",
@@ -244,6 +244,14 @@
 
         window.loadCSS = loadCSS;
 
+        const loadFontCss = () => {
+          loadCSS(fontCssFile, {
+            attrs: {
+              "data-css-group": "fonts",
+            },
+          });
+        };
+
         const loadCoreCss = () => {
           coreCssFiles.forEach((href) => {
             loadCSS(href, {
@@ -292,6 +300,8 @@
 
           // Start core stylesheet application as early as possible.
           loadCoreCss();
+          // Keep fonts non-blocking while still requesting them early.
+          loadFontCss();
 
           if (document.readyState === "complete") {
             scheduleDeferredCss();
@@ -308,6 +318,7 @@
       })();
     </script>
     <noscript>
+      <link rel="stylesheet" href="/css/fonts.css?v=44" />
       <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
       <link rel="stylesheet" href="/css/styles.min.css?v=64" />
       <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
@@ -3850,8 +3861,51 @@
       };
     </script>
 
-    <!-- Lamp animation moved to external minified script to reduce inline JS cost -->
-    <script src="/js/lamp-animation.min.js?v=3" defer></script>
+    <!-- Lamp animation is loaded lazily to keep first interaction responsive. -->
+    <script>
+      (function () {
+        let lampAnimationLoaded = false;
+
+        const loadLampAnimation = function () {
+          if (lampAnimationLoaded) return;
+          lampAnimationLoaded = true;
+
+          const script = document.createElement("script");
+          script.src = "/js/lamp-animation.min.js?v=3";
+          script.defer = true;
+          document.head.appendChild(script);
+        };
+
+        window.__loadLampAnimation = loadLampAnimation;
+
+        if ("requestIdleCallback" in window) {
+          requestIdleCallback(loadLampAnimation, { timeout: 2500 });
+        } else {
+          setTimeout(loadLampAnimation, 900);
+        }
+
+        document.addEventListener("pointerdown", loadLampAnimation, {
+          once: true,
+          passive: true,
+          capture: true,
+        });
+        document.addEventListener("touchstart", loadLampAnimation, {
+          once: true,
+          passive: true,
+          capture: true,
+        });
+        document.addEventListener(
+          "keydown",
+          function () {
+            loadLampAnimation();
+          },
+          {
+            once: true,
+            capture: true,
+          },
+        );
+      })();
+    </script>
 
     <script>
       window.validateIconsInConsole = function () {
