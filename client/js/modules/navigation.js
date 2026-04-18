@@ -75,6 +75,12 @@ let modalTouchStartY = 0;
 let bodyLockScrollY = 0;
 let activeMainSheetMode = null;
 
+function _safeShowThemeToggle(visible) {
+  if (typeof window._showThemeToggle === "function") {
+    window._showThemeToggle(visible);
+  }
+}
+
 function getMainSheetNodes(mode) {
   const isNotes = mode === "notes";
   return {
@@ -898,7 +904,7 @@ export function openAdminAuthOrPanel() {
   } else {
     document.getElementById("student-menu-modal").classList.remove("hidden");
   }
-  _showThemeToggle(false);
+  _safeShowThemeToggle(false);
   _syncMainInteractionState();
 }
 
@@ -908,7 +914,7 @@ export function openAdminAuthOrPanel() {
 export function closeStudentMenu() {
   logFunctionStatus("closeStudentMenu", false);
   document.getElementById("student-menu-modal").classList.add("hidden");
-  _showThemeToggle(true);
+  _safeShowThemeToggle(true);
   updateDockUI("home");
 }
 
@@ -919,7 +925,7 @@ export function showLoginScreen() {
   document.getElementById("dashboard-view").classList.add("hidden");
   document.getElementById("ios-bottom-nav").classList.add("hidden");
   state.googleLoginMode = "student";
-  _showThemeToggle(false);
+  _safeShowThemeToggle(false);
   _syncMainInteractionState();
 }
 
