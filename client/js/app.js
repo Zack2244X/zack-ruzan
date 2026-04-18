@@ -151,7 +151,7 @@ import {
   closeAllOverlays,
   navToHome,
   navToSection as _navToSection,
-  openAdminAuthOrPanel,
+  openAdminAuthOrPanel as _openAdminAuthOrPanel,
   showLoginScreenWithDesktop,
   closeStudentMenu,
   showLoginScreen,
@@ -657,7 +657,67 @@ function copyQuizLink(quizId, event) {
 
 /** @private الانتقال لقسم — يستخدم window.X للحزمة الكسولة */
 function navToSection(section) {
-  _navToSection(section, window.renderSubjectFilters, window.renderHistoryTree);
+  const openSection = () =>
+    _navToSection(section, window.renderSubjectFilters, window.renderHistoryTree);
+
+  // Notes-heavy UI lives in features bundle; preload it before opening notes sheet.
+  if (section === "notes" && typeof window.__loadFeatures === "function") {
+    window
+      .__loadFeatures()
+      .then(openSection)
+      .catch((err) => {
+        logger.warn("[features] notes preload failed, falling back:", err);
+        openSection();
+      });
+    return;
+  }
+
+  openSection();
+}
+
+function isAdminRoute() {
+  try {
+    const path = String(window.location.pathname || "").toLowerCase();
+    const hash = String(window.location.hash || "").toLowerCase();
+    const query = new URLSearchParams(window.location.search || "");
+    return (
+      path.startsWith("/admin") ||
+      hash.includes("/admin") ||
+      query.get("view") === "admin" ||
+      query.get("section") === "admin"
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+async function preloadRouteBundles() {
+  if (isAdminRoute() && typeof window.__loadAdmin === "function") {
+    try {
+      await window.__loadAdmin();
+      logger.log("[lazy] admin bundle preloaded for /admin route");
+    } catch (e) {
+      logger.warn("[lazy] admin route preload skipped:", e?.message || e);
+    }
+  }
+}
+
+function openAdminAuthOrPanel() {
+  const openPanel = () => _openAdminAuthOrPanel();
+
+  // Ensure admin controls are loaded before opening admin panel.
+  if (state.isAdmin && typeof window.__loadAdmin === "function") {
+    window
+      .__loadAdmin()
+      .then(openPanel)
+      .catch((err) => {
+        logger.warn("[admin] preload failed, opening panel anyway:", err);
+        openPanel();
+      });
+    return;
+  }
+
+  openPanel();
 }
 
 /** @private معالجة تسجيل دخول الطالب */
@@ -701,10 +761,6 @@ async function loadApp() {
 
       navToHome();
       renderDashboard(); // يعرض spinner أولاً ريثما تُحمَّل البيانات
-
-      // ── تحميل الحزمة الكسولة للميزات مبكّراً (قبل الاشتباك مع السيرفر) ──
-      // بحلول وقت وصول البيانات تكون الحزمة جاهزة بالفعل
-      window.__loadFeatures?.();
 
       if (isGuest) {
         // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
@@ -901,19 +957,20 @@ Object.assign(window, {
   function _loadAdmin() {
     if (_adminLoaded) return Promise.resolve();
     if (!_adminLoadPromise) {
-      _adminLoadPromise = new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "/js/app.admin.bundle.min.js?v=88";
-        s.onload = () => {
+      _adminLoadPromise = import("/js/app.admin.bundle.min.js?v=88")
+        .then(() => {
           _adminLoaded = true;
-          resolve();
-        };
-        s.onerror = () => reject(new Error("Admin bundle failed to load"));
-        document.head.appendChild(s);
-      });
+        })
+        .catch((err) => {
+          _adminLoadPromise = null;
+          throw err || new Error("Admin bundle failed to load");
+        });
     }
     return _adminLoadPromise;
   }
+
+  // Expose admin loader for route-based preloading and settings button flow.
+  window.__loadAdmin = _loadAdmin;
 
   ADMIN_FNS.forEach((name) => {
     window[name] = function (...args) {
@@ -971,21 +1028,19 @@ Object.assign(window, {
   function _loadFeatures() {
     if (_featuresLoaded) return Promise.resolve();
     if (!_featuresPromise) {
-      _featuresPromise = new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "/js/app.features.bundle.min.js?v=95";
-        s.onload = () => {
+      _featuresPromise = import("/js/app.features.bundle.min.js?v=95")
+        .then(() => {
           _featuresLoaded = true;
-          resolve();
-        };
-        s.onerror = () => reject(new Error("Features bundle failed to load"));
-        document.head.appendChild(s);
-      });
+        })
+        .catch((err) => {
+          _featuresPromise = null;
+          throw err || new Error("Features bundle failed to load");
+        });
     }
     return _featuresPromise;
   }
 
-  // Expose loader so loadApp() can trigger proactive prefetch
+  // Expose loader so router/interaction hooks can trigger on-demand loading
   window.__loadFeatures = _loadFeatures;
 
   FEATURE_FNS.forEach((name) => {
@@ -1020,10 +1075,28 @@ if (document.readyState === "loading") {
   fallbackLoginListener();
 }
 
-// ============================================
-//  نقطة البداية
-// ============================================
-export async function startApp() {
+/**
+ * يمنح المتصفح فرصة لمعالجة الإدخال/الطلاء بين خطوات التهيئة.
+ * يفضل scheduler.yield() عند التوفر مع fallback بسيط إلى setTimeout.
+ */
+async function yieldToMain(timeoutMs = 0) {
+  const schedulerApi =
+    typeof globalThis !== "undefined" ? globalThis.scheduler : undefined;
+  if (schedulerApi && typeof schedulerApi.yield === "function") {
+    try {
+      await schedulerApi.yield();
+      return;
+    } catch (e) {
+      // Ignore scheduler failures and use timeout fallback.
+    }
+  }
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, Math.max(0, timeoutMs | 0));
+  });
+}
+
+async function initializeApp() {
   setupFocusManagement();
   logFunctionStatus("window.onload", false);
 
@@ -1037,6 +1110,8 @@ export async function startApp() {
   // Expose api singletons for admin bundle (avoids duplicating state-aware modules)
   window.__api = { apiCall, fetchScoresFromServer, fetchLeaderboardFromServer };
 
+  await yieldToMain();
+
   // اقرَأ الإعدادات العامة المضمّنة بواسطة /config.js مبكراً
   try {
     const cfg =
@@ -1049,6 +1124,10 @@ export async function startApp() {
   } catch (e) {
     logger.warn("⚠️ لم تتوفر الإعدادات العامة في window.__PUBLIC_CONFIG:", e);
   }
+
+  await preloadRouteBundles();
+
+  await yieldToMain();
 
   // ── تفعيل قفل scroll الخلفية عند فتح أي مودال ──────────────────────────
   // DOMContentLoaded قد يكون فات بالفعل، استخدم شرط الجاهزية
@@ -1074,9 +1153,13 @@ export async function startApp() {
     return originalSubmitScore ? originalSubmitScore(data) : null;
   };
 
+  await yieldToMain();
+
   // معالجة Google redirect أو تحميل التطبيق
   const handledRedirect = handleGoogleRedirectToken();
   initGoogleSignIn();
+
+  await yieldToMain();
 
   // IMPORTANT: Always call loadApp initialization code, even after Google redirect
   // This ensures state setup, theme initialization, and DOM setup happen
@@ -1093,6 +1176,8 @@ export async function startApp() {
       initOverlayScrollLock();
     }
   }
+
+  await yieldToMain();
 
   // ── تهيئة وحدات الحركة والتمرير بشكل غير حاجب للعرض الأول ───────────────
   (async function initNonCriticalRuntime() {
@@ -1202,4 +1287,11 @@ export async function startApp() {
   })().catch((e) => {
     logger.warn("[app] non-critical init skipped:", e?.message || e);
   });
+}
+
+// ============================================
+//  نقطة البداية
+// ============================================
+export async function startApp() {
+  return initializeApp();
 }

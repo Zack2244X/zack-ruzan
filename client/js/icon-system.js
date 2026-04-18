@@ -4,6 +4,8 @@
   const SPIN_ICON_CLASSES = new Set(["fa-spin", "fa-pulse"]);
   const ICON_PALETTES = new Set(["ocean", "amber", "mint"]);
   const LUCIDE_RUNTIME_SRC = "/js/vendor/lucide.subset.min.js?v=1";
+  const ICON_LAZY_ROOT_MARGIN = "240px 0px";
+  const ICON_LAZY_THRESHOLD = 0.01;
   const ICON_CANDIDATE_SELECTOR =
     "i, span[data-lucide], span[class*='fa-'], span[class*='bi-'], span.fa, span.fas, span.far, span.fab, span.bi";
 
@@ -70,6 +72,7 @@
   let lucideWaitTimer = null;
   let flushDebounceTimer = null;
   let lucideScriptPromise = null;
+  let visibilityObserver = null;
   let legacyOnlyMode = false;
   const pendingRoots = new Set();
 
@@ -221,6 +224,8 @@
 
     el.setAttribute("data-modern-icon", "1");
     el.setAttribute("data-lucide", spec.iconName);
+    el.setAttribute("data-rendered-icon", spec.iconName);
+    el.removeAttribute("data-icon-observed");
     el.setAttribute("aria-hidden", "true");
 
     const svg = lucideApi.createElement(iconDef);
@@ -230,6 +235,59 @@
     svg.setAttribute("focusable", "false");
 
     el.replaceChildren(svg);
+  }
+
+  function ensureVisibilityObserver() {
+    if (visibilityObserver) return visibilityObserver;
+    if (!("IntersectionObserver" in window)) return null;
+
+    visibilityObserver = new IntersectionObserver(
+      (entries) => {
+        for (let i = 0; i < entries.length; i += 1) {
+          const entry = entries[i];
+          if (!entry || !entry.target) continue;
+          if (!entry.isIntersecting && entry.intersectionRatio <= 0) continue;
+
+          const target = entry.target;
+          if (visibilityObserver) {
+            visibilityObserver.unobserve(target);
+          }
+          target.removeAttribute("data-icon-observed");
+          renderIconElement(target);
+        }
+      },
+      {
+        root: null,
+        rootMargin: ICON_LAZY_ROOT_MARGIN,
+        threshold: ICON_LAZY_THRESHOLD,
+      },
+    );
+
+    return visibilityObserver;
+  }
+
+  function queueIconElementForRender(el) {
+    if (!el || el.nodeType !== 1) return;
+
+    const desiredIcon = (el.getAttribute("data-lucide") || "").trim();
+    const renderedIcon = (el.getAttribute("data-rendered-icon") || "").trim();
+    if (
+      el.getAttribute("data-modern-icon") === "1" &&
+      desiredIcon &&
+      renderedIcon === desiredIcon
+    ) {
+      return;
+    }
+
+    const io = ensureVisibilityObserver();
+    if (!io) {
+      renderIconElement(el);
+      return;
+    }
+
+    if (el.getAttribute("data-icon-observed") === "1") return;
+    el.setAttribute("data-icon-observed", "1");
+    io.observe(el);
   }
 
   function flushIconApplyQueue() {
@@ -250,7 +308,7 @@
         const root = roots[r];
         const nodes = collectIconCandidates(root);
         for (let i = 0; i < nodes.length; i += 1) {
-          renderIconElement(nodes[i]);
+          queueIconElementForRender(nodes[i]);
         }
       }
     } finally {
@@ -322,6 +380,11 @@
     if (observer) {
       observer.disconnect();
       observer = null;
+    }
+
+    if (visibilityObserver) {
+      visibilityObserver.disconnect();
+      visibilityObserver = null;
     }
 
     document.documentElement.setAttribute("data-icon-runtime", "legacy");

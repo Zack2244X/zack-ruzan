@@ -57,9 +57,10 @@
 
     <link rel="manifest" href="/manifest.json" />
     <title>منصة الدراعمة</title>
-    <!-- ✅ FIX: Load Tailwind + Dashboard CSS eagerly to fix LCP (3.63s → 2.5s)
-             Previously: CSS loaded on first click/touch → delayed dashboard rendering
-             Now: CSS loaded immediately → dashboard renders without waiting -->
+        <!-- Critical CSS strategy:
+          - Keep above-the-fold rules inline in <head> (styles below).
+          - Preload heavy stylesheets, then apply them asynchronously via loadCSS.
+          - Preserve full styling for no-JS browsers via <noscript> fallback. -->
     <link
       rel="preload"
       as="image"
@@ -83,51 +84,232 @@
     />
     <link rel="preload" href="/css/tailwind.min.css?v=44" as="style" />
     <link rel="preload" href="/css/styles.min.css?v=63" as="style" />
-    <link rel="preload" href="/css/dark-fixes.min.css?v=44" as="style" />
-    <link rel="preload" href="/css/login-extra.min.css?v=44" as="style" />
-    <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
-    <link rel="stylesheet" href="/css/styles.min.css?v=63" />
     <link rel="stylesheet" href="/css/fonts.css?v=44" />
+
+        <style id="critical-css">
+      /* Critical CSS (Above-the-fold only): keep this block intentionally small.
+         Full styling is loaded async via loadCSS below. */
+      :root {
+        --z-base: 0;
+        --z-normal: 100;
+        --z-modal: 300;
+        --z-overlay: 500;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        line-height: 1.5;
+        -webkit-text-size-adjust: 100%;
+        overflow-y: scroll;
+        scrollbar-gutter: stable;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        line-height: inherit;
+        padding: 1rem;
+      }
+
+      @media (min-width: 640px) {
+        body {
+          padding: 2rem;
+        }
+      }
+
+      .hidden,
+      [hidden] {
+        display: none !important;
+      }
+
+      img,
+      svg,
+      video,
+      canvas,
+      audio,
+      iframe,
+      embed,
+      object {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+
+      #login-screen {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: var(--z-normal);
+        background: #080c14;
+        overflow: hidden;
+      }
+
+      #loading-screen {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: var(--z-overlay);
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #loading-screen.show,
+      body.loading-active #loading-screen {
+        display: flex;
+      }
+
+      body.loading-active #login-screen,
+      body.loading-active #dashboard-view,
+      body.loading-active #ios-bottom-nav {
+        display: none !important;
+      }
+
+      #tree-bottom-sheet,
+      #notes-bottom-sheet,
+      #admin-bottom-sheet {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-modal);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      #tree-bottom-sheet:not(.hidden),
+      #notes-bottom-sheet:not(.hidden),
+      #admin-bottom-sheet:not(.hidden) {
+        pointer-events: auto;
+      }
+    </style>
 
     <script>
       (function () {
-        const asyncCssFiles = [
+        const coreCssFiles = [
+          "/css/tailwind.min.css?v=44",
+          "/css/styles.min.css?v=63",
+        ];
+        const deferredCssFiles = [
           "/css/dark-fixes.min.css?v=44",
           "/css/login-extra.min.css?v=44",
         ];
 
-        const loadCssFile = (href) => {
-          if (document.querySelector(`link[rel=\"stylesheet\"][href=\"${href}\"]`)) {
-            return;
+        function loadCSS(href, options) {
+          const opts = options || {};
+          const media = opts.media || "all";
+          const before = opts.before || null;
+          const attrs = opts.attrs || {};
+
+          const existing = document.querySelector(
+            'link[rel="stylesheet"][href="' + href + '"]',
+          );
+          if (existing) {
+            existing.media = media;
+            return existing;
           }
+
           const link = document.createElement("link");
           link.rel = "stylesheet";
           link.href = href;
-          link.setAttribute("data-async-css", "1");
-          document.head.appendChild(link);
+          link.media = "print";
+
+          Object.keys(attrs).forEach((key) => {
+            link.setAttribute(key, attrs[key]);
+          });
+
+          const finalize = () => {
+            link.media = media;
+            link.setAttribute("data-css-loaded", "1");
+          };
+
+          link.addEventListener("load", finalize, { once: true });
+          link.addEventListener("error", finalize, { once: true });
+
+          if (before && before.parentNode) {
+            before.parentNode.insertBefore(link, before);
+          } else {
+            document.head.appendChild(link);
+          }
+
+          return link;
+        }
+
+        window.loadCSS = loadCSS;
+
+        const loadCoreCss = () => {
+          coreCssFiles.forEach((href) => {
+            loadCSS(href, {
+              attrs: {
+                "data-css-group": "core",
+              },
+            });
+          });
         };
 
-        const scheduleAsyncCssLoad = function () {
-          const run = function () {
-            asyncCssFiles.forEach(loadCssFile);
+        const loadDeferredCss = () => {
+          deferredCssFiles.forEach((href) => {
+            loadCSS(href, {
+              attrs: {
+                "data-css-group": "deferred",
+              },
+            });
+          });
+        };
+
+        // Keep compatibility with existing runtime hooks.
+        window.__loadCoreCss = loadCoreCss;
+        window.__loadDeferredCss = loadDeferredCss;
+
+        let cssLoadScheduled = false;
+        let deferredCssScheduled = false;
+
+        const scheduleDeferredCss = function () {
+          if (deferredCssScheduled) return;
+          deferredCssScheduled = true;
+
+          const runDeferred = function () {
+            loadDeferredCss();
           };
+
           if ("requestIdleCallback" in window) {
-            requestIdleCallback(run, { timeout: 1500 });
+            requestIdleCallback(runDeferred, { timeout: 2000 });
           } else {
-            setTimeout(run, 50);
+            setTimeout(runDeferred, 150);
           }
         };
 
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", scheduleAsyncCssLoad, {
-            once: true,
-          });
-        } else {
-          scheduleAsyncCssLoad();
-        }
+        const scheduleCssLoad = function () {
+          if (cssLoadScheduled) return;
+          cssLoadScheduled = true;
+
+          // Start core stylesheet application as early as possible.
+          loadCoreCss();
+
+          if (document.readyState === "complete") {
+            scheduleDeferredCss();
+          } else {
+            window.addEventListener("load", scheduleDeferredCss, {
+              once: true,
+            });
+            setTimeout(scheduleDeferredCss, 2400);
+          }
+        };
+
+        // Execute immediately from <head> so core CSS starts applying ASAP.
+        scheduleCssLoad();
       })();
     </script>
     <noscript>
+      <link rel="stylesheet" href="/css/tailwind.min.css?v=44" />
+      <link rel="stylesheet" href="/css/styles.min.css?v=63" />
       <link rel="stylesheet" href="/css/dark-fixes.min.css?v=44" />
       <link rel="stylesheet" href="/css/login-extra.min.css?v=44" />
     </noscript>

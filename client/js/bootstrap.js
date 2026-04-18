@@ -405,6 +405,24 @@ import logger from './utils/logger.js?v=2';
     return;
   }
 
+  // If user lands directly on /admin route, start app bootstrap immediately.
+  // Home route remains fully lazy-loaded on first interaction.
+  try {
+    const path = String(window.location.pathname || "").toLowerCase();
+    const query = new URLSearchParams(window.location.search || "");
+    if (
+      path.startsWith("/admin") ||
+      hash.includes("/admin") ||
+      query.get("view") === "admin" ||
+      query.get("section") === "admin"
+    ) {
+      triggerAppLoad();
+      return;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+
   // If sessionStorage claims a user exists, validate cookie session first.
   // This prevents stale local state from briefly showing dashboard/UI before login.
   try {

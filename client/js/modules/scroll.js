@@ -24,14 +24,17 @@ let _lenis = null;
 /** @type {number|null} معرّف requestAnimationFrame الحالي */
 let _rafId = null;
 
+/** @type {Function|null} callback مربوط مع GSAP ticker */
+let _tickerDriverFn = null;
+
+/** @type {boolean} هل Lenis مربوط حالياً مع GSAP ticker */
+let _tickerDriverAttached = false;
+
 /** @type {boolean} هل التمرير الناعم مُفعَّل حالياً */
 let _smoothEnabled = true;
 
 /** @type {boolean} تفعيل ربط ScrollTrigger مع Lenis */
 let _scrollTriggerSyncEnabled = true;
-
-/** @type {boolean} guard لمنع تكديس تحديثات ScrollTrigger داخل نفس الإطار */
-let _scrollTriggerUpdateQueued = false;
 
 /** @type {IntersectionObserver|null} مراقب الدخول للمنظور */
 let _scrollObserver = null;
@@ -50,7 +53,7 @@ const _observedElements = new Map();
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * حلقة requestAnimationFrame التي تُغذِّي Lenis بالوقت في كل إطار.
+ * حلقة requestAnimationFrame fallback التي تُغذِّي Lenis بالوقت في كل إطار.
  * تُوقف نفسها تلقائياً إن لم تعد هناك نسخة Lenis.
  *
  * @param {DOMHighResTimeStamp} time — الوقت المُمرَّر من RAF
@@ -64,6 +67,75 @@ function _rafLoop(time) {
     _lenis.raf(time);
   }
   _rafId = requestAnimationFrame(_rafLoop);
+}
+
+/**
+ * يربط Lenis مع GSAP ticker (الربط الموصى به مع ScrollTrigger).
+ * @returns {boolean} true عند نجاح الربط، false عند عدم توفر GSAP ticker.
+ */
+function _attachGsapTickerDriver() {
+  const gsapApi = window.gsap;
+  if (!gsapApi?.ticker?.add) return false;
+  if (_tickerDriverAttached) return true;
+
+  _tickerDriverFn = (timeInSeconds) => {
+    if (!_lenis || !_smoothEnabled) return;
+    // GSAP ticker يمرر الوقت بالثواني بينما Lenis.raf يتوقع milliseconds.
+    _lenis.raf(timeInSeconds * 1000);
+  };
+
+  gsapApi.ticker.add(_tickerDriverFn);
+
+  // إيقاف lag smoothing يمنع القفزات/التعويض الزمني العدواني أثناء التمرير السريع.
+  if (typeof gsapApi.ticker.lagSmoothing === "function") {
+    gsapApi.ticker.lagSmoothing(0);
+  }
+
+  _tickerDriverAttached = true;
+  logger.log("[scroll] ✓ Lenis مربوط مع GSAP ticker (lagSmoothing=0)");
+  return true;
+}
+
+/**
+ * يفصل Lenis عن GSAP ticker إن كان مربوطاً.
+ */
+function _detachGsapTickerDriver() {
+  if (!_tickerDriverAttached || !_tickerDriverFn) return;
+  const gsapApi = window.gsap;
+  if (gsapApi?.ticker?.remove) {
+    gsapApi.ticker.remove(_tickerDriverFn);
+  }
+  _tickerDriverFn = null;
+  _tickerDriverAttached = false;
+}
+
+/**
+ * يبدأ driver الخاص بـ Lenis: يفضّل GSAP ticker، ويعود لـ RAF عند عدم توفره.
+ */
+function _startLenisDriver() {
+  if (_attachGsapTickerDriver()) {
+    if (_rafId !== null) {
+      cancelAnimationFrame(_rafId);
+      _rafId = null;
+    }
+    return;
+  }
+
+  if (_rafId === null) {
+    _rafId = requestAnimationFrame(_rafLoop);
+    logger.log("[scroll] ℹ️ GSAP ticker غير متاح — استخدام RAF fallback");
+  }
+}
+
+/**
+ * يوقف أي driver فعّال (GSAP ticker أو RAF fallback).
+ */
+function _stopLenisDriver() {
+  _detachGsapTickerDriver();
+  if (_rafId !== null) {
+    cancelAnimationFrame(_rafId);
+    _rafId = null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,8 +284,8 @@ function _initWithClass(LenisClass, options) {
     ...options,
   });
 
-  // ابدأ حلقة RAF
-  _rafId = requestAnimationFrame(_rafLoop);
+  // ابدأ driver Lenis (GSAP ticker أولاً، مع fallback)
+  _startLenisDriver();
 
   // On touch devices, avoid per-scroll ScrollTrigger sync to reduce main-thread pressure.
   const isMobileRuntime =
@@ -228,15 +300,10 @@ function _initWithClass(LenisClass, options) {
   // → جانك ظاهر بوضوح على الأجهزة البطيئة (Adreno/Mali mid-range).
   // الحل: عند كل تحديث Lenis نُخبر ScrollTrigger بإعادة حساب مواضعه.
   _lenis.on("scroll", () => {
-    if (!_scrollTriggerSyncEnabled || _scrollTriggerUpdateQueued) return;
-    _scrollTriggerUpdateQueued = true;
+    if (!_scrollTriggerSyncEnabled) return;
     try {
-      requestAnimationFrame(() => {
-        _scrollTriggerUpdateQueued = false;
-        window.ScrollTrigger?.update?.();
-      });
+      window.ScrollTrigger?.update?.();
     } catch (e) {
-      _scrollTriggerUpdateQueued = false;
       /* ignore */
     }
   });
@@ -342,9 +409,7 @@ export function enableSmoothScroll() {
   _smoothEnabled = true;
   if (_lenis) {
     _lenis.start();
-    if (_rafId === null) {
-      _rafId = requestAnimationFrame(_rafLoop);
-    }
+    _startLenisDriver();
     logger.log("[scroll] التمرير الناعم: مُفعَّل");
   }
 }
@@ -357,10 +422,7 @@ export function disableSmoothScroll() {
   _smoothEnabled = false;
   if (_lenis) {
     _lenis.stop();
-    if (_rafId !== null) {
-      cancelAnimationFrame(_rafId);
-      _rafId = null;
-    }
+    _stopLenisDriver();
     logger.log("[scroll] التمرير الناعم: مُعطَّل");
   }
 }
@@ -444,10 +506,7 @@ export function getLenisInstance() {
  * نادراً ما تحتاجه في الإنتاج.
  */
 export function destroyScroll() {
-  if (_rafId !== null) {
-    cancelAnimationFrame(_rafId);
-    _rafId = null;
-  }
+  _stopLenisDriver();
   if (_lenis) {
     _lenis.destroy();
     _lenis = null;

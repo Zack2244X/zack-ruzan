@@ -725,21 +725,42 @@ body::before {
   touch-action: pan-y;
 }
 
-/* ── Content Visibility — تأجيل رسم الأقسام خارج المنظور ─────────────
-   content-visibility: auto → المتصفح يتخطى layout+paint لهذا القسم
-   حتى يقترب من المنظور (viewport margin افتراضياً = 50% ارتفاع الشاشة)
+/* ── Content Visibility — تأجيل الرسم للعناصر خارج الشاشة ─────────────
+   ضع `.cv-auto-card` أو `.cv-auto-section` على العناصر المتكررة الطويلة.
+   لا تُستخدم على عناصر LCP الأساسية (مثل hero/login card) لتجنب تأخير العرض الأول.
 
-   مثال عملي على Y9 Prime (6.59", 1080×2340, ~120dpi DPR≈2.36):
-   الصفحة الرئيسية تحتوي 3 أقسام — على الهاتف يظهر القسم الأول فقط.
-   بدون content-visibility: المتصفح يرسم الـ 3 أقسام دفعة واحدة.
-   معها: يرسم القسم الأول فقط ← FCP أسرع + أول scroll أكثر سلاسة.
+   أين توضع؟
+   - هذا هو المكان الصحيح في المصدر `styles.css` ضمن قسم الأداء.
+   - بعد ذلك تُولَّد تلقائياً إلى `styles.min.css` عبر build.
 
-   contain-intrinsic-block-size: auto 400px
-   auto = يحفظ الارتفاع الحقيقي بعد أول رسم لمنع scrollbar jump
+   contain-intrinsic-size:
+   - قيمة تقديرية تحفظ الارتفاع قبل الرسم الفعلي وتمنع قفز scroll.
+   - `auto` يحفظ المقاس الحقيقي بعد أول ظهور.
    ─────────────────────────────────────────────────────────── */
+
+/* Reusable utility for repeated card-like items. */
+.cv-auto-card,
+.card.cv-auto,
+#latest-exams-grid > div,
+#latest-notes-grid > div {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 280px;
+}
+
+/* Reusable utility for repeated long sections. */
+.cv-auto-section,
+.section.cv-auto,
 #dashboard-view > section {
   content-visibility: auto;
-  contain-intrinsic-block-size: auto 400px;
+  contain-intrinsic-size: auto 420px;
+}
+
+/* Ensure keyboard users never interact with an unrendered subtree. */
+.cv-auto-card:focus-within,
+.cv-auto-section:focus-within,
+.card.cv-auto:focus-within,
+.section.cv-auto:focus-within {
+  content-visibility: visible;
 }
 
 /* ── Time Badge (pulsing clock animation) ───────────────────────── */
