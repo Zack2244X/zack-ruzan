@@ -3064,7 +3064,10 @@
       aria-live="polite"
     ></div>
 
-    <script>
+    <script
+      type="application/x-disabled-inline"
+      data-performance-lazy="accounts-runtime"
+    >
       (function () {
         function esc(v) {
           return String(v || "")
@@ -3785,6 +3788,139 @@
             } catch (e) {}
             return original.apply(this, arguments);
           };
+          window.startGuestLogin.__auditWrapped = true;
+        });
+      })();
+    </script>
+
+    <script>
+      (function () {
+        const runtimeSrc = "/js/accounts-management-runtime.js?v=1";
+        let runtimeLoadingPromise = null;
+
+        function ensureAccountsRuntimeLoaded() {
+          if (window.__accountsMgmtRuntimeReady) {
+            return Promise.resolve();
+          }
+
+          if (runtimeLoadingPromise) {
+            return runtimeLoadingPromise;
+          }
+
+          runtimeLoadingPromise = new Promise(function (resolve, reject) {
+            const existing = document.querySelector(
+              'script[data-accounts-runtime="1"]',
+            );
+
+            if (existing) {
+              existing.addEventListener("load", resolve, { once: true });
+              existing.addEventListener("error", reject, { once: true });
+              return;
+            }
+
+            const script = document.createElement("script");
+            script.src = runtimeSrc;
+            script.defer = true;
+            script.setAttribute("data-accounts-runtime", "1");
+            script.addEventListener("load", resolve, { once: true });
+            script.addEventListener("error", reject, { once: true });
+            document.head.appendChild(script);
+          }).catch(function (err) {
+            runtimeLoadingPromise = null;
+            throw err;
+          });
+
+          return runtimeLoadingPromise;
+        }
+
+        function deferredCall(name) {
+          return function () {
+            const args = arguments;
+
+            ensureAccountsRuntimeLoaded()
+              .then(function () {
+                if (typeof window[name] === "function") {
+                  return window[name].apply(window, args);
+                }
+              })
+              .catch(function () {
+                // keep UI responsive even if lazy runtime fails unexpectedly
+              });
+          };
+        }
+
+        window.__loadAccountsManagementRuntime = ensureAccountsRuntimeLoaded;
+        window.openAccountsManagementModal = deferredCall(
+          "openAccountsManagementModal",
+        );
+        window.closeAccountsManagementModal = deferredCall(
+          "closeAccountsManagementModal",
+        );
+      })();
+    </script>
+
+    <script>
+      (function () {
+        function getClientDeviceId() {
+          try {
+            var key = "client-device-id";
+            var id = localStorage.getItem(key);
+            if (id && id.length >= 12) return id;
+            id =
+              "dev-" +
+              (crypto.randomUUID
+                ? crypto.randomUUID()
+                : Date.now().toString(36) +
+                  "-" +
+                  Math.random().toString(36).slice(2, 10));
+            localStorage.setItem(key, id);
+            return id;
+          } catch (e) {
+            return "dev-fallback-" + Math.random().toString(36).slice(2, 10);
+          }
+        }
+
+        function getCsrfTokenFromCookie() {
+          try {
+            var parts = document.cookie.split(";");
+            for (var i = 0; i < parts.length; i++) {
+              var c = parts[i].trim();
+              if (c.indexOf("csrf_token=") === 0) {
+                return c.substring("csrf_token=".length);
+              }
+            }
+          } catch (e) {}
+          return "";
+        }
+
+        window.addEventListener("load", function () {
+          var original = window.startGuestLogin;
+          if (typeof original !== "function" || original.__auditWrapped) return;
+
+          window.startGuestLogin = function () {
+            try {
+              var deviceId = getClientDeviceId();
+              var csrfToken = getCsrfTokenFromCookie();
+              var headers = {
+                "Content-Type": "application/json",
+                "X-Device-Id": deviceId,
+              };
+              if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+
+              fetch("/api/auth/guest-session", {
+                method: "POST",
+                headers: headers,
+                credentials: "include",
+                body: JSON.stringify({
+                  deviceId: deviceId,
+                  deviceName: navigator.userAgent || "",
+                }),
+                keepalive: true,
+              }).catch(function () {});
+            } catch (e) {}
+            return original.apply(this, arguments);
+          };
+
           window.startGuestLogin.__auditWrapped = true;
         });
       })();
