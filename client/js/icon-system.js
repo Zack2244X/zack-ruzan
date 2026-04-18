@@ -584,33 +584,70 @@
         }
 
         const mobileStartup = isMobileStartup();
-        ensureLucideReady();
-        queueIconApply(getInitialIconRoot());
+        let mobileRuntimeStarted = false;
 
-        // A second pass after full page load catches late-initialized modal markup.
-        window.addEventListener(
-          "load",
-          function () {
-            const runFullPass = function () {
-              queueIconApply(document);
-            };
+        const runFullPass = function () {
+          queueIconApply(document);
+        };
 
-            if (mobileStartup && "requestIdleCallback" in window) {
-              requestIdleCallback(runFullPass, { timeout: 5000 });
-            } else if (mobileStartup) {
-              setTimeout(runFullPass, 2500);
+        const runMobileRuntime = function () {
+          if (mobileRuntimeStarted) return;
+          mobileRuntimeStarted = true;
+
+          ensureLucideReady();
+          queueIconApply(getInitialIconRoot());
+
+          // Avoid large startup work on mobile until after first intent.
+          setTimeout(() => {
+            if ("requestIdleCallback" in window) {
+              requestIdleCallback(runFullPass, { timeout: 6000 });
             } else {
-              runFullPass();
+              setTimeout(runFullPass, 1800);
             }
-          },
-          { once: true },
-        );
+          }, 1500);
+        };
 
-        setTimeout(function () {
-          if (!mobileStartup) {
+        if (mobileStartup) {
+          // Start runtime lazily on first user intent; fallback later for passive sessions.
+          window.addEventListener("pointerdown", runMobileRuntime, {
+            once: true,
+            passive: true,
+            capture: true,
+          });
+          window.addEventListener("touchstart", runMobileRuntime, {
+            once: true,
+            passive: true,
+            capture: true,
+          });
+          window.addEventListener(
+            "keydown",
+            function () {
+              runMobileRuntime();
+            },
+            {
+              once: true,
+              capture: true,
+            },
+          );
+
+          setTimeout(runMobileRuntime, 9000);
+        } else {
+          ensureLucideReady();
+          queueIconApply(getInitialIconRoot());
+
+          // A second pass after full page load catches late-initialized modal markup.
+          window.addEventListener(
+            "load",
+            function () {
+              runFullPass();
+            },
+            { once: true },
+          );
+
+          setTimeout(function () {
             queueIconApply(document);
-          }
-        }, mobileStartup ? 3200 : 1200);
+          }, 1200);
+        }
 
         initObserver();
       })
