@@ -288,9 +288,35 @@
       return;
     }
 
+    // Render immediately for icons already within (or close to) the viewport.
+    // This avoids rare IO timing issues where visible icons remain unrendered.
+    try {
+      const rect = el.getBoundingClientRect();
+      const viewportHeight =
+        window.innerHeight || document.documentElement.clientHeight || 0;
+      const nearViewport =
+        viewportHeight > 0 &&
+        rect.bottom >= -260 &&
+        rect.top <= viewportHeight + 260;
+      if (nearViewport) {
+        renderIconElement(el);
+        return;
+      }
+    } catch (err) {
+      // If layout read fails, fall back to IO below.
+    }
+
     if (el.getAttribute("data-icon-observed") === "1") return;
     el.setAttribute("data-icon-observed", "1");
     io.observe(el);
+
+    // Hard fallback in case IO never fires for this node.
+    setTimeout(() => {
+      if (!el.isConnected) return;
+      if (el.getAttribute("data-modern-icon") === "1") return;
+      el.removeAttribute("data-icon-observed");
+      renderIconElement(el);
+    }, 1400);
   }
 
   function flushIconApplyQueue() {
