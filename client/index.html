@@ -100,6 +100,7 @@
     <script>
       (function () {
         var lowEnd = false;
+        var mobileStartup = false;
 
         try {
           var nav = navigator || {};
@@ -114,31 +115,51 @@
           var lowCpu = cores > 0 && cores <= 4;
           var lowMemory = memory > 0 && memory <= 4;
           lowEnd = saveData || slowConnection || lowCpu || lowMemory;
+
+          try {
+            mobileStartup =
+              (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+              (window.matchMedia && window.matchMedia("(max-width: 900px)").matches);
+          } catch (mqErr) {
+            mobileStartup = false;
+          }
         } catch (e) {
           lowEnd = false;
+          mobileStartup = false;
         }
 
         try {
           window.__startupLowEnd = lowEnd;
+          window.__startupMobile = mobileStartup;
         } catch (e) {
           /* ignore */
         }
 
-        if (!lowEnd) return;
-
         var root = document.documentElement;
         if (root) {
-          root.classList.add("startup-low-end", "power-save-mode");
-          root.setAttribute("data-runtime-tier", "low");
+          if (mobileStartup) {
+            root.classList.add("startup-mobile");
+          }
+          if (lowEnd) {
+            root.classList.add("startup-low-end", "power-save-mode");
+            root.setAttribute("data-runtime-tier", "low");
+          }
         }
+
+        if (!lowEnd && !mobileStartup) return;
 
         var applyBodyClass = function () {
           if (!document.body) return;
-          document.body.classList.add(
-            "startup-low-end",
-            "reduced-graphics",
-            "power-save-mode",
-          );
+          if (mobileStartup) {
+            document.body.classList.add("startup-mobile");
+          }
+          if (lowEnd) {
+            document.body.classList.add(
+              "startup-low-end",
+              "reduced-graphics",
+              "power-save-mode",
+            );
+          }
         };
 
         if (document.readyState === "loading") {
@@ -152,6 +173,10 @@
     </script>
 
     <style id="startup-low-end-guard">
+      html.startup-mobile .logo-wrap::before,
+      html.startup-mobile .logo-wrap::after,
+      body.startup-mobile .logo-wrap::before,
+      body.startup-mobile .logo-wrap::after,
       html.startup-low-end .logo-wrap::before,
       html.startup-low-end .logo-wrap::after,
       body.startup-low-end .logo-wrap::before,
@@ -159,6 +184,16 @@
         display: none !important;
       }
 
+      html.startup-mobile .login-card,
+      html.startup-mobile .logo-wrap,
+      html.startup-mobile .lamp-wrapper,
+      html.startup-mobile .guest-modal-card,
+      html.startup-mobile [class*="backdrop-blur"],
+      body.startup-mobile .login-card,
+      body.startup-mobile .logo-wrap,
+      body.startup-mobile .lamp-wrapper,
+      body.startup-mobile .guest-modal-card,
+      body.startup-mobile [class*="backdrop-blur"],
       html.startup-low-end .login-card,
       html.startup-low-end .logo-wrap,
       html.startup-low-end .lamp-wrapper,
@@ -175,6 +210,12 @@
         -webkit-backdrop-filter: none !important;
       }
 
+      html.startup-mobile .gold-arabic-title,
+      html.startup-mobile .card-title,
+      html.startup-mobile .guest-modal-title,
+      body.startup-mobile .gold-arabic-title,
+      body.startup-mobile .card-title,
+      body.startup-mobile .guest-modal-title,
       html.startup-low-end .gold-arabic-title,
       html.startup-low-end .card-title,
       html.startup-low-end .guest-modal-title,
@@ -193,6 +234,24 @@
         text-shadow: none !important;
       }
 
+      html.startup-mobile .login-card,
+      html.startup-mobile .login-card.appear,
+      body.startup-mobile .login-card,
+      body.startup-mobile .login-card.appear {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      html.startup-mobile .login-card.off,
+      body.startup-mobile .login-card.off {
+        opacity: 1 !important;
+        transform: none !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+
+      html.startup-mobile .login-btn-fancy,
+      body.startup-mobile .login-btn-fancy,
       html.startup-low-end .login-btn-fancy,
       body.startup-low-end .login-btn-fancy {
         box-shadow: none !important;
@@ -201,6 +260,8 @@
           background-position 220ms ease !important;
       }
 
+        html.startup-mobile body::before,
+        body.startup-mobile::before,
       html.startup-low-end body::before,
       body.startup-low-end::before {
         filter: none !important;
