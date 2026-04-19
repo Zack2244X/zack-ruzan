@@ -205,6 +205,14 @@ import logger from './utils/logger.js?v=2';
       });
     };
 
+    const hasLegacyInlineHandlers = () => {
+      const selectors = ["[onclick]", "[onchange]", "[onsubmit]", "[oninput]", "[onblur]"];
+      for (let i = 0; i < selectors.length; i += 1) {
+        if (document.querySelector(selectors[i])) return true;
+      }
+      return false;
+    };
+
     const handleAttr = (event, domEventName) => {
       const attrName = `data-inline-on${domEventName}`;
       const inlineAttrName = `on${domEventName}`;
@@ -228,7 +236,23 @@ import logger from './utils/logger.js?v=2';
       }
     };
 
-    migrate();
+    // Avoid an expensive full-DOM migration scan on startup.
+    // In current templates we already use data-inline-* attributes,
+    // so legacy inline attrs are rare and can be migrated only if present.
+    if (hasLegacyInlineHandlers()) {
+      const runMigration = () => {
+        try {
+          migrate();
+        } catch (e) {
+          /* ignore migration errors */
+        }
+      };
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(runMigration, { timeout: 1500 });
+      } else {
+        setTimeout(runMigration, 100);
+      }
+    }
     // Use capture for click/submit to migrate legacy inline handlers before CSP blocks them.
     document.addEventListener("click", (e) => handleAttr(e, "click"), true);
     document.addEventListener("change", (e) => handleAttr(e, "change"));
