@@ -97,6 +97,116 @@
       data-href="/css/styles.min.css?v=64"
     />
 
+    <script>
+      (function () {
+        var lowEnd = false;
+
+        try {
+          var nav = navigator || {};
+          var conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+          var saveData = !!(conn && conn.saveData);
+          var slowConnection = !!(
+            conn && /(?:^|-)2g|slow-2g/i.test(String(conn.effectiveType || ""))
+          );
+          var cores = Number(nav.hardwareConcurrency || 0);
+          var memory = Number(nav.deviceMemory || 0);
+
+          var lowCpu = cores > 0 && cores <= 4;
+          var lowMemory = memory > 0 && memory <= 4;
+          lowEnd = saveData || slowConnection || lowCpu || lowMemory;
+        } catch (e) {
+          lowEnd = false;
+        }
+
+        try {
+          window.__startupLowEnd = lowEnd;
+        } catch (e) {
+          /* ignore */
+        }
+
+        if (!lowEnd) return;
+
+        var root = document.documentElement;
+        if (root) {
+          root.classList.add("startup-low-end", "power-save-mode");
+          root.setAttribute("data-runtime-tier", "low");
+        }
+
+        var applyBodyClass = function () {
+          if (!document.body) return;
+          document.body.classList.add(
+            "startup-low-end",
+            "reduced-graphics",
+            "power-save-mode",
+          );
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", applyBodyClass, {
+            once: true,
+          });
+        } else {
+          applyBodyClass();
+        }
+      })();
+    </script>
+
+    <style id="startup-low-end-guard">
+      html.startup-low-end .logo-wrap::before,
+      html.startup-low-end .logo-wrap::after,
+      body.startup-low-end .logo-wrap::before,
+      body.startup-low-end .logo-wrap::after {
+        display: none !important;
+      }
+
+      html.startup-low-end .login-card,
+      html.startup-low-end .logo-wrap,
+      html.startup-low-end .lamp-wrapper,
+      html.startup-low-end .guest-modal-card,
+      html.startup-low-end [class*="backdrop-blur"],
+      body.startup-low-end .login-card,
+      body.startup-low-end .logo-wrap,
+      body.startup-low-end .lamp-wrapper,
+      body.startup-low-end .guest-modal-card,
+      body.startup-low-end [class*="backdrop-blur"] {
+        box-shadow: none !important;
+        filter: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      html.startup-low-end .gold-arabic-title,
+      html.startup-low-end .card-title,
+      html.startup-low-end .guest-modal-title,
+      body.startup-low-end .gold-arabic-title,
+      body.startup-low-end .card-title,
+      body.startup-low-end .guest-modal-title {
+        font-family:
+          "Cairo",
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif !important;
+        letter-spacing: 0 !important;
+        text-shadow: none !important;
+      }
+
+      html.startup-low-end .login-btn-fancy,
+      body.startup-low-end .login-btn-fancy {
+        box-shadow: none !important;
+        transition:
+          transform 120ms ease,
+          background-position 220ms ease !important;
+      }
+
+      html.startup-low-end body::before,
+      body.startup-low-end::before {
+        filter: none !important;
+      }
+    </style>
+
         <style id="critical-css">
       /* Critical CSS (Above-the-fold only): keep this block intentionally small.
          Full styling is loaded async via loadCSS below. */
@@ -3252,6 +3362,9 @@
       (function () {
         var loaded = false;
         window.__loadMotionLibs = function () {
+          if (window.__startupLowEnd) {
+            return;
+          }
           if (loaded) return;
           loaded = true;
           var s1 = document.createElement("script");
@@ -3322,6 +3435,10 @@
         };
 
         window.__loadIconRuntime = loadIconRuntime;
+
+        if (window.__startupLowEnd) {
+          return;
+        }
 
         if (!isMobileStartup()) {
           loadIconRuntime();
