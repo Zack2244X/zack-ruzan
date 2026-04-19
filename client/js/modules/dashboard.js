@@ -123,6 +123,10 @@ export function stopLeaderboardAutoRefresh() {
     leaderboardRefreshTimer = null;
   }
 }
+
+export function isLeaderboardAutoRefreshActive() {
+  return !!leaderboardRefreshTimer;
+}
 /**
  * @module dashboard
  * @description وحدة لوحة التحكم الرئيسية — عرض آخر الامتحانات والمذكرات ولوحة الشرف

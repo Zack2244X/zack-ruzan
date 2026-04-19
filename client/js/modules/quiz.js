@@ -846,6 +846,7 @@ function showCustomExitModal() {
   const syncBodyModalState = () => {
     _syncMainInteractionState();
   };
+  syncBodyModalState();
 
   const closeModal = () => {
     modal.classList.remove("show");

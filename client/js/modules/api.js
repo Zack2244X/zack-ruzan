@@ -461,6 +461,27 @@ export async function loadDataFromServer() {
 // ─────────────────────────────────────────────
 
 let dataPollingTimer = null;
+let dataPollingIntervalMs = 180000;
+
+function clearPollingTimer() {
+  if (dataPollingTimer) {
+    clearInterval(dataPollingTimer);
+    dataPollingTimer = null;
+  }
+
+  if (typeof window !== "undefined" && window.dataPollingTimer) {
+    clearInterval(window.dataPollingTimer);
+    window.dataPollingTimer = null;
+  }
+}
+
+export function isDataPollingActive() {
+  return !!dataPollingTimer;
+}
+
+export function getDataPollingInterval() {
+  return dataPollingIntervalMs;
+}
 
 /**
  * بدء التحديث التلقائي للبيانات من السيرفر
@@ -473,9 +494,12 @@ export function startDataPolling(interval = 180000) {
   // زادت المدة لـ 3 دقائق כحد أدنى
   logFunctionStatus("startDataPolling", false);
 
-  if (window.dataPollingTimer) {
-    clearInterval(window.dataPollingTimer);
-  }
+  dataPollingIntervalMs =
+    Number.isFinite(interval) && interval > 0
+      ? Math.floor(interval)
+      : 180000;
+
+  clearPollingTimer();
 
   // دعم الـ Visibility API لمنع Polling والخلفية غير نشطة
   if (!window._visibilityListenerAdded) {
@@ -487,24 +511,30 @@ export function startDataPolling(interval = 180000) {
           () => loadDataFromServer().catch(() => logger.warn("تخطى")),
           500,
         );
-        startDataPolling(interval); // استئناف
+        startDataPolling(dataPollingIntervalMs); // استئناف
       } else {
         logger.log("[polling] 💤 تبويب في الخلفية، إيقاف التحديث...");
-        if (window.dataPollingTimer) clearInterval(window.dataPollingTimer);
+        clearPollingTimer();
       }
     });
     window._visibilityListenerAdded = true;
   }
 
-  logger.log(`[polling] ✓ بدء التحديث التلقائي كل ${interval / 1000} ثانية`);
+  logger.log(
+    `[polling] ✓ بدء التحديث التلقائي كل ${dataPollingIntervalMs / 1000} ثانية`,
+  );
 
-  window.dataPollingTimer = setInterval(() => {
+  dataPollingTimer = setInterval(() => {
     if (document.visibilityState === "hidden") return; // خط دفاع إضافي
     logger.log("[polling] ↻ جاري جلب البيانات الجديدة من السيرفر...");
     loadDataFromServer().catch((err) => {
       logger.warn("[polling] ⚠️ فشل جلب البيانات:", err.message);
     });
-  }, interval);
+  }, dataPollingIntervalMs);
+
+  if (typeof window !== "undefined") {
+    window.dataPollingTimer = dataPollingTimer;
+  }
 }
 
 /**
@@ -515,9 +545,8 @@ export function startDataPolling(interval = 180000) {
 export function stopDataPolling() {
   logFunctionStatus("stopDataPolling", false);
 
-  if (dataPollingTimer) {
-    clearInterval(dataPollingTimer);
-    dataPollingTimer = null;
+  if (isDataPollingActive()) {
+    clearPollingTimer();
     logger.log("[polling] ✓ تم إيقاف التحديث التلقائي");
   }
 }

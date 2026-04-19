@@ -141,6 +141,10 @@ import {
   loadDataFromServer,
   fetchLeaderboardFromServer,
   fetchScoresFromServer,
+  startDataPolling,
+  stopDataPolling,
+  isDataPollingActive,
+  getDataPollingInterval,
 } from "./modules/api.js";
 import {
   _syncMainInteractionState,
@@ -174,6 +178,9 @@ import {
 import {
   renderDashboard as _renderDashboard,
   deleteQuiz as _deleteQuiz,
+  startLeaderboardAutoRefresh,
+  stopLeaderboardAutoRefresh,
+  isLeaderboardAutoRefreshActive,
 } from "./modules/dashboard.js";
 
 // === وحدات الحركة والتمرير ===
@@ -196,6 +203,8 @@ import {
   onScrollEnter,
   offScrollEnter,
   setScrollTierOptions,
+  isSmoothScrollEnabled,
+  isScrollEnterEnabled,
 } from "./modules/scroll.js";
 
 // === أداة أداء الجهاز ===
@@ -464,7 +473,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=156";
+  const SW_SCRIPT_URL = "/sw.js?v=157";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -766,9 +775,6 @@ async function loadApp() {
         // وضع الضيف: لا توكن، لا تجديد، لكن نجلب البيانات العامة (امتحانات + مذكرات + لوحة الشرف)
         logger.log("[app] ✓ وضع الضيف — تحميل البيانات العامة...");
 
-        // Import polling function
-        const { startDataPolling } = await import("./modules/api.js");
-
         loadDataFromServer()
           .then(() => {
             state.dataLoaded = true;
@@ -1028,7 +1034,7 @@ Object.assign(window, {
   function _loadFeatures() {
     if (_featuresLoaded) return Promise.resolve();
     if (!_featuresPromise) {
-      _featuresPromise = import("/js/app.features.bundle.min.js?v=95")
+      _featuresPromise = import("/js/app.features.bundle.min.js?v=96")
         .then(() => {
           _featuresLoaded = true;
         })
@@ -1096,8 +1102,116 @@ async function yieldToMain(timeoutMs = 0) {
   });
 }
 
+const MODAL_RESUME_DELAY_MS = 240;
+
+const modalPerformanceState = {
+  active: false,
+  resumeTimer: null,
+  wasDataPollingActive: false,
+  dataPollingInterval: 180000,
+  wasLeaderboardRefreshActive: false,
+  wasSmoothScrollEnabled: false,
+  wasScrollEnterEnabled: false,
+};
+
+function clearModalResumeTimer() {
+  if (modalPerformanceState.resumeTimer) {
+    clearTimeout(modalPerformanceState.resumeTimer);
+    modalPerformanceState.resumeTimer = null;
+  }
+}
+
+function normalizeModalActivityPayload(input) {
+  if (typeof input === "boolean") return { blocked: input };
+  if (input && typeof input === "object" && "detail" in input) {
+    return input.detail || {};
+  }
+  return input || {};
+}
+
+function pauseBackgroundForModalFocus() {
+  clearModalResumeTimer();
+  if (modalPerformanceState.active) return;
+
+  modalPerformanceState.active = true;
+  modalPerformanceState.wasDataPollingActive = isDataPollingActive();
+  modalPerformanceState.dataPollingInterval = getDataPollingInterval();
+  modalPerformanceState.wasLeaderboardRefreshActive =
+    isLeaderboardAutoRefreshActive();
+  modalPerformanceState.wasSmoothScrollEnabled = isSmoothScrollEnabled();
+  modalPerformanceState.wasScrollEnterEnabled = isScrollEnterEnabled();
+
+  stopDataPolling();
+  stopLeaderboardAutoRefresh();
+  offScrollEnter();
+  disableSmoothScroll();
+  pauseAllAnimations();
+
+  document.documentElement.classList.add("modal-performance-focus");
+}
+
+function resumeBackgroundAfterModalFocus() {
+  clearModalResumeTimer();
+  if (!modalPerformanceState.active) return;
+
+  modalPerformanceState.active = false;
+  modalPerformanceState.resumeTimer = setTimeout(() => {
+    modalPerformanceState.resumeTimer = null;
+
+    if (modalPerformanceState.active) return;
+
+    resumeAllAnimations();
+
+    if (modalPerformanceState.wasSmoothScrollEnabled) {
+      enableSmoothScroll();
+    }
+
+    if (modalPerformanceState.wasScrollEnterEnabled) {
+      onScrollEnter();
+    }
+
+    if (modalPerformanceState.wasDataPollingActive) {
+      startDataPolling(modalPerformanceState.dataPollingInterval || 180000);
+    }
+
+    if (modalPerformanceState.wasLeaderboardRefreshActive) {
+      startLeaderboardAutoRefresh();
+    }
+
+    document.documentElement.classList.remove("modal-performance-focus");
+
+    modalPerformanceState.wasDataPollingActive = false;
+    modalPerformanceState.wasLeaderboardRefreshActive = false;
+    modalPerformanceState.wasSmoothScrollEnabled = false;
+    modalPerformanceState.wasScrollEnterEnabled = false;
+  }, MODAL_RESUME_DELAY_MS);
+}
+
+function handleModalActivityChange(input) {
+  const payload = normalizeModalActivityPayload(input);
+  if (payload.blocked) {
+    pauseBackgroundForModalFocus();
+    return;
+  }
+  resumeBackgroundAfterModalFocus();
+}
+
+function initModalPerformanceManager() {
+  if (window.__modalPerformanceManagerReady) return;
+  window.__modalPerformanceManagerReady = true;
+
+  window.__onModalActivityChange = handleModalActivityChange;
+  window.addEventListener("app:modal-activity", handleModalActivityChange, {
+    passive: true,
+  });
+
+  // Align manager state with the current DOM in case an overlay is already open.
+  handleModalActivityChange({ blocked: document.body.classList.contains("modal-open") });
+}
+
 async function initializeApp() {
   setupFocusManagement();
+  initModalPerformanceManager();
   logFunctionStatus("window.onload", false);
 
   // Hide any bootstrap loading overlay once the app bootstraps

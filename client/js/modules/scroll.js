@@ -489,6 +489,15 @@ export function disableSmoothScroll() {
 }
 
 /**
+ * هل التمرير الناعم مفعّل منطقياً حالياً.
+ * يفيد في استعادة الحالة بعد إيقاف مؤقت بسبب modal focus mode.
+ * @returns {boolean}
+ */
+export function isSmoothScrollEnabled() {
+  return _smoothEnabled;
+}
+
+/**
  * تفعيل scroll-enter callbacks عبر IntersectionObserver.
  * يُنشئ Observer إن لم يكن موجوداً.
  */
@@ -515,6 +524,14 @@ export function offScrollEnter() {
   }
   _scrollEnterEnabled = false;
   logger.log("[scroll] scroll-enter callbacks: مُعطَّلة");
+}
+
+/**
+ * هل scroll-enter callbacks مفعّلة حالياً.
+ * @returns {boolean}
+ */
+export function isScrollEnterEnabled() {
+  return _scrollEnterEnabled;
 }
 
 /**

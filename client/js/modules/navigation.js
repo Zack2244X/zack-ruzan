@@ -75,6 +75,7 @@ let modalTouchLockEnabled = false;
 let modalTouchStartY = 0;
 let bodyLockScrollY = 0;
 let activeMainSheetMode = null;
+let lastOverlayBlockedState = null;
 
 function _safeShowThemeToggle(visible) {
   if (typeof window._showThemeToggle === "function") {
@@ -523,6 +524,7 @@ export function _syncMainInteractionState() {
     "delete-subject-modal",
     "rename-subject-modal",
     "student-menu-modal",
+    "quiz-exit-modal",
     "results-screen",
     "confirm-modal-overlay",
     "delete-exam-modal",
@@ -557,6 +559,27 @@ export function _syncMainInteractionState() {
     return gm ? gm.style.display !== "none" && gm.style.display !== "" : false;
   })();
   const blocked = anyOpen || sheetOpen || guestModalOpen;
+
+  if (lastOverlayBlockedState !== blocked) {
+    lastOverlayBlockedState = blocked;
+    const payload = { blocked, anyOpen, sheetOpen, guestModalOpen };
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent("app:modal-activity", { detail: payload }),
+      );
+    } catch (e) {
+      // ignore event dispatch failures
+    }
+
+    try {
+      if (typeof window.__onModalActivityChange === "function") {
+        window.__onModalActivityChange(payload);
+      }
+    } catch (e) {
+      // ignore callback errors to avoid breaking core navigation flow
+    }
+  }
 
   const body = document.body;
   body.classList.toggle("modal-open", blocked);
@@ -663,6 +686,7 @@ export function initOverlayScrollLock() {
     "create-section-modal",
     "admin-auth-modal",
     "student-menu-modal",
+    "quiz-exit-modal",
     "delete-subject-modal",
     "rename-subject-modal",
     "results-screen",
@@ -897,6 +921,9 @@ export function closeAllOverlays() {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
+
+  const quizExitModal = document.getElementById("quiz-exit-modal");
+  if (quizExitModal) quizExitModal.remove();
 
   const guestModal = document.getElementById("guest-modal");
   if (guestModal) guestModal.style.display = "none";
