@@ -99,18 +99,32 @@ function buildSecurityConsentPayload() {
   };
 }
 
+function finishOAuthRedirectPhase() {
+  try {
+    window.__oauthRedirectActive = false;
+    if (typeof window.hideLoadingScreen === "function") {
+      window.hideLoadingScreen({ immediate: true, waitForAuth: false });
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const loadingScreen = document.getElementById("loading-screen");
+  if (loadingScreen) loadingScreen.classList.remove("show");
+  document.body.classList.remove("loading-active");
+
+  try {
+    window.__loadingStartTs = 0;
+  } catch {
+    /* ignore */
+  }
+}
+
 function recoverLoginUiAfterOAuthFailure(userMessage = "") {
   // Redirect flow can hide the login screen before verification completes.
   // On any auth failure, force the UI back to a usable login state.
   try {
-    const loadingScreen = document.getElementById("loading-screen");
-    if (loadingScreen) loadingScreen.classList.remove("show");
-    document.body.classList.remove("loading-active");
-    try {
-      window.__loadingStartTs = 0;
-    } catch {
-      /* ignore */
-    }
+    finishOAuthRedirectPhase();
 
     showLoginScreen();
 
@@ -166,9 +180,14 @@ export function startGoogleRedirectLogin(mode) {
  */
 export function handleGoogleRedirectToken() {
   logFunctionStatus("handleGoogleRedirectToken", false);
+  const hash = window.location.hash || "";
+  if (hash.includes("id_token=") || hash.includes("error=")) {
+    window.__oauthRedirectActive = true;
+  }
+
   // Handle Google error redirect (e.g., access_denied)
-  if (window.location.hash && window.location.hash.includes("error=")) {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  if (hash.includes("error=")) {
+    const hashParams = new URLSearchParams(hash.substring(1));
     const error = hashParams.get("error");
     const errorDesc = hashParams.get("error_description") || error;
     history.replaceState(
@@ -186,9 +205,9 @@ export function handleGoogleRedirectToken() {
     return true;
   }
 
-  if (!window.location.hash || !window.location.hash.includes("id_token="))
+  if (!hash.includes("id_token="))
     return false;
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const hashParams = new URLSearchParams(hash.substring(1));
   const idToken = hashParams.get("id_token");
   const returnedState = hashParams.get("state");
   const expectedNonce = sessionStorage.getItem("googleNonce");
@@ -209,7 +228,10 @@ export function handleGoogleRedirectToken() {
   sessionStorage.removeItem("security-consent-version");
   sessionStorage.removeItem("security-consent-ts");
 
-  if (!idToken) return false;
+  if (!idToken) {
+    finishOAuthRedirectPhase();
+    return false;
+  }
 
   if (expectedState && returnedState && expectedState !== returnedState) {
     const msg =
@@ -301,6 +323,7 @@ export async function handleGoogleAdminResponse(response) {
     localStorage.removeItem("guest-mode");
     document.body.classList.remove("guest-mode");
     if (data.user.role === "admin") {
+      finishOAuthRedirectPhase();
       state.isAdmin = true;
       loadingEl.classList.add("hidden");
       // Load core CSS immediately before showing admin panel
@@ -308,12 +331,14 @@ export async function handleGoogleAdminResponse(response) {
       closeAdminAuth();
       openAdminAuthOrPanel();
     } else {
+      finishOAuthRedirectPhase();
       loadingEl.classList.add("hidden");
       errorEl.textContent =
         "❌ هذا الحساب ليس لديه صلاحيات إدارة. تواصل مع المعلم.";
       errorEl.classList.remove("hidden");
     }
   } catch (err) {
+    finishOAuthRedirectPhase();
     loadingEl.classList.add("hidden");
     errorEl.textContent = "❌ " + (err.message || "حدث خطأ أثناء التحقق");
     errorEl.classList.remove("hidden");
@@ -405,6 +430,7 @@ export async function handleStudentGoogleLogin(
     if (!fname) {
       const payload = safeParseToken(response.credential);
       if (!payload) {
+        finishOAuthRedirectPhase();
         logoutUser().catch(() => {});
         return;
       }
@@ -441,6 +467,7 @@ export async function handleStudentGoogleLogin(
     if (data.user.role === "admin") {
       state.isAdmin = true;
     }
+    finishOAuthRedirectPhase();
     loadingEl.classList.add("hidden");
     logger.log(
       `[auth] ✓ تسجيل دخول ناجح — ${state.currentUser.fullName} (${state.isAdmin ? "أدمن" : "طالب"})`,

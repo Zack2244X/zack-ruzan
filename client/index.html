@@ -2539,7 +2539,7 @@
                 if (!document.querySelector('script[src^="/js/bootstrap"]')) {
                   const s = document.createElement("script");
                   s.type = "module";
-                  s.src = "/js/bootstrap.js?v=106";
+                  s.src = "/js/bootstrap.js?v=108";
                   document.head.appendChild(s);
                 }
               };
@@ -3464,17 +3464,47 @@
     <!-- Icon replacement engine: eager on desktop, deferred on mobile startup. -->
     <script>
       (function () {
-        const iconRuntimeSrc = "/js/icon-system.js?v=9";
+        const iconRegistrySrc = "/js/icon-registry.js?v=1";
+        const iconRuntimeSrc = "/js/icon-system.js?v=10";
         let iconRuntimeLoaded = false;
+        let iconRegistryLoaded = false;
+
+        const loadIconRegistry = function () {
+          if (iconRegistryLoaded) return Promise.resolve(true);
+
+          const existingRegistry = document.querySelector(
+            "script[data-icon-registry='1']",
+          );
+          if (existingRegistry) {
+            iconRegistryLoaded = true;
+            return Promise.resolve(true);
+          }
+
+          return new Promise((resolve) => {
+            const script = document.createElement("script");
+            script.src = iconRegistrySrc;
+            script.defer = true;
+            script.setAttribute("data-icon-registry", "1");
+            script.onload = function () {
+              iconRegistryLoaded = true;
+              resolve(true);
+            };
+            script.onerror = function () {
+              resolve(false);
+            };
+            document.head.appendChild(script);
+          });
+        };
 
         const loadIconRuntime = function () {
           if (iconRuntimeLoaded) return;
           iconRuntimeLoaded = true;
-
-          const script = document.createElement("script");
-          script.src = iconRuntimeSrc;
-          script.defer = true;
-          document.head.appendChild(script);
+          loadIconRegistry().finally(function () {
+            const script = document.createElement("script");
+            script.src = iconRuntimeSrc;
+            script.defer = true;
+            document.head.appendChild(script);
+          });
         };
 
         const isMobileStartup = function () {
@@ -3517,7 +3547,7 @@
     </script>
 
     <!-- Bootstrap loader extracted to external minified file to reduce HTML parse/compile cost -->
-    <script type="module" src="/js/bootstrap.js?v=106" defer></script>
+    <script type="module" src="/js/bootstrap.js?v=108" defer></script>
 
     <!-- showLoginScreenWithDesktop: fallback stub used before app.js loads -->
     <script>
@@ -3542,7 +3572,7 @@
           lampAnimationLoaded = true;
 
           const script = document.createElement("script");
-          script.src = "/js/lamp-animation.min.js?v=3";
+          script.src = "/js/lamp-animation.min.js?v=4";
           script.defer = true;
           document.head.appendChild(script);
         };
@@ -3552,6 +3582,9 @@
           const cone = document.getElementById("light-cone");
           const glow = document.getElementById("floor-glow");
           const lamp = document.getElementById("lamp-svg");
+          const shade = document.getElementById("shade-body");
+          const rim = document.getElementById("shade-rim");
+          const inner = document.getElementById("inner-light");
 
           if (card) {
             card.classList.remove("off");
@@ -3560,9 +3593,15 @@
           if (cone) cone.classList.remove("off");
           if (glow) glow.classList.remove("off");
           if (lamp) lamp.classList.remove("off");
+          if (shade) shade.setAttribute("fill", "url(#shadeOn)");
+          if (rim) rim.setAttribute("fill", "#c69334");
+          if (inner) inner.setAttribute("opacity", "0.95");
         };
 
         const onLampIntent = function () {
+          if (!lampAnimationLoaded) {
+            window.__pendingLampOn = true;
+          }
           revealLoginCardFallback();
           loadLampAnimation();
         };

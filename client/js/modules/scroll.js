@@ -39,6 +39,9 @@ let _scrollTriggerSyncEnabled = true;
 /** @type {number|null} RAF id for deferred ScrollTrigger.update */
 let _scrollTriggerSyncRaf = null;
 
+/** @type {number|null} timeout id for delayed ScrollTrigger sync */
+let _scrollTriggerSyncTimer = null;
+
 /** @type {number} آخر وقت تم فيه مزامنة ScrollTrigger */
 let _scrollTriggerSyncLastTs = 0;
 
@@ -89,7 +92,26 @@ function _scheduleScrollTriggerSync() {
   if (_scrollTriggerSyncRaf !== null) return;
 
   const now = performance.now();
-  if (now - _scrollTriggerSyncLastTs < _SCROLL_TRIGGER_SYNC_MIN_INTERVAL) {
+  const elapsed = now - _scrollTriggerSyncLastTs;
+  const waitMs = _SCROLL_TRIGGER_SYNC_MIN_INTERVAL - elapsed;
+
+  if (waitMs > 0) {
+    if (_scrollTriggerSyncTimer !== null) return;
+
+    _scrollTriggerSyncTimer = setTimeout(() => {
+      _scrollTriggerSyncTimer = null;
+      if (_scrollTriggerSyncRaf !== null) return;
+      _scrollTriggerSyncRaf = requestAnimationFrame(() => {
+        _scrollTriggerSyncRaf = null;
+        _scrollTriggerSyncLastTs = performance.now();
+
+        try {
+          window.ScrollTrigger?.update?.();
+        } catch (e) {
+          /* ignore */
+        }
+      });
+    }, Math.ceil(waitMs));
     return;
   }
 
@@ -175,6 +197,10 @@ function _stopLenisDriver() {
   if (_scrollTriggerSyncRaf !== null) {
     cancelAnimationFrame(_scrollTriggerSyncRaf);
     _scrollTriggerSyncRaf = null;
+  }
+  if (_scrollTriggerSyncTimer !== null) {
+    clearTimeout(_scrollTriggerSyncTimer);
+    _scrollTriggerSyncTimer = null;
   }
 }
 
@@ -549,5 +575,9 @@ export function destroyScroll() {
   offScrollEnter();
   _observedElements.clear();
   _scrollTriggerSyncLastTs = 0;
+  if (_scrollTriggerSyncTimer !== null) {
+    clearTimeout(_scrollTriggerSyncTimer);
+    _scrollTriggerSyncTimer = null;
+  }
   logger.log("[scroll] Lenis مُدمَّر — وحدة التمرير أُعيدت لحالتها الأولى");
 }

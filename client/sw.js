@@ -3,21 +3,22 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = "quiz-platform-v151";
+const CACHE_NAME = "quiz-platform-v153";
 const STATIC_ASSETS = [
   "/", // SPA shell — pre-cached for instant HTML on repeat visits
   "/css/styles.min.css?v=65",
   "/css/tailwind.min.css?v=53",
   "/css/dark-fixes.min.css?v=45",
   "/css/login-extra.min.css?v=3",
-  "/js/app.bundle.min.js?v=106",
+  "/js/app.bundle.min.js?v=108",
   "/js/app.admin.bundle.min.js?v=88",
   "/js/app.features.bundle.min.js?v=95",
-  "/js/bootstrap.js?v=106",
-  "/js/icon-system.js?v=9",
+  "/js/bootstrap.js?v=108",
+  "/js/icon-registry.js?v=1",
+  "/js/icon-system.js?v=10",
   "/js/vendor/lucide.subset.min.js?v=1",
   "/js/guest-login.min.js?v=1",
-  "/js/lamp-animation.min.js?v=3",
+  "/js/lamp-animation.min.js?v=4",
   "/manifest.json",
   "/icons/bg.webp",
   // Fonts removed from pre-cache: font-display:optional means they're

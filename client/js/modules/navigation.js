@@ -70,6 +70,7 @@ let treeScrollIndicatorBound = false;
 let treeScrollIndicatorRaf = null;
 let treeScrollIndicatorObserver = null;
 let treeScrollIndicatorScroller = null;
+let treeScrollResizeTimer = null;
 let modalTouchLockEnabled = false;
 let modalTouchStartY = 0;
 let bodyLockScrollY = 0;
@@ -214,6 +215,9 @@ function bindForcedTouchScroll() {
   let startTop = 0;
   let active = false;
   let activePointerId = null;
+  let pendingPointerRaf = null;
+  let latestDy = 0;
+  let latestDx = 0;
 
   scroller.addEventListener(
     "pointerdown",
@@ -238,15 +242,21 @@ function bindForcedTouchScroll() {
     (e) => {
       if (!active || !e.isPrimary || e.pointerId !== activePointerId) return;
 
-      const dy = e.clientY - startY;
-      const dx = e.clientX - startX;
+      latestDy = e.clientY - startY;
+      latestDx = e.clientX - startX;
 
       // Force vertical scrolling inside modal when browser gesture handling is inconsistent.
-      if (Math.abs(dy) > Math.abs(dx)) {
-        scroller.scrollTop = startTop - dy;
-        if (e.cancelable) e.preventDefault();
+      if (Math.abs(latestDy) <= Math.abs(latestDx)) return;
+
+      if (e.cancelable) e.preventDefault();
+      if (pendingPointerRaf) return;
+
+      pendingPointerRaf = requestAnimationFrame(() => {
+        pendingPointerRaf = null;
+        if (!active) return;
+        scroller.scrollTop = startTop - latestDy;
         scheduleTreeScrollIndicatorUpdate();
-      }
+      });
     },
     { passive: false },
   );
@@ -254,6 +264,10 @@ function bindForcedTouchScroll() {
   const endPointer = (e) => {
     if (!e.isPrimary || e.pointerId !== activePointerId) return;
     active = false;
+    if (pendingPointerRaf) {
+      cancelAnimationFrame(pendingPointerRaf);
+      pendingPointerRaf = null;
+    }
     try {
       scroller.releasePointerCapture(e.pointerId);
     } catch (_) {}
@@ -285,30 +299,44 @@ function updateTreeScrollIndicator() {
   const thumb = document.getElementById(thumbId);
   if (!scroller || !rail || !thumb) return;
 
-  rail.style.display = "block";
-  const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+  const scrollerHeight = scroller.clientHeight;
+  const scrollerScrollHeight = scroller.scrollHeight;
+  const scrollerScrollTop = scroller.scrollTop;
+  const maxScroll = scrollerScrollHeight - scrollerHeight;
+
+  if (rail.style.display !== "block") {
+    rail.style.display = "block";
+  }
+
   if (maxScroll <= 2) {
-    thumb.style.height = `${Math.max(44, scroller.clientHeight - 8)}px`;
-    thumb.style.transform = "translateY(0px)";
-    thumb.style.opacity = "0.7";
+    const nextHeight = `${Math.max(44, scrollerHeight - 8)}px`;
+    if (thumb.style.height !== nextHeight) thumb.style.height = nextHeight;
+    if (thumb.style.transform !== "translateY(0px)") {
+      thumb.style.transform = "translateY(0px)";
+    }
+    if (thumb.style.opacity !== "0.7") thumb.style.opacity = "0.7";
     return;
   }
 
-  thumb.style.opacity = "1";
-  const ratio = scroller.clientHeight / scroller.scrollHeight;
-  const thumbHeight = Math.max(42, Math.floor(scroller.clientHeight * ratio));
-  const maxThumbTop = Math.max(0, scroller.clientHeight - thumbHeight);
+  if (thumb.style.opacity !== "1") thumb.style.opacity = "1";
+  const ratio = scrollerHeight / scrollerScrollHeight;
+  const thumbHeight = Math.max(42, Math.floor(scrollerHeight * ratio));
+  const maxThumbTop = Math.max(0, scrollerHeight - thumbHeight);
   const thumbTop =
     maxScroll > 0
-      ? Math.floor((scroller.scrollTop / maxScroll) * maxThumbTop)
+      ? Math.floor((scrollerScrollTop / maxScroll) * maxThumbTop)
       : 0;
 
-  thumb.style.height = `${thumbHeight}px`;
-  thumb.style.transform = `translateY(${thumbTop}px)`;
+  const nextHeight = `${thumbHeight}px`;
+  const nextTransform = `translateY(${thumbTop}px)`;
+  if (thumb.style.height !== nextHeight) thumb.style.height = nextHeight;
+  if (thumb.style.transform !== nextTransform) {
+    thumb.style.transform = nextTransform;
+  }
 }
 
 function scheduleTreeScrollIndicatorUpdate() {
-  if (treeScrollIndicatorRaf) cancelAnimationFrame(treeScrollIndicatorRaf);
+  if (treeScrollIndicatorRaf) return;
   treeScrollIndicatorRaf = requestAnimationFrame(() => {
     treeScrollIndicatorRaf = null;
     updateTreeScrollIndicator();
@@ -327,26 +355,42 @@ function bindTreeScrollThumbDrag() {
   let pointerId = null;
   let startY = 0;
   let startScrollTop = 0;
+  let dragScroller = null;
+  let dragMaxScroll = 0;
+  let dragMaxThumbTop = 1;
+  let dragMoveRaf = null;
+  let pendingClientY = 0;
+
+  const resetDragState = () => {
+    if (dragMoveRaf) {
+      cancelAnimationFrame(dragMoveRaf);
+      dragMoveRaf = null;
+    }
+    dragScroller = null;
+    dragMaxScroll = 0;
+    dragMaxThumbTop = 1;
+  };
 
   const onPointerMove = (e) => {
     if (!active || e.pointerId !== pointerId) return;
-    const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
-    if (!scroller) return;
+    if (!dragScroller || dragMaxScroll <= 0) return;
 
-    const maxScroll = scroller.scrollHeight - scroller.clientHeight;
-    if (maxScroll <= 0) return;
-
-    const ratio = scroller.clientHeight / scroller.scrollHeight;
-    const thumbHeight = Math.max(42, Math.floor(scroller.clientHeight * ratio));
-    const maxThumbTop = Math.max(1, scroller.clientHeight - thumbHeight);
-    const dy = e.clientY - startY;
-    const deltaScroll = (dy / maxThumbTop) * maxScroll;
-    scroller.scrollTop = Math.max(
-      0,
-      Math.min(maxScroll, startScrollTop + deltaScroll),
-    );
-    scheduleTreeScrollIndicatorUpdate();
+    pendingClientY = e.clientY;
     if (e.cancelable) e.preventDefault();
+
+    if (dragMoveRaf) return;
+    dragMoveRaf = requestAnimationFrame(() => {
+      dragMoveRaf = null;
+      if (!active || !dragScroller || dragMaxScroll <= 0) return;
+
+      const dy = pendingClientY - startY;
+      const deltaScroll = (dy / dragMaxThumbTop) * dragMaxScroll;
+      dragScroller.scrollTop = Math.max(
+        0,
+        Math.min(dragMaxScroll, startScrollTop + deltaScroll),
+      );
+      scheduleTreeScrollIndicatorUpdate();
+    });
   };
 
   const onPointerUp = (e) => {
@@ -356,6 +400,7 @@ function bindTreeScrollThumbDrag() {
       thumb.releasePointerCapture(pointerId);
     } catch (_) {}
     pointerId = null;
+    resetDragState();
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", onPointerUp);
@@ -366,10 +411,21 @@ function bindTreeScrollThumbDrag() {
     (e) => {
       const scroller = treeScrollIndicatorScroller || getTreeScrollTarget();
       if (!scroller) return;
+
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      if (maxScroll <= 0) return;
+
+      const ratio = scroller.clientHeight / scroller.scrollHeight;
+      const thumbHeight = Math.max(42, Math.floor(scroller.clientHeight * ratio));
+
       active = true;
       pointerId = e.pointerId;
       startY = e.clientY;
       startScrollTop = scroller.scrollTop;
+      dragScroller = scroller;
+      dragMaxScroll = maxScroll;
+      dragMaxThumbTop = Math.max(1, scroller.clientHeight - thumbHeight);
+      pendingClientY = e.clientY;
       try {
         thumb.setPointerCapture(pointerId);
       } catch (_) {}
@@ -404,8 +460,14 @@ function bindTreeScrollIndicator() {
       passive: true,
     });
     addManagedListener("tree-scroll", window, "resize", () => {
-        treeScrollIndicatorScroller = getTreeScrollTarget();
-        scheduleTreeScrollIndicatorUpdate();
+        if (treeScrollResizeTimer) {
+          clearTimeout(treeScrollResizeTimer);
+        }
+        treeScrollResizeTimer = setTimeout(() => {
+          treeScrollResizeTimer = null;
+          treeScrollIndicatorScroller = getTreeScrollTarget();
+          scheduleTreeScrollIndicatorUpdate();
+        }, 140);
       }, { passive: true });
   }
 
@@ -871,14 +933,22 @@ export function navToSection(section, renderSubjectFilters, renderHistoryTree) {
   const iconEl = document.getElementById(nodes.iconId);
   if (section === "exams") {
     if (titleEl) titleEl.innerText = "سجل الامتحانات";
-    if (iconEl)
-      iconEl.className =
-        "bi bi-lightning-charge-fill text-2xl leading-none text-emerald-600";
+    if (iconEl) {
+      iconEl.className = "ui-icon text-2xl leading-none text-emerald-600";
+      iconEl.setAttribute("data-lucide", "zap");
+      if (typeof window.setModernIcon === "function") {
+        window.setModernIcon(iconEl, "zap");
+      }
+    }
   } else {
     if (titleEl) titleEl.innerText = "المذكرات والملفات";
-    if (iconEl)
-      iconEl.className =
-        "bi bi-file-earmark-pdf-fill text-2xl leading-none text-rose-600";
+    if (iconEl) {
+      iconEl.className = "ui-icon text-2xl leading-none text-rose-600";
+      iconEl.setAttribute("data-lucide", "file-text");
+      if (typeof window.setModernIcon === "function") {
+        window.setModernIcon(iconEl, "file-text");
+      }
+    }
   }
   renderSubjectFilters();
   renderHistoryTree();
@@ -944,7 +1014,9 @@ export function showLoginScreenWithDesktop() {
 export function toggleTreeNode(contentId, btn) {
   logFunctionStatus("toggleTreeNode", false);
   const content = document.getElementById(contentId);
-  const icon = btn.querySelector(".fa-chevron-down, .bi-chevron-down");
+  const icon = btn.querySelector(
+    ".fa-chevron-down, .bi-chevron-down, .tree-chevron",
+  );
   if (content.classList.contains("hidden")) {
     content.classList.remove("hidden");
     content.classList.add("block");

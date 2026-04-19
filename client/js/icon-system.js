@@ -1,70 +1,23 @@
 (function () {
   const ICON_CLASS_PATTERN = /^(fa|bi)-[a-z0-9-]+$/;
-  const BASE_ICON_CLASSES = new Set(["fa", "fas", "far", "fab", "bi"]);
-  const SPIN_ICON_CLASSES = new Set(["fa-spin", "fa-pulse"]);
+  const FALLBACK_BASE_ICON_CLASSES = Object.freeze([
+    "fa",
+    "fas",
+    "far",
+    "fab",
+    "bi",
+  ]);
+  const FALLBACK_SPIN_ICON_CLASSES = Object.freeze(["fa-spin", "fa-pulse"]);
+  const FALLBACK_CHEVRON_TOKENS = Object.freeze([
+    "fa-chevron-down",
+    "bi-chevron-down",
+  ]);
   const ICON_PALETTES = new Set(["ocean", "amber", "mint"]);
   const LUCIDE_RUNTIME_SRC = "/js/vendor/lucide.subset.min.js?v=1";
   const ICON_LAZY_ROOT_MARGIN = "240px 0px";
   const ICON_LAZY_THRESHOLD = 0.01;
   const ICON_CANDIDATE_SELECTOR =
     "i, span[data-lucide], span[class*='fa-'], span[class*='bi-'], span.fa, span.fas, span.far, span.fab, span.bi";
-
-  const ICON_MAP = {
-    "bi-calendar3": "calendar-days",
-    "bi-chevron-down": "chevron-down",
-    "bi-file-earmark-pdf-fill": "file-text",
-    "bi-file-earmark-slides-fill": "presentation",
-    "bi-folder2-open": "folder-open",
-    "bi-lightning-charge-fill": "zap",
-    "fa-arrow-left": "arrow-left",
-    "fa-arrow-right": "arrow-right",
-    "fa-award": "award",
-    "fa-bolt": "zap",
-    "fa-calendar": "calendar-days",
-    "fa-chart-line": "chart-line",
-    "fa-check": "check",
-    "fa-check-circle": "circle-check",
-    "fa-chevron-down": "chevron-down",
-    "fa-clock": "clock-3",
-    "fa-cog": "settings",
-    "fa-coins": "coins",
-    "fa-crown": "crown",
-    "fa-download": "download",
-    "fa-edit": "square-pen",
-    "fa-exclamation-circle": "circle-alert",
-    "fa-exclamation-triangle": "triangle-alert",
-    "fa-file-alt": "file-text",
-    "fa-file-import": "file-up",
-    "fa-file-pdf": "file-text",
-    "fa-file-powerpoint": "presentation",
-    "fa-file-upload": "file-up",
-    "fa-fire": "flame",
-    "fa-folder-open": "folder-open",
-    "fa-google": "log-in",
-    "fa-graduation-cap": "graduation-cap",
-    "fa-home": "house",
-    "fa-link": "link",
-    "fa-lock": "lock",
-    "fa-moon": "moon",
-    "fa-pen": "pencil",
-    "fa-plus": "plus",
-    "fa-plus-circle": "plus-circle",
-    "fa-redo": "rotate-cw",
-    "fa-redo-alt": "rotate-cw",
-    "fa-save": "save",
-    "fa-shield-alt": "shield-check",
-    "fa-sign-out-alt": "log-out",
-    "fa-spinner": "loader-circle",
-    "fa-sun": "sun",
-    "fa-sync": "refresh-cw",
-    "fa-sync-alt": "refresh-cw",
-    "fa-times": "x",
-    "fa-trash": "trash-2",
-    "fa-trash-alt": "trash-2",
-    "fa-trophy": "trophy",
-    "fa-user-cog": "user-cog",
-    "fa-users": "users",
-  };
 
   let observer = null;
   let applyQueued = false;
@@ -74,7 +27,54 @@
   let lucideScriptPromise = null;
   let visibilityObserver = null;
   let legacyOnlyMode = false;
+  let cachedRegistryRef = null;
+  let cachedRegistry = null;
   const pendingRoots = new Set();
+
+  function getIconRegistry() {
+    const registryRef = window.__iconRegistry || null;
+    if (registryRef === cachedRegistryRef && cachedRegistry) {
+      return cachedRegistry;
+    }
+
+    const iconMap =
+      registryRef && typeof registryRef.iconMap === "object"
+        ? registryRef.iconMap
+        : {};
+    const fallbackIcon =
+      registryRef && typeof registryRef.fallbackIcon === "string"
+        ? registryRef.fallbackIcon
+        : "circle";
+    const baseIconClasses = new Set(
+      Array.isArray(registryRef?.baseIconClasses) &&
+      registryRef.baseIconClasses.length > 0
+        ? registryRef.baseIconClasses
+        : FALLBACK_BASE_ICON_CLASSES,
+    );
+    const spinIconClasses = new Set(
+      Array.isArray(registryRef?.spinIconClasses) &&
+      registryRef.spinIconClasses.length > 0
+        ? registryRef.spinIconClasses
+        : FALLBACK_SPIN_ICON_CLASSES,
+    );
+    const chevronTokens = new Set(
+      Array.isArray(registryRef?.chevronTokens) &&
+      registryRef.chevronTokens.length > 0
+        ? registryRef.chevronTokens
+        : FALLBACK_CHEVRON_TOKENS,
+    );
+
+    cachedRegistryRef = registryRef;
+    cachedRegistry = {
+      iconMap,
+      fallbackIcon,
+      baseIconClasses,
+      spinIconClasses,
+      chevronTokens,
+    };
+
+    return cachedRegistry;
+  }
 
   function normalizeRoot(root) {
     if (!root || root === document || root === window) return document;
@@ -84,10 +84,11 @@
 
   function hasLegacyIconClass(el) {
     if (!el || !el.classList) return false;
+    const { baseIconClasses } = getIconRegistry();
     const classes = Array.from(el.classList);
     for (let i = 0; i < classes.length; i += 1) {
       const cls = classes[i];
-      if (ICON_CLASS_PATTERN.test(cls) || BASE_ICON_CLASSES.has(cls)) {
+      if (ICON_CLASS_PATTERN.test(cls) || baseIconClasses.has(cls)) {
         return true;
       }
     }
@@ -124,6 +125,7 @@
 
   function resolveIconSpec(el) {
     if (!el || !el.classList) return null;
+    const { iconMap, fallbackIcon } = getIconRegistry();
 
     const explicit = (el.getAttribute("data-lucide") || "").trim();
     if (explicit) {
@@ -133,15 +135,15 @@
     const classes = Array.from(el.classList);
     for (let i = 0; i < classes.length; i += 1) {
       const cls = classes[i];
-      if (ICON_MAP[cls]) {
-        return { token: cls, iconName: ICON_MAP[cls] };
+      if (iconMap[cls]) {
+        return { token: cls, iconName: iconMap[cls] };
       }
     }
 
     for (let i = 0; i < classes.length; i += 1) {
       const cls = classes[i];
       if (ICON_CLASS_PATTERN.test(cls)) {
-        return { token: cls, iconName: ICON_MAP[cls] || "circle" };
+        return { token: cls, iconName: iconMap[cls] || fallbackIcon };
       }
     }
 
@@ -166,13 +168,14 @@
 
   function normalizeWrapperClasses(el, token) {
     if (!el || !el.classList) return;
+    const { baseIconClasses, spinIconClasses, chevronTokens } = getIconRegistry();
 
-    BASE_ICON_CLASSES.forEach((cls) => {
+    baseIconClasses.forEach((cls) => {
       el.classList.remove(cls);
     });
 
     let shouldSpin = false;
-    SPIN_ICON_CLASSES.forEach((cls) => {
+    spinIconClasses.forEach((cls) => {
       if (el.classList.contains(cls)) {
         shouldSpin = true;
       }
@@ -183,7 +186,7 @@
       el.classList.add(token);
     }
 
-    if (token === "fa-chevron-down" || token === "bi-chevron-down") {
+    if (token && chevronTokens.has(token)) {
       el.classList.add("tree-chevron");
     }
 
@@ -337,26 +340,6 @@
   }
 
   async function shouldPreferLegacyIcons() {
-    try {
-      if (window.__powerSaverMode === true) return true;
-
-      const conn =
-        navigator.connection ||
-        navigator.mozConnection ||
-        navigator.webkitConnection;
-      if (conn?.saveData === true) return true;
-
-      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-        return true;
-      }
-
-      if ("getBattery" in navigator) {
-        const battery = await navigator.getBattery();
-        if (battery && battery.charging === false) return true;
-      }
-    } catch (e) {
-      // Ignore power capability errors and continue with default mode.
-    }
     return false;
   }
 
@@ -575,87 +558,73 @@
 
   function bootstrap() {
     initPalette();
+    const mobileStartup = isMobileStartup();
+    let mobileRuntimeStarted = false;
 
-    shouldPreferLegacyIcons()
-      .then((preferLegacy) => {
-        if (preferLegacy) {
-          enableLegacyOnlyMode();
-          return;
-        }
+    const runFullPass = function () {
+      queueIconApply(document);
+    };
 
-        const mobileStartup = isMobileStartup();
-        let mobileRuntimeStarted = false;
+    const runMobileRuntime = function () {
+      if (mobileRuntimeStarted) return;
+      mobileRuntimeStarted = true;
 
-        const runFullPass = function () {
-          queueIconApply(document);
-        };
+      ensureLucideReady();
+      queueIconApply(getInitialIconRoot());
 
-        const runMobileRuntime = function () {
-          if (mobileRuntimeStarted) return;
-          mobileRuntimeStarted = true;
-
-          ensureLucideReady();
-          queueIconApply(getInitialIconRoot());
-
-          // Avoid large startup work on mobile until after first intent.
-          setTimeout(() => {
-            if ("requestIdleCallback" in window) {
-              requestIdleCallback(runFullPass, { timeout: 6000 });
-            } else {
-              setTimeout(runFullPass, 1800);
-            }
-          }, 1500);
-        };
-
-        if (mobileStartup) {
-          // Start runtime lazily on first user intent; fallback later for passive sessions.
-          window.addEventListener("pointerdown", runMobileRuntime, {
-            once: true,
-            passive: true,
-            capture: true,
-          });
-          window.addEventListener("touchstart", runMobileRuntime, {
-            once: true,
-            passive: true,
-            capture: true,
-          });
-          window.addEventListener(
-            "keydown",
-            function () {
-              runMobileRuntime();
-            },
-            {
-              once: true,
-              capture: true,
-            },
-          );
-
-          setTimeout(runMobileRuntime, 9000);
+      // Avoid large startup work on mobile until after first intent.
+      setTimeout(() => {
+        if ("requestIdleCallback" in window) {
+          requestIdleCallback(runFullPass, { timeout: 6000 });
         } else {
-          ensureLucideReady();
-          queueIconApply(getInitialIconRoot());
-
-          // A second pass after full page load catches late-initialized modal markup.
-          window.addEventListener(
-            "load",
-            function () {
-              runFullPass();
-            },
-            { once: true },
-          );
-
-          setTimeout(function () {
-            queueIconApply(document);
-          }, 1200);
+          setTimeout(runFullPass, 1800);
         }
+      }, 1500);
+    };
 
-        initObserver();
-      })
-      .catch(() => {
-        ensureLucideReady();
-        queueIconApply(document);
-        initObserver();
+    if (mobileStartup) {
+      // Start runtime lazily on first user intent; fallback later for passive sessions.
+      window.addEventListener("pointerdown", runMobileRuntime, {
+        once: true,
+        passive: true,
+        capture: true,
       });
+      window.addEventListener("touchstart", runMobileRuntime, {
+        once: true,
+        passive: true,
+        capture: true,
+      });
+      window.addEventListener(
+        "keydown",
+        function () {
+          runMobileRuntime();
+        },
+        {
+          once: true,
+          capture: true,
+        },
+      );
+
+      setTimeout(runMobileRuntime, 9000);
+    } else {
+      ensureLucideReady();
+      queueIconApply(getInitialIconRoot());
+
+      // A second pass after full page load catches late-initialized modal markup.
+      window.addEventListener(
+        "load",
+        function () {
+          runFullPass();
+        },
+        { once: true },
+      );
+
+      setTimeout(function () {
+        queueIconApply(document);
+      }, 1200);
+    }
+
+    initObserver();
   }
 
   if (document.readyState === "loading") {

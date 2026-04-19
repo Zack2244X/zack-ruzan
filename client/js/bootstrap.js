@@ -296,7 +296,7 @@ import logger from './utils/logger.js?v=2';
     // Primary: minified IIFE bundle (one request, all modules pre-bundled).
     // Injected as a classic <script> so the IIFE executes and auto-initializes the app.
     // Falls back to dynamic import() of ESM app.js if the bundle is unavailable.
-    const bundleUrl = "/js/app.bundle.min.js?v=106";
+    const bundleUrl = "/js/app.bundle.min.js?v=108";
     const esmUrl = "/js/app.js";
 
     const bundleScript = document.createElement("script");
@@ -312,7 +312,7 @@ import logger from './utils/logger.js?v=2';
       startPromise
         .catch(() => {})
         .finally(() => {
-          hideLoadingScreen();
+          hideLoadingScreen({ waitForAuth: true });
           flushQueue();
         });
     };
@@ -330,14 +330,14 @@ import logger from './utils/logger.js?v=2';
           startPromise
             .catch((e) => logger.error("startApp failed", e))
             .finally(() => {
-              hideLoadingScreen();
+              hideLoadingScreen({ waitForAuth: true });
               flushQueue();
             });
         })
         .catch((e) => {
           logger.error("[bootstrap] Both bundle and ESM fallback failed:", e);
           window.__appLoading = false;
-          hideLoadingScreen();
+          hideLoadingScreen({ immediate: true, waitForAuth: false });
         });
     };
     document.head.appendChild(bundleScript);
@@ -375,7 +375,7 @@ import logger from './utils/logger.js?v=2';
     if (login) login.classList.add("hidden");
   }
 
-  const MIN_LOADING_MS = 6000;
+  const MIN_LOADING_MS = 1400;
 
   function showLoadingScreen() {
     const loading = document.getElementById("loading-screen");
@@ -384,21 +384,39 @@ import logger from './utils/logger.js?v=2';
     window.__loadingStartTs = Date.now();
   }
 
-  function hideLoadingScreen() {
+  function hideLoadingScreen(options = {}) {
     const loading = document.getElementById("loading-screen");
-    const startedAt = window.__loadingStartTs || 0;
-    const elapsed = Date.now() - startedAt;
-    const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+    const immediate = options.immediate === true;
+    const waitForAuth = options.waitForAuth !== false;
+
+    const getRemaining = () => {
+      if (immediate) return 0;
+      const startedAt = window.__loadingStartTs || 0;
+      const elapsed = Date.now() - startedAt;
+      return Math.max(0, MIN_LOADING_MS - elapsed);
+    };
+
     const finalize = () => {
       if (loading) loading.classList.remove("show");
       document.body.classList.remove("loading-active");
       window.__loadingStartTs = 0;
     };
-    if (remaining > 0) {
-      setTimeout(finalize, remaining);
-    } else {
-      finalize();
-    }
+
+    const finalizeWhenReady = () => {
+      if (waitForAuth && window.__oauthRedirectActive) {
+        setTimeout(finalizeWhenReady, 120);
+        return;
+      }
+
+      const remaining = getRemaining();
+      if (remaining > 0) {
+        setTimeout(finalize, remaining);
+      } else {
+        finalize();
+      }
+    };
+
+    finalizeWhenReady();
   }
 
   window.hideLoadingScreen = hideLoadingScreen;
@@ -423,6 +441,7 @@ import logger from './utils/logger.js?v=2';
   // CRITICAL: MUST BE CHECKED BEFORE ANY SESSION STORAGE LOCAL CHECKS!
   const hash = window.location.hash || "";
   if (hash.includes("id_token=") || hash.includes("error=")) {
+    window.__oauthRedirectActive = true;
     hideLoginScreen();
     showLoadingScreen();
     triggerAppLoad();
@@ -458,7 +477,7 @@ import logger from './utils/logger.js?v=2';
       const resetSavedSession = () => {
         sessionStorage.removeItem("currentUser");
         sessionStorage.removeItem("isAdmin");
-        hideLoadingScreen();
+        hideLoadingScreen({ immediate: true, waitForAuth: false });
         if (typeof window.showLoginScreenWithDesktop === "function") {
           window.showLoginScreenWithDesktop();
         }
@@ -481,17 +500,9 @@ import logger from './utils/logger.js?v=2';
         return;
       }
 
-      const hasCsrfCookieHint = document.cookie
-        .split(";")
-        .map((cookie) => cookie.trim())
-        .some((cookie) => cookie.startsWith("csrf_token="));
-      if (!hasCsrfCookieHint) {
-        resetSavedSession();
-        return;
-      }
-
       fetch("/api/auth/me", {
         credentials: "include",
+        cache: "no-store",
       })
         .then((res) => {
           if (res.ok) {

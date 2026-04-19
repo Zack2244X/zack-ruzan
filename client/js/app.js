@@ -464,7 +464,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=151";
+  const SW_SCRIPT_URL = "/sw.js?v=153";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -1101,8 +1101,12 @@ async function initializeApp() {
   logFunctionStatus("window.onload", false);
 
   // Hide any bootstrap loading overlay once the app bootstraps
-  if (typeof window.hideLoadingScreen === "function") {
-    window.hideLoadingScreen();
+  if (
+    typeof window.hideLoadingScreen === "function" &&
+    !window.__appLoading &&
+    !window.__oauthRedirectActive
+  ) {
+    window.hideLoadingScreen({ waitForAuth: true });
   }
 
   // Expose shared state for lazy-loaded admin bundle (builder.js / grades.js)
