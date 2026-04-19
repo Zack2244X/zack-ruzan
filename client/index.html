@@ -3519,29 +3519,34 @@
 
         window.__loadIconRuntime = loadIconRuntime;
 
-        if (window.__startupLowEnd) {
-          return;
-        }
+        const mobileStartup = isMobileStartup();
+        const lowEndStartup = !!window.__startupLowEnd;
 
-        if (!isMobileStartup()) {
+        if (!mobileStartup && !lowEndStartup) {
           loadIconRuntime();
           return;
         }
 
-        const scheduleMobileIconLoad = function () {
+        const scheduleIconRuntimeLoad = function () {
           if ("requestIdleCallback" in window) {
-            requestIdleCallback(loadIconRuntime, { timeout: 12000 });
+            requestIdleCallback(loadIconRuntime, {
+              timeout: lowEndStartup ? 5000 : 12000,
+            });
           } else {
-            setTimeout(loadIconRuntime, 8000);
+            setTimeout(loadIconRuntime, lowEndStartup ? 1800 : 8000);
           }
         };
 
         if (document.readyState === "complete") {
-          scheduleMobileIconLoad();
+          scheduleIconRuntimeLoad();
         } else {
-          window.addEventListener("load", scheduleMobileIconLoad, {
+          window.addEventListener("load", scheduleIconRuntimeLoad, {
             once: true,
           });
+        }
+
+        if (lowEndStartup) {
+          setTimeout(loadIconRuntime, 2500);
         }
       })();
     </script>
@@ -3572,7 +3577,7 @@
           lampAnimationLoaded = true;
 
           const script = document.createElement("script");
-          script.src = "/js/lamp-animation.min.js?v=4";
+          script.src = "/js/lamp-animation.min.js?v=5";
           script.defer = true;
           document.head.appendChild(script);
         };
@@ -3585,6 +3590,9 @@
           const shade = document.getElementById("shade-body");
           const rim = document.getElementById("shade-rim");
           const inner = document.getElementById("inner-light");
+          const eyeL = document.getElementById("eye-l");
+          const eyeR = document.getElementById("eye-r");
+          const mouth = document.getElementById("mouth");
 
           if (card) {
             card.classList.remove("off");
@@ -3592,10 +3600,26 @@
           }
           if (cone) cone.classList.remove("off");
           if (glow) glow.classList.remove("off");
-          if (lamp) lamp.classList.remove("off");
+          if (lamp) {
+            lamp.classList.remove("off");
+            lamp.classList.add("lamp-on");
+          }
           if (shade) shade.setAttribute("fill", "url(#shadeOn)");
           if (rim) rim.setAttribute("fill", "#c69334");
           if (inner) inner.setAttribute("opacity", "0.95");
+          if (eyeL) {
+            eyeL.setAttribute("rx", "5.5");
+            eyeL.setAttribute("ry", "5.5");
+            eyeL.setAttribute("fill", "#1a0e00");
+          }
+          if (eyeR) {
+            eyeR.setAttribute("rx", "5.5");
+            eyeR.setAttribute("ry", "5.5");
+            eyeR.setAttribute("fill", "#1a0e00");
+          }
+          if (mouth) {
+            mouth.setAttribute("d", "M 76 97 Q 85 108 94 97");
+          }
         };
 
         const onLampIntent = function () {

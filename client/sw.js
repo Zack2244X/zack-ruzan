@@ -3,7 +3,7 @@
 //   Zack Exam
 // ============================================
 
-const CACHE_NAME = "quiz-platform-v153";
+const CACHE_NAME = "quiz-platform-v154";
 const STATIC_ASSETS = [
   "/", // SPA shell — pre-cached for instant HTML on repeat visits
   "/css/styles.min.css?v=65",
@@ -18,7 +18,7 @@ const STATIC_ASSETS = [
   "/js/icon-system.js?v=10",
   "/js/vendor/lucide.subset.min.js?v=1",
   "/js/guest-login.min.js?v=1",
-  "/js/lamp-animation.min.js?v=4",
+  "/js/lamp-animation.min.js?v=5",
   "/manifest.json",
   "/icons/bg.webp",
   // Fonts removed from pre-cache: font-display:optional means they're
