@@ -36,6 +36,15 @@ let _smoothEnabled = true;
 /** @type {boolean} تفعيل ربط ScrollTrigger مع Lenis */
 let _scrollTriggerSyncEnabled = true;
 
+/** @type {number|null} RAF id for deferred ScrollTrigger.update */
+let _scrollTriggerSyncRaf = null;
+
+/** @type {number} آخر وقت تم فيه مزامنة ScrollTrigger */
+let _scrollTriggerSyncLastTs = 0;
+
+/** @type {number} أقل فترة بين تحديثات ScrollTrigger (ms) */
+const _SCROLL_TRIGGER_SYNC_MIN_INTERVAL = 80;
+
 /** @type {IntersectionObserver|null} مراقب الدخول للمنظور */
 let _scrollObserver = null;
 
@@ -67,6 +76,33 @@ function _rafLoop(time) {
     _lenis.raf(time);
   }
   _rafId = requestAnimationFrame(_rafLoop);
+}
+
+/**
+ * Schedules a throttled ScrollTrigger sync on the next frame.
+ * This avoids main-thread pressure from per-scroll-event updates.
+ */
+function _scheduleScrollTriggerSync() {
+  if (!_scrollTriggerSyncEnabled) return;
+  if (typeof window === "undefined") return;
+  if (window.__scrollAnimationsEnabled !== true) return;
+  if (_scrollTriggerSyncRaf !== null) return;
+
+  const now = performance.now();
+  if (now - _scrollTriggerSyncLastTs < _SCROLL_TRIGGER_SYNC_MIN_INTERVAL) {
+    return;
+  }
+
+  _scrollTriggerSyncRaf = requestAnimationFrame(() => {
+    _scrollTriggerSyncRaf = null;
+    _scrollTriggerSyncLastTs = performance.now();
+
+    try {
+      window.ScrollTrigger?.update?.();
+    } catch (e) {
+      /* ignore */
+    }
+  });
 }
 
 /**
@@ -135,6 +171,10 @@ function _stopLenisDriver() {
   if (_rafId !== null) {
     cancelAnimationFrame(_rafId);
     _rafId = null;
+  }
+  if (_scrollTriggerSyncRaf !== null) {
+    cancelAnimationFrame(_scrollTriggerSyncRaf);
+    _scrollTriggerSyncRaf = null;
   }
 }
 
@@ -300,12 +340,7 @@ function _initWithClass(LenisClass, options) {
   // → جانك ظاهر بوضوح على الأجهزة البطيئة (Adreno/Mali mid-range).
   // الحل: عند كل تحديث Lenis نُخبر ScrollTrigger بإعادة حساب مواضعه.
   _lenis.on("scroll", () => {
-    if (!_scrollTriggerSyncEnabled) return;
-    try {
-      window.ScrollTrigger?.update?.();
-    } catch (e) {
-      /* ignore */
-    }
+    _scheduleScrollTriggerSync();
   });
 
   logger.log(
@@ -513,5 +548,6 @@ export function destroyScroll() {
   }
   offScrollEnter();
   _observedElements.clear();
+  _scrollTriggerSyncLastTs = 0;
   logger.log("[scroll] Lenis مُدمَّر — وحدة التمرير أُعيدت لحالتها الأولى");
 }

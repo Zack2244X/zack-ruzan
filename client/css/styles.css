@@ -766,15 +766,28 @@ body::before {
 /* ── Time Badge (pulsing clock animation) ───────────────────────── */
 /* Runs continuously — must live on its own layer                   */
 .time-badge-anim {
-  animation: pulseTimeBadge 1.8s ease-in-out infinite;
+  animation: pulseTimeBadge 2.8s ease-in-out infinite;
   transform-origin: center;
-  will-change: transform, box-shadow;
+  will-change: transform, opacity;
 }
 
 .time-badge-anim i {
-  animation: tickClock 1.2s ease-in-out infinite;
+  animation: tickClock 2s ease-in-out infinite;
   display: inline-block;
   will-change: transform;
+}
+
+/* Keep always-on badge animation only on strong profiles. */
+body.gpu-medium .time-badge-anim,
+body.gpu-medium .time-badge-anim i,
+body.gpu-low .time-badge-anim,
+body.gpu-low .time-badge-anim i,
+body.reduced-graphics .time-badge-anim,
+body.reduced-graphics .time-badge-anim i,
+body.power-save-mode .time-badge-anim,
+body.power-save-mode .time-badge-anim i {
+  animation: none !important;
+  will-change: auto;
 }
 
 /* ── Glass Card System ──────────────────────────────────────────── */
@@ -884,11 +897,11 @@ button:active,
   0%,
   100% {
     transform: translateY(0) scale(1);
-    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+    opacity: 1;
   }
   50% {
-    transform: translateY(-1px) scale(1.03);
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.28);
+    transform: translateY(-1px) scale(1.02);
+    opacity: 0.92;
   }
 }
 

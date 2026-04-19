@@ -15,6 +15,8 @@ import { getDevicePerformanceTier } from "./helpers.js";
 // ============================================
 let gsap = window.gsap;
 let ScrollTrigger = window.ScrollTrigger;
+/** @type {Promise<boolean>|null} Promise for lazy ScrollTrigger setup */
+let scrollTriggerSetupPromise = null;
 
 /**
  * Ensure `window.gsap` is available, waiting up to `timeout` ms.
@@ -81,6 +83,49 @@ function ensureScrollTriggerLoaded(timeout = 3000) {
     // fallback timeout
     setTimeout(() => resolve(!!window.ScrollTrigger), timeout);
   });
+}
+
+/**
+ * Ensure ScrollTrigger is available and registered with GSAP only when needed.
+ * Keeps startup light by avoiding plugin work unless scroll animations are used.
+ * @param {number} timeout
+ * @returns {Promise<boolean>}
+ */
+async function ensureScrollTriggerRegistered(timeout = 3000) {
+  if (window.gsap) gsap = window.gsap;
+
+  if (
+    gsap &&
+    window.ScrollTrigger &&
+    typeof gsap.registerPlugin === "function"
+  ) {
+    try {
+      window.ScrollTrigger.config?.({ autoRefreshEvents: "" });
+    } catch (e) {
+      /* ignore */
+    }
+    gsap.registerPlugin(window.ScrollTrigger);
+    ScrollTrigger = window.ScrollTrigger;
+    return true;
+  }
+
+  const loaded = await ensureScrollTriggerLoaded(timeout);
+  if (!loaded || !window.ScrollTrigger || !gsap) return false;
+
+  try {
+    if (typeof window.ScrollTrigger.config === "function") {
+      window.ScrollTrigger.config({ autoRefreshEvents: "" });
+    }
+  } catch (e) {
+    /* ignore */
+  }
+
+  if (typeof gsap.registerPlugin === "function") {
+    gsap.registerPlugin(window.ScrollTrigger);
+  }
+
+  ScrollTrigger = window.ScrollTrigger;
+  return true;
 }
 
 // ============================================
@@ -191,47 +236,17 @@ export async function initAnimations(perfOverride) {
     return;
   }
 
-  // ── تسجيل ScrollTrigger وكشف معدل التحديث بعد أول رسم (لتجنب forced reflows)
+  // Clear runtime flag until a module explicitly enables scroll-triggered animations.
+  try {
+    window.__scrollAnimationsEnabled = false;
+  } catch (e) {
+    /* ignore */
+  }
+
+  // ── كشف معدل التحديث بعد أول رسم (لتجنب forced reflows)
   await new Promise((resolve) => {
     // Run registration after first paint to avoid measuring while styles are still loading
     const runAfterPaint = () => {
-      // Move heavy registration to idle time to avoid layout reads on the critical path
-      const registerDuringIdle = async () => {
-        try {
-          // Ensure ScrollTrigger file is loaded on demand
-          const loaded = await ensureScrollTriggerLoaded(3000);
-          if (
-            loaded &&
-            window.ScrollTrigger &&
-            typeof window.ScrollTrigger.config === "function"
-          ) {
-            try {
-              window.ScrollTrigger.config({ autoRefreshEvents: "" });
-            } catch (e) {}
-            // Register plugin with gsap now that both are present
-            if (
-              gsap &&
-              window.ScrollTrigger &&
-              typeof gsap.registerPlugin === "function"
-            ) {
-              gsap.registerPlugin(window.ScrollTrigger);
-              logger.log(
-                "[Animations] ✓ ScrollTrigger loaded & registered (idle)",
-              );
-            }
-            // DO NOT call ScrollTrigger.refresh() — it triggers a forced reflow
-            // (reads geometry of every observed element) and is redundant because
-            // autoRefreshEvents:'' already disables automatic refresh events.
-          }
-        } catch (e) {
-          logger.warn("[Animations] failed to register ScrollTrigger:", e);
-        }
-      };
-
-      if ("requestIdleCallback" in window)
-        requestIdleCallback(registerDuringIdle, { timeout: 2000 });
-      else setTimeout(registerDuringIdle, 700);
-
       // Detect and apply refresh rate off the critical path
       detectAndApplyRefreshRate()
         .then(() => {
@@ -344,6 +359,14 @@ function applyTierSettings(tier) {
  */
 export function setReducedMotion(enabled) {
   reducedMotion = enabled;
+
+  if (enabled) {
+    try {
+      window.__scrollAnimationsEnabled = false;
+    } catch (e) {
+      /* ignore */
+    }
+  }
 
   if (enabled && gsap) {
     // إنهاء كل الحركات النشطة فوراً
@@ -890,7 +913,7 @@ export function cancelAllAnimations() {
  * @param {number} options.stagger — التأخير بين العناصر
  */
 export function initScrollAnimations(selector, options = {}) {
-  if (!canAnimate() || reducedMotion || !ScrollTrigger) return;
+  if (!canAnimate() || reducedMotion) return;
   if (currentTier === "low") return;
 
   const {
@@ -901,24 +924,62 @@ export function initScrollAnimations(selector, options = {}) {
     ease = "power2.out",
   } = options;
 
-  const elements = document.querySelectorAll(selector);
-  if (!elements.length) return;
+  const run = () => {
+    const activeScrollTrigger = window.ScrollTrigger || ScrollTrigger;
+    if (!activeScrollTrigger) return;
 
-  gsap.set(elements, { opacity: 0, y });
+    const elements = document.querySelectorAll(selector);
+    if (!elements.length) return;
 
-  ScrollTrigger.batch(elements, {
-    start,
-    onEnter: (batch) => {
-      gsap.to(batch, {
-        opacity: 1,
-        y: 0,
-        duration: dur(baseDuration),
-        stagger: stagger * speedMultiplier,
-        ease,
-        clearProps: "transform",
+    gsap.set(elements, { opacity: 0, y });
+
+    activeScrollTrigger.batch(elements, {
+      start,
+      onEnter: (batch) => {
+        gsap.to(batch, {
+          opacity: 1,
+          y: 0,
+          duration: dur(baseDuration),
+          stagger: stagger * speedMultiplier,
+          ease,
+          clearProps: "transform",
+        });
+      },
+      once: true,
+    });
+
+    try {
+      window.__scrollAnimationsEnabled = true;
+    } catch (e) {
+      /* ignore */
+    }
+  };
+
+  if (window.ScrollTrigger) {
+    ScrollTrigger = window.ScrollTrigger;
+    run();
+    return;
+  }
+
+  if (!scrollTriggerSetupPromise) {
+    scrollTriggerSetupPromise = ensureScrollTriggerRegistered(3000)
+      .then((ready) => {
+        if (ready) {
+          logger.log("[Animations] ✓ ScrollTrigger loaded on demand");
+        }
+        return ready;
+      })
+      .catch((e) => {
+        logger.warn("[Animations] ScrollTrigger on-demand load failed:", e);
+        return false;
+      })
+      .finally(() => {
+        scrollTriggerSetupPromise = null;
       });
-    },
-    once: true,
+  }
+
+  scrollTriggerSetupPromise.then((ready) => {
+    if (ready) run();
   });
 }
 
