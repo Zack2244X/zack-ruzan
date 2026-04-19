@@ -1019,6 +1019,7 @@ export function closeStudentMenu() {
   document.getElementById("student-menu-modal").classList.add("hidden");
   _safeShowThemeToggle(true);
   updateDockUI("home");
+  _syncMainInteractionState();
 }
 
 /** عرض شاشة تسجيل الدخول */
