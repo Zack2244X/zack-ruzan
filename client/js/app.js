@@ -473,7 +473,7 @@ try {
 
 // === Service Worker Registration (PWA) ===
 if ("serviceWorker" in navigator) {
-  const SW_SCRIPT_URL = "/sw.js?v=159";
+  const SW_SCRIPT_URL = "/sw.js?v=160";
   const registerServiceWorker = () => {
     navigator.serviceWorker
       .register(SW_SCRIPT_URL)
@@ -1152,7 +1152,11 @@ function pauseBackgroundForModalFocus() {
 
 function resumeBackgroundAfterModalFocus() {
   clearModalResumeTimer();
-  if (!modalPerformanceState.active) return;
+
+  const hasFocusClass = document.documentElement.classList.contains(
+    "modal-performance-focus",
+  );
+  if (!modalPerformanceState.active && !hasFocusClass) return;
 
   modalPerformanceState.active = false;
   modalPerformanceState.resumeTimer = setTimeout(() => {
@@ -1160,25 +1164,47 @@ function resumeBackgroundAfterModalFocus() {
 
     if (modalPerformanceState.active) return;
 
-    resumeAllAnimations();
-
-    if (modalPerformanceState.wasSmoothScrollEnabled) {
-      enableSmoothScroll();
-    }
-
-    if (modalPerformanceState.wasScrollEnterEnabled) {
-      onScrollEnter();
-    }
-
-    if (modalPerformanceState.wasDataPollingActive) {
-      startDataPolling(modalPerformanceState.dataPollingInterval || 180000);
-    }
-
-    if (modalPerformanceState.wasLeaderboardRefreshActive) {
-      startLeaderboardAutoRefresh();
-    }
-
+    // Always clear focus class first so UI never remains visually locked
+    // even if any resume step throws unexpectedly.
     document.documentElement.classList.remove("modal-performance-focus");
+
+    try {
+      resumeAllAnimations();
+    } catch (e) {
+      // ignore resume animation failures
+    }
+
+    try {
+      if (modalPerformanceState.wasSmoothScrollEnabled) {
+        enableSmoothScroll();
+      }
+    } catch (e) {
+      // ignore smooth-scroll resume failures
+    }
+
+    try {
+      if (modalPerformanceState.wasScrollEnterEnabled) {
+        onScrollEnter();
+      }
+    } catch (e) {
+      // ignore scroll-enter resume failures
+    }
+
+    try {
+      if (modalPerformanceState.wasDataPollingActive) {
+        startDataPolling(modalPerformanceState.dataPollingInterval || 180000);
+      }
+    } catch (e) {
+      // ignore polling resume failures
+    }
+
+    try {
+      if (modalPerformanceState.wasLeaderboardRefreshActive) {
+        startLeaderboardAutoRefresh();
+      }
+    } catch (e) {
+      // ignore leaderboard resume failures
+    }
 
     modalPerformanceState.wasDataPollingActive = false;
     modalPerformanceState.wasLeaderboardRefreshActive = false;
