@@ -861,20 +861,40 @@ export function animateScoreReveal(scoreEl, finalScore, totalScore) {
  * إيقاف جميع الحركات مؤقتاً (مثلاً عند فتح modal ثقيل)
  */
 export function pauseAllAnimations() {
-  if (gsap) {
-    gsap.globalTimeline.pause();
-    logger.log("[Animations] ⏸ كل الحركات موقوفة");
+  if (!gsap) return;
+
+  try {
+    const timeline = gsap.globalTimeline;
+    if (timeline && typeof timeline.pause === "function") {
+      timeline.pause();
+      logger.log("[Animations] ⏸ كل الحركات موقوفة");
+      return;
+    }
+  } catch (e) {
+    // ignore pause failures to avoid breaking modal interactions
   }
+
+  logger.log("[Animations] ℹ️ تخطي إيقاف الحركات — globalTimeline غير متاح");
 }
 
 /**
  * استئناف جميع الحركات
  */
 export function resumeAllAnimations() {
-  if (gsap) {
-    gsap.globalTimeline.resume();
-    logger.log("[Animations] ▶ كل الحركات مستأنفة");
+  if (!gsap) return;
+
+  try {
+    const timeline = gsap.globalTimeline;
+    if (timeline && typeof timeline.resume === "function") {
+      timeline.resume();
+      logger.log("[Animations] ▶ كل الحركات مستأنفة");
+      return;
+    }
+  } catch (e) {
+    // ignore resume failures to avoid breaking modal interactions
   }
+
+  logger.log("[Animations] ℹ️ تخطي استئناف الحركات — globalTimeline غير متاح");
 }
 
 /**
