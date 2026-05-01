@@ -585,6 +585,11 @@
   function bootstrap() {
     initPalette();
     const mobileStartup = isMobileStartup();
+    const loginLite =
+      document.documentElement &&
+      document.documentElement.classList.contains("login-lite");
+    const lazyStartup = mobileStartup || loginLite;
+    const fallbackDelay = loginLite && !mobileStartup ? 2500 : 9000;
     let mobileRuntimeStarted = false;
 
     const runFullPass = function () {
@@ -608,7 +613,7 @@
       }, 1500);
     };
 
-    if (mobileStartup) {
+    if (lazyStartup) {
       // Start runtime lazily on first user intent; fallback later for passive sessions.
       window.addEventListener("pointerdown", runMobileRuntime, {
         once: true,
@@ -631,7 +636,7 @@
         },
       );
 
-      setTimeout(runMobileRuntime, 9000);
+      setTimeout(runMobileRuntime, fallbackDelay);
     } else {
       ensureLucideReady();
       queueIconApply(getInitialIconRoot());

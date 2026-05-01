@@ -63,21 +63,7 @@
           - Preserve full styling for no-JS browsers via <noscript> fallback. -->
     <link
       rel="preload"
-      as="image"
-      href="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif"
-      type="image/avif"
-      fetchpriority="high"
-    />
-    <link
-      rel="preload"
       href="/fonts/Cairo-Regular.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-    <link
-      rel="preload"
-      href="/fonts/Cairo-Bold.woff2"
       as="font"
       type="font/woff2"
       crossorigin
@@ -131,12 +117,14 @@
         try {
           window.__startupLowEnd = lowEnd;
           window.__startupMobile = mobileStartup;
+          window.__loginLiteLocked = lowEnd || mobileStartup;
         } catch (e) {
           /* ignore */
         }
 
         var root = document.documentElement;
         if (root) {
+          root.classList.add("login-lite");
           if (mobileStartup) {
             root.classList.add("startup-mobile");
           }
@@ -257,6 +245,68 @@
       html.startup-low-end body::before,
       body.startup-low-end::before {
         filter: none !important;
+      }
+    </style>
+
+    <style id="login-lite-guard">
+      html.login-lite .bg-pattern img {
+        opacity: 0 !important;
+      }
+
+      html.login-lite #floor-glow {
+        opacity: 0 !important;
+      }
+
+      html.login-lite .lamp-wrapper {
+        display: none !important;
+      }
+
+      html.login-lite .login-scene {
+        gap: 0 !important;
+        justify-content: center;
+      }
+
+      html.login-lite .login-card {
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(8, 12, 20, 0.96);
+      }
+
+      html.login-lite .login-card::before {
+        display: none !important;
+      }
+
+      html.login-lite .logo-wrap::before,
+      html.login-lite .logo-wrap::after {
+        display: none !important;
+      }
+
+      html.login-lite .logo-wrap img {
+        box-shadow: none !important;
+      }
+
+      html.login-lite .login-card.appear {
+        animation: none !important;
+      }
+
+      html.login-lite .login-btn-fancy {
+        box-shadow: none !important;
+      }
+
+      html.login-lite .gold-arabic-title,
+      html.login-lite .card-title,
+      html.login-lite .guest-modal-title {
+        font-family:
+          "Cairo",
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Arial,
+          sans-serif !important;
+        letter-spacing: 0 !important;
+        text-shadow: none !important;
       }
     </style>
 
@@ -2322,7 +2372,8 @@
     >
       <div class="bg-pattern">
         <img
-          src="/icons/bg.webp"
+          src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="
+          data-bg-src="/icons/bg.webp"
           alt=""
           loading="lazy"
           fetchpriority="low"
@@ -2484,16 +2535,19 @@
             <picture>
               <source
                 type="image/avif"
-                srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif 1x"
+                data-login-srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.avif 1x"
               />
               <img
-                src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
+                src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="
+                data-login-src="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp"
+                data-login-srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x"
                 alt="Logo"
-                fetchpriority="high"
+                fetchpriority="low"
                 decoding="async"
-                loading="eager"
+                loading="lazy"
                 class="logo-image"
-                srcset="/icons/Gemini_Generated_Image_t3vu3xt3vu3xt3vu.webp 1x"
+                width="284"
+                height="284"
               />
             </picture>
           </div>
@@ -2586,6 +2640,80 @@
         <script src="/js/guest-login.min.js?v=1" defer></script>
       </div>
     </div>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        if (!root) return;
+
+        var loginLocked = false;
+        try {
+          loginLocked = !!window.__loginLiteLocked;
+        } catch (e) {
+          loginLocked = false;
+        }
+
+        var mediaLoaded = false;
+        var loadLoginMedia = function () {
+          if (mediaLoaded) return;
+
+          var sources = document.querySelectorAll("source[data-login-srcset]");
+          var logoImg = document.querySelector("img[data-login-src]");
+          var bgImg = document.querySelector("img[data-bg-src]");
+
+          if (!sources.length && !logoImg && !bgImg) return;
+          mediaLoaded = true;
+
+          for (var i = 0; i < sources.length; i += 1) {
+            var srcset = sources[i].getAttribute("data-login-srcset");
+            if (srcset) sources[i].setAttribute("srcset", srcset);
+          }
+
+          if (logoImg) {
+            var logoSrcset = logoImg.getAttribute("data-login-srcset");
+            var logoSrc = logoImg.getAttribute("data-login-src");
+            if (logoSrcset) logoImg.setAttribute("srcset", logoSrcset);
+            if (logoSrc) logoImg.src = logoSrc;
+          }
+
+          if (loginLocked) return;
+
+          if (bgImg) {
+            var bgSrc = bgImg.getAttribute("data-bg-src");
+            if (bgSrc) bgImg.src = bgSrc;
+          }
+        };
+
+        var releaseLite = function () {
+          loadLoginMedia();
+          if (loginLocked) return;
+          root.classList.remove("login-lite");
+        };
+
+        var schedule = function () {
+          if ("requestIdleCallback" in window) {
+            requestIdleCallback(releaseLite, { timeout: 1400 });
+          } else {
+            setTimeout(releaseLite, 1200);
+          }
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", schedule, { once: true });
+        } else {
+          schedule();
+        }
+
+        var intentEvents = ["pointerdown", "keydown", "touchstart"];
+        for (var i = 0; i < intentEvents.length; i += 1) {
+          document.addEventListener(intentEvents[i], releaseLite, {
+            once: true,
+            passive: true,
+            capture: true,
+          });
+        }
+      })();
+    </script>
 
     <!-- مودال التحذير للضيف -->
     <div

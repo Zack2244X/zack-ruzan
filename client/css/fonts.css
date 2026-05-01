@@ -1,7 +1,7 @@
 /* ═══ Cairo + Amiri — @font-face ONLY ═══
    font-family is set in inline <head> CSS at first paint and NEVER changes.
    Adding @font-face here does NOT change font metrics or trigger layout.
-   Cold cache: optional block expires → system-ui fallback inline → no swap.
+    Cold cache: optional fonts can stay on system fallback; Cairo Regular swaps.
    Warm cache: Cairo/Amiri instantly from disk → used on first recalc. */
 @font-face {
   font-family: "Cairo";
@@ -13,18 +13,18 @@
   font-family: "Cairo";
   src: url("/fonts/Cairo-Bold.woff2") format("woff2");
   font-weight: 700;
-  font-display: swap;
+  font-display: optional;
 }
 @font-face {
   font-family: "Amiri";
   src: url("/fonts/Amiri-Regular.woff2") format("woff2");
   font-weight: 400;
-  font-display: swap;
+  font-display: optional;
 }
 @font-face {
   font-family: "Amiri";
   src: url("/fonts/Amiri-Bold.woff2") format("woff2");
   font-weight: 700;
-  font-display: swap;
+  font-display: optional;
 }
 /* NO font-family rules here — font-family is fixed in inline CSS, never overridden. */
